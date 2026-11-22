@@ -35,6 +35,14 @@ int main() {
     try { Game g(board, towns, 0, 1, 1); } catch (const std::invalid_argument&) { threw = true; }
     CHECK(threw);
 
+    // A single human gets a computer opponent in another slot (seg2:021F).
+    {
+        Game solo(board, towns, 1, 0, 4);
+        CHECK(activePlayerCount(solo.players()) == 2 && solo.players()[0].status == 1);
+        int computers = 0;
+        for (int p = 1; p < kPlayerSlots; ++p) computers += solo.isComputer(p);
+        CHECK(computers == 1);
+    }
     Game game(board, towns, 2, 0, 1);
     game.setRandomEvents(false);
     CHECK(game.origin() == 0 && game.destination() == 12 && game.currentPlayer() == 0);
@@ -72,7 +80,7 @@ int main() {
     CHECK(game.cash(game.currentPlayer()) >= kStartingCash + 300000.0);
 
     // With one stage left the first arrival continues with a new destination.
-    Game stages(board, towns, 1, 1, 3);
+    Game stages(board, towns, 1, 1, 3, 1, nullptr, nullptr, false); // solo variant
     stages.setRandomEvents(false);
     for (int guard = 0; guard < 5000 && stages.remainingStages() == 1; ++guard) {
         if (stages.phase() == Game::Phase::Arrived) stages.endTurn();
@@ -83,7 +91,7 @@ int main() {
     CHECK(stages.origin() == 12 && stages.destination() == 0);
 
     // Cards: a movement card from the starting hand replaces the spin.
-    Game cardGame(board, towns, 1, 0, 1, 8);
+    Game cardGame(board, towns, 1, 0, 1, 8, nullptr, nullptr, false);
     cardGame.setRandomEvents(false);
     int moveSlot = -1, otherSlot = -1;
     for (int i = 0; i < 8; ++i) {
@@ -109,7 +117,7 @@ int main() {
     // Yellow fields hand out the top card of the deck.
     Board yellow = board;
     for (int i = 1; i < 12; ++i) yellow.fields[size_t(i)].kind = 3;
-    Game yellowGame(yellow, towns, 1, 0, 2, 1);
+    Game yellowGame(yellow, towns, 1, 0, 2, 1, nullptr, nullptr, false);
     yellowGame.setRandomEvents(false);
     auto held = [&] { int n = 0; for (auto s : yellowGame.hand(0)) n += s != Deck::kTaken; return n; };
     CHECK(held() == 1);
@@ -124,7 +132,7 @@ int main() {
     // Town purchase: only after arriving in a town, entry must exist and be free.
     std::vector<Town> shopTowns = towns;
     shopTowns[0].entries[0].name = "Kiosk"; shopTowns[0].entries[0].value = 1000; shopTowns[0].entries[0].words[0] = 5;
-    Game shop(board, shopTowns, 1, 99, 1);
+    Game shop(board, shopTowns, 1, 99, 1, 1, nullptr, nullptr, false);
     shop.setRandomEvents(false);
     CHECK(shop.townAt(0) == 0 && shop.townAt(5) == -1 && !shop.buyProperty(0));
     for (int guard = 0; guard < 5000; ++guard) {
@@ -153,7 +161,7 @@ int main() {
         CHECK(resolveTarget(three, 0, -1) == 0);                   // one player: first active
     }
     CHECK(cardKind(9) == CardKind::Fiskus && cardKind(16) == CardKind::Schlafen);
-    CHECK(cardKind(26) == CardKind::Unsupported && cardStatusFlag(CardKind::Zucker) == 0x02);
+    CHECK(cardKind(36) == CardKind::Unsupported && cardKind(26) == CardKind::Risiko && cardStatusFlag(CardKind::Zucker) == 0x02);
     CHECK(cardNeedsTarget(CardKind::Fiskus) && !cardNeedsTarget(CardKind::Konto));
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

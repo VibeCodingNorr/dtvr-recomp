@@ -26,12 +26,15 @@ namespace dtvr {
 class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
 public:
-    enum class Phase { Roll, Move, Arrived, GameOver };
+    enum class Phase { Roll, Move, Arrived, GameOver, Risiko };
 
     // `map` and `props` are optional; without them border barriers and the sea
-    // route test of the robbers are not applied.
+    // route test of the robbers are not applied. A single human gets a computer
+    // opponent as in the original (seg2:021F); `soloOpponent = false` is a variant
+    // without it.
     Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
-         int defaultCards = 1, const WorldMap* map = nullptr, const TileProperties* props = nullptr);
+         int defaultCards = 1, const WorldMap* map = nullptr, const TileProperties* props = nullptr,
+         bool soloOpponent = true);
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
@@ -51,6 +54,16 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
+    // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),
+    // pressing while dark loses them all, stopping keeps them. The presentation
+    // calls risikoTick every risikoTickMs(); computers press inside the tick.
+    struct RisikoState { int level = 0; int light = 0; int ticks = 0; int steps = 0; };
+    const RisikoState& risiko() const { return risiko_; }
+    bool risikoTick();
+    bool risikoPress();
+    bool risikoStop();
+    int risikoTickMs() const;
     // Computer players (game_ai.cpp). Slots 0..humans-1 start as humans (status 1);
     // setComputer switches a slot to status 2. runComputerTurn plays the current
     // turn when it belongs to a computer or the player is under Steuerlos.
@@ -117,6 +130,9 @@ private:
     void playTschuess(int target); // seg3:28ED
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
+    void startRisiko();                     // game_risiko.cpp
+    void startRisikoLevel(int level);
+    void finishRisiko();
     // game_events.cpp
     void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
     void applyEvent(EventKind kind);
@@ -145,6 +161,7 @@ private:
     int propertyMode_ = 0xFF;               // DS:3FC6
     bool aiActing_ = false;                 // inside runComputerTurn
     bool yellowPending_ = false;            // yellow field waits for a discard
+    RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113

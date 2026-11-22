@@ -17,7 +17,7 @@ std::string money(double v) {
 } // namespace
 
 Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
-           int defaultCards, const WorldMap* map, const TileProperties* props)
+           int defaultCards, const WorldMap* map, const TileProperties* props, bool soloOpponent)
     : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots), map_(map), props_(props) {
     if (map_ && props_) barriers_ = barrierLinks(board_, *map_, *props_);
     westValue_ = westPropertyValue(board_, towns_, 0x4000); // seg4:0E0B mask, then seg1:A15B
@@ -29,6 +29,17 @@ Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int r
     for (int i = 0; i < humans; ++i) {
         players_[size_t(i)].status = 1;
         players_[size_t(i)].field = origin_;
+    }
+    if (soloOpponent && activePlayerCount(players_) == 1) {
+        // seg2:021F: one player alone gets a computer opponent in a random other
+        // slot (random(7) until it differs), announced with text 961 + random(2).
+        const int human = firstActivePlayer(players_);
+        int slot;
+        do slot = rng_.random(7); while (slot == human);
+        players_[size_t(slot)].status = 2;
+        players_[size_t(slot)].field = origin_;
+        messages_.push_back("Computergegner auf Platz " + std::to_string(slot + 1));
+        rng_.random(2);
     }
     remaining_ = rounds;
     current_ = firstActivePlayer(players_);

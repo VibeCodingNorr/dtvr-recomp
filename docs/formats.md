@@ -661,9 +661,8 @@ Risiko, card fields, Nebel, computer players.
   byte in DS:10, sets it to 2 (computer) and clears the bit; seg5:7509 (computer
   driving) tests the bit. The effect is a computer-driven turn (round 16:
   seg5:A1CD also sets DS:8D2A = 1, so the route is scored with random(1000)).
-- **Risiko** (card 26, seg7:674D): opens its own window with a timed reaction
-  game (seg10:1DDE clock, a 25-tick limit at seg7:693A, ±100 steps on DS:9C92,
-  result booked through seg2:7F14). Not rebuilt.
+- **Risiko** (card 26, seg7:674D): opens its own window with a reaction game;
+  rebuilt in round 19 (seg10:1DDE is `rand()`, not a clock as first noted).
 
 Rebuilt in `src/game_cards.cpp`, `src/game.cpp` and `src/rules.cpp`
 (`resolveAnyTarget`, `pickHiddenField`). Assumption: the visible map area is
@@ -811,6 +810,40 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
 Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. Approximation: DS:22 is
 taken as the distances from the destination with the route mask (the array
 holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
+
+### Risiko, Nebel and the player setup (round 19)
+
+- **Risiko** (card 26, seg7:674D, window procedure seg7:6BF0): seg2:6426(1, 5, 0)
+  spins one reel; the result is the step count DS:A778. Levels L = 2, 3, 4
+  (seg7:685D): the light DS:9C92 starts lit (= L), the first pause is
+  (400 − 75L) / 10 units of seg6:0CDF(10), then a tick counter starts at
+  rand() % 2 and every (475 − 75L) / 10 units the light toggles between L and 0.
+  A press (DS:A29E; any key but Escape, or the left button area) while lit sets
+  the steps through seg2:7F14 to L · steps / (L − 1) (×2, then ×1.5, ×4/3: four
+  times the spin after level 4, text 41003) and moves to the next level; a press
+  while dark gives 0 (text 41002). Escape or the right button area (DS:A0EE)
+  stops and keeps the steps (text 41001). Afterwards seg7:6BB9: 0 steps →
+  nextPlayer, otherwise the move starts (seg2:61B7). Computers press once the
+  counter exceeds 7: when rand() % 100 < 25 (even in the dark) or while lit
+  (seg7:6927); they never stop. The card choice gives Risiko only its random
+  start value, so computers do not pick it.
+- **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
+  in the string resources, but no code adds the base 5181 (all other events add
+  their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the
+  event tables contain no fog entry: the event is unused in this rally.exe.
+- **Player setup** seg2:0000 (new game from seg4:0E37): a demo start sets slots
+  0–3 to computers (seg2:01AF); otherwise the setup dialog seg1:02BA runs. With
+  only one active slot afterwards, random(7) is drawn until it differs from that
+  slot, the slot becomes a computer (status 2) and text 961 + random(2) announces
+  the opponent (seg2:021F). The new-game order is: event countdown seg8:1B91
+  (before the setup, so with no active slot and no random draw), player setup,
+  season tiles seg5:186A, shuffle seg3:01AD, deal seg3:0286, first destination
+  seg7:372F(2) → seg5:1E2C.
+
+Rebuilt in `src/game_risiko.cpp` (Risiko as phase `Risiko` with the commands
+`risikoTick`, `risikoPress`, `risikoStop`) and the `Game` constructor (computer
+opponent for a single player; `soloOpponent = false` is a variant for tests).
+Assumption: one pause unit of seg6:0CDF is 10 ms for the presentation timing.
 
 ### SBS: remaining hypotheses
 

@@ -145,6 +145,8 @@ std::string SaveCodec::encode(const Game& g) {
     o << "counter " << g.counter_.allowance();
     for (Direction d : g.counter_.history()) o << ' ' << int(d);
     o << '\n';
+    o << "risiko " << g.risiko_.level << ' ' << g.risiko_.light << ' ' << g.risiko_.ticks << ' ' << g.risiko_.steps
+      << '\n';
     o << "turn " << int(g.phase_) << ' ' << g.current_ << ' ' << g.origin_ << ' ' << g.destination_ << ' '
       << g.remaining_ << '\n';
     o << "end\n";
@@ -155,6 +157,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     const long long fields = (long long)g.board_.fields.size();
     std::istringstream in(text);
     std::string line;
+    int version = 0;
     auto fail = [&](const std::string& why) { error = why; return false; };
     if (!std::getline(in, line)) return fail("leere Datei");
     {
@@ -162,7 +165,9 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
         std::string magic;
         int format = 0;
         if (!(head >> magic >> format) || magic != kMagic) return fail("kein DTVR-Recomb-Spielstand");
-        if (format != kSaveFormat) return fail("Spielstandformat " + std::to_string(format) + " wird nicht unterstuetzt");
+        if (format < 1 || format > kSaveFormat)
+            return fail("Spielstandformat " + std::to_string(format) + " wird nicht unterstuetzt");
+        version = format;
     }
     // Everything is parsed into copies first and applied only when complete.
     uint32_t rng = 0;
@@ -184,6 +189,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     int allowance = 0;
     std::vector<Direction> history;
     int phase = 0, current = 0, origin = -1, destination = -1, remaining = 0;
+    Game::RisikoState risiko;
     std::map<std::string, int> seen;
     bool ended = false;
     while (std::getline(in, line)) {
@@ -266,8 +272,11 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
                 ok = r.integer(d, 1, 4);
                 history.push_back(Direction(d));
             }
+        } else if (key == "risiko") {
+            ok = r.get(risiko.level, 0, 4) && r.get(risiko.light, 0, 4) && r.get(risiko.ticks, 0, 1000)
+                 && r.get(risiko.steps, 0, 1000);
         } else if (key == "turn") {
-            ok = r.get(phase, 0, int(Game::Phase::GameOver)) && r.get(current, 0, kPlayerSlots - 1)
+            ok = r.get(phase, 0, int(Game::Phase::Risiko)) && r.get(current, 0, kPlayerSlots - 1)
                  && r.get(origin, -1, fields - 1) && r.get(destination, -1, fields - 1) && r.get(remaining, 0, 1 << 20);
         } else return fail("unbekannter Eintrag '" + key + "'");
         if (!ok || !r.done()) return fail("fehlerhafter Eintrag '" + key + "'");
@@ -276,6 +285,8 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     for (const char* k : {"rules", "data", "rng", "drago", "events", "places", "state", "facing", "deck", "calendar",
                           "counter", "turn"})
         if (seen[k] != 1) return fail(std::string("Eintrag '") + k + "' fehlt oder ist doppelt");
+    if (version >= 2 && seen["risiko"] != 1) return fail("Eintrag 'risiko' fehlt oder ist doppelt");
+    if ((Game::Phase(phase) == Game::Phase::Risiko) != (risiko.level != 0)) return fail("Risiko-Zustand passt nicht zur Phase");
     if (seen["player"] != kPlayerSlots || seen["hand"] != kPlayerSlots || seen["town"] != int(towns.size())
         || seen["money"] != int(money.size()))
         return fail("Spieler-, Hand-, Stadt- oder Geldeintraege unvollstaendig");
@@ -317,6 +328,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     g.origin_ = origin;
     g.destination_ = destination;
     g.remaining_ = remaining;
+    g.risiko_ = risiko;
     g.messages_.clear();
     return true;
 }

@@ -10,8 +10,8 @@
 
 namespace dtvr {
 
-constexpr int kSaveFormat = 1;     // layout of the text below
-constexpr int kRulesRevision = 18; // rule reconstruction round the state belongs to
+constexpr int kSaveFormat = 2;     // layout of the text below (1: without the Risiko record)
+constexpr int kRulesRevision = 19; // rule reconstruction round the state belongs to
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

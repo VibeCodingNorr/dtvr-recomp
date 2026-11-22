@@ -11,7 +11,8 @@ PlayView::PlayView(const Board& board, const std::vector<Town>& towns, std::uniq
       game_(std::make_unique<Game>(board, towns, humans, rounds, seed, 1, map_.get(), props_.get())) {}
 
 std::string PlayView::title() const {
-    static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende"};
+    static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende",
+                                   "Risiko (Leertaste druecken, Ruecktaste aufhoeren)"};
     const Game& g = *game_;
     const int p = g.currentPlayer();
     std::string s = "DTVR Recomb | Spieler " + std::to_string(p + 1) + " | Monat "
@@ -67,6 +68,8 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
         return true;
     };
     switch (key) {
+    case SDLK_SPACE: g.risikoPress(); return true;
+    case SDLK_BACKSPACE: g.risikoStop(); return true;
     case SDLK_w: g.roll(); return true;
     case SDLK_RETURN: g.endTurn(); return true;
     case SDLK_i: g.invest(std::max(1000, int(g.cash(g.currentPlayer()) / 2000) * 1000)); return true;
@@ -113,6 +116,16 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
         return true;
     }
     return false;
+}
+
+bool PlayView::update(Uint32 now) {
+    Game& g = *game_;
+    if (g.phase() == Game::Phase::Roll && g.computerControls()) return g.runComputerTurn(); // computer slots
+    if (g.phase() != Game::Phase::Risiko) { nextTick_ = 0; return false; }
+    if (!nextTick_) nextTick_ = now + Uint32(g.risikoTickMs());
+    if (now < nextTick_) return false;
+    nextTick_ = now + Uint32(g.risikoTickMs());
+    return g.risikoTick();
 }
 
 void PlayView::draw(SDL_Renderer* renderer, float x, float y, float zoom) const {

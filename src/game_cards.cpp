@@ -126,6 +126,7 @@ bool Game::playCard(int handSlot, int target) {
         messages_.push_back("Kaufmodus " + card + " aktiv bis zum Zugende");
         return true;
     case CardKind::Tschuess: playTschuess(victim); break;
+    case CardKind::Risiko: startRisiko(); return true;
     case CardKind::Verdoppeln: // seg3:3FBB: the next card is not used up
         doubleNext_ = true;
         messages_.push_back("Die naechste Karte bleibt auf der Hand");

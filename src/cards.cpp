@@ -63,6 +63,7 @@ CardKind cardKind(int type) {
     case 40: return CardKind::Verdoppeln; // seg3:3FBB
     case 19: return CardKind::Tschuess;   // seg3:28ED
     case 13: return CardKind::Steuerlos;  // seg3:1994
+    case 26: return CardKind::Risiko;     // seg7:674D
     case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
         return CardKind::Property;        // seg3:134D-1481: DS:3FC6 = type + 1
     default: return CardKind::Unsupported;

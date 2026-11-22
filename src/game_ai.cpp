@@ -58,6 +58,7 @@ bool Game::runComputerTurn() {
     // State 1: card choice (seg5:7386); without a card the computer spins (state 2).
     const AiCardChoice card = aiChooseCard(aiState(steerless), player, obstacles_, rng_);
     if (card.slot < 0 || !playCard(card.slot, card.target)) roll();
+    for (int guard = 0; phase_ == Phase::Risiko && guard < 1000; ++guard) risikoTick(); // presses inside
     players_[size_t(player)].flags &= uint16_t(~kFlagSteerless); // after roll: computerControls() still held
     collect();
     if (phase_ == Phase::Roll && current_ != player) { // the card ended the turn

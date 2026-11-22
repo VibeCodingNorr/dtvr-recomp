@@ -25,6 +25,8 @@ public:
     // Returns true when the key belongs to the game (W, Enter, T, I, N, B, PgUp/PgDn,
     // digits, arrows).
     bool handleKey(SDL_Keycode key, Uint16 mod);
+    // Timed game steps (Risiko light); true when the state changed.
+    bool update(Uint32 now);
     // Origin, destination, obstacles, Dr. Drago and the players on the world view.
     void draw(SDL_Renderer* renderer, float x, float y, float zoom) const;
 
@@ -37,6 +39,7 @@ private:
     int cardTarget_ = -1;                     // T: target player with three or more players
     int pendingNails_ = -1;                   // hand slot waiting for a direction key
     int offerCursor_ = 0;                     // card field: selected offer (PgUp / PgDn)
+    Uint32 nextTick_ = 0;                     // Risiko: time of the next light change
 };
 
 } // namespace dtvr

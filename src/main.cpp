@@ -286,6 +286,7 @@ static int run(int argc, char** argv) {
     bool running = true;
     while (running) {
         SDL_Event event;
+        if (playView && playView->update(SDL_GetTicks())) report();
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) fit();

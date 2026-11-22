@@ -49,7 +49,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMB-SAVE 1\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMB-SAVE 2\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -70,6 +70,16 @@ int main() {
     CHECK(SaveCodec::decode(n, moving, error) && n.stepsTaken() == 1 && n.phase() == Game::Phase::Move);
     CHECK(n.step(Direction::Left) && n.stepsTaken() == 0);
 
+    // Format 1 (round 18, no Risiko record) still loads.
+    {
+        std::string v1 = saved;
+        v1.replace(0, 18, "DTVR-RECOMB-SAVE 1");
+        const size_t r = v1.find("\nrisiko ");
+        v1.erase(r, v1.find('\n', r + 1) - r);
+        Game c(board, towns, 1, 0, 3, 1);
+        CHECK(SaveCodec::decode(c, v1, error) && SaveCodec::encode(c) == saved);
+    }
+
     // Rejected input leaves the game unchanged.
     const std::string before = SaveCodec::encode(b);
     auto rejects = [&](const std::string& text) {
@@ -79,7 +89,7 @@ int main() {
     };
     CHECK(rejects(""));
     CHECK(rejects("SOMETHING ELSE 1\n"));
-    CHECK(rejects("DTVR-RECOMB-SAVE 2\nend\n"));
+    CHECK(rejects("DTVR-RECOMB-SAVE 3\nend\n"));
     CHECK(rejects(saved.substr(0, saved.size() / 2)));          // truncated
     std::string bad = saved;
     bad.replace(bad.find("rng "), 4, "rnx ");

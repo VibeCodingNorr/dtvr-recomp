@@ -44,7 +44,7 @@ static void driveRight(Game& g) {
 static std::unique_ptr<Game> gameWithCard(const Board& b, const std::vector<Town>& t, int players, int player,
                                           int type, int& slot) {
     for (uint16_t seed = 1; seed < 5000; ++seed) {
-        auto g = std::make_unique<Game>(b, t, players, 0, seed, 8);
+        auto g = std::make_unique<Game>(b, t, players, 0, seed, 8, nullptr, nullptr, false);
         g->setRandomEvents(false);
         for (int s = 0; s < 8; ++s)
             if (g->deck().typeOfSlot(g->hand(player)[size_t(s)]) == type) { slot = s; return g; }
@@ -151,7 +151,7 @@ int main() {
     {
         Board shop = board;
         for (int i = 1; i < 12; ++i) shop.fields[size_t(i)].kind = 5;
-        Game g(shop, towns, 1, 0, 3, 3);
+        Game g(shop, towns, 1, 0, 3, 3, nullptr, nullptr, false);
         g.setRandomEvents(false);
         CHECK(!g.atCardField() && !g.buyCard(9));
         driveRight(g);
@@ -171,7 +171,7 @@ int main() {
     {
         Board yb = board;
         for (int i = 1; i < 12; ++i) yb.fields[size_t(i)].kind = 3;
-        Game g(yb, towns, 1, 0, 5, 8);
+        Game g(yb, towns, 1, 0, 5, 8, nullptr, nullptr, false);
         g.setRandomEvents(false);
         CHECK(g.handCount(0) == 8);
         driveRight(g);
@@ -180,6 +180,31 @@ int main() {
         CHECK(g.discardForCard(2) && !g.yellowCardPending() && g.handCount(0) == 8);
         CHECK(g.hand(0)[2] != dropped && g.endTurn());
     }
+
+    // Risiko (26): press while lit doubles, in the dark loses everything, stop keeps.
+    if (auto g = gameWithCard(board, towns, 2, 0, 26, slot)) {
+        CHECK(g->playCard(slot) && g->phase() == Game::Phase::Risiko);
+        const int steps = g->risiko().steps;
+        CHECK(steps >= 1 && steps <= 6 && g->risiko().level == 2 && g->risiko().light == 2);
+        CHECK(g->risikoTickMs() == 320);
+        CHECK(g->risikoPress() && g->risiko().steps == 2 * steps && g->risiko().level == 3);
+        CHECK(g->risikoTick() && g->risiko().light == 0);
+        CHECK(g->risikoPress() && g->phase() == Game::Phase::Roll && g->currentPlayer() == 1); // lost
+    } else CHECK(false);
+    if (auto g = gameWithCard(board, towns, 2, 0, 26, slot)) {
+        CHECK(g->playCard(slot));
+        const int steps = g->risiko().steps;
+        CHECK(g->risikoPress() && g->risikoTick() && g->risikoTick());          // level 3, lit again
+        CHECK(g->risiko().light == 3 && g->risikoPress() && g->risiko().steps == 3 * steps);
+        CHECK(g->risikoStop() && g->phase() == Game::Phase::Move && g->allowance() == 3 * steps);
+    } else CHECK(false);
+    if (auto g = gameWithCard(board, towns, 2, 0, 26, slot)) {
+        CHECK(g->playCard(slot));
+        CHECK(g->setComputer(0, true) && !g->risikoPress());                   // only the computer presses
+        int ticks = 0;
+        while (g->phase() == Game::Phase::Risiko && ticks < 1000) { g->risikoTick(); ++ticks; }
+        CHECK(g->phase() != Game::Phase::Risiko && ticks > 8);
+    } else CHECK(false);
 
     // Investments need an offer.
     Game plain(board, towns, 1, 0, 1);

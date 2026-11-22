@@ -45,6 +45,7 @@ enum class CardKind {
     Weihnachten, HauAb,                      // Dr. Drago / gift cards (round 10)
     Erdbeben, Naegel, Punch, Konferenz, Flugzeug, Verdoppeln, // round 13
     Property, Tschuess,                      // round 14 (cards 1-8 in the town dialog)
+    Risiko,                                  // round 19
     Unsupported,
 };
 CardKind cardKind(int type);
