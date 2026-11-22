@@ -42,6 +42,40 @@ class InstallerUiTests(unittest.TestCase):
         dialog.window.after(50, lambda: dialog.accept(dialog.current))
         self.assertEqual(dialog.show(), str(child))
 
+    def test_original_music_is_selected_and_system_bank_is_forwarded(self):
+        from installer_gui import InstallerWindow
+        bank = Path("/path/to/system-gm.sf2")
+        with patch("installer_gui.default_soundfont", return_value=bank):
+            app = InstallerWindow(self.root)
+        self.assertTrue(app.audio.get().startswith("Vollständiges"))
+        self.assertEqual(app.bank.get(), str(bank))
+        self.assertIn("Originalmusik", app.music_hint.get())
+        app.iso.set("/path/to/disc.iso")
+        app.output.set(str(self.directory / "new installation"))
+        with patch.object(app.worker, "start") as start:
+            app._begin(True)
+        command = start.call_args.args[0]
+        self.assertIn("--soundfont", command)
+        self.assertIn(str(bank), command)
+        self.assertNotIn("--no-music", command)
+
+    def test_missing_bank_requires_selection_or_explicit_no_music(self):
+        from installer_gui import InstallerWindow
+        with patch("installer_gui.default_soundfont", return_value=None):
+            app = InstallerWindow(self.root)
+        app.iso.set("/path/to/disc.iso")
+        app.output.set(str(self.directory / "new installation"))
+        with patch.object(app.worker, "start") as start, patch("installer_gui.messagebox.showerror") as error:
+            app._begin(True)
+        start.assert_not_called()
+        self.assertTrue(app.layout.music_open)
+        self.assertIn("Originalmusik", error.call_args.args[1])
+        app.audio.set("Musikvorbereitung überspringen")
+        app._soundfont_state()
+        with patch.object(app.worker, "start") as start:
+            app._begin(True)
+        self.assertIn("--no-music", start.call_args.args[0])
+
     def test_optional_system_dialog_and_cancellation(self):
         from installer_folders import FolderDialog
         dialog = FolderDialog(self.root, "Test", self.directory)

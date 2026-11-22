@@ -6,10 +6,16 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from installer_process import InstallerProcess, installer_command
+from installer_process import InstallerProcess, installer_command, dependency_command
 
 
 class ProcessTests(unittest.TestCase):
+    def test_no_bank_is_an_explicit_music_opt_out(self):
+        self.assertIn("--no-music", installer_command("/path/disc.iso", "/path/install"))
+        self.assertIn("--no-music", dependency_command())
+        self.assertNotIn("--no-music", installer_command("/path/disc.iso", "/path/install", "bank.sf2"))
+        self.assertNotIn("--no-music", dependency_command("bank.sf2"))
+
     def wait_done(self, worker):
         collected = []
         while True:

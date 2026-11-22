@@ -136,7 +136,7 @@ class PipelineFailureTests(unittest.TestCase):
                 self.iso.write_bytes(data)
                 before = digest(self.iso)
                 result = subprocess.run([sys.executable, str(installer), "--iso", str(self.iso),
-                                         "--output", str(self.output), "--check"],
+                                         "--output", str(self.output), "--check", "--no-music"],
                                         capture_output=True, text=True, timeout=10)
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn("Installation failed:", result.stderr)

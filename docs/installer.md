@@ -12,8 +12,11 @@ and Python/Tk. The current project version is `0.0.1`; see
 
 Launch `./install.sh` for the native Tk assistant. It selects an available Python
 with a usable Tk runtime, shows our own project branding, and delegates to the
-same CLI backend used below. Choose ISO and destination, optionally select a
-SoundFont and Classic/Dry style, then click **Installieren und kompilieren**.
+same CLI backend used below. Choose ISO and destination. Original MIDI music is
+enabled by default, using a detected local GM SoundFont. If none is found, select
+a bank under **Anpassen**. Skipping preparation is an explicit **Musikvorbereitung überspringen**
+choice; the original CD recordings alone do not provide a complete soundtrack.
+Classic/Dry styles remain optional. Then click **Installieren und kompilieren**.
 The assistant automatically configures CMake, compiles, tests, installs and
 verifies the result. No manual compiler invocation is needed.
 
@@ -74,6 +77,8 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
    staged data; the native runtime discovers its data without the Windows EXE.
    For the known mixed-mode image, convert recovered CD audio regions to local
    Ogg Vorbis files using FFmpeg and validate them with ffprobe.
+   Render the original MIDI files into a complete 25-cue pack under
+   `data/music/packs/`, unless the user explicitly selected `--no-music`.
 4. Configure and compile this checkout in Release mode, run CTest, and install the
    native executable into staging. No original Windows program is executed.
 5. Run overview, tile, sprite, world and game-window smoke checks against the extracted data,
@@ -97,8 +102,11 @@ The game window plays complete installed Ogg packs through recovered music cues,
 without a mounted disc. The six provisional CD recordings alone remain incomplete;
 see [native music](native-music.md).
 
-Pass `--soundfont /path/to/bank.sf2` to additionally render a complete 25-cue Ogg
-pack. `--music-style classic|dry`, `--music-pack-id` and `--music-pack-name`
+Complete original-MIDI music is the default. Known system GM banks are detected;
+pass `--soundfont /path/to/bank.sf2` to choose one explicitly. A missing bank is
+reported before installation; no bank is bundled or downloaded. Use `--no-music`
+only to explicitly skip MIDI preparation; updates still preserve existing packs.
+`--music-style classic|dry`, `--music-pack-id` and `--music-pack-name`
 configure it. Repeat `--soundfont` for ordered base/overlay banks. See
 [soundtrack preparation](soundtracks.md) for dependencies, timing and verification.
 

@@ -53,8 +53,20 @@ python3 tools/install.py --iso /path/to/game.iso \
 The installer imports the original files, prepares supported CD regions, renders
 the selected pack, then builds/tests the native installation. The pack is placed
 at `data/music/packs/my-gm-classic/` and listed/hashed in the installation manifest.
-Without `--soundfont`, the installer retains CD extraction only and does not
-claim a complete soundtrack. Additional independently built packs can live under
+Original MIDI music is prepared by default. Without `--soundfont`, the CLI and
+GUI try known system GM-bank locations, including FluidR3 GM and distribution
+`default-GM` banks. No bank is bundled or downloaded. If no readable bank is
+found, select/provide one; installation does not silently substitute the six
+incomplete CD recordings. `--no-music` (GUI: **Musikvorbereitung überspringen**) explicitly
+skips MIDI rendering while retaining supported CD recordings as archival imports.
+Updates preserve existing music packs and do not change the user's playback switch.
+Automatic bank discovery is a bounded header check; preflight and rendering
+perform the existing hash, preset and output verification.
+
+These are the original compositions and recovered cue identities. Instrument
+timbre depends on the supplied bank; a particular historical playback device
+has not been identified. Classic/Dry and other banks are optional alternatives.
+Additional independently built packs can live under
 the external installation's `data/music/packs/`; the game discovers complete packs on startup.
 
 ## Catalog and timing

@@ -23,6 +23,8 @@ def installer_command(iso, output, soundfont="", style="classic", check=False, u
     if soundfont:
         command += ["--soundfont", str(soundfont), "--music-style", style,
                     "--music-pack-id", "rendered-gm", "--music-pack-name", "SoundFont Ogg"]
+    else:
+        command.append("--no-music")
     if check:
         command.append("--check")
     if update:
@@ -34,6 +36,8 @@ def dependency_command(soundfont=""):
     command = [sys.executable, "-u", str(REPO / "tools/install.py"), "--dependencies"]
     if soundfont:
         command += ["--soundfont", str(soundfont)]
+    else:
+        command.append("--no-music")
     return command
 
 

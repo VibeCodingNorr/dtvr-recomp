@@ -173,17 +173,17 @@ class InstallerLayout:
         entry.bind("<FocusOut>", lambda e: app._mode_changed())
         music = self.card(self.prepare)
         music.columnconfigure(0, weight=1)
-        ttk.Label(music, text="Musik & Klangset", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(music, text="Originalmusik", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
         self.music_button = ttk.Button(music, text="Anpassen  ▾", command=self.toggle_music)
         self.music_button.grid(row=0, column=1, sticky="e")
         app.controls.append(self.music_button)
-        ttk.Label(music, text="Optional: Mit eigener SoundFont ein vollständiges Ogg-Set erstellen.",
+        ttk.Label(music, textvariable=app.music_hint,
                   style="Card.TLabel", wraplength=630).grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
         self.music_details = ttk.Frame(music, style="Card.TFrame")
         self.music_details.columnconfigure(1, weight=1)
         ttk.Label(self.music_details, text="Musik", style="Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(12, 8))
         app.audio_choice = ttk.Combobox(self.music_details, textvariable=app.audio, state="readonly",
-                                        values=("Nur CD-Aufnahmen vorbereiten", "Vollständiges Ogg-Set aus Soundfont"))
+                                        values=("Vollständiges Ogg-Set aus Soundfont", "Musikvorbereitung überspringen"))
         app.audio_choice.grid(row=0, column=1, columnspan=2, sticky="ew", pady=(12, 8))
         app.audio_choice.bind("<<ComboboxSelected>>", lambda e: app._soundfont_state())
         ttk.Label(self.music_details, text="SoundFont", style="Card.TLabel").grid(row=1, column=0, sticky="w")

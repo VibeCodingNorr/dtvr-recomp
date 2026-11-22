@@ -105,7 +105,9 @@ def run_scenario(iso, output, mode, update):
         return rename(path, destination)
 
     with patch.object(install.IsoImage, "extract_program", extraction), patch.object(Path, "rename", publication):
-        sys.argv = ["install.py", "--iso", str(iso), "--output", str(output), "--jobs", "1", *(["--update"] if update else [])]
+        # These fault fixtures deliberately contain no MIDI data or instrument bank.
+        sys.argv = ["install.py", "--iso", str(iso), "--output", str(output), "--jobs", "1", "--no-music",
+                    *(["--update"] if update else [])]
         install.main()
 
 

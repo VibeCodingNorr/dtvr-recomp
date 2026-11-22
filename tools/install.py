@@ -20,6 +20,7 @@ from project_version import read_version
 from installer_update import update_info, preserve_files, publish
 from installer_dependencies import DependencyError, dependency_report
 from installer_checks import interface_font
+from soundfont_defaults import soundfonts_for_install
 
 
 def install(iso, output, jobs, soundfonts=None, music_style="classic",
@@ -115,8 +116,11 @@ def main():
     parser.add_argument("--output", type=Path, default=default_output(),
                         help="New installation directory outside the checkout (default: XDG data directory)")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 8))
-    parser.add_argument("--soundfont", type=Path, action="append", default=[],
-                        help="Render a complete Ogg pack; repeat for ordered base/overlay banks")
+    music = parser.add_mutually_exclusive_group()
+    music.add_argument("--soundfont", type=Path, action="append", default=[],
+                       help="Render original MIDI music with this bank (default: installed GM bank); repeat for overlays")
+    music.add_argument("--no-music", action="store_true",
+                       help="Skip preparing MIDI music; updates preserve existing packs and CD recordings remain archival imports")
     parser.add_argument("--music-style", choices=("classic", "dry"), default="classic")
     parser.add_argument("--music-pack-id", default="rendered-gm")
     parser.add_argument("--music-pack-name", default="Rendered SoundFont")
@@ -124,21 +128,22 @@ def main():
     parser.add_argument("--update", action="store_true", help="Update a verified installation and retain a complete backup; close the game first")
     args = parser.parse_args()
     if args.dependencies:
-        print(json.dumps(dependency_report(interface_font(), audio=True, render=bool(args.soundfont)), indent=2))
+        print(json.dumps(dependency_report(interface_font(), audio=True, render=not args.no_music), indent=2))
         return
     if args.iso is None:
         parser.error("--iso is required for installation or media preflight")
     if args.jobs < 1:
         parser.error("--jobs must be positive")
-    if not args.soundfont and (args.music_style != "classic" or args.music_pack_id != "rendered-gm"
-                               or args.music_pack_name != "Rendered SoundFont"):
-        parser.error("Music pack options require --soundfont")
+    if args.no_music and (args.music_style != "classic" or args.music_pack_id != "rendered-gm"
+                         or args.music_pack_name != "Rendered SoundFont"):
+        parser.error("Music pack options cannot be combined with --no-music")
     try:
+        soundfonts = soundfonts_for_install(args.soundfont, args.no_music)
         if args.check:
-            print(json.dumps(preflight(args.iso, args.output, args.jobs, args.soundfont,
+            print(json.dumps(preflight(args.iso, args.output, args.jobs, soundfonts,
                                        args.music_style, args.music_pack_id, args.music_pack_name, args.update), indent=2))
         else:
-            install(args.iso, args.output, args.jobs, args.soundfont, args.music_style,
+            install(args.iso, args.output, args.jobs, soundfonts, args.music_style,
                     args.music_pack_id, args.music_pack_name, args.update)
     except KeyboardInterrupt:
         parser.exit(130, "Installation cancelled; temporary staging was cleaned up.\n")

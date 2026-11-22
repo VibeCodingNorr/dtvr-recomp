@@ -6,6 +6,15 @@ FFmpeg and the original CD are not required. Users prepare their own music with
 the [installer or soundtrack builder](soundtracks.md). No music or samples ship
 in the source repository or setup AppImage.
 
+The installer now prepares all original MIDI cues by default with a detected
+local GM bank, or asks for one if it is missing. Music is skipped only by explicit
+choice (`--no-music` / **Musikvorbereitung überspringen**). This installs the pack where
+the game discovers it; archival CD recordings alone are not a playback pack.
+The supplied bank determines instrument timbre, so this is not a claim of exact
+historical hardware sound. Existing installations need an explicit update with
+music preparation to acquire a previously missing pack. Skipping preparation on
+an update preserves existing packs and does not modify playback preferences.
+
 ## Choosing music
 
 Press **F8** from the game or its title/options menus. The options window also

@@ -23,6 +23,7 @@ from installer_dialogs import DependencyDialog
 from installer_folders import choose_directory
 from project_version import read_version, version_tuple
 from installer_layout import InstallerLayout
+from soundfont_defaults import default_soundfont
 
 STAGES = {1: "ISO und Voraussetzungen prüfen", 2: "Originaldaten importieren",
           3: "Ogg-Audio vorbereiten", 4: "Linux-Build kompilieren",
@@ -44,14 +45,17 @@ class InstallerWindow:
         self.iso = tk.StringVar()
         self.output = tk.StringVar(value=str(default_output()))
         self.update = tk.BooleanVar(value=(default_output() / "manifest.json").is_file())
-        self.audio = tk.StringVar(value="Nur CD-Aufnahmen vorbereiten")
-        self.bank = tk.StringVar()
+        self.audio = tk.StringVar(value="Vollständiges Ogg-Set aus Soundfont")
+        bank = default_soundfont()
+        self.bank = tk.StringVar(value=str(bank) if bank else "")
+        self.music_hint = tk.StringVar()
         self.style = tk.StringVar(value="Classic — Hall und Chorus")
         self.status = tk.StringVar(value="Original-ISO auswählen, dann prüfen oder installieren.")
         self.controls = []
         self.operation = None
         self.layout = InstallerLayout(self)
         self._soundfont_state()
+        self.bank.trace_add("write", lambda *args: self._soundfont_state())
         self._mode_changed()
         self.iso.trace_add("write", lambda *args: self.iso_hint.set("ISO ausgewählt. Mit „Nur prüfen“ die Ausgabe verifizieren."))
         root.protocol("WM_DELETE_WINDOW", self._close)
@@ -118,7 +122,13 @@ class InstallerWindow:
             self.bank.set(path)
 
     def _soundfont_state(self):
-        enabled = not self.busy and self.audio.get().startswith("Vollständiges")
+        original = self.audio.get().startswith("Vollständiges")
+        enabled = not self.busy and original
+        if original:
+            self.music_hint.set("Originalmusik wird aus den MIDI-Dateien deiner ISO vorbereitet." if self.bank.get().strip()
+                                else "Originalmusik ist vorgesehen. Unter „Anpassen“ bitte eine GM-SoundFont auswählen.")
+        else:
+            self.music_hint.set("Kein neues Klangset. Bei Updates bleiben vorhandene Sets erhalten; CD-Aufnahmen werden archiviert.")
         self.bank_entry.configure(state="normal" if enabled else "disabled")
         self.bank_button.configure(state="normal" if enabled else "disabled")
         self.style_choice.configure(state="readonly" if enabled else "disabled")
@@ -141,7 +151,10 @@ class InstallerWindow:
         try:
             bank = self.bank.get().strip() if self.audio.get().startswith("Vollständiges") else ""
             if self.audio.get().startswith("Vollständiges") and not bank:
-                raise ValueError("Für ein vollständiges Ogg-Set bitte einen Soundfont auswählen.")
+                if not self.layout.music_open:
+                    self.layout.toggle_music()
+                raise ValueError("Für die Originalmusik fehlt eine GM-SoundFont. Bitte eine lokale Bank auswählen "
+                                 "oder ausdrücklich „Musikvorbereitung überspringen“ einstellen.")
             command = installer_command(self.iso.get().strip(), self.output.get().strip(), bank,
                                         "dry" if self.style.get().startswith("Dry") else "classic", check, self.update.get())
             self.active_output = Path(self.output.get().strip()).expanduser().resolve()

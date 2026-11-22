@@ -180,7 +180,10 @@ download is published yet. For a source checkout, run:
 ./install.sh
 ```
 
-Select your ISO, an external installation folder and optionally a SoundFont.
+Select your ISO and an external installation folder. Original MIDI music is
+prepared by default with a detected local GM SoundFont; select a bank if none is
+found. **Musikvorbereitung überspringen** (`--no-music`) explicitly skips preparation;
+updates preserve existing music packs and playback preferences.
 Click **Installieren und kompilieren**: import, CMake configuration, compilation,
 tests and final verification run automatically. The window shows progress and a
 log, remains responsive, and enables **Spiel starten** when finished. The start
@@ -197,8 +200,9 @@ window. The installer checks all four faces and SDL2_ttf before building.
 
 The assistant checks prerequisites before importing data and reports missing
 packages/tools; it does not modify system packages or ask for root access.
-FFmpeg/ffprobe are needed for known CD audio; SoundFont rendering also needs
-FluidSynth. The equivalent CLI installation is:
+FFmpeg/ffprobe and FluidSynth are needed for the default music preparation,
+together with a local GM SoundFont. No bank is bundled or downloaded.
+The equivalent CLI installation is:
 
 ```sh
 python3 tools/install.py --iso /path/to/game.iso
@@ -223,7 +227,7 @@ translation is not implemented. See [installer details and updates](docs/install
 For the known mixed-mode image, installation also converts six recovered audio
 regions to Ogg Vorbis in `data/music/` (requires FFmpeg/libvorbis and ffprobe).
 Original CD track IDs remain unverified. These six recordings alone do not supply
-a complete soundtrack. Build a complete Ogg pack with a supplied SoundFont for
+a complete soundtrack. The installer prepares a complete original-MIDI Ogg pack by default for
 [native playback and F8 selection](docs/native-music.md).
 
 Read-only preflight and later installation verification are available separately:
