@@ -1319,12 +1319,18 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   SetFocus on each button right after creating it (seg2:5505), so the last
   candidate (the leftmost) keeps it; with a computer choosing, seg5:7190's
   slot gets the focus (seg2:5555) before the 1.5 s pause. PLAYER and OPTION call
-  SetFocus(DS:A6E8) (seg1:0409, AD49), a word no code writes, so no button has
-  the focus until one is clicked. The shared state lives in `src/sb_button.cpp`
+  SetFocus(DS:A6E8) (seg1:0409, AD49). *Correction (round 97):* DS:A6E8 is entry 8
+  of the button handle array DS:A6D8 (written at seg1:083B and seg1:AED7 with the
+  loop index), i.e. the star in both windows (OPTION's first loop starts at index 8
+  with id 0x1392 + 8 = 0x139A, seg1:AE1F; PLAYER enables it with EnableWindow,
+  seg1:0853), so the star starts with the focus. A disabled star gets no mouse
+  input (EnableWindow FALSE passes it to the parent). SBBUTTON passes F1–F10
+  (0x70–0x79) to its parent (seg1:10FD → 1096), F10 also as WM_SYSKEYDOWN (seg1:0F4B). The shared state lives in `src/sb_button.cpp`
   (SbButtonGroup) and is used by the card window, SELPLAYER, OPTION and PLAYER;
   switches and drivers now change on release as SBBUTTON commands do.
-  **Assumptions:** the setup star counts as a disabled SBBUTTON without
-  players (sound 7 on a click); Return still accepts OPTION / starts PLAYER. Rebuilt (`src/layout.cpp` cardWindowLayout,
+  The setup star without players is disabled with EnableWindow, so a click on it
+  does nothing (PLAYER has no WM_LBUTTONDOWN handler, round 97); Return starts
+  PLAYER through seg1:0C3B; OPTION has no Return of its own (round 94). Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
   the digit keys (target `T`, nail direction by arrow key); a played card closes
   it. **Cancel** (round 93): Escape / Backspace on a card post WM_COMMAND 0xFFFF

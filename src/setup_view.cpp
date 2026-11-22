@@ -35,7 +35,7 @@ void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std:
     for (int p = 0; p < kPlayerSlots; ++p) buttons.push_back({p, rect(geometry_.driver[size_t(p)]), true});
     buttons.push_back({kStar, rect(geometry_.start), anyPlayer()}); // disabled without players
     buttons.push_back({kStop, rect(geometry_.stop), true});
-    buttons_.reset(std::move(buttons), -1); // seg1:0409: SetFocus(DS:A6E8), no button
+    buttons_.reset(std::move(buttons), kStar); // seg1:0409: SetFocus(DS:A6E8) = the star (index 8, seg1:083B)
     sound_ = -1;
 }
 
@@ -82,6 +82,11 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
                 buttons_.setFocus(-1);
                 return Result::None;
             }
+        // The star is disabled with EnableWindow (seg1:0853): its clicks go to PLAYER,
+        // which has no WM_LBUTTONDOWN handler (dispatch seg1:0CC8), so nothing happens.
+        const SDL_Rect star = rect(geometry_.start);
+        const SDL_Point at{x, y};
+        if (!anyPlayer() && SDL_PointInRect(&at, &star)) return Result::None;
         stopEditing();
         in = buttons_.mouseDown(x, y);
     } else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {

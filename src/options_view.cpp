@@ -37,7 +37,7 @@ void OptionsView::open(const Settings& settings) {
     for (int i = 0; i < Settings::kCount; ++i) buttons.push_back({i, rect(geometry_.driver[size_t(i)]), true});
     buttons.push_back({kStar, rect(geometry_.start), true});
     buttons.push_back({kStop, rect(geometry_.stop), true});
-    buttons_.reset(std::move(buttons), -1); // seg1:AD49: SetFocus(DS:A6E8), no button
+    buttons_.reset(std::move(buttons), kStar); // seg1:AD49: SetFocus(DS:A6E8) = the star (index 8, seg1:AE1F)
     sound_ = -1;
 }
 
