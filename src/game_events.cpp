@@ -54,18 +54,18 @@ void Game::applyEvent(EventKind kind) {
         economy_.addMoney(victim, -loss);
         rng_.random(2); // text 5021 + random(2)
         char text[96];
-        std::snprintf(text, sizeof text, "Ereignis Raeuber: Spieler %d verliert %.0f", victim + 1, loss);
-        messages_.push_back(text);
+        std::snprintf(text, sizeof text, "%.0f", loss);
+        messages_.push_back("Ereignis Raeuber: " + playerName(victim) + " verliert " + text);
         return;
     }
     case EventKind::Professor:
     case EventKind::FootballClub: // seg8:6FBF: offered to the player whose turn starts
         if (economy_.money(eventPlayer_).cash > 10000.0) {         // DS:8776
             offer_ = kind;
-            messages_.push_back("Ereignis " + eventName(kind) + ": Spieler " + std::to_string(eventPlayer_ + 1)
+            messages_.push_back("Ereignis " + eventName(kind) + ": " + playerName(eventPlayer_)
                                 + " kann investieren (I)");
         } else {
-            messages_.push_back("Ereignis " + eventName(kind) + ": Spieler " + std::to_string(eventPlayer_ + 1)
+            messages_.push_back("Ereignis " + eventName(kind) + ": " + playerName(eventPlayer_)
                                 + " hat nicht genug Geld");
         }
         return;

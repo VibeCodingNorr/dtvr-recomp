@@ -16,7 +16,8 @@ namespace dtvr {
 class PlayView {
 public:
     PlayView(const Board& board, const std::vector<Town>& towns, std::unique_ptr<WorldMap> map,
-             std::unique_ptr<TileProperties> props, int humans, int rounds, uint16_t seed);
+             std::unique_ptr<TileProperties> props, const std::array<uint8_t, kPlayerSlots>& slots, int rounds,
+             uint16_t seed);
 
     Game& game() { return *game_; }
     std::string title() const;

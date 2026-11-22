@@ -35,6 +35,11 @@ public:
     Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
          int defaultCards = 1, const WorldMap* map = nullptr, const TileProperties* props = nullptr,
          bool soloOpponent = true);
+    // Slot setup as in [Player] P0..P7 of rally.ini (0 empty, 1 human, 2 computer;
+    // the original's defaults are P0 = 1, P1 = 2). Without humans it is a demo game.
+    Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
+         int rounds, uint16_t seed, int defaultCards = 1, const WorldMap* map = nullptr,
+         const TileProperties* props = nullptr, bool soloOpponent = true);
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
@@ -71,6 +76,15 @@ public:
     bool isComputer(int player) const;
     bool computerControls() const;
     bool runComputerTurn();
+    // seg2:5C5A: whether any slot is human. A game of computers runs until
+    // requestDemoEnd (Escape / right click, seg1:0211 -> seg2:5CAD sets DS:16 = 1);
+    // it ends at the next player change.
+    bool humansLeft() const;
+    // Driver names of the slots (texts 120-127 of the language file, UTF-8); without
+    // them messages say "Spieler N".
+    void setPlayerNames(const std::array<std::string, kPlayerSlots>& names) { names_ = names; }
+    std::string playerName(int player) const;
+    bool requestDemoEnd();
     // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.
     bool atCardField() const;
     int handCount(int player) const; // seg2:3C00
@@ -162,6 +176,8 @@ private:
     bool aiActing_ = false;                 // inside runComputerTurn
     bool yellowPending_ = false;            // yellow field waits for a discard
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
+    bool demoEnd_ = false;                  // DS:16
+    std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113

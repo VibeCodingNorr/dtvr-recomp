@@ -27,8 +27,9 @@ field shop and the deck return in round 15, computer players (driving, town
 purchases, Steuerlos; src/ai.cpp, src/game_ai.cpp) in round 16, their card play
 and card field use (src/ai_cards.cpp) in round 17, the native save format
 (src/save.cpp, docs/save-format.md) in round 18, Risiko (src/game_risiko.cpp) and
-the single-player computer opponent in round 19.
-The SDL play mode lives in src/play_view.cpp. No setup dialog, save UI,
+the single-player computer opponent in round 19, player slots and games of
+computers in round 20.
+The SDL play mode lives in src/play_view.cpp. No game interface (menus, dialogs, save UI),
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -171,7 +172,9 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Next: the original setup dialog (seg1:02BA: computer slots, characters, settings). Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
+Next: the game window as in the original (agreed with the user: it must look like
+rally.exe); reconstruct layout, panels, dialogs and texts from the executable and
+load all art and text from the user's installation at run time. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
 state changes. The viewer is a debugging aid only; put effort into the simulation.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

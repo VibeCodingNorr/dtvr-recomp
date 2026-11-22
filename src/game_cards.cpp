@@ -25,7 +25,7 @@ bool Game::playCard(int handSlot, int target) {
     auto& slot = hands_[size_t(current_)][size_t(handSlot)];
     const int type = deck_.typeOfSlot(slot);
     if (type < 0) return false;
-    const std::string who = "Spieler " + std::to_string(current_ + 1);
+    const std::string who = playerName(current_);
     const std::string card = cardTypes()[size_t(type)].name;
     if (players_[size_t(current_)].flags & kFlagCardsBlocked) {
         messages_.push_back(who + ": Karten blockiert (Text 1020)");
@@ -72,7 +72,7 @@ bool Game::playCard(int handSlot, int target) {
     // seg3:0E83: with Verdoppeln active the card stays in the hand.
     if (doubleNext_ && kind != CardKind::Verdoppeln) doubleNext_ = false;
     else discard(current_, handSlot); // seg2:3C62
-    messages_.push_back(who + " spielt " + card + (victim >= 0 ? " auf Spieler " + std::to_string(victim + 1) : ""));
+    messages_.push_back(who + " spielt " + card + (victim >= 0 ? " auf " + playerName(victim) : ""));
     switch (kind) {
     case CardKind::Movement: {
         const CardMove move = cardMove(type);
@@ -164,7 +164,7 @@ void Game::playPunch() {
             }
         }
         players_[size_t(p)].field = at;
-        messages_.push_back("Punch! Spieler " + std::to_string(p + 1) + " landet auf " + townName(at));
+        messages_.push_back("Punch! " + playerName(p) + " landet auf " + townName(at));
         return;
     }
     messages_.push_back("Punch: niemand auf diesem Feld");
@@ -199,7 +199,7 @@ bool Game::buyCard(int type) {
         deck_.swapWithPointer(o.position);
         addToHand(hands_[size_t(current_)], deck_.take());
         economy_.addMoney(current_, -cardBuyPrice(type)); // seg2:5A47
-        messages_.push_back("Spieler " + std::to_string(current_ + 1) + " kauft die Karte " + cardTypes()[size_t(type)].name);
+        messages_.push_back(playerName(current_) + " kauft die Karte " + cardTypes()[size_t(type)].name);
         return true;
     }
     return false;
@@ -213,7 +213,7 @@ bool Game::sellCard(int handSlot) {
     if (type < 0) return false;
     discard(current_, handSlot);
     economy_.addMoney(current_, cardSellPrice(type)); // seg2:59E6
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " verkauft die Karte " + cardTypes()[size_t(type)].name);
+    messages_.push_back(playerName(current_) + " verkauft die Karte " + cardTypes()[size_t(type)].name);
     return true;
 }
 
@@ -224,7 +224,7 @@ void Game::playTschuess(int target) {
     const int field = pickHiddenField(board_, routeMask(), viewAround(at), rng_);
     if (field < 0) return;
     players_[size_t(target)].field = field;
-    messages_.push_back("Tschuess! Spieler " + std::to_string(target + 1) + " landet bei " + townName(field));
+    messages_.push_back("Tschuess! " + playerName(target) + " landet bei " + townName(field));
 }
 
 bool Game::invest(int amount) {
@@ -238,7 +238,7 @@ bool Game::invest(int amount) {
     entry.amount = amount;
     obstacles_.add(entry);
     economy_.addMoney(current_, -amount);       // seg8:735F
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " investiert " + std::to_string(amount));
+    messages_.push_back(playerName(current_) + " investiert " + std::to_string(amount));
     offer_ = EventKind::None;
     return true;
 }

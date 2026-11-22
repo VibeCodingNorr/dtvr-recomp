@@ -101,7 +101,7 @@ void Game::placeDragoForStage() {
 }
 
 bool Game::playWeihnachten() {
-    const std::string who = "Spieler " + std::to_string(current_ + 1);
+    const std::string who = playerName(current_);
     if (unsigned(calendar_.month) % 12 != 11) { // only in December (seg3:1174)
         pickText(rng_, 3);
         messages_.push_back(who + ": Weihnachten ist noch nicht - Zug verloren");

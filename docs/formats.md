@@ -840,9 +840,29 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   season tiles seg5:186A, shuffle seg3:01AD, deal seg3:0286, first destination
   seg7:372F(2) → seg5:1E2C.
 
+Round 20 (player setup and the end of computer games):
+
+- **Slots** seg1:02BA reads `[Player]` P0..P7 from `rally.ini` in the Windows
+  directory (DS:01D8, GetPrivateProfileInt through seg5:22C0) into the status
+  bytes, defaults P0 = 1 (human), P1 = 2 (computer), P2–P7 = 0, shows the
+  `PLAYER` window and writes the keys back (`P%d`, DS:1DE2). Drivers have fixed
+  names per slot (texts 120–127 of the language resource).
+- **Without humans** seg2:5C5A is true when no slot has status 1. A new game
+  sets DS:16 = 0 (seg4:0DC8); Escape or a right click while no human plays
+  (seg1:0211, DS:14 ≠ 0) calls seg2:5CAD (text 0x10, DS:16 = 1), and the next
+  nextPlayer ends the game (seg2:0869 → WM_COMMAND 0x424). A game of computers
+  therefore runs until it is stopped.
+
 Rebuilt in `src/game_risiko.cpp` (Risiko as phase `Risiko` with the commands
 `risikoTick`, `risikoPress`, `risikoStop`) and the `Game` constructor (computer
-opponent for a single player; `soloOpponent = false` is a variant for tests).
+opponent for a single player; `soloOpponent = false` is a variant for tests);
+round 20 in the slot constructor of `Game`, `humansLeft` and `requestDemoEnd`.
+The driver names are read at run time from `dat/<lang>/rally_<lang>.dat`
+(`src/ne_strings.cpp`, RT_STRING blocks of 16 length-prefixed Windows-1252 texts;
+texts 120–127). Four blocks of the German file (ids 0x8020, 0x8040, 0x82B2,
+0x8A4E) have a last text whose length byte runs past the block size given in the
+resource table; the reader clips it at the block end, as a loaded resource ends
+there.
 Assumption: one pause unit of seg6:0CDF is 10 ms for the presentation timing.
 
 ### SBS: remaining hypotheses

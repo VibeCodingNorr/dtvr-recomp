@@ -6,16 +6,17 @@
 namespace dtvr {
 
 PlayView::PlayView(const Board& board, const std::vector<Town>& towns, std::unique_ptr<WorldMap> map,
-                   std::unique_ptr<TileProperties> props, int humans, int rounds, uint16_t seed)
+                   std::unique_ptr<TileProperties> props, const std::array<uint8_t, kPlayerSlots>& slots,
+                   int rounds, uint16_t seed)
     : board_(board), towns_(towns), map_(std::move(map)), props_(std::move(props)),
-      game_(std::make_unique<Game>(board, towns, humans, rounds, seed, 1, map_.get(), props_.get())) {}
+      game_(std::make_unique<Game>(board, towns, slots, rounds, seed, 1, map_.get(), props_.get())) {}
 
 std::string PlayView::title() const {
     static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende",
                                    "Risiko (Leertaste druecken, Ruecktaste aufhoeren)"};
     const Game& g = *game_;
     const int p = g.currentPlayer();
-    std::string s = "DTVR Recomb | Spieler " + std::to_string(p + 1) + " | Monat "
+    std::string s = "DTVR Recomb | " + g.playerName(p) + " | Monat "
         + std::to_string(g.calendar().month % 12 + 1) + " | Schritte " + std::to_string(g.stepsTaken()) + "/"
         + std::to_string(g.allowance()) + " | Ziel " + g.townName(g.destination()) + " | Etappen "
         + std::to_string(g.remainingStages()) + " | Geld " + std::to_string(int64_t(g.cash(p)));
@@ -53,7 +54,7 @@ void PlayView::printLog(std::ostream& out) const {
         out << "\n";
     }
     if (g.phase() == Game::Phase::Roll || (g.phase() == Game::Phase::Arrived && (town >= 0 || g.atCardField()))) {
-        out << "Hand Spieler " << p + 1 << (g.phase() == Game::Phase::Arrived ? " (Strg+Ziffer):" : ":");
+        out << "Hand " << g.playerName(p) << (g.phase() == Game::Phase::Arrived ? " (Strg+Ziffer):" : ":");
         for (int i = 0; i < 8; ++i)
             if (g.hand(p)[size_t(i)] != Deck::kTaken) out << " [" << i + 1 << "] " << g.cardName(g.hand(p)[size_t(i)]);
         out << "\n";

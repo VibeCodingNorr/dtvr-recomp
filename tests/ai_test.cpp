@@ -4,6 +4,7 @@
 #include "game.hpp"
 
 #include <cstdio>
+#include <stdexcept>
 
 using namespace dtvr;
 
@@ -185,6 +186,35 @@ int main() {
         CHECK(!game.roll());                              // the computer's turn
         CHECK(game.runComputerTurn());
         CHECK(game.currentPlayer() == 0 || game.phase() == Game::Phase::GameOver);
+    }
+
+    // Slot setup ([Player] P0..P7) and the demo game of computers.
+    {
+        Board gb = row(13);
+        gb.fields[0].kind = 6;
+        gb.fields[12].kind = 6;
+        gb.fields[12].next[1] = 0;
+        gb.fields[0].next[3] = 12;
+        std::vector<Town> gt(2);
+        gt[0].x = 0; gt[0].name = "London";
+        gt[1].x = 48; gt[1].name = "Rom";
+        Game defaults(gb, gt, std::array<uint8_t, 8>{1, 2, 0, 0, 0, 0, 0, 0}, 0, 3);
+        CHECK(!defaults.isComputer(0) && defaults.isComputer(1) && activePlayerCount(defaults.players()) == 2);
+        CHECK(defaults.humansLeft() && !defaults.requestDemoEnd());
+        bool threw = false;
+        try { Game bad(gb, gt, std::array<uint8_t, 8>{3, 0, 0, 0, 0, 0, 0, 0}, 0, 1); } catch (const std::invalid_argument&) { threw = true; }
+        CHECK(threw);
+        threw = false;
+        try { Game none(gb, gt, std::array<uint8_t, 8>{}, 0, 1); } catch (const std::invalid_argument&) { threw = true; }
+        CHECK(threw);
+        Game demo(gb, gt, std::array<uint8_t, 8>{2, 2, 2, 0, 0, 0, 0, 0}, 50, 9);
+        demo.setRandomEvents(false);
+        CHECK(!demo.humansLeft());
+        for (int i = 0; i < 30; ++i) demo.runComputerTurn();
+        CHECK(demo.phase() != Game::Phase::GameOver);     // a demo runs on
+        CHECK(demo.requestDemoEnd());
+        for (int i = 0; i < 3 && demo.phase() != Game::Phase::GameOver; ++i) demo.runComputerTurn();
+        CHECK(demo.phase() == Game::Phase::GameOver);
     }
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

@@ -14,7 +14,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 
 | Record | Fields |
 | --- | --- |
-| `DTVR-RECOMB-SAVE` | format version (currently 2; 1 is read without `risiko`); always the first line |
+| `DTVR-RECOMB-SAVE` | format version (currently 3; 2 is read without `demo`, 1 also without `risiko`); always the first line |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
 | `rng` | state of the MS C random generator |
@@ -32,6 +32,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 | `calendar` | month counter, year, inflation |
 | `counter` | allowance of the current move, then the directions already driven |
 | `risiko` | level (0 = not running), light, tick counter, steps (format 2) |
+| `demo` | 1 when a game without humans was asked to end (DS:16, format 3) |
 | `turn` | phase (0 spin, 1 drive, 2 arrived, 3 game over, 4 Risiko), current slot, stage origin, destination, stages left |
 | `end` | — |
 

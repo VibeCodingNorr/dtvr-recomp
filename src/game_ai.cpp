@@ -18,6 +18,24 @@ bool Game::isComputer(int player) const {
     return player >= 0 && player < kPlayerSlots && players_[size_t(player)].status == 2;
 }
 
+std::string Game::playerName(int player) const {
+    if (player >= 0 && player < kPlayerSlots && !names_[size_t(player)].empty()) return names_[size_t(player)];
+    return "Spieler " + std::to_string(player + 1);
+}
+
+bool Game::humansLeft() const {
+    for (const PlayerSlot& p : players_)
+        if (p.status == 1) return true;
+    return false;
+}
+
+bool Game::requestDemoEnd() {
+    if (humansLeft() || phase_ == Phase::GameOver) return false;
+    demoEnd_ = true;
+    messages_.push_back("Das Spiel endet beim naechsten Spielerwechsel");
+    return true;
+}
+
 bool Game::computerControls() const {
     // seg2:5C02, plus card Steuerlos (bit 0x20, seg2:0A6F) for one turn.
     return isComputer(current_) || (players_[size_t(current_)].flags & kFlagSteerless);

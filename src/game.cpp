@@ -16,20 +16,38 @@ std::string money(double v) {
 
 } // namespace
 
+namespace {
+
+std::array<uint8_t, kPlayerSlots> humanSlots(int humans) {
+    if (humans < 1 || humans > kPlayerSlots) throw std::invalid_argument("1 bis 8 Spieler");
+    std::array<uint8_t, kPlayerSlots> slots{};
+    for (int i = 0; i < humans; ++i) slots[size_t(i)] = 1;
+    return slots;
+}
+
+} // namespace
+
 Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
            int defaultCards, const WorldMap* map, const TileProperties* props, bool soloOpponent)
+    : Game(board, towns, humanSlots(humans), rounds, seed, defaultCards, map, props, soloOpponent) {}
+
+Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
+           int rounds, uint16_t seed, int defaultCards, const WorldMap* map, const TileProperties* props,
+           bool soloOpponent)
     : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots), map_(map), props_(props) {
     if (map_ && props_) barriers_ = barrierLinks(board_, *map_, *props_);
     westValue_ = westPropertyValue(board_, towns_, 0x4000); // seg4:0E0B mask, then seg1:A15B
     loadedSeason_ = seasonForMonth(0);
-    if (humans < 1 || humans > kPlayerSlots) throw std::invalid_argument("1 bis 8 Spieler");
     players_.resize(kPlayerSlots);
     origin_ = startField(board_, towns_);
     if (origin_ < 0) throw std::runtime_error("Startstadt LONDON nicht gefunden");
-    for (int i = 0; i < humans; ++i) {
-        players_[size_t(i)].status = 1;
-        players_[size_t(i)].field = origin_;
+    // [Player] P0..P7 of rally.ini (seg1:02BA): 0 empty, 1 human, 2 computer.
+    for (int i = 0; i < kPlayerSlots; ++i) {
+        if (slots[size_t(i)] > 2) throw std::invalid_argument("Platzstatus 0, 1 oder 2");
+        players_[size_t(i)].status = slots[size_t(i)];
+        if (slots[size_t(i)]) players_[size_t(i)].field = origin_;
     }
+    if (activePlayerCount(players_) == 0) throw std::invalid_argument("mindestens ein Spieler");
     if (soloOpponent && activePlayerCount(players_) == 1) {
         // seg2:021F: one player alone gets a computer opponent in a random other
         // slot (random(7) until it differs), announced with text 961 + random(2).
@@ -89,7 +107,7 @@ bool Game::buyProperty(int entry) {
     const double price = economy_.price(town, entry, mode);
     if (!economy_.buy(current_, town, entry, mode)) return false;
     if (mode == BuyMode::Rent || mode == BuyMode::Take) propertyMode_ = 0xFF; // seg1:7F87 / 802C
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " kauft "
+    messages_.push_back(playerName(current_) + " kauft "
                         + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name) + " in "
                         + townName(field) + (mode == BuyMode::Credit ? " auf Kredit" : " fuer " + money(-price)));
     return true;
@@ -118,7 +136,7 @@ bool Game::sellProperty(int entry) {
     if (phase_ != Phase::Arrived) return false;
     const int town = townAt(players_[size_t(current_)].field);
     if (town < 0 || !economy_.sell(current_, town, entry, propertyMode_ == 2)) return false; // x1.5 with Verkaufen
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " verkauft "
+    messages_.push_back(playerName(current_) + " verkauft "
                         + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name));
     return true;
 }
@@ -131,7 +149,7 @@ bool Game::roll() {
     for (int v : spinReels(rng_, 1, 5)) sum += v;
     counter_ = MoveCounter(sum);
     phase_ = Phase::Move;
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " wuerfelt " + std::to_string(sum));
+    messages_.push_back(playerName(current_) + " wuerfelt " + std::to_string(sum));
     return true;
 }
 
@@ -152,7 +170,7 @@ bool Game::step(Direction d) {
             messages_.push_back("Hindernis auf der Strasse - ohne passende Karte geht es nicht weiter");
             return false;
         }
-        messages_.push_back("Spieler " + std::to_string(current_ + 1) + " raeumt das Hindernis mit "
+        messages_.push_back(playerName(current_) + " raeumt das Hindernis mit "
                             + cardName(hands_[size_t(current_)][size_t(slot)]));
         discard(current_, slot);                                // seg3:0E11 -> seg2:3C62
         obstacles_.remove(o);                                   // seg8:697C
@@ -164,7 +182,7 @@ bool Game::step(Direction d) {
     if (counter_.taken() == counter_.allowance()) {
         const int before = drago_.holder;
         if (passDragoOnMeeting(drago_, players_, current_) != before)
-            messages_.push_back("Dr. Drago faehrt jetzt bei Spieler " + std::to_string(drago_.holder + 1) + " mit");
+            messages_.push_back("Dr. Drago faehrt jetzt bei " + playerName(drago_.holder) + " mit");
     }
     // Field-to-field movement keeps the vehicle grid-aligned; no dialog is modelled.
     if (arrivalTriggers(next, 0, 0, counter_.taken(), counter_.allowance(), false)) arrive();
@@ -177,7 +195,7 @@ void Game::arrive() {
     propertyMode_ = 0xFF; // a new town dialog starts without a card mode (seg1:4FB9)
     const int field = players_[size_t(current_)].field;
     const Field& f = board_.fields[size_t(field)];
-    const std::string who = "Spieler " + std::to_string(current_ + 1);
+    const std::string who = playerName(current_);
     switch (f.kind) {
     case 1:
     case 2: {
@@ -232,7 +250,7 @@ void Game::arrive() {
 void Game::giveYellowCard() {
     const int slot = deck_.take();
     addToHand(hands_[size_t(current_)], slot);
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " bekommt die Karte " + cardName(slot));
+    messages_.push_back(playerName(current_) + " bekommt die Karte " + cardName(slot));
     rng_.random(13); // text 4201 + random(13), seg2:1127
     dragoAct(current_);
 }
@@ -241,7 +259,7 @@ bool Game::discardForCard(int handSlot) {
     messages_.clear();
     if (!yellowPending_ || handSlot < 0 || handSlot >= 8 || hands_[size_t(current_)][size_t(handSlot)] == Deck::kTaken)
         return false;
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " legt " + cardName(hands_[size_t(current_)][size_t(handSlot)]) + " ab");
+    messages_.push_back(playerName(current_) + " legt " + cardName(hands_[size_t(current_)][size_t(handSlot)]) + " ab");
     discard(current_, handSlot);
     yellowPending_ = false;
     giveYellowCard();
@@ -263,7 +281,7 @@ void Game::advanceTurn() {
         if (gone.type == kProfessorInvestment || gone.type == kFootballInvestment) {
             const double payout = investmentPayout(gone.amount, rng_); // seg8:652C / 6394
             economy_.addMoney(gone.player, payout);
-            messages_.push_back("Investition von Spieler " + std::to_string(gone.player + 1)
+            messages_.push_back("Investition von " + playerName(gone.player)
                                 + (payout > 0 ? ": doppelt zurueck!" : ": verloren"));
             continue;
         }
@@ -277,12 +295,17 @@ void Game::advanceTurn() {
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
-    for (int p : change.satOut) messages_.push_back("Spieler " + std::to_string(p + 1) + " setzt aus");
+    for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
     if (change.player < 0) { phase_ = Phase::GameOver; return; }
+    if (demoEnd_ && !humansLeft()) { // seg2:0869: no human and DS:16 == 1
+        phase_ = Phase::GameOver;
+        messages_.push_back("Spiel beendet");
+        return;
+    }
     current_ = change.player;
     phase_ = Phase::Roll;
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " ist dran (Monat "
+    messages_.push_back(playerName(current_) + " ist dran (Monat "
                         + std::to_string(calendar_.month % 12 + 1) + ")");
     if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) // seg2:049F
         messages_.push_back("Dr. Drago wechselt in Form " + std::to_string(drago_.form + 1));

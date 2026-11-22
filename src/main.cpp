@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
+#include "ne_strings.hpp"
 #include "play_view.hpp"
 #include "rules.hpp"
 #include "sbs.hpp"
@@ -145,7 +146,7 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false;
-    int humans = 2, rounds = 99;
+    int humans = 2, computers = 0, rounds = 99;
     int month = 2, roll = 0;
     unsigned seed = 1;
     View view = View::Overview;
@@ -156,7 +157,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play [--players 1-8] [--rounds N] [--seed N]]\n"
+                         "            [--play [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -179,6 +180,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--play") { play = true; view = View::World; }
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
+        else if (arg == "--computers" && i + 1 < argc) computers = std::stoi(argv[++i]);
         else if (arg == "--seed" && i + 1 < argc) seed = unsigned(std::stoul(argv[++i]));
         else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
@@ -274,10 +276,25 @@ static int run(int argc, char** argv) {
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
+        // Slots as [Player] P0..P7: humans first, then computers (status 2).
+        if (humans < 0 || computers < 0 || humans + computers < 1 || humans + computers > dtvr::kPlayerSlots)
+            throw std::runtime_error("--players und --computers: zusammen 1 bis 8");
+        std::array<uint8_t, dtvr::kPlayerSlots> slots{};
+        for (int p = 0; p < humans + computers; ++p) slots[size_t(p)] = p < humans ? 1 : 2;
         playView = std::make_unique<dtvr::PlayView>(
             board, towns, std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map")),
-            std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), humans, rounds,
+            std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), slots, rounds,
             uint16_t(seed));
+        // Driver names from the language file (texts 120-127), when present.
+        const auto language = root / "dat/d/rally_d.dat";
+        if (std::filesystem::exists(language)) {
+            const auto texts = dtvr::readNeStrings(readFile(language));
+            std::array<std::string, dtvr::kPlayerSlots> names;
+            for (int p = 0; p < dtvr::kPlayerSlots; ++p)
+                if (auto it = texts.find(dtvr::kDriverNameText + p); it != texts.end())
+                    names[size_t(p)] = dtvr::ansiToUtf8(it->second);
+            playView->game().setPlayerNames(names);
+        }
         graph = true;
     }
     load();
