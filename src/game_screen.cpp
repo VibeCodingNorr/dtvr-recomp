@@ -284,7 +284,10 @@ void GameScreen::draw() {
 }
 
 std::vector<EstateRow> GameScreen::estateRows() const {
-    return estates_.isOpen() ? dtvr::estateRows(game_, estates_.town(), estates_.tab()) : std::vector<EstateRow>{};
+    if (!estates_.isOpen()) return {};
+    if (estates_.statistics())
+        return statisticsRows(game_, estates_.player(), estates_.category(), estates_.sort());
+    return dtvr::estateRows(game_, estates_.town(), estates_.tab());
 }
 
 int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
@@ -305,6 +308,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (const fs::path file = findCaseInsensitive(root, "dat/d/rally_d.dat"); !file.empty()) language = readFile(file);
     if (!language.empty())
         for (const auto& [id, raw] : readNeStrings(language)) texts.emplace(id, ansiToUtf8(raw));
+    if (options.loadSlot >= 0) { // before the screen: the drivers' sprites depend on the players
+        std::string error;
+        const SaveSlots slots(defaultSaveDirectory());
+        if (!slots.load(options.loadSlot, play.game(), error))
+            throw std::runtime_error("Spielstand " + std::to_string(options.loadSlot) + ": " + error);
+        std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
+    }
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
     auto report = [&] {
         play.printLog(std::cout);
@@ -346,11 +356,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
         case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
+        case 1036: case 1042:                                    // Statistik: seg1:4DE5
+            screen.estates().openStatistics(play.game().currentPlayer());
+            break;
         default: break; // Zoom, Übersicht, Umfeld, Statistik, Neues Spiel, Speichern ...: not built yet
         }
     };
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
+    if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
@@ -370,14 +384,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             const int p = g.currentPlayer();
             const int town = p >= 0 && g.phase() == Game::Phase::Arrived && !g.isComputer(p)
                 ? g.townAt(g.playerField(p)) : -1;
-            if (options.openEstates >= 0) {
+            if (estates.statistics()) {
+                // Statistik stays until it is closed.
+            } else if (options.openEstates >= 0) {
                 if (!estates.isOpen()) estates.open(options.openEstates);
             } else if (town < 0) estates.close();
             else if (moving) {} // the dialog opens when the car has arrived
             else if (!estates.isOpen() || estates.town() != town) estates.open(town);
         }
         SaveView& saveDialog = screen.saveDialog();
-        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen();
+        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
+                           || estates.statistics();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -429,6 +446,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     if (done) report();
                 } else if (action.kind == Kind::Cards) { // the card window for property cards
                     if (g.openCardWindow() && cards.open(g)) cardWindowState = turnState();
+                } else if (action.kind == Kind::Close && estates.statistics()) {
+                    estates.close();
                 } else if (action.kind == Kind::Close) { // leaving the town ends the turn
                     estates.close();
                     g.endTurn();

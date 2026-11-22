@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Tests for the hotseat game flow assembled from the recovered rules.
+#include "estates.hpp"
 #include "game.hpp"
 
 #include <cstdio>
@@ -147,6 +148,12 @@ int main() {
         CHECK(!shop.buyProperty(1) && shop.buyProperty(0) && shop.cash(0) == before - 1000);
         CHECK(!shop.buyProperty(0));
         CHECK(shop.economy().town(0).entries[0].owner == 0);
+        // Statistik (round 34): the owned entry with value * 0.7; category filter.
+        const auto stats = statisticsRows(shop, 0, 0, 0);
+        CHECK(stats.size() == 1 && stats[0].name == "Kiosk" && stats[0].town == 0 && stats[0].price == 700);
+        CHECK(stats[0].yieldPercent == 5 * 1.2 && !stats[0].disabled && stats[0].townName == oemToUtf8(shopTowns[0].name));
+        CHECK(statisticsRows(shop, 0, shopTowns[0].entries[0].words[1] + 1, 0).empty());
+        CHECK(statisticsRows(shop, 1, 0, 0).empty());
     }
 
     // Money and status cards with targets (two players: target is automatic).

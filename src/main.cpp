@@ -144,6 +144,8 @@ static int run(int argc, char** argv) {
     bool openCards = false; // --game: open the card window at the start (screenshots)
     bool holdRight = false; // --game: hold the right arrow key (tests of driving)
     bool openSave = false;  // --game: open the save dialog (screenshots)
+    bool openStatistics = false; // --game: open Statistik (screenshots)
+    int loadSlot = -1;           // --game: load save slot 0-8
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
@@ -157,7 +159,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -185,6 +187,8 @@ static int run(int argc, char** argv) {
         else if (arg == "--cards") openCards = true;
         else if (arg == "--hold-right") holdRight = true;
         else if (arg == "--save-dialog") openSave = true;
+        else if (arg == "--statistics") openStatistics = true;
+        else if (arg == "--load" && i + 1 < argc) loadSlot = std::stoi(argv[++i]);
         else if (arg == "--estates" && i + 1 < argc) openEstates = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
@@ -230,6 +234,8 @@ static int run(int argc, char** argv) {
         options.openCards = openCards;
         options.holdRight = holdRight;
         options.openSave = openSave;
+        options.openStatistics = openStatistics;
+        options.loadSlot = loadSlot;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);

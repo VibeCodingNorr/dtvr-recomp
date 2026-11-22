@@ -26,8 +26,14 @@ public:
 
     // seg1:4CF1: no tab, no selected row, scrolled to the top.
     void open(int town);
-    void close() { town_ = -1; }
-    bool isOpen() const { return town_ >= 0; }
+    // Statistik (seg1:4DE5): the variant with bit 0x10 in DS:3FC2 for `player`.
+    void openStatistics(int player);
+    void close() { town_ = -1; statistics_ = false; }
+    bool isOpen() const { return town_ >= 0 || statistics_; }
+    bool statistics() const { return statistics_; }
+    int player() const { return player_; }
+    int category() const { return category_; }
+    int sort() const { return sort_; }
     int town() const { return town_; }
     EstatesTab tab() const { return tab_; }
 
@@ -53,6 +59,12 @@ private:
     EstatesTab tab_ = EstatesTab::None; // DS:3FC2 / DS:3FBC
     int selected_ = -1;                 // DS:3FBE, index into the rows
     int scroll_ = 0;                    // DS:8C4C, first visible row
+    bool statistics_ = false;
+    int player_ = -1;
+    int category_ = 0;                  // DS:8C48 (texts 361-367)
+    int sort_ = 0;                      // DS:8C4A (texts 368-370)
+
+    void drawStatisticsHeader();
 };
 
 } // namespace dtvr

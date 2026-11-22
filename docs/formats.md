@@ -1208,6 +1208,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Statistik (round 34)
+
+- **Call** 1036 / 1042 → seg1:4DE5: when the current player stands on a field
+  (+0x3C ≠ 0xFF), seg1:4EA8(1) opens the ESTATES window in its statistics
+  variant (bit 0x10 in DS:3FC2), then seg5:607B(−1). Start: category DS:8C48 = 0,
+  DS:8C4A = argument + 1, scroll 0, list seg1:4504.
+- **List** seg1:4504(category, player, with rented): all towns × ten entries with
+  a name, owner = player, landlord free unless the third argument is set, and,
+  for a category ≠ 0, entry +0x1E = category. The sort code after seg1:4735 is
+  not traced.
+- **Header** seg1:7506: text 375 (Ansehen; 360 Verkaufen when DS:3FC2 = 0x10) at
+  x = 28; PFEIL1 (pressed PFEIL2) at (x − 15, 8) before the category text
+  361 + DS:8C48 (Alle, Industrie, Handel, Agrar, Risiko, Luxus, Sonstige) at
+  x = 160 and the sort text 368 + DS:8C4A (Sortieren: Wert / Rendite / Stadt) at
+  x = 266 (German offsets 0x84 / 0x6A when DS:A0F0 = 'd', otherwise 0x7A / 0x92).
+- **Rows** seg1:6E87: frames ZW_Z / ZW_ZI, owner icon at x = 0, Arial 17 weight
+  400: entry name at x = 44, town name (record +6) at x = 200, value · 0.7
+  (DS:868E) right-aligned in [339, 422], income in [430, 490], yield `%.1f%%`
+  (DS:402E) in [496, 554]; no row is disabled. Page buttons step DS:8C48 by
+  (x + 6) % 7 (seg1:59EF) or the scroll by seven (seg1:59C7 / 5B15).
+- **Rebuilt** (`statisticsRows` in `src/estates.cpp`, `src/estates_view.cpp`):
+  the list of the current player with rented entries, header and rows as above.
+  **Assumptions:** sort order (value and yield descending, towns in file order),
+  a header click steps the category (x 145–250) or the sort order (from x 251);
+  Escape or the right button close Statistik, and the game goes on.
+- **Loading:** the original loads from the title menu MAIN (1021), which is not
+  rebuilt yet; `--game --load <slot>` loads a slot of the save dialog instead.
+
 ### Save dialog (round 33)
 
 - **Call:** MAIN1 "Spiel speichern" (1062, seg4:07B8) closes the menu, calls

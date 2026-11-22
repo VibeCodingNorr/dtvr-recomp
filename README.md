@@ -90,7 +90,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 32. Computer turns drive field by field on the map (same draws as before).
 33. Save dialog as in the original (nine slots, native save files in the user's data
     directory); rules revision 26.
-34. *Next:* loading a game, statistics and overview.
+34. Statistik (the statistics variant of the town dialog) and `--load <slot>`.
+35. *Next:* the title menu (new game, load), Übersicht and Umfeld.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

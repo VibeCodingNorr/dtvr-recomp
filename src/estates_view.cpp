@@ -21,7 +21,16 @@ EstatesView::EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout,
                          const std::map<int, std::string>& texts, TextRenderer& text, SpriteLookup sprite)
     : renderer_(renderer), layout_(layout), texts_(texts), text_(text), sprite_(std::move(sprite)) {}
 
+void EstatesView::openStatistics(int player) {
+    open(-1);
+    statistics_ = true;
+    player_ = player;
+    category_ = 0; // seg1:4F59
+    sort_ = 0;
+}
+
 void EstatesView::open(int town) {
+    statistics_ = false;
     town_ = town;
     tab_ = EstatesTab::None;
     selected_ = -1;
@@ -69,7 +78,15 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
     } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const SDL_Rect b = box();
         const int x = event.button.x - b.x, y = event.button.y - b.y;
-        if (x >= 0 && x < b.w && y >= 0 && y < kRow) { // header tabs
+        if (statistics_ && x >= 0 && x < b.w && y >= 0 && y < kRow) {
+            // Header of the statistics (assumption: a click on the category or the sort
+            // order steps it on; the button handlers are not traced).
+            if (x >= 251) sort_ = (sort_ + 1) % 3;
+            else if (x >= 145) category_ = (category_ + 1) % 7;
+            selected_ = -1;
+            scroll_ = 0;
+            action.kind = Action::Kind::Tab;
+        } else if (x >= 0 && x < b.w && y >= 0 && y < kRow) { // header tabs
             if (x >= kTabX[2]) action.kind = Action::Kind::Cards;
             else { // seg1:543E / 5475: the tab selects the first visible row
                 tab_ = x >= kTabX[1] ? EstatesTab::Sell : EstatesTab::Buy;
@@ -77,7 +94,8 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
                 action.kind = Action::Kind::Tab;
             }
         } else if (const int row = rowAt(event.button.x, event.button.y, count); row >= 0) {
-            rowAction(row);
+            if (!statistics_) rowAction(row);
+            else selected_ = row;
         }
     } else if (event.type == SDL_KEYDOWN && count > 0) {
         switch (event.key.keysym.sym) {
@@ -107,7 +125,7 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
     // Header seg1:7275: KO_Z, tabs in Arial 20 weight 400 at y + 10; the active tab
     // (DS:3FBC) in colour 0x2C.
     blit("KO_Z", 0, 0);
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 3 && !statistics_; ++i) {
         const auto it = texts_.find(321 + i); // LoadString 0x141-0x143: Kaufen, Verkaufen, Karte
         const std::string label = it == texts_.end() ? std::string() : it->second;
         const bool active = (i == 0 && tab_ == EstatesTab::Buy) || (i == 1 && tab_ == EstatesTab::Sell);
@@ -121,15 +139,27 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
         const EstateRow& row = rows[size_t(index)];
         const int y = (k + 1) * kRow;
         const bool selected = index == selected_;
-        blit(selected ? "GR_ZI" : "GR_Z", 0, y);
+        if (statistics_) blit(selected ? "ZW_ZI" : "ZW_Z", 0, y); // seg1:6617: bit 0x10
+        else blit(selected ? "GR_ZI" : "GR_Z", 0, y);
         std::string icon = "0N";
         if (row.owner >= 0 && row.owner < 8)
             icon = std::string(1, ownerLetters[size_t(row.owner)]) + (row.wholeTown ? "_M" : "_N");
         blit(icon, 0, y);
         const SDL_Color color = row.disabled ? kGray : selected ? kWhite : kBrown;
-        TextStyle left{18, false, false, false, false, 0, color};
+        TextStyle left{statistics_ ? 17 : 18, false, false, false, false, 0, color};
         TextStyle right = left;
         right.right = true;
+        if (statistics_) { // seg1:6EC5: name, town, value * 0.7, income, yield
+            const int ty = b.y + y + 10;
+            text_.draw(renderer_, row.name, ScreenRect{b.x + 0x2A + 2, ty, 0xC8 - 0x2C, kRow}, left);
+            text_.draw(renderer_, row.townName, ScreenRect{b.x + 0xC8, ty, 0x153 - 0xC8, kRow}, left);
+            text_.draw(renderer_, formatMoney(row.price), ScreenRect{b.x + 0x153, ty, 0x53, kRow}, right);
+            text_.draw(renderer_, formatMoney(row.income), ScreenRect{b.x + 0x1AE, ty, 0x3C, kRow}, right);
+            char yield[16];
+            std::snprintf(yield, sizeof yield, "%.1f%%", row.yieldPercent); // DS:402E
+            text_.draw(renderer_, yield, ScreenRect{b.x + 0x1F0, ty, 0x3A, kRow}, right);
+            continue;
+        }
         int x = 0x54 + 10;
         text_.draw(renderer_, row.name, ScreenRect{b.x + x, b.y + y + 10, 200, kRow}, left);
         x += 200;
@@ -141,6 +171,32 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
         std::snprintf(percent, sizeof percent, "%.1f%%", row.yieldPercent); // DS:4027
         text_.draw(renderer_, percent, ScreenRect{b.x + x, b.y + y + 10, 0x54, kRow}, right);
     }
+    if (statistics_) drawStatisticsHeader();
+}
+
+void EstatesView::drawStatisticsHeader() {
+    // seg1:7506: text 375 (Ansehen) at x 28, then PFEIL1 at (x - 15, 8) before the
+    // category (361 + DS:8C48) at x 160 and the sort order (368 + DS:8C4A) at x 266
+    // (German offsets 0x84 / 0x6A, seg1:766F / 77C4).
+    const SDL_Rect b = box();
+    auto label = [&](int id) {
+        const auto it = texts_.find(id);
+        return it == texts_.end() ? std::string() : it->second;
+    };
+    auto arrow = [&](int x) {
+        if (SDL_Texture* t = sprite_("PFEIL1")) {
+            int w = 0, h = 0;
+            SDL_QueryTexture(t, nullptr, nullptr, &w, &h);
+            const SDL_Rect dst{b.x + x - 15, b.y + 8, w, h};
+            SDL_RenderCopy(renderer_, t, nullptr, &dst);
+        }
+    };
+    const TextStyle style{20, false, false, false, false, 0, kBrown};
+    text_.draw(renderer_, label(375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style);
+    arrow(160);
+    text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style);
+    arrow(266);
+    text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + 266, b.y + 10, 280, kRow}, style);
 }
 
 } // namespace dtvr

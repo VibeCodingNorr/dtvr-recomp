@@ -89,7 +89,9 @@ struct GameWindowOptions {
     std::string openMenu;         // tests: open this menu resource at the start (e.g. RIGHTBTN)
     bool openCards = false;       // tests: open the card window at the start
     bool holdRight = false;       // tests: the right arrow key is held from the start
-    bool openSave = false;        // tests: open the save dialog at the start
+    bool openSave = false;
+    bool openStatistics = false;  // tests: open Statistik at the start
+    int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame
 };
