@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Check tracked files for bundled game content and machine-specific data paths."""
 
 from pathlib import Path

@@ -16,6 +16,10 @@ SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
 
+- License our original source, tools and tests as `GPL-3.0-only`. Preserve the
+  SPDX identifier in source headers and the unmodified GNU GPL v3 text in `LICENSE`.
+  The project license does not cover original game data or third-party dependencies.
+
 - Users supply an original ISO explicitly through `--iso`. All examples use
   generic placeholders; never commit machine-specific paths or rely on a local
   installation, mounted disc, download URL or symlink to original game content.

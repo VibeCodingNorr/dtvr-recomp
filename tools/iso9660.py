@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Minimal read-only ISO9660 primary-tree reader (2048 or raw Mode 1 sectors).
 
 No mounting, executables, Rock Ridge links or external extractors are involved.

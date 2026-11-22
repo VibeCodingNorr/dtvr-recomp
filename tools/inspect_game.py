@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Read-only inventory of an original DTVR installation; JSON on stdout."""
 
 import argparse

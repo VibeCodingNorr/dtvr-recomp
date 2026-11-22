@@ -68,6 +68,44 @@ Original track IDs and playback triggers still need reconstruction; the viewer
 does not yet play music. The intended native game plays local Ogg assets in place
 of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
 
+## How to play
+
+The current build is an **inspection viewer**, not a playable rally yet. You can
+explore the reconstructed world and board graph; turns, AI opponents, saves,
+multiplayer and native music playback are not implemented.
+
+1. Have your own supported original ISO and install the dependencies listed above.
+2. Build an installation in a new directory outside this checkout:
+
+   ```sh
+   python3 tools/install.py --iso /path/to/game.iso --output /path/to/new/installation
+   ```
+
+3. Open the world map with its board overlay:
+
+   ```sh
+   /path/to/new/installation/play --world --graph
+   ```
+
+The paths above are placeholders: use your ISO and your chosen installation
+folder. Start `play` without arguments for the overview. You can disconnect the
+ISO after installation; subsequent launches use the installed local data.
+
+| Control | Action |
+| --- | --- |
+| Mouse wheel | Zoom around the pointer |
+| Left mouse drag | Pan |
+| R | Fit image to window |
+| M | Cycle overview / graphics blocks / sprites / world map |
+| Left / Right | Previous / next SBB or SBS file; month in world view |
+| V | World view: toggle tile 0x33 (`[Setup] Views`) |
+| G | World view: show board fields (coloured by kind), links and towns |
+| Escape | Exit |
+
+To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
+For a specific seasonal view, use `play --world --month 0` (months are 0–11).
+Use `play --help` for the complete command-line options.
+
 ## Build and run
 
 Requires a C++17 compiler, CMake, pkg-config and SDL2 development files.
@@ -82,17 +120,6 @@ cmake --build build -j
 `--data` accepts either the CD root or its `program` directory. Supply your own
 original files; game assets and executables are not included in this repository.
 The viewer only reads these files.
-
-| Control | Action |
-| --- | --- |
-| Mouse wheel | Zoom around the pointer |
-| Left mouse drag | Pan |
-| R | Fit image to window |
-| M | Cycle overview / graphics blocks / sprites / world map |
-| Left / Right | Previous / next SBB or SBS file; month in world view |
-| V | World view: toggle tile 0x33 (`[Setup] Views`) |
-| G | World view: show board fields (coloured by kind), links and towns |
-| Escape | Exit |
 
 Start directly in block view with `--tiles`, in sprite view with `--sprites` or
 in world view with `--world [--month 0-11] [--no-views] [--graph]`. The world view composes
@@ -131,3 +158,15 @@ See [docs/formats.md](docs/formats.md) for observations and next steps.
 The agreed [architecture and modernization plan](docs/architecture.md) covers
 LAN/Internet multiplayer, save files, usability and optional graphical effects.
 These are planned features, not capabilities of the current viewer.
+
+## License
+
+Our original source code, tools and tests are licensed under **GPL-3.0-only**
+(GNU General Public License, version 3 only). See [LICENSE](LICENSE) for the full
+license text. This project does not grant an option to use later GPL versions.
+
+The original game's ISO, executables, graphics, music, speech and other game data
+are **not covered by this project's license** and are not distributed here.
+Users must supply their own supported original ISO. Files imported or converted
+from it, including Ogg music, remain original game content. Third-party libraries
+and tools retain their respective licenses.

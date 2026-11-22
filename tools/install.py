@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Build a native DTVR installation from the user's original ISO, without root."""
 
 import argparse

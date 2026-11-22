@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Synthetic CD PCM tests; no original music in the repository."""
 
 import copy

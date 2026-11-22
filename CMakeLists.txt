@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 cmake_minimum_required(VERSION 3.16)
 project(dtvr_recomb VERSION 0.1.0 LANGUAGES CXX)
 
@@ -36,3 +37,4 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME repository-policy COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_repository_policy.py)
 endif()
 install(TARGETS dtvr-recomb RUNTIME DESTINATION bin)
+install(FILES LICENSE DESTINATION share/licenses/dtvr-recomb)

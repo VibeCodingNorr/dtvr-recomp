@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Disassemble NE code segments with objdump (i8086 mode) and annotate fixups.
 
 Usage: ne_disasm.py EXE OUTDIR [--dll-dir DIR ...]

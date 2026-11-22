@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Bounds-checked reader for 16-bit Windows NE executables (read-only).
 
 Parses segments, per-segment relocations, imported module names and the

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 // Synthetic and malformed-input tests for the SBSF parser.
 #include "sbs.hpp"
 

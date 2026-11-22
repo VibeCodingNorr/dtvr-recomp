@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Synthetic ISO fixtures: no original game data required."""
 
 from pathlib import Path

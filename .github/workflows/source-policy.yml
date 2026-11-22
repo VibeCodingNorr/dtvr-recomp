@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 name: Source distribution policy
 on: [push, pull_request]
 jobs:

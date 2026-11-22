@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 // Synthetic and malformed-input tests for europe.map handling and tile composition.
 #include "worldmap.hpp"
 

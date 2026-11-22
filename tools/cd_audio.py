@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Convert recovered CD-DA regions to Ogg Vorbis; never guess original track IDs."""
 
 import hashlib
