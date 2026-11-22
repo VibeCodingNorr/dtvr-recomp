@@ -337,6 +337,11 @@ void GameScreen::drawPlayerInfo() {
 
 void GameScreen::draw() {
     if (sound_) sound_->setEnabled(settings_.value[Settings::Wave] != 0);
+    if (!picture_.empty()) {
+        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / picture_))
+            SDL_RenderCopy(renderer_, t, nullptr, nullptr);
+        return;
+    }
     if (options_.isOpen()) { // OPTION covers the canvas
         options_.draw();
         return;
@@ -450,6 +455,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     };
     bool running = true;
     int autosaved = -1; // turn serial of the last autosave
+    std::vector<SoundCue> pendingSounds;
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
         openMenu("MAIN");
@@ -489,7 +495,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         case 1025: running = false; break;                       // Rallye beenden
         case 1023: case 1063: screen.options().open(screen.settings()); break; // Optionen: seg1:ACE7
-        case 1024: case 1026: openTitle(); break;                // Demo, Credits: not built yet
+        case 1026: screen.showPicture("Credits.bmp"); break;    // Credits: seg4:070C -> seg6:0A4D
+        case 1024: openTitle(); break;                           // Demo: not built yet
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
@@ -526,8 +533,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         if (!screen.title())
             for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
+        // The original plays a field's sounds when the vehicle is on it: cues wait while the
+        // drawn car still drives there.
         for (const SoundCue& c : play.game().takeSounds())
-            if (!screen.title()) sound.play(c.channel, c.sound, c.loops);
+            if (!screen.title()) pendingSounds.push_back(c);
+        if (!moving) {
+            for (const SoundCue& c : pendingSounds) sound.play(c.channel, c.sound, c.loops);
+            pendingSounds.clear();
+        }
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
@@ -548,7 +561,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
-            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.options().isOpen())
+            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.options().isOpen()
+                && !screen.pictureShown())
                 openTitle();
         } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
                    && !play.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
@@ -578,6 +592,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 const int id = menu.handle(event);
                 if (const int s = menu.takeSound(); s >= 0) sound.play(2, s);
                 if (id) command(id);
+                continue;
+            }
+            if (screen.pictureShown()) { // a key or a click closes it (assumption)
+                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) {
+                    screen.closePicture();
+                    if (screen.title()) openTitle();
+                }
                 continue;
             }
             if (screen.options().isOpen()) {
@@ -662,6 +683,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             const SDL_Keycode key = event.key.keysym.sym;
             if (isArrow(key) && play.game().phase() == Game::Phase::Move) { heldArrow = key; continue; }
             if (key == SDLK_INSERT || key == SDLK_DELETE) { screen.toggleZoom(); continue; } // seg4:0212
+            if (key >= SDLK_1 && key <= SDLK_4) { // seg4:018B -> seg6:0DA0(key - 1, 1): pause and memo
+                Settings s = screen.settings();
+                s.pause = int(key - SDLK_1);
+                screen.applySettings(s);
+                sound.play(0, 35 + s.pause); // MEMO01-04 (seg6:0DFD / 0DCA / 0DDB / 0DEC)
+                continue;
+            }
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
             if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();

@@ -178,6 +178,8 @@ bool Game::step(Direction d) {
     if (!counter_.step(d, true)) return false;
     p.field = next;
     lastDirection_[size_t(current_)] = int(d);
+    // seg2:206B: Carb01 when the last field of the move is reached, Plopp01 otherwise (channel 1).
+    sound(1, counter_.taken() == counter_.allowance() ? 9 : 0);
     // seg2:B290 when the vehicle stops on a field: Dr. Drago changes hands.
     if (counter_.taken() == counter_.allowance()) {
         const int before = drago_.holder;

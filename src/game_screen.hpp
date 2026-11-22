@@ -34,6 +34,11 @@ public:
     // Title (seg8:03AB): window TITEL over the canvas with butt/<n>/<lang>/t.bmp
     // (DS:17FB); the menu MAIN is drawn above it.
     void setTitle(bool title) { title_ = title; }
+    // Credits (1026 -> seg6:0A4D(.., "Credits.bmp", 1)): the picture butt/<n>/Credits.bmp
+    // in a modal window PICT over the canvas.
+    void showPicture(const std::string& file) { picture_ = file; }
+    bool pictureShown() const { return !picture_.empty(); }
+    void closePicture() { picture_.clear(); }
     bool title() const { return title_; }
     // The vehicle sets of the drivers in play (after loading a game).
     void loadDriverSprites();
@@ -110,6 +115,7 @@ private:
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;
     bool title_ = false;
+    std::string picture_;
     bool surroundings_ = false;
     std::array<bool, kPlayerSlots> zoom_{};         // player +0x15 (not saved)
     SDL_Point surroundOrigin_{};                    // DS:956A / 9568 in tiles while in Umfeld

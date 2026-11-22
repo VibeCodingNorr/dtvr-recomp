@@ -16,6 +16,10 @@ struct Settings {
     enum Index { Wave, Midi, Voice, TimeOut, Views, Animations, Colorcycle, Joystick, kCount };
     std::array<int, kCount> value{1, 1, 1, 1, 1, 1, 1, 1};
     int subtitle = 0; // DS:B5DF
+    // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of
+    // seg6:0EE0 are multiplied by 1.0 / 1.5 / 2.0 / 3.0 (DS:858E).
+    int pause = 0;
+    double pauseFactor() const { static const double f[4] = {1.0, 1.5, 2.0, 3.0}; return f[pause & 3]; }
 
     static const char* key(int index);       // profile key ("Wave", "Midi", ...)
     static const char* switchName(int index); // picture name ("fx", "midi", ...)

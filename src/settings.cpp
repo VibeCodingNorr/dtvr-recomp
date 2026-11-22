@@ -28,6 +28,7 @@ std::string Settings::encode() const {
     o << "[Setup]\n";
     for (int i = 0; i < kCount; ++i) o << key(i) << '=' << value[size_t(i)] << '\n';
     o << "Subtitle=" << subtitle << '\n';
+    o << "Pause=" << pause << '\n';
     return o.str();
 }
 
@@ -42,6 +43,7 @@ Settings Settings::decode(const std::string& text) {
         int v = 0;
         try { v = std::stoi(line.substr(eq + 1)); } catch (const std::exception&) { continue; }
         if (name == "Subtitle") { s.subtitle = v != 0; continue; }
+        if (name == "Pause") { s.pause = v >= 0 && v <= 3 ? v : 0; continue; } // seg6:0D89
         for (int i = 0; i < kCount; ++i)
             if (name == key(i) && v >= 0 && v < states(i)) s.value[size_t(i)] = v;
     }

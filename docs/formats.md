@@ -1248,6 +1248,18 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   eight channels mixed with SDL audio (a new sound replaces the channel's),
   played only with Wave on; wired so far: menu sounds, the slot machine, money
   fields, the two sit-outs and blocked cards. Music (snd/midi) is not played.
+- **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
+  allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
+  the game's cues when the drawn car has reached its field. Dr. Drago spending:
+  the random(1) of seg2:BB5E chooses Lachen01 (0) or Lachen02 (1) on channel 5.
+- **Pause** keys 1–4 (seg4:018B → seg6:0DA0(key − 1, 1)): DS:1642 = 0–3, saved as
+  `[Setup] Pause` (seg6:0EBF; read at seg6:0D60, values > 3 become 0), and
+  MEMO01–04 for 0–3 on channel 0. seg6:0EE0(ms) waits ms × DS:858E[DS:1642] =
+  1.0 / 1.5 / 2.0 / 3.0 (seg6:0E3A); the rebuild stores the value but has no
+  such waits yet.
+- **Credits** (1026, seg4:070C): seg6:0A4D(…, "Credits.bmp" DS:9A, 1) shows
+  `butt/<n>/Credits.bmp` in a window PICT over the canvas and waits (seg6:0FB4);
+  rebuilt with a key or click closing it (assumption).
 
 ### Options (round 39)
 

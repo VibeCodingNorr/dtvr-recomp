@@ -43,7 +43,7 @@ void Game::dragoAct(int player) {
         const double sum = dragoAmount(calendar_.month, drago_.form, calendar_.inflation, rng_);
         economy_.addMoney(player, -sum);
         notice(text, {moneyArg(sum)});
-        rng_.random(1); // seg2:BB5E: choice of the follow-up message
+        sound(5, rng_.random(1) == 0 ? 3 : 29); // seg2:BB5E: Lachen01 / Lachen02 (seg2:BB73 / BB84)
         messages_.push_back(who + "gibt " + amount(sum) + " aus");
         break;
     }
