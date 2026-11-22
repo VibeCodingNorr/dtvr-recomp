@@ -182,6 +182,12 @@ public:
     int finishField() const { return finishField_; }
     int finishPlayer() const { return finishPlayer_; }
     int balanceChoice() const { return balanceChoice_; }
+    // The year balance's announcements (seg8:88C6, computed when it starts): the
+    // opening voice Bilanz_<A + intro>, then per player in play Next_<A + variant>_<A + i>
+    // and pos_ / neg_<A + letter>. Not saved.
+    struct BalanceEntry { int player = -1; int variant = 0; bool positive = true; int letter = 0; };
+    int balanceIntro() const { return balanceIntro_; }
+    const std::vector<BalanceEntry>& balanceEntries() const { return balance_; }
     int allowance() const { return counter_.allowance(); }
     int stepsTaken() const { return counter_.taken(); }
     const Calendar& calendar() const { return calendar_; }
@@ -265,7 +271,8 @@ private:
     int origin_ = -1, destination_ = -1;
     int remaining_ = 0;
     int totalStages_ = 0;
-    int balanceSerial_ = 0, balanceChoice_ = 0;
+    int balanceSerial_ = 0, balanceChoice_ = 0, balanceIntro_ = 0;
+    std::vector<BalanceEntry> balance_;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;
     std::string finishMusic_ = "z1"; // cosmetic; reuses the existing draw, no new RNG call
     std::vector<std::string> music_; // transient presentation commands, never saved

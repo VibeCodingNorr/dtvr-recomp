@@ -1288,8 +1288,26 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (seg8:8E38) and rand() % 2 for `pos_` (seg8:9605) in some animation states;
   they cannot be reproduced and are not modelled.
 - **Rebuilt:** the three fixed draws (hook `yearBalance` between inflation and
-  clearing the credits; rules revision 28). The show itself (show master,
-  voices, per-player results) is not rebuilt yet.
+  clearing the credits; rules revision 28).
+- **Show (round 47):** window BILANZ (0x1F0 × 0x178) with `bil_leer.bmp` (the empty
+  board; `bilanz.bmp` is not used by rally.exe) and three records: the show
+  master speaking (DS:4800, intro\redet, 79/155), his foot (DS:4798 red_foot,
+  74/276) and the lever (DS:4AE8 HEBEL, 150/184). Opening voice
+  `Bilanz_<A + rand() % 4>`; then for every player in play (slot order): the
+  show master waits (DS:4938 / 4968 at 80/159) for a click (DS:8D5C) or, without
+  a human, 300 passes (seg8:8DF4; the first player follows at once), pulls the
+  lever (DS:4A30, HEBEL05–13, and FX HEBEL01) and announces
+  `Next_<A + rand() % 4>_<A + i>` (seg8:8E38: one draw per player, independent
+  of timing) and `pos_` / `neg_<A + letter>`: positive when cash + property value
+  reach the value of the ranking's middle entry (index (count − 1) / 2,
+  seg8:9075); the letter starts at the rand() % 7 of seg8:88DF and advances by one
+  per player modulo 7 (seg8:913D). The voices are under butt/<lang>/voice/bilanz.
+  Subtitles (seg6:6596, window SUBTITLE) only with `[Setup] Subtitle`.
+- **Rebuilt (round 47):** the per-player draws (rules revision 29) and the show
+  (`src/balance_view.cpp`, data `Game::balanceEntries`). **Simplifications:** the
+  timing-dependent draw of seg8:9605 and its pos voice variant, the subtitles and
+  the exact switching of the show master's records are not modelled; voices end
+  a stage when they have played out (at least 1.5 s); Escape ends the show.
 
 ### Victory sequence (round 46)
 

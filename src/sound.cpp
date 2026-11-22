@@ -92,6 +92,14 @@ void SoundPlayer::play(int channel, int sound, int loops) {
     SDL_UnlockAudioDevice(device_);
 }
 
+bool SoundPlayer::busy(int channel) {
+    if (!device_ || channel < 0 || channel > 7) return false;
+    SDL_LockAudioDevice(device_);
+    const bool playing = voices_[size_t(channel)].samples != nullptr;
+    SDL_UnlockAudioDevice(device_);
+    return playing;
+}
+
 void SoundPlayer::stop(int channel) {
     if (!device_ || channel < 0 || channel > 7) return;
     SDL_LockAudioDevice(device_);

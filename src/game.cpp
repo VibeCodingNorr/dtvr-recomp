@@ -350,12 +350,29 @@ void Game::advanceTurn() {
     hooks.settleMonth = [this] { economy_.settleMonth(); };
     hooks.clearCredits = [this] { economy_.clearCredits(); };
     // seg8:88C6 draws rand() % 7 at once and rand() % 5, rand() % 4 when its window
-    // is up (seg8:8C49 / 8C57); later draws depend on the animation's timing and
-    // are not modelled (docs/formats.md "Year balance").
+    // is up (seg8:8C49 / 8C57), then rand() % 4 for each player's announcement
+    // (seg8:8E38); a draw in some animation states (seg8:9605) depends on timing and
+    // is not modelled (docs/formats.md "Year balance").
     hooks.yearBalance = [this] {
         balanceChoice_ = rng_.rand() % 7;
         rng_.rand();
-        rng_.rand();
+        balanceIntro_ = rng_.rand() % 4;
+        // seg8:9075: a player's year is positive when cash + property value reaches the
+        // value of the middle entry of the ranking (index (count - 1) / 2, seg1:8EE1).
+        const std::vector<int> rank = ranking();
+        auto worth = [&](int p) { return economy_.money(p).cash + economy_.money(p).propertyValue; };
+        const double middle = rank.empty() ? 0 : worth(rank[(rank.size() - 1) / 2]);
+        balance_.clear();
+        int letter = balanceChoice_;
+        for (int p : activePlayers()) { // seg8:8E38: one announcement per player in play
+            BalanceEntry e;
+            e.player = p;
+            e.variant = rng_.rand() % 4;
+            e.positive = !(middle - economy_.money(p).cash > economy_.money(p).propertyValue);
+            e.letter = letter;
+            letter = (letter + 1) % 7; // seg8:913D
+            balance_.push_back(e);
+        }
         ++balanceSerial_;
     };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };

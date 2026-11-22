@@ -32,6 +32,8 @@ public:
     // seg1:3579: a WAV file by path (finish, voices); same channel rules.
     void playFile(int channel, const std::filesystem::path& file);
     void stop(int channel);
+    // Whether a sound still plays on the channel (seg1:3E64 waits for voices).
+    bool busy(int channel);
     // Must outlive this audio device; all sources share one stereo mixer.
     void setMusic(MusicStream* music);
 

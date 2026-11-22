@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: GPL-3.0-only
+#include "balance_view.hpp"
+
+#include "scene.hpp"
+
+namespace fs = std::filesystem;
+
+namespace dtvr {
+namespace {
+
+constexpr int kWidth = 480, kHeight = 360, kWindowW = 0x1F0, kWindowH = 0x178;
+constexpr int kVoiceChannel = 0;
+
+// Definitions of seg8:8A48 ff. (positions of records 0-2).
+const SceneRecord kSpeaking{79, 155, 0, 3, {"rd014", "rd012", "rd011", "rd012", "rd014", "rd012", "rd011", "rd012",
+                                           "rd011", "rd012", "rd013", "rd012", "rd013", "rd012", "rd014", "rd012"}}; // DS:4800
+const SceneRecord kFoot{74, 276, 0, 999, {"red_foot"}};  // DS:4798
+const SceneRecord kLever{150, 184, 0, 999, {"HEBEL"}};   // DS:4AE8
+const SceneRecord kPull{80, 159, 0, 3, {"HEBEL05", "HEBEL06", "HEBEL07", "HEBEL08", "HEBEL08", "HEBEL08", "HEBEL08",
+                                        "HEBEL08", "HEBEL09", "HEBEL10", "HEBEL11", "HEBEL12", "HEBEL13", "HEBEL13",
+                                        "HEBEL13", "HEBEL13", "HEBEL13", "HEBEL13", "HEBEL13", "HEBEL13", "HEBEL13",
+                                        "HEBEL13", "HEBEL13"}};         // DS:4A30
+const SceneRecord kHold{80, 159, 0, 3, {"HEBEL02", "HEBEL03", "HEBEL02", "HEBEL03", "HEBEL04"}}; // DS:4938
+
+} // namespace
+
+BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
+    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+
+bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, bool humans, SoundPlayer* sound,
+                        Uint32 now) {
+    active_ = false;
+    const fs::path butt("butt");
+    Surface scene = loadBmp(findCaseInsensitive(root_, butt / "bil_leer.bmp")); // DS:7CDA
+    if (!scene || !scene->format->palette) return false;                    // seg8:89C0: no window
+    background_.reset(SDL_CreateTextureFromSurface(renderer_, scene.get()));
+    frames_.clear();
+    for (const char* file : {"ziel/hebel.sbs", "intro/red_foot.sbs", "intro/redet.sbs"}) // DS:7C4A ff.
+        loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / file), scene->format->palette, frames_, 0xFF);
+    entries_ = entries;
+    intro_ = intro;
+    humans_ = humans;
+    sound_ = sound;
+    index_ = 0;
+    clicked_ = false;
+    started_ = now;
+    active_ = background_ != nullptr;
+    if (active_) enter(Stage::Intro, now);
+    return active_;
+}
+
+void BalanceView::voice(const std::string& name) {
+    if (sound_) sound_->playFile(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "bilanz" / (name + ".wav")));
+}
+
+bool BalanceView::voiceDone(Uint32 now, Uint32 minimum) const {
+    if (now - stageStart_ < minimum) return false;
+    return !sound_ || !sound_->busy(kVoiceChannel);
+}
+
+void BalanceView::enter(Stage stage, Uint32 now) {
+    stage_ = stage;
+    stageStart_ = now;
+    clicked_ = false;
+    const char a = 'a';
+    switch (stage) {
+    case Stage::Intro: voice(std::string("bilanz_") + char(a + intro_)); break; // seg8:8C74
+    case Stage::Pull: if (sound_) sound_->play(2, 4); break;                    // Hebel01 (DS:7D37)
+    case Stage::Next: // seg8:8E55: Next_<A + rand() % 4>_<A + player index>
+        voice(std::string("next_") + char(a + entries_[index_].variant) + "_" + char(a + int(index_)));
+        break;
+    case Stage::Result: // seg8:90FF / 912A
+        voice(std::string(entries_[index_].positive ? "pos_" : "neg_") + char(a + entries_[index_].letter));
+        break;
+    case Stage::Wait: break;
+    }
+}
+
+void BalanceView::update(Uint32 now) {
+    if (!active_) return;
+    switch (stage_) {
+    case Stage::Intro:
+        if (voiceDone(now, 1500)) {
+            if (entries_.empty()) active_ = false;
+            else enter(Stage::Pull, now); // the first player follows at once (seg8:8DFD)
+        }
+        break;
+    case Stage::Wait: // seg8:8DF4: a click, or 300 passes (6 s) without a human
+        if (clicked_ || (!humans_ && now - stageStart_ > 300 * kSceneStepMs)) enter(Stage::Pull, now);
+        break;
+    case Stage::Pull:
+        if (now - stageStart_ >= Uint32(kPull.frames.size() * kPull.delay) * kSceneStepMs) enter(Stage::Next, now);
+        break;
+    case Stage::Next:
+        if (voiceDone(now, 1500)) enter(Stage::Result, now);
+        break;
+    case Stage::Result:
+        if (voiceDone(now, 1500)) {
+            if (++index_ >= entries_.size()) active_ = false; // seg8:8E24: after the last player
+            else enter(Stage::Wait, now);
+        }
+        break;
+    }
+}
+
+void BalanceView::draw(Uint32 now) {
+    if (!active_) return;
+    const SDL_Rect window{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2, kWindowW, kWindowH};
+    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+    SDL_RenderFillRect(renderer_, &window);
+    const int ox = window.x + (kWindowW - kWidth) / 2, oy = window.y + (kWindowH - kHeight) / 2;
+    const SDL_Rect area{ox, oy, kWidth, kHeight};
+    SDL_RenderCopy(renderer_, background_.get(), nullptr, &area);
+    SDL_RenderSetClipRect(renderer_, &area);
+    const int t = int((now - stageStart_) / kSceneStepMs);
+    const SceneRecord& master = stage_ == Stage::Pull ? kPull : stage_ == Stage::Wait ? kHold : kSpeaking;
+    drawSceneFrame(renderer_, frames_, sceneFrame(master, t), ox + master.x, oy + master.y);
+    drawSceneFrame(renderer_, frames_, sceneFrame(kFoot, t), ox + kFoot.x, oy + kFoot.y);
+    if (stage_ != Stage::Pull) drawSceneFrame(renderer_, frames_, sceneFrame(kLever, t), ox + kLever.x, oy + kLever.y);
+    SDL_RenderSetClipRect(renderer_, nullptr);
+}
+
+} // namespace dtvr

@@ -111,7 +111,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     driver's car with the original animations and sound.
 46. Victory sequence SIEG after the Master-Rallye: podium with the three best drivers
     by cash and property value, crowd, band and speaker.
-47. *Next:* the year balance show (BILANZ) and the stage announcement.
+47. Year balance show BILANZ: the show master pulls the lever for every driver and
+    announces the result (positive or negative year) with the original voices.
+48. *Next:* the stage announcement and the remaining dialog sounds.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

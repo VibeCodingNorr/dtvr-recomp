@@ -48,7 +48,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       setup_(renderer, root, layout, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
-      finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height) {
+      finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
+      balance_(renderer, root, layout.width, layout.height) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -171,6 +172,10 @@ bool GameScreen::startFinish(int field, int player, Uint32 now) {
     // seg7:2C48: butt/snd/z.wav (seg1:3579)
     if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
     return true;
+}
+
+bool GameScreen::startBalance(Uint32 now) {
+    return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.humansLeft(), sound_, now);
 }
 
 bool GameScreen::startVictory(Uint32 now) {
@@ -407,6 +412,7 @@ void GameScreen::draw() {
     overview_.draw(game_);
     finish_.draw(SDL_GetTicks());
     victory_.draw(SDL_GetTicks());
+    balance_.draw(SDL_GetTicks());
     cards_.draw();
     save_.draw(slots_);
     menu_.draw();
@@ -492,6 +498,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     std::vector<SoundCue> pendingSounds;
     int finishSeen = play.game().finishSerial();
     bool victoryShown = false;
+    int balanceSeen = play.game().balanceSerial();
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -573,6 +580,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openOptions) screen.options().open(screen.settings());
     if (options.demo) { menu.close(); command(1024); }
     if (options.victory) { music.interrupt("s"); screen.startVictory(SDL_GetTicks()); }
+    if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
@@ -645,6 +653,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
         screen.finish().update(SDL_GetTicks());
+        // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
+        screen.balance().update(SDL_GetTicks());
+        if (!screen.title() && play.game().balanceSerial() != balanceSeen && !moving && !screen.messages().open()
+            && !screen.finish().active()) {
+            balanceSeen = play.game().balanceSerial();
+            screen.startBalance(SDL_GetTicks());
+        }
         // After the Master-Rallye: the victory (seg7:71C4), then the title (WM_COMMAND 0x424).
         screen.victory().update(SDL_GetTicks());
         if (!screen.title() && play.game().phase() == Game::Phase::GameOver && !screen.finish().active()
@@ -660,7 +675,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         const bool modal = musicMenu.open() || screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
-                           || screen.victory().active();
+                           || screen.victory().active() || screen.balance().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -707,6 +722,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 screen.messages().clear();
                 menu.close();
                 openTitle();
+                continue;
+            }
+            if (screen.balance().active()) { // a click lets the show master go on (seg8:8D5C)
+                if (event.type == SDL_MOUSEBUTTONDOWN || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN))
+                    screen.balance().click();
+                else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+                    screen.balance().stop(); // assumption
                 continue;
             }
             if (screen.victory().active()) { // Enter closes it (seg7:7D57 sends VK_RETURN after 5000 passes)
