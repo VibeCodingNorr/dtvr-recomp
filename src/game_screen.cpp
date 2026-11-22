@@ -46,7 +46,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
       setup_(renderer, root, layout, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
-      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout) {
+      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
+      finish_(renderer, root, layout.width, layout.height) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -157,6 +158,18 @@ void GameScreen::applySettings(const Settings& settings) {
     worldSeason_ = -1; // reload the world with or without the Views tiles
     std::string error;
     if (!saveSettings(defaultSettingsFile(), settings_, error)) std::cerr << "Optionen: " << error << "\n";
+}
+
+bool GameScreen::startFinish(int field, int player, Uint32 now) {
+    int town = -1;
+    if (field >= 0)
+        for (size_t t = 0; t < towns_.size(); ++t)
+            if (towns_[t].x == board_.fields[size_t(field)].x && towns_[t].y == board_.fields[size_t(field)].y) town = int(t);
+    if (town < 0 || player < 0 || player >= kPlayerSlots) return false;
+    if (!finish_.start(kPortraitLetters[player], towns_[size_t(town)].name, now)) return false;
+    // seg7:2C48: butt/snd/z.wav (seg1:3579)
+    if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
+    return true;
 }
 
 void GameScreen::toggleZoom() {
@@ -384,6 +397,7 @@ void GameScreen::draw() {
         estates_.draw(estateRows(), letters);
     }
     overview_.draw(game_);
+    finish_.draw(SDL_GetTicks());
     cards_.draw();
     save_.draw(slots_);
     menu_.draw();
@@ -456,6 +470,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     bool running = true;
     int autosaved = -1; // turn serial of the last autosave
     std::vector<SoundCue> pendingSounds;
+    int finishSeen = play.game().finishSerial();
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -535,6 +550,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.zoom) screen.toggleZoom();
     if (options.openOptions) screen.options().open(screen.settings());
     if (options.demo) { menu.close(); command(1024); }
+    if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
@@ -594,9 +610,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         } else {
             messageShown = 0;
         }
+        // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
+        screen.finish().update(SDL_GetTicks());
+        if (!screen.title() && play.game().finishSerial() != finishSeen && !moving) {
+            finishSeen = play.game().finishSerial();
+            screen.startFinish(play.game().finishField(), play.game().finishPlayer(), SDL_GetTicks());
+        }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
-                           || screen.surroundings() || screen.options().isOpen();
+                           || screen.surroundings() || screen.options().isOpen() || screen.finish().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -625,6 +647,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 screen.messages().clear();
                 menu.close();
                 openTitle();
+                continue;
+            }
+            if (screen.finish().active()) { // assumption: a key or click cuts the sequence short
+                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.finish().stop();
                 continue;
             }
             if (screen.pictureShown()) { // a key or a click closes it (assumption)

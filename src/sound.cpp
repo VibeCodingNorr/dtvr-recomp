@@ -47,11 +47,26 @@ const std::vector<int16_t>* SoundPlayer::load(int sound) {
     if (sound < 0 || sound >= kSoundCount) return nullptr;
     if (loaded_[size_t(sound)]) return cache_[size_t(sound)].empty() ? nullptr : &cache_[size_t(sound)];
     loaded_[size_t(sound)] = true;
-    const fs::path path = findCaseInsensitive(root_, fs::path("snd") / "fx" / soundFile(sound));
+    convert(findCaseInsensitive(root_, fs::path("snd") / "fx" / soundFile(sound)), cache_[size_t(sound)]);
+    return cache_[size_t(sound)].empty() ? nullptr : &cache_[size_t(sound)];
+}
+
+void SoundPlayer::playFile(int channel, const fs::path& file) {
+    if (!device_ || !enabled_ || channel < 0 || channel > 7) return;
+    std::vector<int16_t> samples;
+    if (!convert(file, samples)) return;
+    SDL_LockAudioDevice(device_);
+    for (Voice& v : voices_) if (v.samples == &fileSamples_) v = {};
+    fileSamples_ = std::move(samples);
+    voices_[size_t(channel)] = {&fileSamples_, 0, 0};
+    SDL_UnlockAudioDevice(device_);
+}
+
+bool SoundPlayer::convert(const fs::path& path, std::vector<int16_t>& out) const {
     SDL_AudioSpec spec{};
     Uint8* data = nullptr;
     Uint32 length = 0;
-    if (path.empty() || !SDL_LoadWAV(path.string().c_str(), &spec, &data, &length)) return nullptr;
+    if (path.empty() || !SDL_LoadWAV(path.string().c_str(), &spec, &data, &length)) return false;
     SDL_AudioCVT cvt{};
     if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, 1, spec_.freq) >= 0) {
         std::vector<Uint8> buffer(size_t(length) * size_t(cvt.len_mult));
@@ -59,13 +74,12 @@ const std::vector<int16_t>* SoundPlayer::load(int sound) {
         cvt.buf = buffer.data();
         cvt.len = int(length);
         if (SDL_ConvertAudio(&cvt) == 0) {
-            auto& out = cache_[size_t(sound)];
             out.resize(size_t(cvt.len_cvt) / 2);
             std::memcpy(out.data(), buffer.data(), out.size() * 2);
         }
     }
     SDL_FreeWAV(data);
-    return cache_[size_t(sound)].empty() ? nullptr : &cache_[size_t(sound)];
+    return !out.empty();
 }
 
 void SoundPlayer::play(int channel, int sound, int loops) {

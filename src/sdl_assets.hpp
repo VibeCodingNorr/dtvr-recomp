@@ -7,7 +7,9 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace dtvr {
@@ -26,5 +28,13 @@ std::filesystem::path findCaseInsensitive(const std::filesystem::path& root, con
 // Composes europe.map from the season's SBB tiles as rally.exe does (loader
 // seg5:186A, cell lookup seg6:26B6, draw passes seg6:28D5); 8-bit with the SBB palette.
 Surface loadWorld(const std::filesystem::path& root, int month, bool views);
+
+// The frames of an SBS file as textures keyed by their upper-case names (rally.exe
+// looks frames up without regard to case, seg6:406D), colours from `palette`,
+// `transparent` as the colour key (0 for the game's sets, 0xFF for the finish and
+// victory scenes). Frames already in `into` are kept.
+void loadSbsTextures(SDL_Renderer* renderer, const std::filesystem::path& file, const SDL_Palette* palette,
+                     std::map<std::string, Texture>& into, int transparent = 0);
+std::string upperAscii(std::string s);
 
 } // namespace dtvr

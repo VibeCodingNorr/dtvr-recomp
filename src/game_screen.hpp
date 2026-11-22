@@ -9,6 +9,7 @@
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
 #include "estates_view.hpp"
+#include "finish_view.hpp"
 #include "save_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
@@ -49,6 +50,9 @@ public:
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
     OverviewView& overview() { return overview_; }
+    FinishView& finish() { return finish_; }
+    // Starts the finish sequence for a destination field and driver.
+    bool startFinish(int field, int player, Uint32 now);
     OptionsView& options() { return options_; }
     const Settings& settings() const { return settings_; }
     // Stores the options (seg1:ACE7 star) and applies them (Views: tile 0x33 on the map).
@@ -112,6 +116,7 @@ private:
     OverviewView overview_;
     Settings settings_;
     OptionsView options_;
+    FinishView finish_;
     int seenSpin_ = 0;
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;
@@ -142,6 +147,7 @@ struct GameWindowOptions {
     bool zoom = false;            // tests: zoom in for the current player
     bool openOptions = false;     // tests: open the options window
     bool demo = false;            // tests: start the demo (title entry Demo)
+    bool finish = false;          // tests: show the finish sequence of the destination
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

@@ -113,4 +113,21 @@ std::string oemToUtf8(const std::string& in) {
     return out;
 }
 
+std::string finishPhotoName(const std::string& oemTownName) {
+    std::string out;
+    for (unsigned char c : oemTownName.substr(0, 8)) {
+        switch (c) { // seg7:291B
+        case 0x84: out += 'a'; break;
+        case 0x94: out += 'o'; break;
+        case 0x81: out += 'u'; break;
+        case 0x8E: out += 'A'; break;
+        case 0x99: out += 'O'; break;
+        case 0x9A: out += 'U'; break;
+        case 0x20: out += '_'; break;
+        default: out += char(c);
+        }
+    }
+    return out;
+}
+
 } // namespace dtvr

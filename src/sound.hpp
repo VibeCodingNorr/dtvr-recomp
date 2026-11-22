@@ -27,6 +27,8 @@ public:
     bool available() const { return device_ != 0; }
     void setEnabled(bool enabled) { enabled_ = enabled; } // [Setup] Wave (DS:B5D0)
     void play(int channel, int sound, int loops = 0);
+    // seg1:3579: a WAV file by path (finish, voices); same channel rules.
+    void playFile(int channel, const std::filesystem::path& file);
     void stop(int channel);
 
 private:
@@ -34,6 +36,8 @@ private:
     static void callback(void* self, Uint8* stream, int len);
     void mix(int16_t* out, size_t samples);
     const std::vector<int16_t>* load(int sound);
+    bool convert(const std::filesystem::path& path, std::vector<int16_t>& out) const;
+    std::vector<int16_t> fileSamples_; // the last file of playFile
 
     std::filesystem::path root_;
     bool initialized_ = false;

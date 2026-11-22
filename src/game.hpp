@@ -171,6 +171,10 @@ public:
     // Counts the year balances shown (BILANZ, not saved) and the choice rand() % 7 of
     // the last one (seg8:88DF), for the window.
     int balanceSerial() const { return balanceSerial_; }
+    // Reached destinations (the finish sequence seg7:2628; not saved): count, field, driver.
+    int finishSerial() const { return finishSerial_; }
+    int finishField() const { return finishField_; }
+    int finishPlayer() const { return finishPlayer_; }
     int balanceChoice() const { return balanceChoice_; }
     int allowance() const { return counter_.allowance(); }
     int stepsTaken() const { return counter_.taken(); }
@@ -256,6 +260,7 @@ private:
     int remaining_ = 0;
     int totalStages_ = 0;
     int balanceSerial_ = 0, balanceChoice_ = 0;
+    int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;
     std::vector<std::string> messages_;
 };
 

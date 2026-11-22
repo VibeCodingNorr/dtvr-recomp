@@ -60,6 +60,10 @@ struct Town {
 };
 std::vector<Town> parseTowns(const std::vector<uint8_t>& data, uint16_t count);
 
+// seg7:28AD: the photo's name from the first eight characters of the town's name
+// (OEM code page): umlauts to their base letters, a space to '_'.
+std::string finishPhotoName(const std::string& oemTownName);
+
 // Converts OEM code page 850 text (as stored in the game files) to UTF-8.
 std::string oemToUtf8(const std::string& text);
 

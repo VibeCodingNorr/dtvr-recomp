@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "sdl_assets.hpp"
 
+#include "sbs.hpp"
 #include "worldmap.hpp"
 
 #include <algorithm>
@@ -73,6 +74,28 @@ Surface loadWorld(const fs::path& root, int month, bool views) {
     for (int y = 0; y < side; ++y)
         std::copy_n(&pixels[size_t(y) * side], side, static_cast<uint8_t*>(world->pixels) + y * world->pitch);
     return world;
+}
+
+std::string upperAscii(std::string s) {
+    for (char& c : s) c = char(std::toupper(static_cast<unsigned char>(c)));
+    return s;
+}
+
+void loadSbsTextures(SDL_Renderer* renderer, const fs::path& file, const SDL_Palette* palette,
+                     std::map<std::string, Texture>& into, int transparent) {
+    if (file.empty() || !palette) return;
+    for (const SbsFrame& frame : parseSbs(readFile(file)).frames) {
+        Surface surface(SDL_CreateRGBSurfaceWithFormat(0, frame.width, frame.height, 8, SDL_PIXELFORMAT_INDEX8),
+                        SDL_FreeSurface);
+        if (!surface) continue;
+        SDL_SetSurfacePalette(surface.get(), const_cast<SDL_Palette*>(palette));
+        for (int y = 0; y < frame.height; ++y)
+            std::copy_n(&frame.pixels[size_t(y) * frame.width], frame.width,
+                        static_cast<uint8_t*>(surface->pixels) + y * surface->pitch);
+        SDL_SetColorKey(surface.get(), SDL_TRUE, Uint32(transparent));
+        into.emplace(upperAscii(frame.name),
+                     Texture(SDL_CreateTextureFromSurface(renderer, surface.get()), SDL_DestroyTexture));
+    }
 }
 
 } // namespace dtvr

@@ -68,6 +68,10 @@ int main() {
     std::memset(tow.data() + 6, 'A', 28);
     CHECK(parseTowns(tow, 1)[0].name.size() == 28);
 
+    // Finish photos (seg7:28AD): eight characters, umlauts and spaces mapped.
+    CHECK(finishPhotoName("Br\x81ssel") == "Brussel" && finishPhotoName("San Marino") == "San_Mari");
+    CHECK(finishPhotoName("K\x94ln") == "Koln" && finishPhotoName("Amsterdam") == "Amsterda");
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("board_test: OK");
     return failures != 0;

@@ -113,7 +113,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
   `src/overview_view.{hpp,cpp}`: the overview map; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
-  sound effects (cues from `Game::takeSounds`).
+  sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),

@@ -107,7 +107,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     (save format 4, rules revision 27).
 44. Year balance: its fixed random draws (rules revision 28); timing-dependent draws
     of the original cannot be reproduced.
-45. *Next:* the finish, victory and year balance shows (ZIEL, SIEG, BILANZ).
+45. Finish sequence ZIEL at each destination: town photo, banner, band, crowd and the
+    driver's car with the original animations and sound.
+46. *Next:* the victory and year balance shows (SIEG, BILANZ).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

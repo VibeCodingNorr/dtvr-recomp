@@ -231,6 +231,9 @@ void Game::arrive() {
         if (field == destination_) {
             const auto r = reachDestination(remaining_, calendar_.inflation);
             if (!r.gameOver) rng_.random(1); // seg2:12D8: music Z1 / Z2 before the finish (seg7:2628)
+            ++finishSerial_;
+            finishField_ = field;
+            finishPlayer_ = current_;
             economy_.addMoney(current_, r.reward);
             messages_.push_back(who + " erreicht das Ziel " + townName(field) + ": " + money(r.reward));
             if (r.gameOver) // seg2:1231: the Master-Rallye texts 354-356

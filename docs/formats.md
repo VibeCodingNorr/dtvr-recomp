@@ -1238,10 +1238,40 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Corrections:** the rebuild did not draw these numbers before round 43
   (rules revision 27) and did not keep the total stage count DS:A106 (save
   format 4, record `stages`).
-- **Pictures** (not shown yet): butt/ziel.bmp, zielausl.bmp, zielclub.bmp,
-  sieg.bmp, bilanz.bmp (480 × 360), butt/<lang>/banner.bmp, the town photos
-  butt/<lang>/ziel/<town>.bmp (480 × 240) and the animations in
-  butt/sbs/ziel and butt/sbs/sieg; window ZIEL 0x1F0 × 0x178.
+- **Pictures:** butt/ziel.bmp, zielausl.bmp, zielclub.bmp, sieg.bmp, bilanz.bmp
+  (480 × 360), butt/<lang>/banner.bmp, the town photos butt/<lang>/ziel/<town>.bmp
+  (480 × 240) and the animations in butt/sbs/ziel and butt/sbs/sieg.
+
+### Finish sequence (round 45)
+
+- **seg7:2628:** window ZIEL (0x1F0 × 0x178, child of the canvas at (0, 0)); the
+  DIB `%s\ziel.bmp` (DS:4CB6, butt directory; missing → no sequence); the banner
+  `%s\%c\banner.bmp` blitted at (6, 117) with colour key 0xFF (seg2:9497); the
+  driver's car `%cZielCar.sbs` (letter of seg2:2D43) and the files of the table
+  DS:4BE8 (pauke, duo, floete, tuba, genie, happy, paar, jazz, hut, ballon, frau,
+  winken, zoepfe, pfahl, lampe) from `%s\sbs\Ziel\%s`; the town photo
+  `%s\%c\ziel\%s.bmp` (DS:4CF0) whose name is the first eight characters of
+  the town name with ö/ü/ä/Ä/Ö/Ü → o/u/a/A/O/U and space → `_` (seg7:28AD).
+  seg7:1CE0 copies the photo only where the DIB holds 0xFF (seg7:1DDF), so the
+  trees of ziel.bmp stay in front; seg7:1E3C draws first frames of six files.
+  `%s\snd\z.wav` (DS:4D02) is played (seg1:3579).
+- **Records** (seg7:2C55 ff., 0x40 bytes each at DS:30): position, start frame
+  (+0xC), repetitions 999 and the definitions DS:4594 (pauke, 209/182), 419C
+  (duo, 339/221), 427C (flöte, 130/206), 461C (tuba, 267/209), 4314 (genie,
+  25/214, 20 frames), 4420 (happy, 79/182), 4500 (paar, 405/175), 4490 (jazz,
+  180/189), 4760 (car CAR1–3, 460/244, delay 1), 43B0 (hut, 269/304), 4120
+  (ballon, 175/280, delay 3), 420C (frau, 78/296), 468C (winken, 29/294), 46FC
+  (zöpfe, 347/300), 4736 (pfahl, 0/82), 4744 (lampe, 117/129); delay 4 unless
+  noted. The SBS frames of these files use index 0xFF as transparent colour.
+- **Loop** seg7:3536: the car record moves 2 pixels left per pass (seg7:3564)
+  until x < −160 (0xFF60), then the window closes; each pass draws the records
+  over the DIB (seg2:74E4), advances them (seg2:6DCB), shows the DIB (seg2:6F69)
+  and waits 20 ms (seg6:0CDF). No random numbers.
+- **Rebuilt** (`src/finish_view.cpp`, name mapping `finishPhotoName` in
+  `src/board.cpp`): the scene and its animation when a destination is reached
+  and the car has arrived. **Assumptions:** the window is centred on the canvas
+  with a black frame, records draw with their top-left corner at the position,
+  a key or click ends the sequence early.
 
 ### Year balance (round 44)
 
