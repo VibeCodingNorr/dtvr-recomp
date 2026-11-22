@@ -29,6 +29,9 @@ public:
     bool active() const { return active_; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     void stop() { active_ = false; }
+    // ZIEL (seg7:50D6): Escape, Space, Enter or a left click stop the voices
+    // (seg5:607B(-1)) and clear DS:A29C, which ends the current loop only.
+    void skip(Uint32 now);
     void update(Uint32 now);
     void draw(Uint32 now);
 
@@ -57,6 +60,9 @@ private:
     std::vector<std::string> queue_; // voices of the final stage
     unsigned seed_ = 1;
     bool active_ = false;
+    bool skipped_ = false; // the voice of this stage was stopped by a key
+    bool ending_ = false;  // mode 3 after a key: 60 more passes (seg7:4B89)
+    Uint32 endAt_ = 0;
     Stage stage_ = Stage::Intro;
     Uint32 stageStart_ = 0;
 };

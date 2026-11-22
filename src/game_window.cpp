@@ -510,8 +510,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 openTitle();
                 continue;
             }
-            if (screen.announcement().active()) { // assumption: a key or click ends it early
-                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.announcement().stop();
+            if (screen.announcement().active()) { // ZIEL seg7:50D6
+                const bool key = event.type == SDL_KEYDOWN
+                                 && (event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_SPACE
+                                     || event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER);
+                if (key || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT))
+                    screen.announcement().skip(SDL_GetTicks());
                 continue;
             }
             if (screen.balance().active()) { // a click lets the show master go on (seg8:8D5C)

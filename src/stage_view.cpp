@@ -34,6 +34,7 @@ StageView::StageView(SDL_Renderer* renderer, const fs::path& root, int canvasWid
 
 bool StageView::start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now) {
     active_ = false;
+    ending_ = skipped_ = false;
     const fs::path butt("butt");
     Surface scene = loadBmp(findCaseInsensitive(root_, butt / "club_map.bmp")); // DS:4D19
     if (!scene || !scene->format->palette) return false;
@@ -65,6 +66,7 @@ void StageView::voice(const std::string& name) {
 }
 
 bool StageView::voiceDone(Uint32 now, Uint32 minimum) const {
+    if (skipped_) return true; // seg1:3E64 reports the stopped voice as finished
     if (now - stageStart_ < minimum) return false;
     if (now - stageStart_ > 20000) return true; // a stalled audio device must not hold the scene
     return !sound_ || !sound_->busy(kVoiceChannel);
@@ -78,7 +80,26 @@ void StageView::jump() { // the light shows a random destination town (display o
     light_ = candidates_[(seed_ >> 16) % candidates_.size()];
 }
 
+void StageView::skip(Uint32 now) {
+    if (!active_ || ending_) return;
+    if (sound_) sound_->stop(kVoiceChannel); // seg5:607B(-1)
+    if (mode_ == 3) {                        // loop seg7:4730..4B85
+        if (stage_ == Stage::Intro) { skipped_ = true; return; } // seg7:4B38: state 0 goes on without Master1
+        ending_ = true;                                          // the loop ends, 60 passes follow
+        endAt_ = now + 60 * kSceneStepMs;
+        return;
+    }
+    // Loop seg7:3BB5..46E8 (seg7:44B1): before the final part, or while Part03 plays,
+    // the final part starts (state 4, seg7:46A7); later the announcement ends.
+    if (stage_ != Stage::Final || queue_.size() == 2) {
+        enter(Stage::Final, now);
+        return;
+    }
+    active_ = false;
+}
+
 void StageView::enter(Stage stage, Uint32 now) {
+    skipped_ = false;
     stage_ = stage;
     stageStart_ = now;
     lastPass_ = 0;
@@ -106,6 +127,10 @@ void StageView::enter(Stage stage, Uint32 now) {
 
 void StageView::update(Uint32 now) {
     if (!active_) return;
+    if (ending_) {
+        if (int(now - endAt_) >= 0) active_ = false;
+        return;
+    }
     const int pass = passes(now);
     if (stage_ == Stage::Pull || stage_ == Stage::Search) {
         // seg7:3D35: until the 20th jump every 4 passes, then slower (wait > jumps - 16).

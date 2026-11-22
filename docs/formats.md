@@ -1578,12 +1578,17 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   stage start excluded; the scene for modes 1–3 with the original voices. The
   light's jumps use a display-only random generator. **Assumptions:** the
   mode-3 order (Master1, search, Master2), the show master's frames between the
-  states, at most 20 s per voice. **Input (round 90, not yet rebuilt):** ZIEL
-  (seg7:50D6) handles WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN:
-  seg5:607B(−1) and DS:A29C = 0, which ends the current loop only — intro
-  (seg7:3536..3677), search (seg7:3BB5..46E8), final (seg7:4730..4B85; at seg7:4B38
-  the flag is set again while [bp−0x34] = 0), then 60 passes. The rebuild still
-  ends the whole announcement on any key or click (deviation, to be corrected).
+  states, at most 20 s per voice.
+- **Input** (round 91): ZIEL (seg7:50D6) handles WM_KEYDOWN with Escape, Space or
+  Enter and WM_LBUTTONDOWN only: seg5:607B(−1) stops the voices and DS:A29C = 0
+  ends the current loop. Modes 1 / 2 run the loop seg7:3BB5..46E8 with the
+  sub-state [bp−0x34] (1 Part01, 2 lever, 3 Part02, 4 Part03, 5 town, 6 Part04):
+  seg7:44B1 restarts the final part (state 4, seg7:46A7) when the key comes before
+  it or while Part03 plays, otherwise the loop and the announcement end (jump to
+  seg7:4C28). Mode 3 runs seg7:4730..4B85: during Master1 (state 0) seg7:4B38 sets
+  the flag again, so only the voice stops; later the loop ends and 60 passes
+  follow (seg7:4B89). Rebuilt in `StageView::skip`. The loop seg7:3536..3677 that
+  also tests DS:A29C belongs to the code before seg7:372F, not to the announcement.
 
 ### Year balance (round 44)
 
