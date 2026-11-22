@@ -5,6 +5,7 @@
 #pragma once
 
 #include "layout.hpp"
+#include "map_scroll.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
@@ -89,6 +90,8 @@ public:
     // Smooth driving (round 31): the drawn vehicle runs after the game position at
     // 4 pixels per 50 ms tick (seg2:1CB0: DS:19EA / 19F4 = 2, shifted by DS:34 = 1).
     void advanceVehicles(Uint32 now);
+    // seg2:3216: centre the map on the current player (Space, zoom, turn start, spin).
+    void centreOnPlayer();
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,
@@ -159,6 +162,10 @@ private:
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
     Uint32 lastAdvance_ = 0;
+    MapViewSize viewSize() const;
+    TilePoint origin_{};          // DS:956A / 9568 outside Umfeld
+    bool originSet_ = false;
+    int seenTurn_ = -1, seenCentreSpin_ = -1;
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick
 };
 

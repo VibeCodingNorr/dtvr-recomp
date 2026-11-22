@@ -1349,6 +1349,31 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   twice as large (world and vehicles); Umfeld uses the halved viewport. The zoom
   flag is not part of the save file yet.
 
+### Map scrolling (round 67)
+
+- **Origin** DS:956A / 9568 (tiles of 16 world pixels); DS:94DA..94E0 the visible
+  world area (map window − 16, halved with zoom, see "Zoom").
+- **Centre** seg6:3064(px, py): origin = (p + 16 − size / 2) >> 4 per axis, then
+  seg6:2B19(1). seg2:3216(player) passes the player record's +0x16 / +0x18.
+  Callers: Space (seg4:01B2), Insert / Delete (seg4:022A), the zoom commands
+  (seg4:08A7 / 097E), Tschüss (seg3:29E7), Flugzeug (seg3:3314), seg5:5E86, an
+  event (seg8:2238), the player change (seg2:044E) and the spin (seg2:64E5).
+  seg8 also centres on event places directly (seg8:1CED, 3AA0 with DS:69F0,
+  4023, 5DA1 and others).
+- **Clamp** seg6:2B19: x in [0, 0xFF − ⌈width / 16⌉], y in [0, 0x100 − ⌈height / 16⌉].
+- **Edge scroll** seg2:29EB, called from the movement tick seg2:239F (after the
+  pixel delta DS:956C / 956E = table DS:19EA / 19F4 << DS:34 is chosen): the view
+  inflated by −32 must contain the vehicle rectangle (player +0x30..+0x36);
+  otherwise seg6:30F8(direction) moves the origin, checked up (1), down (3),
+  right (2), left (4), one direction per tick: with zoom by (size & ~0x20) >> 5
+  tiles (half the view), else by (size >> 6) · 3 (three quarters).
+- **Rebuilt** in `src/map_scroll.cpp` (SDL-free, tested) and
+  `GameScreen::advanceVehicles` / `centreOnPlayer`: centring at a player change,
+  a spin, Space, zoom and when a vehicle is placed without driving (Tschüss,
+  Flugzeug); the edge check every movement tick of the current vehicle.
+  **Not rebuilt:** centring on event places; the vehicle rectangle is taken as
+  its 16 × 16 field cell.
+
 ### Stage end (round 43)
 
 - **Order at the destination** (seg2:11A6 ff.), stages left DS:A104 ≠ 0: music

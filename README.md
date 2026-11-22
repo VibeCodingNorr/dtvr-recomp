@@ -135,7 +135,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 64. Risiko texts 41001-41003 and press sounds as in seg7:69DE ff.
 65. Obstacle question: Yes / No message window with the card picture before a clearing card is used.
 66. Quit question (text 700, Yes / No) for Rallye beenden and the key Q.
-67. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
+67. Map scrolling as rally.exe: centring on turn, spin, Space and zoom; edge jumps while driving.
+68. *Next:* centring on event places and the remaining messages of the turn.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -680,6 +680,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (key == SDLK_q && !screen.title()) { askQuit(false); continue; } // seg4:0259: Q -> seg4:0EDF
+            if (key == SDLK_SPACE && play.game().phase() != Game::Phase::Risiko && !screen.title()) {
+                screen.centreOnPlayer(); // seg4:01B2 -> seg2:3216, 05A8
+                continue;
+            }
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
             if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();

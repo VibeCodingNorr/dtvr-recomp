@@ -111,6 +111,21 @@ SDL_Texture* GameScreen::art(const fs::path& relative) {
     return raw;
 }
 
+MapViewSize GameScreen::viewSize() const {
+    const int z = zoomFactor();
+    return MapViewSize{layout_.viewport.w / z, layout_.viewport.h / z, z == 2};
+}
+
+void GameScreen::centreOnPlayer() {
+    const int p = game_.currentPlayer();
+    if (p < 0) return;
+    const Field& f = board_.fields[size_t(game_.playerField(p))];
+    SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
+    if (shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
+    origin_ = centredOrigin(at.x, at.y, viewSize()); // seg6:3064 with the vehicle position
+    originSet_ = true;
+}
+
 void GameScreen::advanceVehicles(Uint32 now) {
     constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
     const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
@@ -131,7 +146,10 @@ void GameScreen::advanceVehicles(Uint32 now) {
             bool linked = false;
             if (from >= 0)
                 for (int16_t n : board_.fields[size_t(from)].next) linked |= n == field;
-            if (!linked || (at.x != target.x && at.y != target.y)) at = target;
+            if (!linked || (at.x != target.x && at.y != target.y)) {
+                at = target;
+                if (p == game_.currentPlayer()) centreOnPlayer(); // Tschüss / Flugzeug: seg3:29E7 / 3314
+            }
             from = field;
         }
         int budget = ticks * kPixelsPerTick;
@@ -142,6 +160,16 @@ void GameScreen::advanceVehicles(Uint32 now) {
         };
         approach(at.x, target.x);
         approach(at.y, target.y);
+        // seg2:239F: every movement tick of the current vehicle keeps it 32 pixels inside
+        // the view (seg2:29EB); a step that leaves it scrolls by seg6:30F8.
+        if (p == game_.currentPlayer() && originSet_ && ticks > 0)
+            edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
+    }
+    // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
+    if (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_) {
+        seenTurn_ = game_.turnSerial();
+        seenCentreSpin_ = game_.spinSerial();
+        centreOnPlayer();
     }
 }
 
@@ -189,6 +217,7 @@ bool GameScreen::startVictory(Uint32 now) {
 void GameScreen::toggleZoom() {
     const int p = game_.currentPlayer();
     if (p >= 0) zoom_[size_t(p)] = !zoom_[size_t(p)];
+    centreOnPlayer(); // seg4:0883 / 0966 -> seg2:3216
 }
 
 int GameScreen::zoomFactor() const {
@@ -244,8 +273,8 @@ bool GameScreen::handleSurroundings(const SDL_Event& event) {
 
 SDL_Point GameScreen::viewOrigin() const {
     if (surroundings_) return {surroundOrigin_.x * WorldMap::kTile, surroundOrigin_.y * WorldMap::kTile};
-    // Assumption until the scrolling code is traced: the viewport is centred on
-    // the current player's field and kept inside the 4096 x 4096 world.
+    if (originSet_) return {origin_.x * WorldMap::kTile, origin_.y * WorldMap::kTile}; // DS:956A / 9568
+    // Before the first centring: centred on the current player's field.
     constexpr int side = WorldMap::kSize * WorldMap::kTile;
     const int p = game_.currentPlayer();
     const Field& f = board_.fields[size_t(game_.playerField(p))];
