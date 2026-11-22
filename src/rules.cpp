@@ -222,7 +222,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         if (p.flags & 0x1) { // seg2:08C2: checked first; ends the flag checks either way
             p.flags &= 0xFFFE;
             if (hooks.dragoHolder == player) {
-                rng.random(4); // text 3251 + random(4) via seg2:B74D
+                change.texts.push_back({3251 + rng.random(4), player}); // seg2:B74D
                 change.satOut.push_back(player);
                 continue;
             }
@@ -232,7 +232,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         const uint16_t sitOut = (p.flags & 0x2) ? 0x2 : (p.flags & 0x4) ? 0x4 : 0;
         if (sitOut) {
             p.flags &= uint16_t(~sitOut);
-            rng.random(2); // texts 1000+ / 1010+ (seg2:0915, seg2:09B3)
+            change.texts.push_back({(sitOut == 0x2 ? 1000 : 1010) + rng.random(2), player}); // seg2:0915 / 09B3
             change.satOut.push_back(player);
             if (hooks.afterSitOut) hooks.afterSitOut(player);
             continue;

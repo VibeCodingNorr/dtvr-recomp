@@ -70,6 +70,7 @@ int townAtCell(const std::vector<Town>& towns, Cell c);
 
 // seg8:652C / 6394 on expiry of an investment: random(3) == 0 loses it,
 // otherwise twice the sum (DS:876E) is paid; a text random(2) follows either way.
-double investmentPayout(double amount, MsRandom& rng);
+// `textDraw` receives the random(2) of the text.
+double investmentPayout(double amount, MsRandom& rng, int* textDraw = nullptr);
 
 } // namespace dtvr

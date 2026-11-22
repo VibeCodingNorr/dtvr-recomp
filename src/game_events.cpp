@@ -63,6 +63,8 @@ void Game::applyEvent(EventKind kind) {
     case EventKind::FootballClub: // seg8:6FBF: offered to the player whose turn starts
         if (economy_.money(eventPlayer_).cash > 10000.0) {         // DS:8776
             offer_ = kind;
+            // The offer window draws its text on creation (seg8:7551): 5321 / 5401 + random(2).
+            notice((kind == EventKind::Professor ? 5321 : 5401) + rng_.random(2), {playerArg(eventPlayer_)});
             messages_.push_back("Ereignis " + eventName(kind) + ": " + playerName(eventPlayer_)
                                 + " kann investieren (I)");
         } else {

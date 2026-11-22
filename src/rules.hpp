@@ -136,6 +136,7 @@ struct TurnChange {
     int monthsAdvanced = 0;
     int yearsEnded = 0;
     std::vector<int> satOut;       // players that consumed a sit-out flag
+    std::vector<std::pair<int, int>> texts; // (language text, player) announced on the way
 };
 // Callbacks so the economy runs at the original points of seg2:0784-07EB.
 struct TurnHooks {

@@ -1052,6 +1052,30 @@ showmaster, word-wrapped text). Not yet: the remaining callers (cards, Dr.
 Drago, town and card fields, investments), the button variants and the
 showmaster's other portraits.
 
+### More messages (round 26)
+
+- **Text helper** seg2:B74D(buffer, size, base, count) = base + random(count − 1).
+  Dr. Drago (seg2): spending 3151 (20 texts, amount, seg2:BAD4), dear purchase
+  3101 (3, town and price, seg2:BC41), giving a property away 3001 (11, town,
+  seg2:BD42), tearing a card 3051 (8, seg2:BE70), giving money 3201 (5, amount
+  and recipient, seg2:BEE6), breakdown 3251 (5, seg2:C05F, at the turn change).
+  Weihnachten (seg3): 13001 not December (seg3:1189), 13006 card (seg3:1223),
+  13011 money (seg3:1292), three texts each.
+- **Turn start** of the next player: Zucker clears bit 1 and shows 1000 +
+  random(2) (seg2:090A), Schlafen clears bit 2 and shows 1010 + random(2)
+  (seg2:09A8). Opening the card window (seg4:0930) with blocked cards shows
+  1020 + random(2) (seg2:0B08). A full hand shows text 403 (no random number).
+- **Investments**: the offer window (procedure from seg8:7098) draws its text on
+  creation, 5321 + random(2) (professor) or 5401 + random(2) (football club),
+  i.e. only when the offer appears (cash > 10,000). Results: professor 5341 win
+  (amount) / 5381 loss, football club 5421 win / 5441 loss.
+- **Corrections:** the rebuild did not draw the random numbers of the blocked
+  card window and of the investment offer before round 26.
+
+Rebuilt in the game (notices with arguments) and shown by the message window.
+Not yet: the texts of the playable cards' own handlers (seg3), the card field,
+the town dialog and the stage results.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

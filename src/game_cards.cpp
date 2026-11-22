@@ -28,6 +28,8 @@ bool Game::playCard(int handSlot, int target) {
     const std::string who = playerName(current_);
     const std::string card = cardTypes()[size_t(type)].name;
     if (players_[size_t(current_)].flags & kFlagCardsBlocked) {
+        // seg4:0930 -> seg2:0B08: opening the card window shows text 1020 + random(2).
+        notice(1020 + rng_.random(2), {playerArg(current_)});
         messages_.push_back(who + ": Karten blockiert (Text 1020)");
         return false;
     }

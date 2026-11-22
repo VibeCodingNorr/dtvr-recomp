@@ -79,9 +79,10 @@ int pickDamageTown(const std::vector<Town>& towns, const std::vector<uint8_t>& o
     return list[size_t(rng.random(int(list.size()) - 1))];
 }
 
-double investmentPayout(double amount, MsRandom& rng) {
+double investmentPayout(double amount, MsRandom& rng, int* textDraw) {
     const bool lost = rng.random(3) == 0;
-    rng.random(2);
+    const int text = rng.random(2);
+    if (textDraw) *textDraw = text;
     return lost ? 0.0 : amount * 2.0;
 }
 

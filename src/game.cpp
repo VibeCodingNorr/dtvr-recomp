@@ -212,6 +212,7 @@ void Game::arrive() {
         if (handCount(current_) == 8) { // seg3:1057: one card must be discarded first (text 403)
             yellowPending_ = true;
             messages_.push_back(who + ": Hand voll - erst eine Karte ablegen (Text 403)");
+            notice(403);
             break;
         }
         giveYellowCard();
@@ -251,6 +252,11 @@ NoticeArg Game::townArg(int town) const {
     NoticeArg a;
     if (town >= 0 && size_t(town) < towns_.size()) a.text = oemToUtf8(towns_[size_t(town)].name);
     return a;
+}
+
+double Game::propertyPrice(const Economy::PropertyRef& p) const {
+    if (p.town < 0 || size_t(p.town) >= towns_.size() || p.entry < 0 || p.entry > 9) return 0;
+    return towns_[size_t(p.town)].entries[size_t(p.entry)].value;
 }
 
 int Game::spin(int reels, int maximum) {
@@ -293,7 +299,11 @@ void Game::advanceTurn() {
     declineInvestment();
     for (const auto& gone : obstacles_.tick()) { // seg8:61FE before the player loop (seg2:071B)
         if (gone.type == kProfessorInvestment || gone.type == kFootballInvestment) {
-            const double payout = investmentPayout(gone.amount, rng_); // seg8:652C / 6394
+            int text = 0;
+            const double payout = investmentPayout(gone.amount, rng_, &text); // seg8:652C / 6394
+            const bool professor = gone.type == kProfessorInvestment;
+            if (payout > 0) notice((professor ? 5341 : 5421) + text, {playerArg(gone.player), moneyArg(payout)});
+            else notice((professor ? 5381 : 5441) + text, {playerArg(gone.player)});
             economy_.addMoney(gone.player, payout);
             messages_.push_back("Investition von " + playerName(gone.player)
                                 + (payout > 0 ? ": doppelt zurueck!" : ": verloren"));
@@ -310,6 +320,7 @@ void Game::advanceTurn() {
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
     for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
+    for (const auto& [text, p] : change.texts) notice(text, {playerArg(p)});
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
     if (change.player < 0) { phase_ = Phase::GameOver; return; }
     if (demoEnd_ && !humansLeft()) { // seg2:0869: no human and DS:16 == 1

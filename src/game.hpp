@@ -172,6 +172,7 @@ private:
     static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
+    double propertyPrice(const Economy::PropertyRef& p) const;
     void startRisiko();                     // game_risiko.cpp
     void startRisikoLevel(int level);
     void finishRisiko();

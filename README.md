@@ -78,7 +78,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 24. Vehicles of the drivers on the map with their facing and driving animation.
 25. Original message window with language texts for the solo opponent, the
     yellow field and the events; East opening random draw corrected.
-26. *Next:* messages of cards, Dr. Drago and towns, the menu, smooth driving.
+26. Messages of Dr. Drago, sit-outs, blocked cards, Christmas and investments;
+    two missing random draws corrected.
+27. *Next:* the cards' own messages, the menu and smooth driving.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -14,7 +14,7 @@ std::string amount(double v) {
 }
 
 // seg2:B74D: picks one of `count` texts with random(count - 1).
-void pickText(MsRandom& rng, int count) { rng.random(count - 1); }
+int pickText(MsRandom& rng, int count) { return rng.random(count - 1); }
 
 } // namespace
 
@@ -29,28 +29,30 @@ void Game::dragoAct(int player) {
             const auto free = economy_.pickProperty(kNoOwner, limit, rng_);
             if (free.town < 0) return;
             economy_.buyWithFactor(player, free, 1.5); // DS:8686
-            pickText(rng_, 3);
+            notice(3101 + pickText(rng_, 3), {townArg(free.town), moneyArg(propertyPrice(free) * 1.5)});
             messages_.push_back(who + "kauft teuer ein Grundstueck");
             return;
         }
         economy_.sellWithFactor(player, p, 0.0); // DS:867E: given away
-        pickText(rng_, 11);
+        notice(3001 + pickText(rng_, 11), {townArg(p.town)}); // seg2:BD42
         messages_.push_back(who + "verschenkt ein Grundstueck");
     };
     switch (action) {
     case DragoAction::Spend: { // seg2:BA92
-        pickText(rng_, 20);
+        const int text = 3151 + pickText(rng_, 20); // seg2:BAD4
         const double sum = dragoAmount(calendar_.month, drago_.form, calendar_.inflation, rng_);
         economy_.addMoney(player, -sum);
+        notice(text, {moneyArg(sum)});
         rng_.random(1); // seg2:BB5E: choice of the follow-up message
         messages_.push_back(who + "gibt " + amount(sum) + " aus");
         break;
     }
     case DragoAction::GiveMoney: { // seg2:BEA4
-        pickText(rng_, 5);
+        const int text = 3201 + pickText(rng_, 5); // seg2:BEE6
         const double sum = dragoAmount(calendar_.month, drago_.form, calendar_.inflation, rng_);
         int to = economy_.poorest(activePlayers());
         if (to == player) to = randomOtherPlayer(players_, player, rng_);
+        notice(text, {moneyArg(sum), playerArg(to)});
         economy_.addMoney(player, -sum);
         economy_.addMoney(to, sum);
         messages_.push_back(who + "schenkt Spieler " + std::to_string(to + 1) + " " + amount(sum));
@@ -64,7 +66,7 @@ void Game::dragoAct(int player) {
         if (slot == Deck::kTaken) break; // the chosen slot may be empty
         messages_.push_back(who + "zerreisst die Karte " + cardName(slot));
         discard(player, index); // seg2:BE3A -> seg2:3C62
-        pickText(rng_, 8);
+        notice(3051 + pickText(rng_, 8)); // seg2:BE70
         break;
     }
     case DragoAction::GiveProperty: giveProperty(); break;
@@ -72,7 +74,7 @@ void Game::dragoAct(int player) {
         const auto free = economy_.pickProperty(kNoOwner, limit, rng_);
         if (free.town < 0) break;
         economy_.buyWithFactor(player, free, 1.5);
-        pickText(rng_, 3);
+        notice(3101 + pickText(rng_, 3), {townArg(free.town), moneyArg(propertyPrice(free) * 1.5)}); // seg2:BC41
         messages_.push_back(who + "kauft teuer ein Grundstueck");
         break;
     }
@@ -103,16 +105,17 @@ void Game::placeDragoForStage() {
 bool Game::playWeihnachten() {
     const std::string who = playerName(current_);
     if (unsigned(calendar_.month) % 12 != 11) { // only in December (seg3:1174)
-        pickText(rng_, 3);
+        notice(13001 + pickText(rng_, 3)); // seg3:1189
         messages_.push_back(who + ": Weihnachten ist noch nicht - Zug verloren");
     } else if (handCount(current_) < 4 && deck_.peek() != Deck::kTaken) {
-        pickText(rng_, 3);
+        notice(13006 + pickText(rng_, 3), {playerArg(current_)}); // seg3:1223
         const int slot = deck_.take(); // seg2:4327
         addToHand(hands_[size_t(current_)], slot);
         messages_.push_back(who + " bekommt zu Weihnachten die Karte " + cardName(slot));
     } else {
-        pickText(rng_, 3);
+        const int text = 13011 + pickText(rng_, 3); // seg3:1292
         const double gift = (rng_.random(10) + 10) * 1000.0 * calendar_.inflation; // DS:862E
+        notice(text, {playerArg(current_), moneyArg(gift)});
         economy_.addMoney(current_, gift);
         messages_.push_back(who + " bekommt zu Weihnachten " + amount(gift));
     }
