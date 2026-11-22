@@ -1665,7 +1665,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/nails_view.cpp`): the window with the triangles, the arrow
   keys and text 510. **Not rebuilt / assumptions:** the paint of the window (the
   arrows are filled in the text colour, the compass interior stays empty), the
-  water case, the film; Escape / right button cancel; the window centred.
+  film; Escape / right button cancel; the window centred.
+- **Water case** (round 75, rules revision 32): player record +0x2D is the
+  vehicle state — 0 land, 1 turning into a boat (+0x2E counts up to 0x18,
+  seg2:1793), 2 boat, 3 turning back (seg2:17EE, back to 0 at +0x2E = 0) —
+  set when a seaway starts or ends (seg2:280F ff.). With state 2 seg3:1CD8 plays
+  sound 0x12 on channel 5 and text 5500 and jumps to the common end (seg3:1E3D,
+  WM_COMMAND 10000 spins); no direction is asked and no obstacle placed, the
+  card is used. Rebuilt as `Game::nailsInWater` (the current field's cell is a
+  seaway, kRoad | kSeaRoute as seg2:1EB5); **approximation:** the boat state is
+  taken from the field cell, not from the drawn transformation.
 
 ### Card shop (round 52)
 

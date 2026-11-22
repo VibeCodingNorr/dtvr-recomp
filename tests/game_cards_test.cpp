@@ -2,6 +2,8 @@
 // Game-level tests for the cards added in round 13 and the investment offer.
 #include "estates.hpp"
 #include "game.hpp"
+#include "rules.hpp"
+#include "worldmap.hpp"
 
 #include <cstdio>
 #include <memory>
@@ -65,6 +67,38 @@ int main() {
         CHECK(g->obstacles().count() == 1 && g->obstacles().slots()[0].type == kNails);
         CHECK(g->phase() == Game::Phase::Roll);
     } else CHECK(false);
+
+    // Nägel on a seaway (round 75, seg3:1CCF): no direction, no obstacle, Platsch and
+    // text 5500; the card is used. Field 0 (cell 0 / 0) is a seaway here.
+    {
+        std::vector<uint8_t> pit(0x4000, 0);
+        pit[(0x1000 + 9) * 2] = TileProperties::kRoad | TileProperties::kSeaRoute;
+        const TileProperties props(pit);
+        std::vector<uint8_t> mapData(262144, 0);
+        mapData[0] = 9; // layer 0, cell (0, 0): tile 9
+        const WorldMap map(mapData);
+        std::unique_ptr<Game> g;
+        int nails = -1;
+        for (uint16_t seed = 1; seed < 5000 && !g; ++seed) {
+            auto c = std::make_unique<Game>(board, towns, 1, 0, seed, 8, &map, &props, false);
+            c->setRandomEvents(false);
+            for (int s = 0; s < 8 && nails < 0; ++s)
+                if (c->deck().typeOfSlot(c->hand(0)[size_t(s)]) == 18) nails = s;
+            if (nails >= 0) g = std::move(c);
+        }
+        CHECK(g != nullptr);
+        if (g) {
+            CHECK(g->nailsInWater());
+            const int cards = g->handCount(0);
+            g->takeNotices();
+            g->takeSounds();
+            CHECK(g->playCard(nails, 0) && g->obstacles().count() == 0 && g->handCount(0) == cards - 1);
+            bool text = false, splash = false;
+            for (const Notice& n : g->takeNotices()) text |= n.text == 5500;
+            for (const SoundCue& c : g->takeSounds()) splash |= c.channel == 5 && c.sound == 0x12;
+            CHECK(text && splash);
+        }
+    }
 
     // Obstacle question (round 65, seg2:2404): a human with the clearing card is asked
     // (text 600, Yes / No, card picture); No keeps card and obstacle, Yes drives on.

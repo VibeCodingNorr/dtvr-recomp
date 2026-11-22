@@ -626,6 +626,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                         if (candidates.size() == 1 && play.game().playCard(slot, candidates.front())) report();
                         continue;
                     }
+                    if (kind == CardKind::Naegel && g.nailsInWater()) { // seg3:1CCF: into the water, no window
+                        if (play.game().playCard(slot, 0)) report();
+                        continue;
+                    }
                     if (kind == CardKind::Naegel) { // seg3:1C96: the direction window
                         nailsCardSlot = slot;
                         screen.nails().open();

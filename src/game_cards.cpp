@@ -23,6 +23,14 @@ bool Game::openCardWindow() {
     return false;
 }
 
+bool Game::nailsInWater() const {
+    if (!map_ || !props_ || current_ < 0) return false;
+    const Field& f = board_.fields[size_t(players_[size_t(current_)].field)];
+    const uint16_t cell = props_->cell(*map_, f.x, f.y);
+    constexpr uint16_t seaway = TileProperties::kRoad | TileProperties::kSeaRoute; // seg2:1EB5
+    return (cell & seaway) == seaway;
+}
+
 bool Game::playCard(int handSlot, int target) {
     messages_.clear();
     // The card window allows category 2 before spinning (seg4:0951) and category 1
@@ -60,7 +68,8 @@ bool Game::playCard(int handSlot, int target) {
         if (victim < 0) { messages_.push_back("Tschuess: Zielspieler waehlen"); return false; }
     }
     const int here = players_[size_t(current_)].field;
-    if (kind == CardKind::Naegel && (target < 1 || target > 4
+    const bool water = kind == CardKind::Naegel && nailsInWater();
+    if (kind == CardKind::Naegel && !water && (target < 1 || target > 4
                                      || board_.fields[size_t(here)].next[size_t(target) - 1] == Field::kNone)) {
         messages_.push_back("Naegel: Richtung mit Strasse waehlen (1-4)");
         return false;
@@ -110,6 +119,12 @@ bool Game::playCard(int handSlot, int target) {
         break;
     }
     case CardKind::Naegel: { // seg3:2096: two cells from the player, duration 4n; the turn goes on
+        if (water) { // seg3:1CD8: Platsch, text 5500, no obstacle; the spin follows as usual
+            sound(5, 0x12);
+            notice(5500);
+            messages_.push_back("Die Naegel fallen ins Wasser");
+            return true;
+        }
         const Field& f = board_.fields[size_t(here)];
         static constexpr int dx[4] = {0, 2, 0, -2}, dy[4] = {-2, 0, 2, 0};
         const int x = f.x + dx[target - 1], y = f.y + dy[target - 1];
