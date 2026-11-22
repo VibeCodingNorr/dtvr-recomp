@@ -1780,8 +1780,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Umfeld** seg6:3C94 (commands 1035 / 1043): capture and focus to the map,
   DS:169C = 1, target DS:96A2 / 96A4 = origin; a loop moves the origin
   DS:956A / 9568 to the target (seg6:2B19 keeps it inside the world) and
-  redraws. Mouse moves in the map window (seg6:1798, coordinates ÷ (zoom DS:9C70
-  + 1)): in a strip of 0x3C pixels at an edge of the viewport DS:94DA..94E0
+  redraws. A left click in the map window (seg6:1798, WM_LBUTTONDOWN; coordinates ÷
+  (zoom DS:9C70 + 1); corrected in round 78, not a mouse move): in a strip of 0x3C pixels at an edge of the viewport DS:94DA..94E0
   (corner squares excluded) the target moves by (width ÷ ±3) ÷ 16 tiles in that
   direction. Keys (seg6:1991): arrows and numpad 2 / 4 / 6 / 8 move the same way;
   Enter, Escape and Space end it; a left click ends it (seg6:176E).
@@ -1789,6 +1789,31 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   **Assumptions:** any key or click closes Übersicht (its input handling is not
   traced); Q_FL is drawn at the field of the driver Dr. Drago rides with; after
   Umfeld the view follows the current player again.
+
+### Mouse steering (round 78)
+
+- **Map click** seg6:1798 (map window procedure from seg6:1681): outside Umfeld
+  (DS:169C = 0) seg4:0F52(map, main, x, y) runs: only while DS:96A0 ≠ 0 (no event
+  running) and no cross is open (DS:94E4 = 0) it creates the window class MCTRL
+  (DS:B7, registered at seg5:0B60 with the procedure seg4:103B) of 0x40 × 0x40 at
+  the click − 0x20 (MapWindowPoints to the main window), focus and modal loop
+  seg6:0FB4.
+- **MCTRL** seg4:103B: WM_CREATE captures the mouse and clips the cursor to the
+  window (ClipCursor), state DS:8B92 = 0, DS:8B93 = 1. WM_MOUSEMOVE (seg4:10A3)
+  sets DS:8B93: 1 inside (0x15, 0x15)–(0x29, 0x29); for y < 0x14: 5 when y > x,
+  3 when 0x40 − y < x, else 2; otherwise with y' = 0x3F − y: 5 when y' > x, 3
+  when 0x40 − y' < x, else 4. The paint copies DS:8B93 to DS:8B92 and draws the
+  frame of the state from `sbs\assorted.sbs`: 1 → M0, or M1 when DS:9D40 =
+  DS:A778 (the move is complete), 2 MT, 3 MR, 4 MD, 5 ML (names DS:C6 ff.).
+  WM_LBUTTONUP (seg4:11B3) destroys the window, sets DS:86 = 1 and posts
+  WM_KEYDOWN with table[DS:8B92] = {0, Return, Up, Right, Down, Left} to the
+  main window; WM_RBUTTONDOWN destroys it without a key; WM_DESTROY releases
+  capture and clip.
+- **Rebuilt** in `src/mouse_control_view.cpp` (regions tested) and the game
+  window: a left click on the map in a human player's move or after arriving
+  opens the cross; the key goes through the same path as the keyboard.
+  **Assumptions:** M1 is shown when the phase is Arrived; the cursor is not
+  confined, positions outside count as the nearest edge.
 
 ### Player setup (round 36)
 

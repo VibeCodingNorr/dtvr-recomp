@@ -399,6 +399,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 heldArrow = SDLK_UNKNOWN;
                 continue;
             }
+            if (screen.mouseControl().isOpen()) { // MCTRL (seg4:103B): the cursor stays in the cross
+                bool closed = false;
+                const SDL_Keycode key = screen.mouseControl().handle(event, closed);
+                if (key != SDLK_UNKNOWN && play.handleKey(key, 0)) report(); // posted to the main window
+                if (event.type == SDL_MOUSEMOTION || event.type == SDL_MOUSEBUTTONDOWN
+                    || event.type == SDL_MOUSEBUTTONUP || closed)
+                    continue;
+            }
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8) {
                 if (!event.key.repeat) musicMenu.toggle();
                 heldArrow = SDLK_UNKNOWN;
@@ -687,6 +695,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (event.type != SDL_KEYDOWN || action.kind != Kind::None) continue;
                 const SDL_Keycode k = event.key.keysym.sym;
                 if (k == SDLK_UP || k == SDLK_DOWN || k == SDLK_RETURN || k == SDLK_KP_ENTER) continue;
+            }
+            if (click && event.button.button == SDL_BUTTON_LEFT && !modal && !moving && !screen.title()) {
+                // seg6:1798 -> seg4:0F52: a click on the map opens the steering cross there.
+                const Game& g = play.game();
+                const ScreenRect& map = screen.layout().map;
+                const bool onMap = event.button.x >= map.x && event.button.x < map.x + map.w && event.button.y >= map.y
+                                   && event.button.y < map.y + map.h;
+                if (onMap && !screen.surroundings() && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer())
+                    && (g.phase() == Game::Phase::Move || g.phase() == Game::Phase::Arrived))
+                    screen.mouseControl().open(event.button.x, event.button.y);
+                continue;
             }
             if (event.type != SDL_KEYDOWN) continue;
             const SDL_Keycode key = event.key.keysym.sym;
