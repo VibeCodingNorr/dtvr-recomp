@@ -204,6 +204,33 @@ int32_t entryScore(const TownEntry& e, const AiMoney& m) {
 
 } // namespace
 
+std::vector<std::pair<int, int>> aiForcedSale(const AiState& s, int player) {
+    struct Item { int town, entry; int32_t score; };
+    const AiProfile& profile = aiProfile(player);
+    std::vector<Item> items;
+    for (int t = 0; t < int(s.towns->size()); ++t)       // seg5:966D: towns, then entries
+        for (int e = 0; e < 10; ++e) {
+            const TownEntry& entry = (*s.towns)[size_t(t)].entries[size_t(e)];
+            if (entry.name.empty()) continue;                // seg5:96A5
+            const PropertyState& p = s.economy->town(t).entries[size_t(e)];
+            if (p.owner != uint8_t(player) || p.landlord != kNoOwner || entry.words[1] == 3) continue;
+            int32_t score = entryScore(entry, *profile.money); // seg5:974D
+            if (s.economy->town(t).wholeOwner != kNoOwner) score += profile.money->wholeTown; // seg5:975E
+            items.push_back({t, e, score});
+        }
+    for (size_t i = items.size(); i-- > 1;)                 // seg5:97B0: bubble sort, lowest first
+        for (size_t j = 0; j < i; ++j)
+            if (items[j].score > items[j + 1].score) std::swap(items[j], items[j + 1]);
+    std::vector<std::pair<int, int>> plan;
+    double cash = s.cash(player);                            // seg5:9860: player +0x42
+    for (const Item& it : items) {
+        cash += double((*s.towns)[size_t(it.town)].entries[size_t(it.entry)].value) * 0.7; // DS:8706
+        plan.push_back({it.town, it.entry});
+        if (!(0.0 > cash)) break;                            // seg5:98DB
+    }
+    return plan;
+}
+
 AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
     AiTownPlan plan;
     const Board& board = *s.board;

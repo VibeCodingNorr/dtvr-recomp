@@ -174,6 +174,13 @@ bool Game::computerAdvance() {
                 collect();
             }
         }
+        // seg1:4E39 -> seg1:4EA8: state 14 (seg5:70B5) sells by the plan of seg5:962A,
+        // executed through the statistics window (seg1:50D1).
+        if (cash(aiPlayer_) < 0 && sellableValue(aiPlayer_) > 0) {
+            forcedSale_ = true;
+            for (const auto& [town, entry] : aiForcedSale(aiState(aiSteerless_), aiPlayer_)) forcedSell(town, entry);
+            collect();
+        }
         endTurn();
         collect();
     }

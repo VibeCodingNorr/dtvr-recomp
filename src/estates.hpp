@@ -33,6 +33,7 @@ std::vector<EstateRow> estateRows(const Game& game, int town, EstatesTab tab);
 // owns in all towns, rented ones included; category DS:8C48 (0 all, otherwise entry
 // +0x1E: 1 Industrie ... 6 Sonstige, texts 361-367); sort DS:8C4A (0 Wert, 1 Rendite,
 // 2 Stadt, texts 368-370). Price column value * 0.7 (DS:868E); no row is disabled.
-std::vector<EstateRow> statisticsRows(const Game& game, int player, int category, int sort);
+// `withRented` false for the forced sale (seg1:4504's third argument 0).
+std::vector<EstateRow> statisticsRows(const Game& game, int player, int category, int sort, bool withRented = true);
 
 } // namespace dtvr

@@ -693,7 +693,7 @@ void GameScreen::draw() {
 std::vector<EstateRow> GameScreen::estateRows() const {
     if (!estates_.isOpen()) return {};
     if (estates_.statistics())
-        return statisticsRows(game_, estates_.player(), estates_.category(), estates_.sort());
+        return statisticsRows(game_, estates_.player(), estates_.category(), estates_.sort(), !estates_.forced());
     return dtvr::estateRows(game_, estates_.town(), estates_.tab());
 }
 

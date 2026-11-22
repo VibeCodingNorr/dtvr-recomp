@@ -24,10 +24,27 @@ EstatesView::EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout,
 void EstatesView::openStatistics(int player) {
     open(-1);
     statistics_ = true;
+    forced_ = saleMode_ = false;
     focus_ = 0; // seg1:4FC9
     player_ = player;
     category_ = 0; // seg1:4F59
     sort_ = 0;
+}
+
+void EstatesView::openForcedSale(int player) {
+    openStatistics(player);
+    forced_ = true; // seg1:4FBE: (0 << 5) + 0x10; sort 0 (seg1:4F63)
+}
+
+void EstatesView::afterForcedSale(int count) {
+    if (count == 0) { // seg1:5816: back to the header, focus on Verkaufen
+        saleMode_ = false;
+        selected_ = -1;
+        focus_ = 0;
+    } else if (selected_ >= count) {
+        selected_ = count - 1; // seg1:5843
+        keepVisible(count);
+    }
 }
 
 void EstatesView::open(int town) {
@@ -82,7 +99,12 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
     // seg1:5365) leave an active tab with Plopp02 and give its header item the
     // focus again; without a tab they close the dialog (the stop then ends the turn).
     auto cancel = [&] {
-        if (tab_ != EstatesTab::None && !statistics_) {
+        if (saleMode_) { // seg1:53BE: 0x12 returns to the header with Plopp02
+            saleMode_ = false;
+            selected_ = -1;
+            focus_ = 0;
+            action.kind = Action::Kind::Tab;
+        } else if (tab_ != EstatesTab::None && !statistics_) {
             focus_ = tab_ == EstatesTab::Buy ? 0 : 1; // DS:3FB6 = DS:3FBC
             tab_ = EstatesTab::None;
             selected_ = -1;
@@ -109,7 +131,13 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
             if (focus_ == 1) stepList(category_, 7, 1);
             else if (focus_ == 2) stepList(sort_, 3, 1);
             else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
-            // focus 0 (seg1:5687): the sale mode 0x12 is not rebuilt yet
+            else if (focus_ == 0 && forced_) { // seg1:5687: the sale mode when there is a list
+                if (count > 0) {
+                    saleMode_ = true;
+                    selected_ = std::min(scroll_, count - 1); // DS:3FBE = DS:8C4C
+                }
+                action.kind = Action::Kind::Tab; // Plopp02 either way (seg1:56AB)
+            }
         } else if (focus_ == 0) selectTab(EstatesTab::Buy);
         else if (focus_ == 1) selectTab(EstatesTab::Sell);
         else if (focus_ == 2) action.kind = Action::Kind::Cards;
@@ -128,7 +156,7 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
         static constexpr int kItems[2][4][2] = {{{0, 0x9F}, {0xA0, 0x128}, {0x129, 0x190}, {0x191, 0x22E}},
                                                 {{0, 0x81}, {0x82, 0xD1}, {0xD2, 0x1AE}, {0x1AF, 0x22E}}};
         if (y >= 0 && y < 0x2A) {
-            if (tab_ == EstatesTab::None) // seg1:5FB3: only without an active tab
+            if (tab_ == EstatesTab::None && !saleMode_) // seg1:5FB3: only without an active tab
                 for (int i = 0; i < 4; ++i)
                     if (x >= kItems[statistics_][i][0] && x < kItems[statistics_][i][1]) {
                         focus_ = i; // seg1:5FD9, then Enter
@@ -137,12 +165,26 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
                     }
         } else if (const int row = rowAt(event.button.x, event.button.y, count); row >= 0) {
             if (!statistics_ && tab_ != EstatesTab::None) rowAction(row); // seg1:6037: only with a tab
+            if (saleMode_) { // seg1:6081: 0x12 selects and sells
+                selected_ = row;
+                action.kind = Action::Kind::ForcedSell;
+                action.town = rows[size_t(row)].town;
+                action.entry = rows[size_t(row)].entry;
+            }
         }
     } else if (event.type == SDL_KEYDOWN) { // seg1:5BE5
         const SDL_Keycode k = event.key.keysym.sym;
         const bool enter = k == SDLK_RETURN || k == SDLK_KP_ENTER;
         if (k == SDLK_ESCAPE || k == SDLK_BACKSPACE) {
             cancel();
+        } else if (saleMode_) { // seg1:5963 / 5AA0: bit 0x10 stops at the ends; Enter sells (seg1:57A4)
+            if (count > 0 && k == SDLK_DOWN) { selected_ = selected_ < 0 ? 0 : std::min(count - 1, selected_ + 1); keepVisible(count); }
+            if (count > 0 && k == SDLK_UP) { selected_ = selected_ <= 0 ? 0 : selected_ - 1; keepVisible(count); }
+            if (enter && selected_ >= 0 && selected_ < count) {
+                action.kind = Action::Kind::ForcedSell;
+                action.town = rows[size_t(selected_)].town;
+                action.entry = rows[size_t(selected_)].entry;
+            }
         } else if (tab_ != EstatesTab::None) { // seg1:5942 / 5A7F: up / down wrap around
             if (count > 0 && (k == SDLK_UP || k == SDLK_DOWN)) {
                 const int from = selected_ < 0 ? 0 : selected_;
@@ -256,7 +298,8 @@ void EstatesView::drawStatisticsHeader() {
     auto style = [&](int item) {
         return TextStyle{20, false, false, false, false, 0, item == focus_ ? kWhite : kBrown};
     };
-    text_.draw(renderer_, label(375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style(0));
+    // Text 360 Verkaufen in the forced sale (DS:3FC2 = 0x10), 375 Ansehen otherwise.
+    text_.draw(renderer_, label(forced_ ? 360 : 375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style(0));
     arrow(160);
     text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style(1));
     arrow(266);

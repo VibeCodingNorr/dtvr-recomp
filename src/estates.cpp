@@ -52,7 +52,7 @@ std::vector<EstateRow> estateRows(const Game& game, int town, EstatesTab tab) {
     return rows;
 }
 
-std::vector<EstateRow> statisticsRows(const Game& game, int player, int category, int sort) {
+std::vector<EstateRow> statisticsRows(const Game& game, int player, int category, int sort, bool withRented) {
     std::vector<EstateRow> rows;
     const Economy& economy = game.economy();
     for (int town = 0; town < int(game.towns().size()); ++town) {
@@ -62,6 +62,7 @@ std::vector<EstateRow> statisticsRows(const Game& game, int player, int category
             if (!economy.entryExists(town, e)) continue;
             const TownEntry& entry = t.entries[size_t(e)];
             if (state.entries[size_t(e)].owner != uint8_t(player)) continue;
+            if (!withRented && state.entries[size_t(e)].landlord != kNoOwner) continue; // seg1:4504 argument 0
             if (category != 0 && entry.words[1] != category) continue; // entry +0x1E (seg1:4607)
             EstateRow row;
             row.town = town;

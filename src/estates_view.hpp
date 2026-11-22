@@ -28,7 +28,13 @@ public:
     void open(int town);
     // Statistik (seg1:4DE5): the variant with bit 0x10 in DS:3FC2 for `player`.
     void openStatistics(int player);
-    void close() { town_ = -1; statistics_ = false; }
+    // seg1:4E39 -> seg1:4EA8(0): the statistics as the forced sale (DS:3FC2 = 0x10):
+    // header item 0 is Verkaufen (text 360) and enters the sale mode 0x12.
+    void openForcedSale(int player);
+    bool forced() const { return forced_; }
+    // After a forced sale with `count` rows left (seg1:57FF ff.).
+    void afterForcedSale(int count);
+    void close() { town_ = -1; statistics_ = false; forced_ = false; saleMode_ = false; }
     bool isOpen() const { return town_ >= 0 || statistics_; }
     bool statistics() const { return statistics_; }
     int player() const { return player_; }
@@ -38,8 +44,9 @@ public:
     EstatesTab tab() const { return tab_; }
 
     struct Action {
-        enum class Kind { None, Tab, Row, Cards, Close } kind = Kind::None;
-        int entry = -1;     // Row: the property entry
+        enum class Kind { None, Tab, Row, Cards, Close, ForcedSell } kind = Kind::None;
+        int entry = -1;     // Row / ForcedSell: the property entry
+        int town = -1;      // ForcedSell: its town
         bool sound = false; // Close: Plopp02 first (the header's close item, seg1:54F8)
     };
     // `rows` are the current contents (estateRows of this town and tab).
@@ -64,6 +71,8 @@ private:
     int selected_ = -1;                 // DS:3FBE, index into the rows
     int scroll_ = 0;                    // DS:8C4C, first visible row
     bool statistics_ = false;
+    bool forced_ = false;   // DS:3FC2 = 0x10 (the menu's statistics are 0x30)
+    bool saleMode_ = false; // DS:3FC2 = 0x12
     int player_ = -1;
     int category_ = 0;                  // DS:8C48 (texts 361-367)
     int sort_ = 0;                      // DS:8C4A (texts 368-370)

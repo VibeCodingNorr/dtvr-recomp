@@ -103,6 +103,28 @@ int main() {
     plan = aiTownPlan(ts, 0, 1);
     CHECK(plan.actions.size() == 4 && plan.actions[0].kind == 2 && plan.actions[0].value == 3 && plan.purchases == 3);
 
+    // Forced sale (round 105, seg5:962A): own entries lowest score first, until the
+    // cash plus value x 0.7 is no longer negative; category 3 is never sold.
+    {
+        AiState fs = ts;
+        Economy fe(tt, 8);
+        fs.economy = &fe;
+        fe.addMoney(0, 100000);
+        CHECK(fe.buy(0, 0, 0, BuyMode::Normal) && fe.buy(0, 0, 2, BuyMode::Normal));
+        fe.addMoney(0, -fe.money(0).cash - 5000);         // 5,000 in debt
+        auto plan2 = aiForcedSale(fs, 0);
+        CHECK(plan2.size() == 1 && plan2[0].first == 0 && plan2[0].second == 0); // score 0 before 2; 7,000 covers it
+        fe.addMoney(0, -20000);                           // 25,000 in debt: both
+        plan2 = aiForcedSale(fs, 0);
+        CHECK(plan2.size() == 2 && plan2[1].second == 2);
+        std::vector<Town> agrar = tt;
+        agrar[0].entries[0].words[1] = 3;                 // category 3 is kept
+        AiState as = fs;
+        as.towns = &agrar;
+        plan2 = aiForcedSale(as, 0);
+        CHECK(plan2.size() == 1 && plan2[0].second == 2);
+    }
+
     // Recomb extension (round 100): Verkaufen in debt, Kredit without spare money.
     {
         AiState xs = ts;

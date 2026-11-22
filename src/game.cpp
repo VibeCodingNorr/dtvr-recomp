@@ -386,7 +386,41 @@ bool Game::discardForCard(int handSlot) {
 bool Game::endTurn() {
     messages_.clear();
     if (phase_ != Phase::Arrived || yellowPending_) return false;
+    if (!forcedSale_ && cash(current_) < 0 && sellableValue(current_) > 0) { // seg1:4E39
+        forcedSale_ = true;
+        messages_.push_back(playerName(current_) + " muss Besitz verkaufen");
+        return false;
+    }
+    if (forcedSale_ && forcedSaleLocked()) return false; // seg1:5748: Zaehler2, it stays open
+    forcedSale_ = false;
     advanceTurn();
+    return true;
+}
+
+double Game::sellableValue(int player) const {
+    double sum = 0;
+    for (size_t t = 0; t < towns_.size(); ++t)
+        for (size_t e = 0; e < 10; ++e) {
+            const TownEntry& entry = towns_[t].entries[e];
+            if (entry.name.empty() || entry.words[1] == 3) continue; // seg1:435E / 43C3
+            const PropertyState& p = economy_.town(int(t)).entries[e];
+            if (p.owner == uint8_t(player) && p.landlord == kNoOwner) sum += entry.value; // seg1:4382 / 43A2
+        }
+    return sum;
+}
+
+bool Game::forcedSaleLocked() const {
+    return current_ >= 0 && cash(current_) < 0 && sellableValue(current_) > 0; // seg1:5857 ff.
+}
+
+bool Game::forcedSell(int town, int entry) {
+    messages_.clear();
+    if (!forcedSale_ || town < 0 || size_t(town) >= towns_.size() || entry < 0 || entry >= 10) return false;
+    const PropertyState& p = economy_.town(town).entries[size_t(entry)];
+    if (p.owner != uint8_t(current_) || p.landlord != kNoOwner) return false;
+    economy_.sellWithFactor(current_, Economy::PropertyRef{town, entry}, 0.7); // DS:868E
+    messages_.push_back(playerName(current_) + " verkauft "
+                        + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name) + " (70 %)");
     return true;
 }
 

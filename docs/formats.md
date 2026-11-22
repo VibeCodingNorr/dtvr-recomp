@@ -2320,7 +2320,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (DS:868E) right-aligned in [339, 422], income in [430, 490], yield `%.1f%%`
   (DS:402E) in [496, 554]; no row is disabled. Page buttons step DS:8C48 by
   (x + 6) % 7 (seg1:59EF) or the scroll by seven (seg1:59C7 / 5B15).
-- **Input** (round 104): the header items are 0 (Ansehen, the sale mode),
+- **Input** (round 104): the header items are 0 (Ansehen; Verkaufen in the forced sale),
   1 (category), 2 (sort order) and 3 (close); the focus starts on 0 (seg1:4FC9) and
   is drawn white. Left / Right move it with wrap-around; Enter or a click on
   0–0x81, 0x82–0xD1, 0xD2–0x1AE, 0x1AF–0x22E acts: 1 / 2 step category / sort
@@ -2329,13 +2329,27 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   0 pages by seven (seg1:59BE / 5B07: forward while count − 8 > scroll, else to the
   end), 1 / 2 step backward / forward (seg1:59EF / 5A40). Escape, Backspace and the
   right button close.
-- **Sale mode and forced sale** (found in round 104, not rebuilt yet): Enter on
-  item 0 switches to DS:3FC2 = 0x12 when the list is not empty (seg1:5687); there
-  Enter sells the selected entry at value × 0.7 (DS:868E) through seg1:8327, from
-  anywhere on the map (seg1:57A4). After every arrival seg1:4E39 opens the
-  statistics in this mode when the driver's cash is below 5.0 (DS:8696) and his
-  property value (seg1:4302) above it; DS:3FB8 = 3 then keeps it open until the cash
-  is no longer below 5.0 (seg1:5857).
+- **Forced sale** (round 105): after every arrival (seg2:1618, before nextPlayer)
+  seg1:4E39 checks the driver's cash < 0.0 (DS:8696 = 0.0) and seg1:4302 > 0 — the
+  sum of the values of his own entries that are not rented out and not of category
+  3 (entry +0x1E). Then seg1:4EA8(0) opens the statistics with DS:3FC2 =
+  (0 << 5) + 0x10 (the menu's statistics, argument 1, are 0x30), sort 0, without
+  rented entries (seg1:4504's third argument), and DS:3FB8 = 3 while the cash is
+  negative and something is sellable (seg1:4FEB ff.). Header item 0 then reads 360
+  Verkaufen; Enter on it switches to the sale mode 0x12 when the list is not
+  empty (seg1:5687; in 0x30 it does nothing). There Up / Down stop at the ends,
+  Enter or a row click sells the selected entry at value × 0.7 (DS:868E) through
+  seg1:8327 (seg1:57A4, 6081); the list is rebuilt, an empty one returns to the
+  header, a selection past the end moves back (seg1:5816 / 5843); seg1:5857 lifts
+  the lock once the cash is no longer negative or nothing is sellable. While
+  locked, closing plays Zaehler2 (seg1:5748). Escape in 0x12 returns to the header.
+  Computers (seg2:5C02) get state 14 (seg5:71B3(0xE) → seg5:70B5): seg5:962A lists
+  their own, not rented entries without category 3, scored by seg5:990A plus the
+  money record's +0x32 (10) when a player owns the whole town, bubble-sorts them
+  lowest first (swap on >) and takes them until cash + value × 0.7 (DS:8706) is no
+  longer negative; seg1:50D1 sells them. Rebuilt: `Game::endTurn` /
+  `forcedSell` / `sellableValue`, `aiForcedSale`, the statistics' forced mode in
+  `src/estates_view.cpp` (rules revision 38).
 - **Rebuilt** (`statisticsRows` in `src/estates.cpp`, `src/estates_view.cpp`):
   the list of the current player with rented entries, header, rows and input as
   above. **Assumptions:** sort order (value and yield descending, towns in file

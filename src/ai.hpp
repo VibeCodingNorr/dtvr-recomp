@@ -50,6 +50,7 @@ struct AiCardWeights {
 struct AiMoney {
     std::array<int16_t, 9> words;
     std::array<double, 4> reserve;
+    int16_t wholeTown = 10; // +0x32: score bonus in a town one player owns wholly (seg5:9770)
 };
 
 struct AiProfile {
@@ -115,6 +116,12 @@ double aiSpareMoney(const AiState& s, int player);
 struct AiAction { int kind; int value; };
 struct AiTownPlan { std::vector<AiAction> actions; int purchases = 0; };
 AiTownPlan aiTownPlan(const AiState& s, int player, int field);
+
+// seg5:962A (computer state 14, the forced sale of seg1:4E39): the player's own, not
+// rented entries without category 3, scored by seg5:990A (+0x32 of the money record
+// when a player owns the whole town), sorted lowest first (bubble sort, swap on >),
+// taken until cash + value x 0.7 (DS:8706) is no longer negative. {town, entry}.
+std::vector<std::pair<int, int>> aiForcedSale(const AiState& s, int player);
 
 // seg5:9B0B: target of Zucker / Schlafen / Blockieren (mode 0, nearest to the
 // destination) or Fiskus / Schulden (mode 1, richest); -1 if nobody qualifies.

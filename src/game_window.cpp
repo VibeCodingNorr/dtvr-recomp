@@ -379,6 +379,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         } else {
             messageShown = 0;
         }
+        // seg1:4E39: the forced sale of a human whose cash is negative after the stop.
+        if (play.game().forcedSale() && !estates.isOpen() && !moving && !screen.messages().open()
+            && !play.game().isComputer(play.game().currentPlayer()))
+            estates.openForcedSale(play.game().currentPlayer());
         // The card shop of a human player's stop on a card field (seg2:15AE -> seg3:4437).
         {
             const Game& g = play.game();
@@ -799,6 +803,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 } else if (action.kind == Kind::Cards) { // the card window for property cards
                     sound.play(2, 2); // seg1:54B2
                     if (g.openCardWindow() && cards.open(g, 1)) cardWindowState = turnState();
+                } else if (action.kind == Kind::ForcedSell) { // seg1:57A4 -> seg1:8327
+                    const bool sold = g.forcedSell(action.town, action.entry);
+                    sound.play(2, sold ? 2 : 7); // seg1:57F7 / 58DE
+                    if (sold) {
+                        estates.afterForcedSale(int(screen.estateRows().size()));
+                        report();
+                    }
+                } else if (action.kind == Kind::Close && estates.forced()) { // seg1:5748: locked: Zaehler2
+                    if (g.endTurn()) {
+                        estates.close();
+                        report();
+                    } else {
+                        sound.play(2, 7);
+                    }
                 } else if (action.kind == Kind::Close && estates.statistics()) {
                     estates.close();
                 } else if (action.kind == Kind::Close) { // leaving the town ends the turn (seg1:4DBC, seg2:161D)

@@ -114,6 +114,16 @@ public:
     // while the game window is active (DS:94E6). Returns the sound for channel 6 to
     // play at once (0x22 time up, 0x15 a fine), -1 none.
     int timeLimitSecond();
+    // seg1:4302: the value of the player's own entries that are not rented out and
+    // not of category 3 (entry +0x1E).
+    double sellableValue(int player) const;
+    // seg1:4E39 (seg2:1618, before nextPlayer): endTurn with negative cash and a
+    // sellable value opens the forced sale instead of ending the turn; it stays
+    // until the cash is no longer negative or nothing is left (DS:3FB8 = 3, seg1:5857).
+    bool forcedSale() const { return forcedSale_; }
+    bool forcedSaleLocked() const;
+    // seg1:57A4 -> seg1:8327: one own, not rented entry at value x 0.7 (DS:868E).
+    bool forcedSell(int town, int entry);
     bool timeLimitRunning() const { return timeLimitActive_; }
     bool computerExtraCards() const { return computerExtraCards_; }
     // europe.pit properties of a map cell (seg2:3260), 0 without map data.
@@ -325,6 +335,7 @@ private:
     bool demoEnd_ = false;                  // DS:16
     bool computerExtraCards_ = false;       // recomb extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
+    bool forcedSale_ = false;     // the statistics in sale mode 0x10 are open
     bool timeLimitOn_ = false;    // DS:B5D6
     bool timeLimitActive_ = false; // DS:12 (not saved: a turn-local timer)
     int timeLimitLeft_ = 0;       // DS:9470: seconds
