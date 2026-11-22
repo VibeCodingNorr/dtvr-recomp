@@ -45,7 +45,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
-                   SDL_Texture* t = find(buySprites_, name);
+                   SDL_Texture* t = name.rfind("PFEIL", 0) == 0 ? find(buyKeyed_, name) : find(buySprites_, name);
                    return t ? t : sprite(name);
                }),
       slots_(defaultSaveDirectory()),
@@ -69,6 +69,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
     loadSprites(fs::path("sbs") / "assorted.sbs"); // MENUN / MENUG of the menu window
     loadSprites(fs::path("sbs") / "buy.sbs", buySprites_); // town dialog (DS:3FCC, seg1:4C45)
+    loadSprites(fs::path("sbs") / "buy.sbs", buyKeyed_, 0xFF); // the header arrows via seg2:9497(…, 0xFF)
     loadSprites(fs::path("sbs") / "ls.sbs", lsSprites_);   // save dialog (DS:8081)
     loadDriverSprites();
 }
@@ -87,7 +88,7 @@ SDL_Texture* GameScreen::find(const SpriteSet& set, const std::string& name) {
     return it == set.end() ? nullptr : it->second.get();
 }
 
-void GameScreen::loadSprites(const fs::path& relative, SpriteSet& into) {
+void GameScreen::loadSprites(const fs::path& relative, SpriteSet& into, int transparent) {
     const fs::path file = findCaseInsensitive(root_, relative);
     const fs::path paletteFile = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / "info.bmp");
     if (file.empty() || paletteFile.empty()) { std::cerr << "SBS fehlt: " << relative.string() << "\n"; return; }
@@ -100,7 +101,7 @@ void GameScreen::loadSprites(const fs::path& relative, SpriteSet& into) {
         for (int y = 0; y < frame.height; ++y)
             std::copy_n(&frame.pixels[size_t(y) * frame.width], frame.width,
                         static_cast<uint8_t*>(surface->pixels) + y * surface->pitch);
-        SDL_SetColorKey(surface.get(), SDL_TRUE, 0); // index 0 is transparent for SBS frames
+        SDL_SetColorKey(surface.get(), SDL_TRUE, Uint32(transparent)); // index 0 for SBS frames
         into.emplace(upper(frame.name), Texture(SDL_CreateTextureFromSurface(renderer_, surface.get()), SDL_DestroyTexture));
     }
 }

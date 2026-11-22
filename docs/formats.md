@@ -2405,7 +2405,10 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   the list of the current player with rented entries, header, rows and input as
   above. Header arrows (round 110, seg1:752A / 7687 / 77DC): pfeil2 before the
   item with the focus, pfeil1 before the others, at (14, 8) before item 0 and
-  15 pixels before items 1 and 2.
+  15 pixels before items 1 and 2. They are the only frames of this window drawn with
+  seg2:9497, whose last argument is the colour key: 0xFF (seg1:7540); both frames
+  of `sbs/buy.sbs` (15 × 28) have a 0xFF background. The others are copied
+  opaque (seg2:913A).
 - **Loading:** the original loads from the title menu MAIN (1021, round 35);
   `--game --load <slot>` loads a slot directly.
 

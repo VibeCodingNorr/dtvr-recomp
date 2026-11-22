@@ -149,7 +149,8 @@ private:
     MsRandom ambientRng_{1};
     Uint32 ambientLast_ = 0;
     using SpriteSet = std::map<std::string, Texture>;
-    void loadSprites(const std::filesystem::path& relative, SpriteSet& into);
+    // `transparent`: the colour key (0 for SBS frames; seg2:9497 callers pass their own).
+    void loadSprites(const std::filesystem::path& relative, SpriteSet& into, int transparent = 0);
     void loadSprites(const std::filesystem::path& relative) { loadSprites(relative, sprites_); }
     static SDL_Texture* find(const SpriteSet& set, const std::string& name);
     void drawMap();
@@ -166,6 +167,7 @@ private:
     TextRenderer text_;
     std::map<std::string, Texture> sprites_;
     SpriteSet buySprites_;   // sbs/buy.sbs of the town dialog (seg1:4C45)
+    SpriteSet buyKeyed_;     // the same with colour key 0xFF: PFEIL1 / PFEIL2 (seg1:7540)
     SpriteSet lsSprites_;    // sbs/ls.sbs of the save dialog (seg8:B1CE)
     std::map<std::string, Texture> art_;
     Surface world_{nullptr, SDL_FreeSurface};      // 8-bit world, its palette cycles
