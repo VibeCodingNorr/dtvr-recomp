@@ -1273,6 +1273,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   with a black frame, records draw with their top-left corner at the position,
   a key or click ends the sequence early.
 
+### Destination announcement (round 49)
+
+- **seg7:372F(mode)**: 2 at a new game (seg4:0E94), 1 for a new stage
+  (seg2:1486), 3 before the last stage (seg2:1453). It first chooses the final
+  destination seg5:1E2C(DS:A10B, DS:A10D) into [bp−0x38] (seg7:3755) — with the
+  old stage start, because seg2:148E sets DS:A10B to the reached field only after
+  the call — and in mode 1 then draws rand() % 5 for the voice variant
+  (seg7:3B4E; otherwise 3).
+- **Scene:** butt/club_map.bmp with the show master records of the balance
+  (DS:4800 speaking 79/155, DS:4798 foot, DS:4AE8 lever 150/184; DS:4A30 pull
+  and DS:4938 / 4968 hold at 80/159) and the light DS:4782 (licht1 / licht2 of
+  ziel\licht.sbs) at field cell + (0xB0, 0x24) (seg7:3DEF / 3E0C). Voices
+  `%s\%c\VOICE\ZIELSUCH\Part01%c.wav`, then at frame 9 of the pull FX HEBEL01
+  and the search starts (seg7:3CE4); `Part02%c` when the pull is done; the
+  search stops when Part02 has played out (seg7:3F28) and the light moves to the
+  final destination (seg7:3F43); then `Part03%c`, the town (`%s.wav` with the
+  eight-character name) and `Part04%c`; Master1 / Master2 belong to the last
+  stage. During the search the light jumps until the 20th jump every 4 passes,
+  then when the wait exceeds jumps − 16 (seg7:3D35); **every jump calls
+  seg5:1E2C and draws random numbers**, and the number of jumps depends on how
+  long Part02 plays, so these draws cannot be reproduced.
+- **Rebuilt** (`src/stage_view.cpp`; rule fix in `src/game.cpp`, rules revision
+  30): the final destination is chosen before the variant draw and with the old
+  stage start excluded; the scene for modes 1–3 with the original voices. The
+  light's jumps use a display-only random generator. **Assumptions:** the
+  mode-3 order (Master1, search, Master2), the show master's frames between the
+  states, a key or click ends it early, at most 20 s per voice.
+
 ### Year balance (round 44)
 
 - **Call** at the year change (seg2:0784 ff.): music (DS:1A23), seg1:8AA7

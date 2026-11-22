@@ -12,6 +12,7 @@
 #include "finish_view.hpp"
 #include "victory_view.hpp"
 #include "balance_view.hpp"
+#include "stage_view.hpp"
 #include "save_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
@@ -55,6 +56,8 @@ public:
     FinishView& finish() { return finish_; }
     VictoryView& victory() { return victory_; }
     BalanceView& balance() { return balance_; }
+    StageView& announcement() { return stage_; }
+    bool startAnnouncement(int mode, int variant, Uint32 now);
     bool startBalance(Uint32 now);
     bool startVictory(Uint32 now);
     // Starts the finish sequence for a destination field and driver.
@@ -126,6 +129,7 @@ private:
     FinishView finish_;
     VictoryView victory_;
     BalanceView balance_;
+    StageView stage_;
     int seenSpin_ = 0;
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;
@@ -159,6 +163,7 @@ struct GameWindowOptions {
     bool finish = false;          // tests: show the finish sequence of the destination
     bool victory = false;         // tests: show the victory sequence of the current ranking
     bool balance = false;         // tests: show the year balance (without announcements)
+    bool announce = false;        // tests: show the destination announcement of the game start
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

@@ -266,9 +266,17 @@ void Game::arrive() {
             remaining_ = r.remaining;
             // seg2:1486: the stage announcement seg7:372F(1) draws rand() % 5 (seg7:3B4E);
             // before the last stage seg7:372F(3) draws nothing.
-            if (remaining_ != 0) rng_.rand();
+            // seg7:372F first chooses the final destination with the old stage start DS:A10B
+            // and the reached field DS:A10D (seg7:3755 -> seg5:1E2C; DS:A10B becomes the
+            // field only afterwards, seg2:148E), then in mode 1 (not before the last stage)
+            // draws rand() % 5 (seg7:3B4E). The light's jumps during the voices draw further
+            // destinations whose number depends on the playback time; not modelled.
+            const int next = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
+            announceMode_ = remaining_ != 0 ? 1 : 3;
+            announceVariant_ = remaining_ != 0 ? rng_.rand() % 5 : 3; // seg7:3B4E / 3B5F
+            ++announceSerial_;
             origin_ = field;
-            destination_ = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
+            destination_ = next;
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
                                 + ", Ziel " + townName(destination_));
             placeDragoForStage();

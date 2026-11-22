@@ -55,6 +55,7 @@ void BalanceView::voice(const std::string& name) {
 
 bool BalanceView::voiceDone(Uint32 now, Uint32 minimum) const {
     if (now - stageStart_ < minimum) return false;
+    if (now - stageStart_ > 20000) return true; // a stalled audio device must not hold the scene
     return !sound_ || !sound_->busy(kVoiceChannel);
 }
 

@@ -88,6 +88,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int finishSeen = play.game().finishSerial();
     bool victoryShown = false;
     int balanceSeen = play.game().balanceSerial();
+    int announceSeen = play.game().announceSerial();
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -100,7 +101,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             menu.open("MAIN", std::move(items));
         }
     };
-    auto startGame = [&] {
+    // `fresh`: a new game announces its first destination (seg4:0E92 -> seg7:372F(2)).
+    auto startGame = [&](bool fresh = false) {
+        if (fresh) screen.startAnnouncement(2, 3, SDL_GetTicks());
         autosaved = -1; // the first turn of a started or loaded game is saved too
         screen.setTitle(false);
         music.interrupt("a1"); // seg4:0E8A, starting/loading a game
@@ -139,7 +142,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr)));
             if (!play.newGame(status, names, seed, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
             for (int p = 0; p < kPlayerSlots; ++p) screen.setZoom(p, p == 0 || p == 4);
-            startGame();
+            startGame(true);
             break;
         }
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
@@ -170,6 +173,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.demo) { menu.close(); command(1024); }
     if (options.victory) { music.interrupt("s"); screen.startVictory(SDL_GetTicks()); }
     if (options.balance) screen.startBalance(SDL_GetTicks());
+    if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
@@ -244,6 +248,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         screen.finish().update(SDL_GetTicks());
         // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
         screen.balance().update(SDL_GetTicks());
+        // The next destination (seg2:1486 / 1453 -> seg7:372F(1 / 3)) after the finish.
+        screen.announcement().update(SDL_GetTicks());
+        if (!screen.title() && play.game().announceSerial() != announceSeen && !moving
+            && !screen.messages().open() && !screen.finish().active()) {
+            announceSeen = play.game().announceSerial();
+            screen.startAnnouncement(play.game().announceMode(), play.game().announceVariant(), SDL_GetTicks());
+        }
         if (!screen.title() && play.game().balanceSerial() != balanceSeen && !moving && !screen.messages().open()
             && !screen.finish().active()) {
             balanceSeen = play.game().balanceSerial();
@@ -264,7 +275,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         const bool modal = musicMenu.open() || screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
-                           || screen.victory().active() || screen.balance().active();
+                           || screen.victory().active() || screen.balance().active()
+                           || screen.announcement().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -313,6 +325,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 openTitle();
                 continue;
             }
+            if (screen.announcement().active()) { // assumption: a key or click ends it early
+                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.announcement().stop();
+                continue;
+            }
             if (screen.balance().active()) { // a click lets the show master go on (seg8:8D5C)
                 if (event.type == SDL_MOUSEBUTTONDOWN || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN))
                     screen.balance().click();
@@ -354,7 +370,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     const auto status = screen.setup().status();
                     const auto names = screen.setup().names();
                     screen.setup().close();
-                    if (play.newGame(status, names, seed, error)) startGame();
+                    if (play.newGame(status, names, seed, error)) startGame(true);
                     else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
                 } else if (r == SetupView::Result::Cancel) {
                     screen.setup().close();

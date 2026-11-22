@@ -45,7 +45,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
       finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
-      balance_(renderer, root, layout.width, layout.height) {
+      balance_(renderer, root, layout.width, layout.height),
+      stage_(renderer, root, layout.width, layout.height, board, towns) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -168,6 +169,10 @@ bool GameScreen::startFinish(int field, int player, Uint32 now) {
     // seg7:2C48: butt/snd/z.wav (seg1:3579)
     if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
     return true;
+}
+
+bool GameScreen::startAnnouncement(int mode, int variant, Uint32 now) {
+    return stage_.start(mode, variant, game_.destination(), sound_, now);
 }
 
 bool GameScreen::startBalance(Uint32 now) {
@@ -409,6 +414,7 @@ void GameScreen::draw() {
     finish_.draw(SDL_GetTicks());
     victory_.draw(SDL_GetTicks());
     balance_.draw(SDL_GetTicks());
+    stage_.draw(SDL_GetTicks());
     cards_.draw();
     save_.draw(slots_);
     menu_.draw();
