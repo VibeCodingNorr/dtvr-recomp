@@ -79,6 +79,15 @@ CardShopView::Action CardShopView::enter(const Game& game) {
     return a;
 }
 
+void CardShopView::afterSale(const Game& game) {
+    const int count = int(items(game).size());
+    if (selected_ >= count) selected_ = count - 1; // seg3:49EB
+    if (game.handCount(game.currentPlayer()) == 0) { // seg3:4A1B: Backspace (seg3:46D6)
+        mode_ = 0;
+        selected_ = -1;
+    }
+}
+
 CardShopView::Action CardShopView::handle(const SDL_Event& event, const Game& game) {
     Action a;
     if (!open_) return a;
@@ -86,6 +95,10 @@ CardShopView::Action CardShopView::handle(const SDL_Event& event, const Game& ga
     const SDL_Rect b = box();
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const int x = event.button.x - b.x, y = event.button.y - b.y;
+        if (x < 0 || x >= b.w || y < 0 || y >= b.h) return a;
+        // WM_LBUTTONDBLCLK posts Enter, even outside a card/header hit rectangle
+        // (seg3:4674). Ordinary clicks only select a card (seg3:5148-5166).
+        if (event.button.clicks == 2) return enter(game);
         if (mode_ == 0 && y >= 0 && y < kRow) { // seg3:5051: the header ranges post Enter
             if (x < 0x6E) choice_ = 0;
             else if (x >= 0xB4 && x < 0x140) choice_ = 1;
@@ -96,7 +109,6 @@ CardShopView::Action CardShopView::handle(const SDL_Event& event, const Game& ga
         for (int i = 0; i < int(list.size()) && mode_ != 0; ++i) { // seg3:510C: choose a card
             const int cx = kGridX + (i % kColumns) * kStepX, cy = kGridY + (i / kColumns) * kStepY;
             if (x >= cx && x < cx + 44 && y >= cy && y < cy + 63) {
-                if (selected_ == i) return enter(game); // assumption: a second click acts like Enter
                 selected_ = i;
                 return a;
             }
@@ -112,18 +124,23 @@ CardShopView::Action CardShopView::handle(const SDL_Event& event, const Game& ga
     if (event.type != SDL_KEYDOWN) return a;
     switch (event.key.keysym.sym) {
     case SDLK_ESCAPE: case SDLK_BACKSPACE: // seg3:46A2
-        a.sound = 2;
-        if (mode_ == 0) a.kind = Action::Kind::Close;
+        if (mode_ == 0) { a.kind = Action::Kind::Close; a.sound = 2; }
         else { mode_ = 0; selected_ = -1; }
         return a;
     case SDLK_RETURN: case SDLK_KP_ENTER: return enter(game);
     case SDLK_LEFT: // seg3:4A41 / 4A96
-        if (mode_ == 0) choice_ = choice_ == 0 ? 2 : choice_ - 1;
+        if (mode_ == 0) { if (choice_ > 0) --choice_; } // seg3:4A4A: no wrap from Kaufen
         else if (selected_ > 0) --selected_;
         return a;
     case SDLK_RIGHT:
         if (mode_ == 0) choice_ = choice_ == 2 ? 0 : choice_ + 1;
         else if (selected_ + 1 < int(list.size())) ++selected_;
+        return a;
+    case SDLK_UP: // seg3:4B42: move up one complete grid row
+        if (mode_ != 0 && selected_ >= kColumns) selected_ -= kColumns;
+        return a;
+    case SDLK_DOWN: // seg3:4B79: move down only if that column has a card
+        if (mode_ != 0 && selected_ >= 0 && selected_ + kColumns < int(list.size())) selected_ += kColumns;
         return a;
     default: return a;
     }

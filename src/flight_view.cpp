@@ -43,6 +43,7 @@ SDL_Rect FlightView::box() const {
 FlightView::Result FlightView::choose(int row) {
     Result r;
     if (row == 1 && lastStage_) { r.closed = true; return r; } // seg3:33F2: Bodennebel (text 8300)
+    focus_ = row; // seg3:3441: only an accepted mouse choice changes DS:A2A2
     r.town = text(5602 + row);
     return r;
 }
@@ -58,18 +59,15 @@ FlightView::Result FlightView::handle(const SDL_Event& event) {
         const int row = (y - kRowTop) / kRowHeight;
         return row < rows() ? row : -1;
     };
-    if (event.type == SDL_MOUSEMOTION) {
-        if (const int row = rowAt(event.motion.x, event.motion.y); row >= 0) focus_ = row;
-    } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         if (const int row = rowAt(event.button.x, event.button.y); row >= 0) return choose(row);
-    } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
-        r.cancel = true;
     } else if (event.type == SDL_KEYDOWN) {
+        // seg3:346D / 34B9 clamp selection; seg3:3565 handles only Up, Down, Enter.
         switch (event.key.keysym.sym) {
-        case SDLK_UP: focus_ = focus_ > 0 ? focus_ - 1 : rows() - 1; break;
-        case SDLK_DOWN: focus_ = focus_ + 1 < rows() ? focus_ + 1 : 0; break;
+        // seg3:34A8 / 34F6: a change plays Plopp02 on channel 2; the ends stay silent.
+        case SDLK_UP: if (focus_ > 0) { --focus_; sound_ = 2; } break;
+        case SDLK_DOWN: if (focus_ + 1 < rows()) { ++focus_; sound_ = 2; } break;
         case SDLK_RETURN: case SDLK_KP_ENTER: return choose(focus_);
-        case SDLK_ESCAPE: r.cancel = true; break;
         default: break;
         }
     }

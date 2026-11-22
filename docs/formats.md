@@ -645,8 +645,13 @@ the types 0x400/0x800 follow in round 13).
   DS:A104 = 0 shows text 8300 instead (seg3:33F2). The chosen name is matched
   against the towns with `_fstricmp` (seg3:32CE ff.), then the player flies
   there (seg2:04AD) and the field action follows. Rebuilt in
-  `src/flight_view.cpp`; **assumptions:** focus by mouse or arrow keys shown in
-  white, Escape / right button cancel, the window centred.
+  `src/flight_view.cpp`. **Input** (round 101, from
+  `docs/original-flight-dialog-audit.md`, checked at seg3:3971 / 3565 / 346D):
+  only WM_KEYDOWN and WM_LBUTTONDOWN; Up / Down clamp at the first / last row and
+  play Plopp02 on channel 2 when the row changes (seg3:34A8 / 34F6); Enter books
+  the row; a click books the row it hits; no mouse-move selection, no Escape and no
+  right button (the booking cannot be cancelled); the chosen row is white.
+  **Assumption:** the window centred.
 - **Verdoppeln** (card 40, seg3:3FBB): sets DS:2EB0 = 1; the card handler at
   seg3:0E83 then skips removing the next card (seg2:3C62) and clears the flag.
   seg2:0CE8 clears it at every player change.
@@ -1836,9 +1841,14 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Left / Right move the choice or the chosen card. Plopp02 / Zaehler2 sound the
   steps (seg3:46B1 ff.).
 - **Rebuilt** (`src/card_shop_view.cpp`): the window for a human player's stop on
-  a card field; closing it ends the turn. **Assumptions:** a second click on the
-  chosen card acts like Enter, a right click like Escape, the window is
-  centred.
+  a card field; closing it ends the turn. **Input** (round 101, from
+  `docs/original-card-shop-audit.md`, checked at seg3:4A41 / 46A2): a click only
+  selects a card (seg3:5148), a double click (0x203) posts Enter; Left stops at
+  Kaufen, Right wraps from Beenden to Kaufen; Up / Down move a whole grid row;
+  Escape / Backspace (and the right button, seg3:4688) return silently from buy /
+  sell to the header, from the header play Plopp02 and close; clicks outside the
+  dialog do nothing. After selling the last card the view returns to the header
+  (seg3:49E0 ff.). **Assumption:** the window centred.
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:
@@ -1917,8 +1927,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   direction. Keys (seg6:1991): arrows and numpad 2 / 4 / 6 / 8 move the same way;
   Enter, Escape and Space end it; a left click ends it (seg6:176E).
 - **Rebuilt** (`src/overview_view.cpp`, Umfeld in `src/game_screen.cpp`).
-  **Assumptions:** any key or click closes Übersicht (its input handling is not
-  traced); Q_FL is drawn at the field of the driver Dr. Drago rides with; after
+  **Input** (round 101, from `docs/original-overview-audit.md`, checked at
+  seg1:AA00 / AB34): Enter, a double click or (unzoomed) a left click toggle the
+  zoom; while zoomed the arrows pan a 3 × 3 grid of half-size crops (steps
+  (size >> 2) − 4) and a left click opens the MCTRL steering cross; Escape,
+  Backspace and the right button close it. **Assumptions:** Q_FL is drawn at the
+  field of the driver Dr. Drago rides with; after
   Umfeld the view follows the current player again.
 
 ### Shut-in players (round 80)

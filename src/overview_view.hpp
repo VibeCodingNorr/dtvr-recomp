@@ -8,6 +8,7 @@
 
 #include "game.hpp"
 #include "layout.hpp"
+#include "mouse_control_view.hpp"
 #include "sdl_assets.hpp"
 
 #include <SDL.h>
@@ -30,22 +31,28 @@ public:
     using SpriteLookup = std::function<SDL_Texture*(const std::string&)>;
     OverviewView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                  const Board& board, SpriteLookup sprite);
-    void open() { open_ = true; }
-    void close() { open_ = false; }
+    void open() { open_ = true; zoomed_ = false; cell_ = 0; mouse_.close(); }
+    void close() { open_ = false; mouse_.close(); }
     bool isOpen() const { return open_; }
-    // Any key or button closes it (assumption; the window holds the capture).
+    // Escape/Backspace/right button close. Enter toggles zoom; arrows pan the
+    // enlarged overview on a 3 x 3 grid (seg1:A95E / AB7B). True only when closed.
     bool handle(const SDL_Event& event);
     void draw(const Game& game);
 
 private:
+    void compose(const Game& game);
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     ScreenLayout layout_;
     const Board& board_;
     SpriteLookup sprite_;
+    MouseControlView mouse_;
     Texture map_{nullptr, SDL_DestroyTexture};
+    Texture layer_{nullptr, SDL_DestroyTexture};
     int mapSize_ = 0;
     bool open_ = false;
+    bool zoomed_ = false; // DS:8C5E
+    int cell_ = 0;       // DS:8C60: row * 3 + column
 };
 
 } // namespace dtvr

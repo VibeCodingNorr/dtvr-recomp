@@ -160,7 +160,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 89. Intro: before the title the club scene with door, show master, speaker, hat and Fate, lightning, club photo and newspaper (`[Setup] ShowIntro`, `--intro` / `--no-intro`).
 90. Input audit (rounds 90–97): sights, intro, victory, destination search, finish, year balance (with its closing part), card window, town dialog, options, credits, save dialog, Nägel window and the setup focus follow the traced window procedures.
 91. Extension `ComputerExtraCards` (off by default, `[Extensions]` in settings.ini or `--computer-cards`): computers may also play the cards rally.exe never picks — Nägel, Steuerlos, Risiko, Flugzeug, Verkaufen and Kredit.
-92. *Next:* remaining presentation details (compare windows with rally.exe).
+92. Audited input taken over for the Flugzeug booking, the card shop and the overview (zoom and 3 × 3 panning), with their view tests.
+93. *Next:* remaining presentation details (compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

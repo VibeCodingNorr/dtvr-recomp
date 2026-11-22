@@ -4,6 +4,7 @@
 #include "rules.hpp"
 
 #include <cmath>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
 
@@ -16,6 +17,41 @@ constexpr double kWorld = 4096.0;                                               
 int scaled(int worldPixel, int bitmapSize) { // value / (4096 / size), truncated (seg10:368A)
     return int(worldPixel / (kWorld / bitmapSize));
 }
+
+// Compose the map and its marks before stretching, as the original WinG bitmap
+// does. Preserve the caller's canvas transform and clip across the render target.
+class LayerTarget {
+public:
+    LayerTarget(SDL_Renderer* renderer, SDL_Texture* target) : renderer_(renderer) {
+        target_ = SDL_GetRenderTarget(renderer_);
+        SDL_RenderGetLogicalSize(renderer_, &logicalW_, &logicalH_);
+        SDL_RenderGetViewport(renderer_, &viewport_);
+        SDL_RenderGetScale(renderer_, &scaleX_, &scaleY_);
+        clipped_ = SDL_RenderIsClipEnabled(renderer_) == SDL_TRUE;
+        SDL_RenderGetClipRect(renderer_, &clip_);
+        if (SDL_SetRenderTarget(renderer_, target) != 0) throw std::runtime_error(SDL_GetError());
+        SDL_RenderSetLogicalSize(renderer_, 0, 0);
+        SDL_RenderSetScale(renderer_, 1, 1);
+        SDL_RenderSetViewport(renderer_, nullptr);
+        SDL_RenderSetClipRect(renderer_, nullptr);
+    }
+    ~LayerTarget() {
+        SDL_SetRenderTarget(renderer_, target_);
+        SDL_RenderSetLogicalSize(renderer_, logicalW_, logicalH_);
+        SDL_RenderSetScale(renderer_, scaleX_, scaleY_);
+        SDL_RenderSetViewport(renderer_, &viewport_);
+        SDL_RenderSetClipRect(renderer_, clipped_ ? &clip_ : nullptr);
+    }
+    LayerTarget(const LayerTarget&) = delete;
+    LayerTarget& operator=(const LayerTarget&) = delete;
+private:
+    SDL_Renderer* renderer_;
+    SDL_Texture* target_ = nullptr;
+    SDL_Rect viewport_{}, clip_{};
+    int logicalW_ = 0, logicalH_ = 0;
+    float scaleX_ = 1, scaleY_ = 1;
+    bool clipped_ = false;
+};
 
 } // namespace
 
@@ -46,13 +82,39 @@ std::vector<SDL_Point> overviewRoute(const Board& board, int from, int destinati
 
 OverviewView::OverviewView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
                            const Board& board, SpriteLookup sprite)
-    : renderer_(renderer), root_(root), layout_(layout), board_(board), sprite_(std::move(sprite)) {}
+    : renderer_(renderer), root_(root), layout_(layout), board_(board), sprite_(std::move(sprite)),
+      mouse_(renderer, sprite_) {}
 
 bool OverviewView::handle(const SDL_Event& event) {
     if (!open_) return false;
-    if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) {
-        open_ = false;
-        return true;
+    if (mouse_.isOpen()) {
+        bool closed = false;
+        const SDL_Keycode key = mouse_.handle(event, closed);
+        if (key != SDLK_UNKNOWN) {
+            SDL_Event posted{};
+            posted.type = SDL_KEYDOWN;
+            posted.key.keysym.sym = key;
+            return handle(posted);
+        }
+        return false;
+    }
+    auto toggle = [&] { zoomed_ = !zoomed_; cell_ = 0; };
+    if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+        case SDLK_ESCAPE: case SDLK_BACKSPACE: close(); return true;
+        case SDLK_RETURN: case SDLK_KP_ENTER: toggle(); break;
+        case SDLK_LEFT: if (zoomed_ && cell_ % 3 > 0) --cell_; break;
+        case SDLK_RIGHT: if (zoomed_ && cell_ % 3 < 2) ++cell_; break;
+        case SDLK_UP: if (zoomed_ && cell_ > 2) cell_ -= 3; break;
+        case SDLK_DOWN: if (zoomed_ && cell_ < 6) cell_ += 3; break;
+        default: break;
+        }
+    } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        if (event.button.button == SDL_BUTTON_RIGHT) { close(); return true; }
+        if (event.button.button == SDL_BUTTON_LEFT) {
+            if (event.button.clicks == 2 || !zoomed_) toggle(); // seg1:A9D3
+            else mouse_.open(event.button.x, event.button.y);   // seg1:A9B2 -> seg4:0F52
+        }
     }
     return false;
 }
@@ -68,8 +130,28 @@ void OverviewView::draw(const Game& game) {
         }
         if (!map_) return;
     }
-    // The window covers the map window (DS:9C84..9C8A); the bitmap sits at (0, 0).
-    const SDL_Rect window{layout_.map.x, layout_.map.y, layout_.map.w, layout_.map.h};
+    if (!layer_) {
+        layer_.reset(SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+                                       layout_.map.w, layout_.map.h));
+        if (!layer_) throw std::runtime_error(SDL_GetError());
+    }
+    compose(game);
+    // seg1:AB95-AC9D: half-size crop at nine overlapping positions. Panning uses
+    // full window dimensions, not the (slightly smaller) map.bmp dimensions.
+    SDL_Rect source{0, 0, layout_.map.w, layout_.map.h};
+    if (zoomed_) {
+        source = {(cell_ % 3) * (layout_.map.w / 4 - 4), (cell_ / 3) * (layout_.map.h / 4 - 4),
+                  layout_.map.w / 2, layout_.map.h / 2};
+    }
+    const SDL_Rect destination{layout_.map.x, layout_.map.y, layout_.map.w, layout_.map.h};
+    SDL_RenderCopy(renderer_, layer_.get(), &source, &destination);
+    mouse_.draw(game.phase() == Game::Phase::Arrived);
+}
+
+void OverviewView::compose(const Game& game) {
+    LayerTarget target(renderer_, layer_.get());
+    // Source bitmap of the map window (DS:8C4E..8C54); compose all marks before zoom.
+    const SDL_Rect window{0, 0, layout_.map.w, layout_.map.h};
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &window);
     const SDL_Rect dst{window.x, window.y, mapSize_, mapSize_};

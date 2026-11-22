@@ -2,7 +2,7 @@
 // The Flugzeug booking of rally.exe (card 27, seg3:31D5, procedure seg3:3384;
 // round 54): a 0x114 x 0x100 window on butt/f.bmp with "Flugbuchung nach:" (text
 // 5601) and the towns 5602-5609 (Moskau only with the east open); Brussels is
-// closed before the last stage (text 8300). Evidence in docs/formats.md "Flugzeug".
+// unavailable during the final stage (text 8300). Evidence in docs/formats.md "Flugzeug".
 #pragma once
 
 #include "layout.hpp"
@@ -25,9 +25,12 @@ public:
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     // The chosen row's town name (UTF-8), "" for none; `closed` when Brussels was
-    // refused (the caller shows text 8300); `cancel` on Escape / right button.
+    // refused (the caller shows text 8300). The traced original handles no cancel
+    // input; `cancel` is retained for caller compatibility and remains false.
     struct Result { std::string town; bool closed = false, cancel = false; };
     Result handle(const SDL_Event& event);
+    // The sound of the last handled event for channel 2 (seg1:2C9B), -1 none.
+    int takeSound() { const int s = sound_; sound_ = -1; return s; }
     void draw();
 
 private:
@@ -44,6 +47,7 @@ private:
     Texture paper_{nullptr, SDL_DestroyTexture};
     bool open_ = false, eastOpen_ = false, lastStage_ = false;
     int focus_ = 0;
+    int sound_ = -1;
 };
 
 } // namespace dtvr

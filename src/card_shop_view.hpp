@@ -34,6 +34,10 @@ public:
         int sound = -1; // seg1:2C9B sound number for this event (2 Plopp02, 7 Zaehler2)
     };
     Action handle(const SDL_Event& event, const Game& game);
+    // After a successful sale (seg3:49E0 ff.): the list is rebuilt, a selection past
+    // its end moves to the last card (0xFF when empty), and with an empty hand the
+    // view posts Backspace to itself, i.e. returns silently to the header.
+    void afterSale(const Game& game);
     void draw(const Game& game);
 
 private:

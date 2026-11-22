@@ -656,6 +656,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (screen.flight().isOpen()) { // seg3:3384
                 const FlightView::Result r = screen.flight().handle(event);
+                if (const int fx = screen.flight().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r.closed) screen.messages().push(Notice{8300, {}}); // Bodennebel over Brussels
                 if (r.cancel) screen.flight().close();
                 if (!r.town.empty()) {
@@ -757,6 +758,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (action.kind == Kind::Buy || action.kind == Kind::Sell) {
                     const bool done = action.kind == Kind::Buy ? g.buyCard(action.value) : g.sellCard(action.value);
                     sound.play(2, done ? 2 : 7); // seg3:4782 / 4850: Plopp02 or Zaehler2
+                    if (done && action.kind == Kind::Sell) screen.cardShop().afterSale(g);
                     if (done) report();
                 } else if (action.kind == Kind::Close) { // Beenden: the stop ends the turn
                     screen.cardShop().close();
