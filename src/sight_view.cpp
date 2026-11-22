@@ -39,11 +39,12 @@ bool SightView::open(int cellX, int cellY) {
 
 bool SightView::handle(const SDL_Event& event) {
     if (!open_) return false;
-    if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) {
+    // seg6:518B: WM_KEYDOWN (0x100) and WM_LBUTTONDOWN (0x201) destroy the window;
+    // other buttons go to DefWindowProc. The window is modal (seg6:0FB4).
+    if (event.type == SDL_KEYDOWN || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT))
         open_ = false;
-        return true;
-    }
-    return false;
+    return event.type == SDL_KEYDOWN || event.type == SDL_KEYUP || event.type == SDL_MOUSEBUTTONDOWN
+           || event.type == SDL_MOUSEBUTTONUP;
 }
 
 void SightView::draw() {

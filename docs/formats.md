@@ -1578,7 +1578,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   stage start excluded; the scene for modes 1–3 with the original voices. The
   light's jumps use a display-only random generator. **Assumptions:** the
   mode-3 order (Master1, search, Master2), the show master's frames between the
-  states, a key or click ends it early, at most 20 s per voice.
+  states, at most 20 s per voice. **Input (round 90, not yet rebuilt):** ZIEL
+  (seg7:50D6) handles WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN:
+  seg5:607B(−1) and DS:A29C = 0, which ends the current loop only — intro
+  (seg7:3536..3677), search (seg7:3BB5..46E8), final (seg7:4730..4B85; at seg7:4B38
+  the flag is set again while [bp−0x34] = 0), then 60 passes. The rebuild still
+  ends the whole announcement on any key or click (deviation, to be corrected).
 
 ### Year balance (round 44)
 
@@ -1641,8 +1646,10 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   game. No random numbers.
 - **Rebuilt** (`src/victory_view.cpp`, shared records in `src/scene.cpp`,
   `Game::ranking`): the scene after the finish of the Master-Rallye, then the
-  title. **Assumptions:** centred window with a black frame; a key or click
-  closes it like Enter.
+  title. **Input** (round 90, seg7:83EE): after the first pass (DS:9CDE,
+  seg7:7CE9) WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN destroy the
+  window; other keys and buttons do nothing. **Assumption:** centred window with a
+  black frame.
 
 ### Sounds (round 40)
 
@@ -1963,7 +1970,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   kopf, lampe, leute1, paar1, red_foot, fate, fate_hut, wall1, wall2, sm_rlyy).
   club.bmp, clubfoto.bmp and `d\zeitung.bmp` share one palette.
 - **Input** seg7:2118: Escape, Space or Enter close the window once the first pass
-  ran (DS:1198); a click closes it with DS:B5E4 and DS:1198.
+  ran (DS:1198); a left click (WM_LBUTTONDOWN, seg7:25F6) closes it with DS:B5E4
+  and DS:1198; other buttons go to DefWindowProc.
 - **Loop** seg7:04D6, one pass per 20 ms: pass counter + 1 (cap 30,000),
   subtitle poll (see Subtitles), the state logic, then — while state < 11 or
   pass < 105 — draw the records (seg2:74E4), step them (seg2:6DCB), show the DIB.
@@ -2058,8 +2066,10 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   only while the window is open — so this window is unreachable in this build
   and is not rebuilt.
 - Rebuilt in `src/sight_view.cpp`; the stop is presentation in
-  `GameScreen::advanceVehicles`. **Assumptions:** any key or click closes the
-  window (its input handling is not traced); a held arrow key passes the point.
+  `GameScreen::advanceVehicles`. **Input** (round 90, seg6:518B): WM_KEYDOWN and
+  WM_LBUTTONDOWN destroy the window, other messages go to DefWindowProc; the
+  window is modal (seg6:0FB4 on DS:A04A). **Assumption:** a held arrow key passes
+  the point.
 
 ### Player setup (round 36)
 

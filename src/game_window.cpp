@@ -521,8 +521,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     screen.balance().stop(); // assumption
                 continue;
             }
-            if (screen.victory().active()) { // Enter closes it (seg7:7D57 sends VK_RETURN after 5000 passes)
-                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.victory().stop();
+            if (screen.victory().active()) { // seg7:83EE: Esc / Space / Enter or a left click
+                if (screen.victory().closes(event, SDL_GetTicks())) screen.victory().stop();
                 continue;
             }
             if (screen.finish().active()) { // assumption: a key or click cuts the sequence short

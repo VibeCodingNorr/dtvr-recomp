@@ -25,6 +25,9 @@ public:
     bool active() const { return active_; }
     void stop() { active_ = false; }
     void update(Uint32 now); // ends after 5000 passes (seg7:7D4E sends Enter)
+    // seg7:7DEA / 7E16: WM_KEYDOWN with Escape, Space or Enter, or WM_LBUTTONDOWN,
+    // once the first pass set DS:9CDE (seg7:7CE9).
+    bool closes(const SDL_Event& event, Uint32 now) const;
     void draw(Uint32 now);
 
 private:

@@ -23,7 +23,7 @@ public:
     // False when the cell has no picture.
     bool open(int cellX, int cellY);
     bool isOpen() const { return open_; }
-    // A key or a click closes it (assumption: the input of the window is not traced).
+    // Any key or a left click closes it (seg6:518B); true for consumed input.
     bool handle(const SDL_Event& event);
     void draw();
 

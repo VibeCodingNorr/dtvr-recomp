@@ -132,8 +132,8 @@ bool IntroView::handle(const SDL_Event& event) {
         if (firstPass_ && (k == SDLK_ESCAPE || k == SDLK_SPACE || k == SDLK_RETURN || k == SDLK_KP_ENTER)) stop();
         return true;
     }
-    if (event.type == SDL_MOUSEBUTTONDOWN) { // seg7:214B: a click with DS:B5E4 and DS:1198
-        if (firstPass_) stop();
+    if (event.type == SDL_MOUSEBUTTONDOWN) { // seg7:25F6: WM_LBUTTONDOWN only (seg7:214B)
+        if (firstPass_ && event.button.button == SDL_BUTTON_LEFT) stop();
         return true;
     }
     return false;

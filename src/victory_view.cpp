@@ -109,6 +109,14 @@ bool VictoryView::start(const std::vector<int>& ranking, Uint32 now) {
     return active_;
 }
 
+bool VictoryView::closes(const SDL_Event& event, Uint32 now) const {
+    if (!active_ || now - started_ < kSceneStepMs) return false;
+    if (event.type == SDL_MOUSEBUTTONDOWN) return event.button.button == SDL_BUTTON_LEFT;
+    if (event.type != SDL_KEYDOWN) return false;
+    const SDL_Keycode k = event.key.keysym.sym;
+    return k == SDLK_ESCAPE || k == SDLK_SPACE || k == SDLK_RETURN || k == SDLK_KP_ENTER;
+}
+
 void VictoryView::update(Uint32 now) {
     if (active_ && (now - started_) / kSceneStepMs >= 5000) active_ = false; // 0x1388 passes
 }
