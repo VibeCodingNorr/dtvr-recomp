@@ -142,7 +142,8 @@ struct TurnChange {
 struct TurnHooks {
     std::function<void()> chargeCredits;    // year end, before the settlement (seg1:8AA7)
     std::function<void()> settleMonth;      // every month advance (seg1:85F9)
-    std::function<void()> clearCredits;     // year end, after inflation (seg1:8B41)
+    std::function<void()> yearBalance;      // year end, after inflation: BILANZ (seg2:07C5 -> seg8:88C6)
+    std::function<void()> clearCredits;     // year end, after the balance (seg1:8B41)
     std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
     int dragoHolder = -1;                   // DS:9CFC for flag bit 0

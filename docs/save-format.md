@@ -56,7 +56,7 @@ as long as the layout matches; a save from a newer revision is refused.
 
 Rule revisions with a changed sequence of random draws: 25 (East opening text),
 26 (texts of the blocked card window and of the investment offer), 27 (draws at
-the stage end). A save of an
+the stage end), 28 (the year balance's draws). A save of an
 older revision loads, but continues with the current rules.
 
 ## Save slots

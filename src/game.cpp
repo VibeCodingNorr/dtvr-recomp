@@ -332,6 +332,15 @@ void Game::advanceTurn() {
     hooks.chargeCredits = [this] { economy_.chargeCredits(activePlayers()); };
     hooks.settleMonth = [this] { economy_.settleMonth(); };
     hooks.clearCredits = [this] { economy_.clearCredits(); };
+    // seg8:88C6 draws rand() % 7 at once and rand() % 5, rand() % 4 when its window
+    // is up (seg8:8C49 / 8C57); later draws depend on the animation's timing and
+    // are not modelled (docs/formats.md "Year balance").
+    hooks.yearBalance = [this] {
+        balanceChoice_ = rng_.rand() % 7;
+        rng_.rand();
+        rng_.rand();
+        ++balanceSerial_;
+    };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };

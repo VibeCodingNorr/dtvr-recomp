@@ -168,6 +168,10 @@ public:
     int destination() const { return destination_; }
     int remainingStages() const { return remaining_; }
     int totalStages() const { return totalStages_; } // DS:A106
+    // Counts the year balances shown (BILANZ, not saved) and the choice rand() % 7 of
+    // the last one (seg8:88DF), for the window.
+    int balanceSerial() const { return balanceSerial_; }
+    int balanceChoice() const { return balanceChoice_; }
     int allowance() const { return counter_.allowance(); }
     int stepsTaken() const { return counter_.taken(); }
     const Calendar& calendar() const { return calendar_; }
@@ -251,6 +255,7 @@ private:
     int origin_ = -1, destination_ = -1;
     int remaining_ = 0;
     int totalStages_ = 0;
+    int balanceSerial_ = 0, balanceChoice_ = 0;
     std::vector<std::string> messages_;
 };
 

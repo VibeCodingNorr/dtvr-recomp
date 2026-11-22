@@ -105,7 +105,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     right click return to the title.
 43. Stage end as in the original: the missing random draws and the result texts
     (save format 4, rules revision 27).
-44. *Next:* the finish and victory sequences (ZIEL, SIEG) and the year balance.
+44. Year balance: its fixed random draws (rules revision 28); timing-dependent draws
+    of the original cannot be reproduced.
+45. *Next:* the finish, victory and year balance shows (ZIEL, SIEG, BILANZ).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

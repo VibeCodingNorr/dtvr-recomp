@@ -11,9 +11,10 @@
 namespace dtvr {
 
 constexpr int kSaveFormat = 4;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record)
-constexpr int kRulesRevision = 27; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 28; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
-                                   // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E)
+                                   // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
+                                   // year balance's draws, seg8:88DF / 8C49 / 8C57)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

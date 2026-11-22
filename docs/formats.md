@@ -1243,6 +1243,24 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   butt/<lang>/ziel/<town>.bmp (480 × 240) and the animations in
   butt/sbs/ziel and butt/sbs/sieg; window ZIEL 0x1F0 × 0x178.
 
+### Year balance (round 44)
+
+- **Call** at the year change (seg2:0784 ff.): music (DS:1A23), seg1:8AA7
+  (credits charged), seg1:85F9 (settlement), year + 1, inflation random(5),
+  then **seg8:88C6** (window BILANZ), seg1:8BC6, seg1:8B41 (credits cleared),
+  seg1:275E.
+- **seg8:88C6** draws rand() % 7 at once (seg8:88DF, a choice used later for the
+  voice `pos_%c`), creates BILANZ with `%s\bil_leer.bmp` (480 × 360, butt) and
+  `butt/sbs/bilanz/bilanz.sbs`, and when the window is up draws rand() % 5
+  (seg8:8C49) and rand() % 4 for the voice `%s\%c\VOICE\Bilanz\Bilanz_%c.wav`
+  with 'A' + r (seg8:8C57). During the animation further draws depend on its
+  timing: rand() % 4 for `Next_%c_%c` after 300 ticks without a human
+  (seg8:8E38) and rand() % 2 for `pos_` (seg8:9605) in some animation states;
+  they cannot be reproduced and are not modelled.
+- **Rebuilt:** the three fixed draws (hook `yearBalance` between inflation and
+  clearing the credits; rules revision 28). The show itself (show master,
+  voices, per-player results) is not rebuilt yet.
+
 ### Sounds (round 40)
 
 - **Table** seg1:2E90 ff. (locals [bp−0x12E] − 4 · n): sound n opens

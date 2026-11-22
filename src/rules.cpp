@@ -209,6 +209,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
                 call(hooks.settleMonth);
                 ++calendar.year;
                 calendar.inflation = inflateYear(calendar.inflation, rng);
+                call(hooks.yearBalance);
                 call(hooks.clearCredits);
                 ++change.yearsEnded;
             } else {
