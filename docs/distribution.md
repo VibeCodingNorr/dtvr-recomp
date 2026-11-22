@@ -12,6 +12,11 @@ Technical filenames, signatures, input hashes, format fields and implementation
 observations are allowed: they enable the importer to recognize user-owned media.
 All paths in public examples are generic placeholders.
 
+Project-authored SVG branding in `assets/branding/` is allowed as editable text
+source. It contains our own shapes and lettering, with no original game graphics
+or external images. Raster/ICO exports are generated outside the checkout with
+`tools/export_branding.py` and are not committed.
+
 ## Installation boundary
 
 The installer receives an explicit `--iso` path and creates an external user-local

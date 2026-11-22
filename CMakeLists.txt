@@ -42,3 +42,5 @@ if(Python3_Interpreter_FOUND)
 endif()
 install(TARGETS dtvr-recomb RUNTIME DESTINATION bin)
 install(FILES LICENSE DESTINATION share/licenses/dtvr-recomb)
+install(FILES assets/branding/icon.svg
+        DESTINATION share/icons/hicolor/scalable/apps RENAME dtvr-recomb.svg COMPONENT branding)

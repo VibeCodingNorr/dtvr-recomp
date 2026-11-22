@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <!-- SPDX-License-Identifier: GPL-3.0-only -->
+  <title id="title">DTVR Recomb icon</title>
+  <desc id="desc">An ivory winding road, a mint five-dot die and an amber destination on a midnight blue tile.</desc>
+  <defs><clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="52"/></clipPath></defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#142338"/>
+  <g clip-path="url(#tile)">
+  <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#0a1728" stroke-width="48"/>
+  <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#f5edda" stroke-width="32"/>
+  <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#142338" stroke-width="4" stroke-dasharray="10 10"/>
+  <circle cx="178" cy="59" r="19" fill="#f3b64c" stroke="#142338" stroke-width="7"/>
+  <circle cx="178" cy="59" r="5" fill="#142338"/>
+  </g>
+  <g transform="rotate(-12 86 91)">
+    <rect x="39" y="47" width="94" height="94" rx="21" fill="#0a1728"/>
+    <rect x="36" y="39" width="94" height="94" rx="21" fill="#6ce5c2"/>
+    <g fill="#142338">
+      <circle cx="62" cy="65" r="7"/>
+      <circle cx="104" cy="65" r="7"/>
+      <circle cx="83" cy="86" r="7"/>
+      <circle cx="62" cy="107" r="7"/>
+      <circle cx="104" cy="107" r="7"/>
+    </g>
+  </g>
+</svg>

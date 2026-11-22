@@ -22,6 +22,10 @@ SBS animation playback or executable translation have been implemented.
   SPDX identifier in source headers and the unmodified GNU GPL v3 text in `LICENSE`.
   The project license does not cover original game data or third-party dependencies.
 
+- Our own SVG branding in `assets/branding/` is permitted and uses GPL-3.0-only.
+  Keep it independent of original art. Export PNG/ICO with `tools/export_branding.py`
+  into an external directory; never relax the original-asset checks for these exports.
+
 - Users supply an original ISO explicitly through `--iso`. All examples use
   generic placeholders; never commit machine-specific paths or rely on a local
   installation, mounted disc, download URL or symlink to original game content.

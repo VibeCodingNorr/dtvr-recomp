@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <!-- SPDX-License-Identifier: GPL-3.0-only -->
+  <title id="title">DTVR Recomb</title>
+  <desc id="desc">Independent project branding: a winding road and mint die beside a geometric DTVR Recomb wordmark.</desc>
+  <defs><clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="52"/></clipPath></defs>
+  <rect width="1200" height="360" rx="32" fill="#101c2e"/>
+  <path d="M980 0V48Q980 80 1012 80H1200" fill="none" stroke="#1e3048" stroke-width="2"/>
+  <circle cx="1080" cy="80" r="5" fill="#f3b64c"/>
+  <g transform="translate(42 52)">
+    <rect x="8" y="8" width="240" height="240" rx="52" fill="#142338"/>
+    <g clip-path="url(#tile)">
+    <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#0a1728" stroke-width="48"/>
+    <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#f5edda" stroke-width="32"/>
+    <path d="M56 248V211C56 163 178 187 178 127V59" fill="none" stroke="#142338" stroke-width="4" stroke-dasharray="10 10"/>
+    <circle cx="178" cy="59" r="19" fill="#f3b64c" stroke="#142338" stroke-width="7"/>
+    <circle cx="178" cy="59" r="5" fill="#142338"/>
+    </g>
+    <g transform="rotate(-12 86 91)">
+      <rect x="39" y="47" width="94" height="94" rx="21" fill="#0a1728"/>
+      <rect x="36" y="39" width="94" height="94" rx="21" fill="#6ce5c2"/>
+      <g fill="#142338">
+        <circle cx="62" cy="65" r="7"/><circle cx="104" cy="65" r="7"/>
+        <circle cx="83" cy="86" r="7"/>
+        <circle cx="62" cy="107" r="7"/><circle cx="104" cy="107" r="7"/>
+      </g>
+    </g>
+  </g>
+  <!-- Lettering is drawn from project-authored paths, without fonts. -->
+  <g transform="translate(354 91)" fill="none" stroke="#f5edda" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M0 0V96H36C76 96 76 0 36 0Z"/>
+    <path d="M101 0H181M141 0V96"/>
+    <path d="M207 0L245 96H251L289 0"/>
+    <path d="M328 96V0H372C411 0 411 48 372 48H328M370 48L406 96"/>
+  </g>
+  <g transform="translate(357 228)" fill="none" stroke="#6ce5c2" stroke-width="7" stroke-linejoin="miter">
+    <path d="M0 38V0H19C39 0 39 19 19 19H0M18 19L35 38"/>
+    <path d="M94 0H62V38H94M62 19H88"/>
+    <path d="M155 0H125V38H155"/>
+    <path d="M184 0H216V38H184Z"/>
+    <path d="M246 38V0L265 22L284 0V38"/>
+    <path d="M316 38V0H336C355 0 355 19 336 19H316M336 19C357 19 357 38 336 38H316"/>
+  </g>
+  <path d="M859 119H1129M859 139H1021" stroke="#2c4058" stroke-width="3"/>
+  <g fill="#f3b64c">
+    <circle cx="859" cy="181" r="5"/>
+    <circle cx="888" cy="181" r="5"/>
+    <circle cx="917" cy="181" r="5"/>
+  </g>
+</svg>

@@ -1,5 +1,7 @@
 # DTVR Recomb
 
+![DTVR Recomb: an original road-and-die mark](assets/branding/logo.svg)
+
 Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
 The first milestone is an SDL2 viewer for the original map and graphics blocks.
 There is no playable game logic or executable recompilation yet.
@@ -177,6 +179,10 @@ These are planned features, not capabilities of the current viewer.
 Our original source code, tools and tests are licensed under **GPL-3.0-only**
 (GNU General Public License, version 3 only). See [LICENSE](LICENSE) for the full
 license text. This project does not grant an option to use later GPL versions.
+
+The [project-authored SVG logo and icon](assets/branding/) use the same license.
+They contain no original game artwork. PNG and ICO exports for packaging can be
+generated outside the checkout with `tools/export_branding.py`.
 
 The original game's ISO, executables, graphics, music, speech and other game data
 are **not covered by this project's license** and are not distributed here.
