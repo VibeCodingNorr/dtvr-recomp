@@ -114,6 +114,9 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
         for (const char* c = event.text.text; *c; ++c) {
             const bool lead = (static_cast<unsigned char>(*c) & 0xC0) != 0x80;
             if (lead && utf8Length(name) >= kNameMax) break;
+            // seg1:1F31: IsCharAlphaNumeric or a space (non-ASCII letters pass as letters)
+            const unsigned char ch = static_cast<unsigned char>(*c);
+            if (ch < 0x80 && !std::isalnum(ch) && ch != ' ') continue;
             name += *c;
         }
         return Result::None;
@@ -157,12 +160,16 @@ void SetupView::draw() {
     }
     buttons_.drawFocus(renderer_);
     for (int p = 0; p < kPlayerSlots; ++p) {
-        // SBINPUT draws its text itself (outside rally.exe); assumed: Arial weight 600
-        // at two thirds of the field height, palette colour 0x45, a bar at the caret.
+        // SBINPUT (seg1:1DC8, round 109): TextOut at (0, 0) of the field in Times New
+        // Roman italic weight 600 at 20 / 17 / 15 (seg1:1C85 by seg6:12FA), no text
+        // colour (black), transparent; the caret after the text.
+        static constexpr int kInput[3] = {0x14, 0x11, 0xF};
+        const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
         const ScreenRect& r = geometry_.name[size_t(p)];
         const std::string shown = names_[size_t(p)] + (p == editing_ ? "|" : "");
-        text_.draw(renderer_, shown, ScreenRect{r.x + 4, r.y + r.h / 6, r.w - 8, r.h},
-                   TextStyle{r.h * 2 / 3, true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
+        TextStyle style{kInput[res], true, true, false, false, 0, SDL_Color{0, 0, 0, 255}};
+        style.serif = true;
+        text_.draw(renderer_, shown, ScreenRect{r.x, r.y, r.w, r.h}, style);
     }
     // Recomb extension: a box and its label in the text colour of the dialogs (0x45).
     const SDL_Rect extra = extraRect();

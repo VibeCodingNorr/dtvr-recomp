@@ -1486,8 +1486,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Schnee / Steinschlag the obstacle cell (seg8:44E9 / 55FA / 5DA1), Räuber the
   victim (seg8:2238 → seg2:3216). Rebuilt: `Notice::focusX / focusY` from
   `src/game_events.cpp`; while such a message is open `GameScreen::eventFocus`
-  zooms in and centres, then restores. **Not rebuilt:** Nessie's second
-  centring during its animation (seg8:33B5).
+  zooms in and centres, then restores. Nessie's second centring during its
+  animation (seg8:33B5) followed in round 74 (`SceneStep::recentre`).
 - **Event animations** (round 69): a handler fills an animation definition on
   its stack (u16 delay, u8 0, u8 frame count, frame names), loads its SBS set,
   allocates a record with seg2:6D1B(1) (+0 definition, +4 follow-up 0, +8
@@ -2274,9 +2274,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   with these pictures and positions; the start creates a new game with the
   chosen slots and names and a time-based seed (the original seeds once at
   seg1:02A9 with the time) and hands it over into the running Game object
-  through the save codec. **Assumptions:** the look of SBINPUT (drawn by its
-  DLL): Arial weight 600 at two thirds of the field height in colour 0x45 with a
-  bar as caret; a disabled star is drawn unchanged; Escape cancels. The profile
+  through the save codec. The names are drawn as SBINPUT does (below; since
+  round 109). **Assumptions:** a bar as caret; a disabled star is drawn
+  unchanged; Escape cancels; non-ASCII characters pass as letters. The profile
   values [Player] P0–P7 are not rebuilt.
 - **SBINPUT** (round 108): the class lives in rally.exe (registered at seg1:0E57,
   procedure seg1:1C71). WM_CREATE: Times New Roman (DS:32D2), height −20 / −17 /
@@ -2286,8 +2286,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   space while below the limit (seg1:1F31). WM_KEYDOWN: Backspace deletes, Tab and
   Enter move the focus to the next / previous SB control (ids 0x1388–0x1770,
   sound 8), Left / Right / Up / Down move the caret, and only Enter is posted on
-  to the parent (seg1:2190); other keys do nothing. The names in PLAYER are still
-  drawn with the earlier assumption (Arial, colour 0x45).
+  to the parent (seg1:2190); other keys do nothing.
 
 ### Stage count window (round 108)
 
