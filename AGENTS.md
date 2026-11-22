@@ -14,7 +14,8 @@ rally.exe. The board (700 fields, links, 115 towns) is decoded and shown as an
 overlay. Movement counting, the slot machine and the original random generator
 are reconstructed as tested rules; a move preview exists in the world view. The
 arrival condition and the money, inflation and destination rules of field kinds
-are rebuilt. No complete turn, event cards, town economy, AI, save support,
+are rebuilt. Player change, months, destinations and stages complete a playable
+hotseat rally (`--play`, src/game.cpp). No event cards, town economy, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -72,6 +73,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/sbs.{hpp,cpp}`: bounds-checked SBSF sprite container parser (no SDL).
 - `src/worldmap.{hpp,cpp}`: europe.map cells, season table, SBB tile split and
   map composition following rally.exe (no SDL).
+- `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
   step counter, field distances and routes as in rally.exe (no SDL).
 - `src/board.{hpp,cpp}`: europe.inf, europe.str field graph and lists, town records,
@@ -117,7 +119,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace the player change, month counter, destination selection, event cards and
-the town dialog, then assemble one playable human turn.
+Trace event cards (deck, shuffling, effects), the card field dialog and the town
+dialog with its property economy; then computer players.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

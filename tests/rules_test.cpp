@@ -130,6 +130,63 @@ int main() {
     CHECK(f == dRng.random(5) * 0.01 + 1.01 && f >= 1.01 && f <= 1.0600001);
     CHECK(destinationReward(false, 1.0) == 300000.0 && destinationReward(true, 2.0) == 200000.0);
 
+    // Players and calendar.
+    std::vector<PlayerSlot> players(8);
+    players[1].status = 1; players[3].status = 2; players[6].status = 1;
+    CHECK(activePlayerCount(players) == 3 && firstActivePlayer(players) == 1);
+    Calendar cal;
+    MsRandom turnRng(1);
+    auto tc = nextPlayer(players, 1, cal, turnRng);
+    CHECK(tc.player == 3 && tc.monthsAdvanced == 0);
+    tc = nextPlayer(players, 6, cal, turnRng);                 // wraps to the first slot
+    CHECK(tc.player == 1 && tc.monthsAdvanced == 1 && cal.month == 1 && cal.year == 0);
+    players[3].flags = 0x2 | 0x8;
+    tc = nextPlayer(players, 1, cal, turnRng);                 // 3 sits out once
+    // The skipped player becomes current before the loop repeats, so bit 3 is cleared too.
+    CHECK(tc.player == 6 && tc.satOut == std::vector<int>{3} && players[3].flags == 0);
+    players[1].flags = 0x8;
+    cal.month = 11;
+    MsRandom yearRng(1), expect(1);
+    tc = nextPlayer(players, 6, cal, yearRng);
+    CHECK(tc.player == 1 && tc.yearsEnded == 1 && cal.year == 1 && cal.month == 12);
+    CHECK(cal.inflation == inflateYear(1.0, expect));
+    tc = nextPlayer(players, 1, cal, turnRng);
+    CHECK(tc.player == 3 && (players[1].flags & 0x8) == 0);    // bit 3 cleared on change
+    std::vector<PlayerSlot> none(8);
+    CHECK(nextPlayer(none, 0, cal, turnRng).player == -1);
+
+    // Start field and destinations.
+    Board towns = grid(4, 1);
+    towns.fields[1].kind = 6; towns.fields[2].kind = 6; towns.fields[3].kind = 6;
+    std::vector<Town> townList(3);
+    townList[0].x = 1; townList[0].name = "Paris";
+    townList[1].x = 2; townList[1].name = "London";
+    townList[2].x = 3; townList[2].name = "Rom";
+    CHECK(startField(towns, townList) == 2 && startField(towns, townList, "ROM") == 3);
+    CHECK(startField(towns, townList, "Berlin") == -1);
+    std::vector<PlayerSlot> racers(8);
+    MsRandom destRng(5);
+    for (int i = 0; i < 50; ++i) {
+        const int d = chooseDestination(towns, racers, 2, 3, 0x4000, destRng);
+        CHECK(d == 1);                                          // only candidate left
+    }
+    towns.fields[1].flags = 0x4000;
+    CHECK(chooseDestination(towns, racers, 2, 3, 0x4000, destRng) == -1);
+    towns.fields[1].flags = 0;
+    // Original quirk: a player's field number is compared with the list index.
+    racers[0].status = 1; racers[0].field = 1;                  // standing on field 1 (index 0)
+    CHECK(chooseDestination(towns, racers, 2, 3, 0, destRng) == 1);
+    racers[0].field = 0;                                        // field 0 equals index 0
+    CHECK(chooseDestination(towns, racers, 2, 3, 0, destRng) == -1);
+
+    // Stages.
+    auto st = reachDestination(2, 1.0);
+    CHECK(st.reward == 100000.0 && !st.gameOver && st.remaining == 1 && !st.lastStageNext);
+    st = reachDestination(1, 2.0);
+    CHECK(st.reward == 200000.0 && st.remaining == 0 && st.lastStageNext);
+    st = reachDestination(0, 1.5);
+    CHECK(st.reward == 450000.0 && st.gameOver);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("rules_test: OK");
     return failures != 0;

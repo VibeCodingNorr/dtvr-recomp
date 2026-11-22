@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
+#include "game.hpp"
 #include "rules.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
@@ -143,7 +144,8 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
-    bool smoke = false, views = true, graph = false, rollAtStart = false;
+    bool smoke = false, views = true, graph = false, rollAtStart = false, play = false;
+    int humans = 2, rounds = 99;
     int month = 2, roll = 0;
     unsigned seed = 1;
     View view = View::Overview;
@@ -151,11 +153,13 @@ static int run(int argc, char** argv) {
         const std::string arg = argv[i];
         if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
+                         "            [--play [--players 1-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
                          "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
                          "W: Wuerfeln (Automat, 1 Walze) | Rechtsklick: Startfeld waehlen\n"
+                         "--play: W wuerfeln, Pfeiltasten ein Feld fahren, Enter Zug beenden\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -167,6 +171,9 @@ static int run(int argc, char** argv) {
         else if (arg == "--no-views") views = false;
         else if (arg == "--graph") graph = true;
         else if (arg == "--roll") rollAtStart = true;
+        else if (arg == "--play") { play = true; view = View::World; }
+        else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
+        else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
         else if (arg == "--seed" && i + 1 < argc) seed = unsigned(std::stoul(argv[++i]));
         else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
@@ -252,8 +259,28 @@ static int run(int argc, char** argv) {
         std::cout << "Wurf " << roll << " ab Feld " << startField << ": " << targets.size()
                   << " moegliche Zielfelder\n";
     };
-    if (rollAtStart && view == View::World && !board.fields.empty()) rollDie();
+    if (rollAtStart && !play && view == View::World && !board.fields.empty()) rollDie();
+    // Hotseat game from the recovered rules (src/game.cpp).
+    std::unique_ptr<dtvr::Game> game;
+    auto report = [&] {
+        if (!game) return;
+        for (const auto& m : game->messages()) std::cout << m << "\n";
+        static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende"};
+        const int p = game->currentPlayer();
+        const std::string status = "DTVR Recomb | Spieler " + std::to_string(p + 1) + " | Monat "
+            + std::to_string(game->calendar().month % 12 + 1) + " | Schritte " + std::to_string(game->stepsTaken())
+            + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
+            + " | Etappen " + std::to_string(game->remainingStages()) + " | " + phases[int(game->phase())];
+        SDL_SetWindowTitle(window.get(), status.c_str());
+    };
+    if (play) {
+        if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
+        game = std::make_unique<dtvr::Game>(board, towns, humans, rounds, uint16_t(seed));
+        graph = true;
+    }
     load();
+    report();
+    if (game && rollAtStart) { game->roll(); report(); }
     bool running = true;
     while (running) {
         SDL_Event event;
@@ -270,9 +297,19 @@ static int run(int argc, char** argv) {
                     load(); break;
                 case SDLK_v: if (view == View::World) { views = !views; load(); } break;
                 case SDLK_g: graph = !graph; break;
-                case SDLK_w: if (view == View::World && !board.fields.empty()) rollDie(); break;
-                case SDLK_RIGHT: step(1); break;
-                case SDLK_LEFT: step(-1); break;
+                case SDLK_w:
+                    if (game) { game->roll(); report(); }
+                    else if (view == View::World && !board.fields.empty()) rollDie();
+                    break;
+                case SDLK_RETURN: if (game) { game->endTurn(); report(); } break;
+                case SDLK_UP: if (game) { game->step(dtvr::Direction::Up); report(); } break;
+                case SDLK_DOWN: if (game) { game->step(dtvr::Direction::Down); report(); } break;
+                case SDLK_RIGHT:
+                    if (game) { game->step(dtvr::Direction::Right); report(); } else step(1);
+                    break;
+                case SDLK_LEFT:
+                    if (game) { game->step(dtvr::Direction::Left); report(); } else step(-1);
+                    break;
                 default: break;
                 }
             }
@@ -362,8 +399,26 @@ static int run(int argc, char** argv) {
                     SDL_RenderDrawRectF(renderer.get(), &box);
                 }
             };
-            for (int t : targets) mark(t, {0, 255, 0, 255}, r);
-            if (roll > 0 || graph) mark(startField, {255, 255, 255, 255}, r * 1.5f);
+            if (game) {
+                // Stage origin (white), destination (yellow), players (coloured, current larger).
+                static const SDL_Color colours[8] = {{255, 60, 60, 255}, {60, 160, 255, 255}, {60, 220, 60, 255},
+                    {255, 160, 0, 255}, {200, 60, 255, 255}, {0, 230, 230, 255}, {255, 255, 255, 255}, {120, 120, 120, 255}};
+                mark(game->origin(), {255, 255, 255, 255}, r * 1.6f);
+                if (game->destination() >= 0) mark(game->destination(), {255, 230, 0, 255}, r * 2.0f);
+                for (int p = 0; p < dtvr::kPlayerSlots; ++p) {
+                    if (!game->players()[size_t(p)].status) continue;
+                    const auto& f = board.fields[size_t(game->playerField(p))];
+                    const SDL_Color c = colours[p];
+                    const float size = (p == game->currentPlayer() ? 0.9f : 0.5f) * r;
+                    const SDL_FRect box{x + (f.x + 0.5f) * cell - size + p, y + (f.y + 0.5f) * cell - size + p,
+                                        2 * size, 2 * size};
+                    SDL_SetRenderDrawColor(renderer.get(), c.r, c.g, c.b, 255);
+                    SDL_RenderFillRectF(renderer.get(), &box);
+                }
+            } else {
+                for (int t : targets) mark(t, {0, 255, 0, 255}, r);
+                if (roll > 0 || graph) mark(startField, {255, 255, 255, 255}, r * 1.5f);
+            }
         }
         if (!screenshot.empty()) {
             int w, h; SDL_GetRendererOutputSize(renderer.get(), &w, &h);

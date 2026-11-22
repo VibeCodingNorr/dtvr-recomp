@@ -250,9 +250,57 @@ Confirmed from code unless marked otherwise.
   and the player returned by seg2:1A41 is the current one, the year counter
   DS:A102 is incremented and DS:A11B *= 1.01 + 0.01 · random(5) (+1 % to +6 %).
 
-Open: how the turn passes to the next player and how the month advances, the
-destination selection (DS:A10D) and WM_COMMAND 0x424, event card shuffling and
-effects, the card field dialog, town dialog and property economics.
+### Players, months and stages (round 6)
+
+- **Player order**: 8 slots (seg2:19DD `(p + 1) mod 8`, seg2:1A0F `(p − 1) mod 8`);
+  slot status byte +0x00, 0 = inactive. seg2:0368 counts active slots,
+  seg2:1A41 returns the first active slot. seg2:5C5A is true when no slot has
+  status 1 (then seg2:5CAD sets DS:16 = 1 and the game ends via WM_COMMAND
+  0x424).
+- **nextPlayer** seg2:06FC: clear bit 3 of +0x40 for the current player, take the
+  next active slot (DS:94E2). If it is the first active slot, a new month
+  starts: when DS:A100 mod 12 = 11 the year ends first (seg1 year-end calls,
+  DS:A102 + 1, inflation step), then DS:A100 + 1 (seg2:07EB). seg2:089D then
+  checks +0x40: bit 1 or bit 2 → this player sits out once (bit cleared, text
+  1000 + random(2) or 1010 + random(2)) and the loop repeats; bit 0 → seg2:C00C
+  (only when the player equals DS:9CFC; not modelled). The bits are set in seg3
+  (seg3:19C4, 1A17, 1AE9, 1B3C, 2B88), probably by cards.
+- **Start**: seg2:0000 takes the first kind-6 field whose town name equals DS:1A00
+  `LONDON` (`_fstricmp`, seg10:22CA folds A–Z) as origin DS:A10B and destination
+  DS:A10D.
+- **Destination** seg5:1E2C(origin, current): candidate list DS:1A (60 slots)
+  of all kind-6 fields in field order (seg5:1D70; 46 here). It repeats
+  `idx = random(count)` and rejects an empty slot (idx = count), the origin, the
+  current destination, a field with `flagset & DS:A10F` (0x4000 after a new
+  game) and any idx for which an active player's +0x3C equals idx. That last
+  test compares a field number with a list index; the rebuild mirrors it.
+- **Stages**: DS:A104 = remaining stages, read with key `Rounds` (DS:184D,
+  seg8:0A6A; new game default 99 at seg4:0E23), DS:A106 = total. Reaching the
+  destination with A104 ≠ 0 pays 100,000 × inflation, decrements A104 (at 0:
+  "last stage" message seg7:372F(3)), sets the origin to the reached field and
+  draws a new destination; the stage is then started by the active player with
+  the largest value in the distance array DS:22 (first active on a tie or with
+  one player). With A104 = 0 the reward is 300,000 × inflation and WM_COMMAND
+  0x424 ends the game (seg4:075B tears down the game windows).
+- The opening capital was not found; money is only changed through seg2:59E6
+  (add) and seg2:5A47 (subtract).
+- **Rule consequence**: as reversing only undoes steps, a player in a dead end
+  (19 fields of degree 1) cannot use a large allowance; no escape path has been
+  identified yet.
+
+### Rebuilt hotseat game
+
+`src/game.cpp` assembles these rules into a hotseat game: London start, slot
+roll, field-to-field movement with undo, arrival actions for money fields and
+destinations, player change with month, year and inflation, stages and game
+end. Simplification: movement is field to field instead of pixel driving.
+Not yet rebuilt: event cards (yellow), card fields (violet), town dialog and
+property economy, sit-out flags set by cards, opening capital, computer
+players. A scripted run on the original data (3 players, 2 stages) finished
+after 82 turns at month 27 with inflation 1.092.
+
+Open: event card deck shuffling and effects, the card field dialog, the town
+dialog and property economics, opening capital, computer player behaviour.
 
 ### SBS: remaining hypotheses
 
@@ -289,8 +337,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 4. Movement: step counting, slot machine, random generator, tile properties and
    routes recovered (see "Movement").
 5. Turn: direction input, arrival condition and the field dispatch recovered;
-   money fields, inflation and destination reward rebuilt. Next: player change,
-   month counter, destination selection, event cards and town dialog.
+   money fields, inflation and destination reward rebuilt.
+6. Player change, months, start, destinations and stages recovered; a playable
+   hotseat game (`--play`) assembles all rules so far. Next: event cards, card
+   fields, town dialog and property economy.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

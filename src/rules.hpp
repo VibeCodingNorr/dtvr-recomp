@@ -5,6 +5,7 @@
 #include "worldmap.hpp"
 
 #include <array>
+#include <string>
 #include <cstdint>
 #include <vector>
 
@@ -101,6 +102,59 @@ double inflateYear(double factor, MsRandom& rng);
 // Destination town reward (seg2:11A6): 300,000 (DS:85EE) or, when DS:A104 != 0,
 // 100,000 (DS:85F6), times inflation.
 double destinationReward(bool alternative, double inflation);
+
+// ---- Players, months and stages (round 6) ----
+
+// The parts of a 0x522-byte player record that the turn logic reads.
+struct PlayerSlot {
+    uint8_t status = 0;   // +0x00: 0 = inactive; 1 is required for "humans left" (seg2:5C5A)
+    uint16_t flags = 0;   // +0x40: bit 1 / bit 2 = sit out one turn, bit 3 cleared on turn change
+    int field = -1;       // +0x3C: field the player stands on
+};
+constexpr int kPlayerSlots = 8;
+int activePlayerCount(const std::vector<PlayerSlot>& players); // seg2:0368
+// First active slot (seg2:1A41); 0 when none is active.
+int firstActivePlayer(const std::vector<PlayerSlot>& players);
+
+struct Calendar {
+    int month = 0;          // DS:A100, counts up without wrapping; month % 12 is used
+    int year = 0;           // DS:A102
+    double inflation = 1.0; // DS:A11B
+};
+
+struct TurnChange {
+    int player = -1;               // -1 when no player is active
+    int monthsAdvanced = 0;
+    int yearsEnded = 0;
+    std::vector<int> satOut;       // players that consumed a sit-out flag
+};
+// nextPlayer of seg2:06FC: cyclic order over 8 slots skipping inactive ones. When
+// the order reaches the first active slot the month advances; at month % 12 == 11
+// the year ends first (inflation step). Players with flag bit 1 or 2 sit out once
+// (seg2:089D) and the search continues. Flag bit 0 (seg2:C00C) is not modelled.
+TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng);
+
+// Start field: first kind-6 field whose town name equals `name` ignoring ASCII case
+// (seg2:0000 with DS:1A00 = "LONDON", compared by _fstricmp seg10:22CA).
+int startField(const Board& board, const std::vector<Town>& towns, const std::string& name = "LONDON");
+
+// New destination (seg5:1E2C): candidates are all kind-6 fields in field order
+// (seg5:1D70). Repeat idx = random(count) until the slot is filled, differs from
+// `origin` and `current`, its field has no flagset & mask bits, and no active
+// player's +0x3C equals idx. The last test compares a field number with the list
+// index; this mirrors the original code. Returns -1 if no candidate exists.
+int chooseDestination(const Board& board, const std::vector<PlayerSlot>& players, int origin,
+                      int current, uint16_t mask, MsRandom& rng);
+
+// Stages: DS:A104 = remaining stages from [MAIN] Rounds (new-game default 99).
+struct StageResult {
+    double reward = 0;  // 100,000 or 300,000 times inflation
+    bool gameOver = false;
+    bool lastStageNext = false; // remaining dropped to 0: the next destination ends the game
+    int remaining = 0;
+};
+// Reaching the destination (seg2:11A6 / 12D8 / 1438).
+StageResult reachDestination(int remaining, double inflation);
 
 // Fields where a walk of exactly `steps` field steps can end when every step is
 // counted by MoveCounter (reversals undo, so only non-reversing walks count).

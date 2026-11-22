@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Tests for the hotseat game flow assembled from the recovered rules.
+#include "game.hpp"
+
+#include <cstdio>
+#include <stdexcept>
+
+using namespace dtvr;
+
+static int failures = 0;
+#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); ++failures; } } while (0)
+
+// A ring of 13 fields: town "London" (kind 6) at 0, town "Rom" (kind 6) at 12,
+// blue fields elsewhere. Fields are linked left/right, 12 wraps to 0.
+static Board line(std::vector<Town>& towns) {
+    Board b;
+    b.fields.resize(13);
+    for (int i = 0; i < 13; ++i) {
+        Field& f = b.fields[size_t(i)];
+        f.x = uint8_t(i); f.y = 0; f.kind = 1;
+        f.next = {Field::kNone, int16_t((i + 1) % 13), Field::kNone, int16_t((i + 12) % 13)};
+    }
+    b.fields[0].kind = 6;
+    b.fields[12].kind = 6;
+    towns.resize(2);
+    towns[0].x = 0; towns[0].name = "London";
+    towns[1].x = 12; towns[1].name = "Rom";
+    return b;
+}
+
+int main() {
+    std::vector<Town> towns;
+    const Board board = line(towns);
+    bool threw = false;
+    try { Game g(board, towns, 0, 1, 1); } catch (const std::invalid_argument&) { threw = true; }
+    CHECK(threw);
+
+    Game game(board, towns, 2, 0, 1);
+    CHECK(game.origin() == 0 && game.destination() == 12 && game.currentPlayer() == 0);
+    CHECK(game.phase() == Game::Phase::Roll);
+    CHECK(!game.step(Direction::Right) && !game.endTurn());
+
+    CHECK(game.roll() && game.phase() == Game::Phase::Move && !game.roll());
+    const int rolled = game.allowance();
+    CHECK(rolled >= 1 && rolled <= 6);
+    CHECK(!game.step(Direction::Up) && !game.step(Direction::Down)); // no link
+    // Step forward, back (undo), forward again until the allowance is used.
+    CHECK(game.step(Direction::Right) && game.stepsTaken() == 1);
+    if (rolled > 1) {
+        CHECK(game.step(Direction::Left) && game.stepsTaken() == 0 && game.playerField(0) == 0);
+        for (int i = 0; i < rolled; ++i) CHECK(game.step(Direction::Right));
+    }
+    CHECK(game.phase() == Game::Phase::Arrived && game.playerField(0) == rolled);
+    CHECK(game.moneyChange(0) > 0);                              // blue field
+    CHECK(!game.step(Direction::Right));
+
+    CHECK(game.endTurn() && game.currentPlayer() == 1 && game.phase() == Game::Phase::Roll);
+    CHECK(game.calendar().month == 0);
+    CHECK(game.roll());
+    for (int i = 0; i < game.allowance(); ++i) game.step(Direction::Right);
+    CHECK(game.endTurn() && game.currentPlayer() == 0 && game.calendar().month == 1);
+
+    // Keep driving right around the ring; landing exactly on the destination with
+    // 0 stages remaining ends the game (300,000 reward).
+    for (int guard = 0; guard < 5000 && game.phase() != Game::Phase::GameOver; ++guard) {
+        if (game.phase() == Game::Phase::Arrived) game.endTurn();
+        else if (game.phase() == Game::Phase::Roll) game.roll();
+        else CHECK(game.step(Direction::Right));
+    }
+    CHECK(game.phase() == Game::Phase::GameOver);
+    CHECK(game.moneyChange(game.currentPlayer()) >= 300000.0);
+
+    // With one stage left the first arrival continues with a new destination.
+    Game stages(board, towns, 1, 1, 3);
+    for (int guard = 0; guard < 5000 && stages.remainingStages() == 1; ++guard) {
+        if (stages.phase() == Game::Phase::Arrived) stages.endTurn();
+        else if (stages.phase() == Game::Phase::Roll) stages.roll();
+        else stages.step(Direction::Right);
+    }
+    CHECK(stages.remainingStages() == 0 && stages.phase() != Game::Phase::GameOver);
+    CHECK(stages.origin() == 12 && stages.destination() == 0);
+
+    if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
+    else std::puts("game_test: OK");
+    return failures != 0;
+}

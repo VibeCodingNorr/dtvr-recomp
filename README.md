@@ -25,7 +25,7 @@ no overall completion percentage is claimed.
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Arrow-key driving, arrival condition (full allowance), field dispatch, blue/red money by month, inflation and destination reward recovered and tested. Player change, month counter, event cards, card fields and town dialog still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#turn-and-field-actions-round-5) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event cards, card fields, town dialog, opening capital and computer players still open. | [Game](src/game.cpp), [evidence](docs/formats.md#players-months-and-stages-round-6) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -40,8 +40,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 4. Movement: slot machine, step counter, `europe.pit` tile flags, rand(), routes.
 5. Turn: arrow-key input, arrival only after the full allowance, field kinds
    (blue money, red cost, yellow event card, towns, card field), inflation.
-6. *Next:* player change and month counter, destinations, event cards and town
-   dialog — then a playable human turn in the native viewer.
+6. Players, months, destinations and stages; first playable hotseat rally (`--play`).
+7. *Next:* event cards, card fields, town dialog and property economy.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -84,10 +84,13 @@ of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
 
 ## How to play
 
-The current build is an **inspection viewer**, not a playable rally yet. You can
-explore the reconstructed world and board graph and preview a move (press **W**
-in the world view); full turns, AI opponents, saves,
-multiplayer and native music playback are not implemented.
+The current build is an **inspection viewer with a first playable hotseat rally**.
+Start it with `play --play --players 2` (1–8 players, `--rounds N` stages,
+`--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
+drive field by field (the opposite direction takes a step back) and **Enter** to
+end the turn after arriving. Status is shown in the window title and the log in
+the terminal. Event cards, card fields, the town dialog, computer players,
+saves, multiplayer and native music playback are not implemented yet.
 
 1. Have your own supported original ISO and install the dependencies listed above.
 2. Build an installation in a new directory outside this checkout:
@@ -117,6 +120,7 @@ ISO after installation; subsequent launches use the installed local data.
 | G | World view: show board fields (coloured by kind), links and towns |
 | W | World view: spin the slot machine (1 reel, 1–6) and mark fields a move of exactly that many steps can end on |
 | Right click | World view: choose the start field and print its field action |
+| W / arrows / Enter | With `--play`: spin, drive one field, end the turn |
 | Escape | Exit |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.

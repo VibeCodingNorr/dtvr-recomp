@@ -133,6 +133,100 @@ double destinationReward(bool alternative, double inflation) {
     return (alternative ? 100000.0 : 300000.0) * inflation;
 }
 
+int activePlayerCount(const std::vector<PlayerSlot>& players) {
+    int n = 0;
+    for (size_t i = 0; i < players.size() && i < size_t(kPlayerSlots); ++i) n += players[i].status != 0;
+    return n;
+}
+
+int firstActivePlayer(const std::vector<PlayerSlot>& players) {
+    if (activePlayerCount(players) == 0) return 0;
+    for (size_t i = 0; i < players.size() && i < size_t(kPlayerSlots); ++i)
+        if (players[i].status) return int(i);
+    return 0;
+}
+
+TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng) {
+    if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
+    TurnChange change;
+    int player = current;
+    for (;;) {
+        if (player >= 0 && player < kPlayerSlots) players[size_t(player)].flags &= 0xFFF7;
+        if (activePlayerCount(players) == 0) return change;
+        do player = (player + 1) % kPlayerSlots; // seg2:19DD
+        while (!players[size_t(player)].status);
+        if (player == firstActivePlayer(players)) {
+            if (unsigned(calendar.month) % 12 == 11) {
+                ++calendar.year;
+                calendar.inflation = inflateYear(calendar.inflation, rng);
+                ++change.yearsEnded;
+            }
+            ++calendar.month;
+            ++change.monthsAdvanced;
+        }
+        PlayerSlot& p = players[size_t(player)];
+        if (p.flags & 0x2) { p.flags &= 0xFFFD; change.satOut.push_back(player); continue; }
+        if (p.flags & 0x4) { p.flags &= 0xFFFB; change.satOut.push_back(player); continue; }
+        change.player = player;
+        return change;
+    }
+}
+
+int startField(const Board& board, const std::vector<Town>& towns, const std::string& name) {
+    auto equal = [](const std::string& a, const std::string& b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i) {
+            auto fold = [](char c) { return c >= 'a' && c <= 'z' ? char(c - 32) : c; };
+            if (fold(a[i]) != fold(b[i])) return false;
+        }
+        return true;
+    };
+    for (size_t i = 0; i < board.fields.size(); ++i) {
+        const Field& f = board.fields[i];
+        if (f.kind != 6) continue;
+        for (const Town& t : towns)
+            if (t.x == f.x && t.y == f.y && equal(t.name, name)) return int(i);
+    }
+    return -1;
+}
+
+int chooseDestination(const Board& board, const std::vector<PlayerSlot>& players, int origin,
+                      int current, uint16_t mask, MsRandom& rng) {
+    std::vector<int> slots(60, -1);
+    int count = 0;
+    for (size_t i = 0; i < board.fields.size(); ++i)
+        if (board.fields[i].kind == 6 && count < 60) slots[size_t(count++)] = int(i);
+    bool possible = false;
+    for (int i = 0; i < count; ++i)
+        possible |= slots[size_t(i)] != origin && slots[size_t(i)] != current
+                    && !(board.fields[size_t(slots[size_t(i)])].flags & mask);
+    if (!possible) return -1;
+    for (int attempt = 0; attempt < 100000; ++attempt) {
+        const int idx = rng.random(count);
+        bool occupied = false;
+        for (size_t p = 0; p < players.size() && p < size_t(kPlayerSlots); ++p)
+            if (players[p].status && players[p].field == idx) { occupied = true; break; }
+        const int field = slots[size_t(idx)];
+        if (field == -1 || field == origin || field == current || occupied) continue;
+        if (board.fields[size_t(field)].flags & mask) continue;
+        return field;
+    }
+    return -1;
+}
+
+StageResult reachDestination(int remaining, double inflation) {
+    StageResult r;
+    if (remaining == 0) {
+        r.reward = destinationReward(false, inflation);
+        r.gameOver = true;
+        return r;
+    }
+    r.reward = destinationReward(true, inflation);
+    r.remaining = remaining - 1;
+    r.lastStageNext = r.remaining == 0;
+    return r;
+}
+
 std::vector<int> fieldsAfterSteps(const Board& board, int start, int steps) {
     const int n = int(board.fields.size());
     if (start < 0 || start >= n || steps < 0) return {};
