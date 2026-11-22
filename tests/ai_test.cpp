@@ -103,6 +103,30 @@ int main() {
     plan = aiTownPlan(ts, 0, 1);
     CHECK(plan.actions.size() == 4 && plan.actions[0].kind == 2 && plan.actions[0].value == 3 && plan.purchases == 3);
 
+    // Recomb extension (round 100): Verkaufen in debt, Kredit without spare money.
+    {
+        AiState xs = ts;
+        Economy xe(tt, 8);
+        xs.economy = &xe;
+        for (auto& h : xs.handTypes) h.fill(-1);
+        xe.addMoney(0, -te.money(0).cash);                // cash 0: nothing spare
+        xs.handTypes[0][2] = 8;                           // Kredit
+        CHECK(aiTownPlan(xs, 0, 1).purchases == 0);       // original: never
+        xs.extraCards = true;
+        AiTownPlan p2 = aiTownPlan(xs, 0, 1);
+        CHECK(p2.purchases == 1 && p2.actions.size() == 2 && p2.actions[0].kind == 2 && p2.actions[0].value == 2
+              && p2.actions[1].kind == 0 && p2.actions[1].value == 2); // the best scored free entry
+        xe.addMoney(0, 100000);
+        CHECK(xe.buy(0, 0, 0, BuyMode::Normal));          // own entry 0
+        xs.handTypes[0][2] = -1;
+        xs.handTypes[0][5] = 1;                           // Verkaufen
+        xe.addMoney(0, -xe.money(0).cash - 5000);         // 5,000 in debt
+        p2 = aiTownPlan(xs, 0, 1);
+        bool sells = false;
+        for (const AiAction& a2 : p2.actions) sells = sells || a2.kind == 3;
+        CHECK(p2.actions.size() >= 2 && p2.actions[0].kind == 2 && p2.actions[0].value == 5 && sells);
+    }
+
     // Card choice (seg5:7386) on the row with the destination at field 4.
     {
         AiState cs = s;

@@ -110,7 +110,8 @@ struct AiState {
 double aiSpareMoney(const AiState& s, int player);
 
 // seg5:8F01: the town dialog plan for `field`. Actions in order: kind 2 = play the
-// hand slot `value`, kind 0 = buy entry `value`. `purchases` is DS:8D28.
+// hand slot `value`, kind 0 = buy entry `value`; kind 3 = sell entry `value` (only
+// from the ComputerExtraCards extension). `purchases` is DS:8D28.
 struct AiAction { int kind; int value; };
 struct AiTownPlan { std::vector<AiAction> actions; int purchases = 0; };
 AiTownPlan aiTownPlan(const AiState& s, int player, int field);

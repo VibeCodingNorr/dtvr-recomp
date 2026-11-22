@@ -169,6 +169,7 @@ bool Game::computerAdvance() {
             const AiTownPlan plan = aiTownPlan(aiState(aiSteerless_), aiPlayer_, field);
             for (const AiAction& a : plan.actions) {
                 if (a.kind == 2) playCard(a.value);
+                else if (a.kind == 3) sellProperty(a.value); // extension only
                 else buyProperty(a.value);
                 collect();
             }

@@ -295,7 +295,38 @@ AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
         if (slot >= 0)
             for (const Item& it : items)
                 if (it.cls == 2) {
+                    mode = 6;
                     plan.actions.push_back({2, slot});
+                    plan.actions.push_back({0, it.entry});
+                    ++plan.purchases;
+                    break;
+                }
+    }
+    // Recomb extension (not in rally.exe, whose town plan never uses these cards):
+    // only when no property card was chosen above.
+    if (s.extraCards && !blocked && mode == 0xFF) {
+        double cash = s.cash(player);
+        const int sellSlot = s.cardSlot(player, 1); // Verkaufen: x1.5 (DS:869E)
+        if (cash < 0 && sellSlot >= 0) {           // in debt: sell own entries, most valuable first
+            std::vector<Item> own;
+            for (const Item& it : items)
+                if (it.cls == 1) own.push_back(it);
+            std::sort(own.begin(), own.end(), [&](const Item& a, const Item& b) { return value(a) > value(b); });
+            if (!own.empty()) {
+                mode = 2;
+                plan.actions.push_back({2, sellSlot});
+                for (const Item& it : own) {
+                    if (cash >= 0) break;
+                    plan.actions.push_back({3, it.entry});
+                    cash += value(it) * 1.5;
+                }
+            }
+        }
+        const int creditSlot = s.cardSlot(player, 8); // Kredit: a free entry without cash
+        if (mode == 0xFF && plan.purchases == 0 && creditSlot >= 0)
+            for (const Item& it : items)
+                if (it.cls == 0) { // the best scored free entry
+                    plan.actions.push_back({2, creditSlot});
                     plan.actions.push_back({0, it.entry});
                     ++plan.purchases;
                     break;

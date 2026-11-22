@@ -832,7 +832,12 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   on the last stage) nearest to the destination when it saves more than six
   fields. *Correction:* the property cards are category 1 and never enter this
   loop; the town plan (seg5) already uses Kaufen, Gold, Platin, Mieten, Nimm and
-  Abkaufen, so only Verkaufen and Kredit stay unused by computers.
+  Abkaufen, so only Verkaufen and Kredit stay unused by computers. Round 100,
+  in the town plan after the original choices and only when no property card was
+  chosen there: Verkaufen when the cash is negative — the computer's unrented
+  entries of the town, most valuable first, are sold at × 1.5 until the cash is
+  no longer negative (plan action kind 3); Kredit when nothing could be bought —
+  the best scored free entry (BuyMode 9, no cash check).
 - **Targets** seg5:9B0B(player, mode): other active players not sitting out
   (bits 1, 2); mode 0 value 100 − distance + W+0x84[slot] + random(W+0x94[slot]),
   mode 1 cash + property value. One candidate is taken; otherwise sorted
