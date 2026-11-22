@@ -813,6 +813,18 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   W+0xB0 within two fields. Property cards, Steuerlos, Risiko, Nägel and
   Flugzeug keep the random start value. The best score must exceed W+0 (10),
   which is also the starting best; ties keep the earlier card.
+  *Round 98:* in all eight profiles W+0 = 10 and W+2 ≤ 2, so a card that keeps the
+  random start value (property cards, Steuerlos, Risiko, Nägel, Flugzeug) never
+  wins: rally.exe's computers never play these cards from the hand (the Nägel
+  window, seg3:1E5E, has no computer path either).
+- **Recomb extension** (not rally.exe; `[Extensions] ComputerExtraCards`,
+  `--computer-cards`, saved per game, off by default): computers may also play
+  these cards. Nägel (round 98): when another active player trails at most 8
+  fields (flag-1 distances to the destination), the nails go into the available
+  direction (Game::nailsDirections) whose neighbour lies farthest from the
+  destination; the score is W+0 + 1, so original cards with a higher score still
+  win; no extra random draws. Steuerlos, Risiko, Flugzeug and the property cards
+  follow.
 - **Targets** seg5:9B0B(player, mode): other active players not sitting out
   (bits 1, 2); mode 0 value 100 − distance + W+0x84[slot] + random(W+0x94[slot]),
   mode 1 cash + property value. One candidate is taken; otherwise sorted

@@ -158,7 +158,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 87. Sights: with the option Views the vehicle stops at the 40 view points, Enter shows picture and text.
 88. Subtitles: with the option Subtitle (or without audio) the voices of destination search, year balance and victory show their texts, timed by sync.dat.
 89. Intro: before the title the club scene with door, show master, speaker, hat and Fate, lightning, club photo and newspaper (`[Setup] ShowIntro`, `--intro` / `--no-intro`).
-90. *Next:* remaining presentation details (compare windows with rally.exe).
+90. Input audit (rounds 90–97): sights, intro, victory, destination search, finish, year balance (with its closing part), card window, town dialog, options, credits, save dialog, Nägel window and the setup focus follow the traced window procedures.
+91. Extension `ComputerExtraCards` (off by default): computers may also play the cards rally.exe never picks; Nägel first.
+92. *Next:* the extension for Steuerlos, Risiko, Flugzeug and the property cards; remaining presentation details.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -60,6 +60,8 @@ AiState Game::aiState(bool steerless) const {
     s.destination = destination_;
     s.routeMask = routeMask();
     s.steerless = steerless;
+    s.extraCards = computerExtraCards_;
+    s.nailsDirections = nailsDirections();
     // DS:22 holds the last distances of seg2:43A8; during play they come from the
     // stage destination with the route mask (approximation, see docs).
     for (int d : fieldDistances(board_, destination_, routeMask())) s.fieldDist.push_back(d < 0 ? 0xFFFF : uint16_t(d));

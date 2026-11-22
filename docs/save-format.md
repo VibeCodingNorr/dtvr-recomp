@@ -14,7 +14,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 
 | Record | Fields |
 | --- | --- |
-| `DTVR-RECOMB-SAVE` | format version (currently 4; 3 is read without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
+| `DTVR-RECOMB-SAVE` | format version (currently 5; 4 is read without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
 | `rng` | state of the MS C random generator |
@@ -34,6 +34,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 | `risiko` | level (0 = not running), light, tick counter, steps (format 2) |
 | `demo` | 1 when a game without humans was asked to end (DS:16, format 3) |
 | `stages` | total number of stages DS:A106 (format 4; older saves use the stages left) |
+| `extensions` | 1 when computers also play the cards rally.exe never picks (recomb extension, format 5; older saves: 0) |
 | `turn` | phase (0 spin, 1 drive, 2 arrived, 3 game over, 4 Risiko), current slot, stage origin, destination, stages left |
 | `end` | — |
 

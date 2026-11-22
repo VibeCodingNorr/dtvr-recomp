@@ -250,7 +250,32 @@ AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obs
         case 29:                                         // 1 oder 2 when at most two fields away
             if (myDist <= 2) score = bonus(0xB0);
             break;
-        default: break; // property cards, Steuerlos, Risiko, Nägel, Flugzeug: the random value only
+        case 19: {                                       // Nägel: recomb extension only (see below)
+            if (!s.extraCards) break;
+            // Not in rally.exe (its random value never wins): when an opponent trails
+            // at most 8 fields behind, the nails go into an available direction away
+            // from the destination (the farthest neighbour); just above the threshold,
+            // so any original card with a higher score still wins. No extra draws.
+            bool trailing = false;
+            for (int p = 0; p < int(s.players->size()); ++p) {
+                if (!activeOther(s, p, player)) continue;
+                const uint16_t dp = dist[size_t((*s.players)[size_t(p)].field)];
+                if (dp != kUnreached && dp > d0 && dp - d0 <= 8) trailing = true;
+            }
+            int dir = -1;
+            uint16_t far = d0;
+            for (int k = 0; k < 4; ++k) {
+                const int n = s.board->fields[size_t(me.field)].next[size_t(k)];
+                if (!s.nailsDirections[size_t(k)] || n == Field::kNone) continue;
+                if (dist[size_t(n)] != kUnreached && dist[size_t(n)] > far) { far = dist[size_t(n)]; dir = k; }
+            }
+            if (trailing && dir >= 0) {
+                score = uint16_t(w.at(0) + 1);
+                target = dir + 1;
+            }
+            break;
+        }
+        default: break; // property cards, Steuerlos, Risiko, Flugzeug: the random value only
         }
         if (score > best) {
             best = score;

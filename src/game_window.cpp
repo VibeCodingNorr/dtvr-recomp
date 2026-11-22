@@ -66,6 +66,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
     }
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
+    // The command-line game (not a loaded one) takes the extension from the settings.
+    if (options.loadSlot < 0)
+        play.game().setComputerExtraCards(screen.settings().computerExtraCards || options.computerExtraCards);
     std::vector<std::string> musicIssues;
     auto musicPacks = discoverMusicPacks(root.parent_path() / "music/packs", musicIssues);
     for (const auto& issue : musicIssues) std::cerr << "Klangset: " << issue << "\n";
@@ -182,6 +185,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             std::string error;
             const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr)));
             if (!play.newGame(status, names, seed, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
+            play.game().setComputerExtraCards(screen.settings().computerExtraCards);
             for (int p = 0; p < kPlayerSlots; ++p) screen.setZoom(p, p == 0 || p == 4);
             startGame(true);
             break;
@@ -569,7 +573,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     const auto status = screen.setup().status();
                     const auto names = screen.setup().names();
                     screen.setup().close();
-                    if (play.newGame(status, names, seed, error)) startGame(true);
+                    if (play.newGame(status, names, seed, error)) {
+                        play.game().setComputerExtraCards(screen.settings().computerExtraCards);
+                        startGame(true);
+                    }
                     else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
                 } else if (r == SetupView::Result::Cancel) {
                     screen.setup().close();

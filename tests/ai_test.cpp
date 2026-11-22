@@ -131,6 +131,29 @@ int main() {
         CHECK(c.slot == 6);
         cs.dragoHolder = -1;
         CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1);
+        // Recomb extension (round 98): Nägel (type 18) never wins in rally.exe; with
+        // extraCards a trailing opponent within 8 fields makes the computer throw them
+        // away from the goal (field 2 -> left neighbour 1, direction 4).
+        {
+            const int keepField = players[3].field, keepStatus = players[3].status;
+            players[0].field = 2;
+            players[3].status = 1;
+            players[3].field = 0;                         // two fields behind
+            cs.handTypes[0].fill(-1);
+            cs.handTypes[0][1] = 18;
+            cs.nailsDirections = {false, true, false, true};
+            CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1); // original: never
+            cs.extraCards = true;
+            c = aiChooseCard(cs, 0, clear, cr);
+            CHECK(c.slot == 1 && c.type == 18 && c.target == 4);
+            cs.nailsDirections = {false, true, false, false}; // only towards the goal: no
+            CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1);
+            cs.extraCards = false;
+            cs.handTypes[0][1] = -1;
+            players[0].field = 1;
+            players[3].field = keepField;
+            players[3].status = uint8_t(keepStatus);
+        }
         // Targets: Fiskus goes to the only other player; two candidates follow the odds.
         players[3].status = 1;
         CHECK(aiChooseTarget(cs, 0, 1, cr) == 3);

@@ -148,6 +148,7 @@ std::string SaveCodec::encode(const Game& g) {
     o << "risiko " << g.risiko_.level << ' ' << g.risiko_.light << ' ' << g.risiko_.ticks << ' ' << g.risiko_.steps
       << '\n';
     o << "demo " << int(g.demoEnd_) << '\n';
+    o << "extensions " << int(g.computerExtraCards_) << '\n';
     o << "stages " << g.totalStages_ << '\n';
     o << "turn " << int(g.phase_) << ' ' << g.current_ << ' ' << g.origin_ << ' ' << g.destination_ << ' '
       << g.remaining_ << '\n';
@@ -193,6 +194,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     int phase = 0, current = 0, origin = -1, destination = -1, remaining = 0;
     Game::RisikoState risiko;
     int demoEnd = 0;
+    int extraCards = 0; // format 5: recomb extensions (0 in older saves)
     int totalStages = -1;
     std::map<std::string, int> seen;
     bool ended = false;
@@ -281,6 +283,8 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
                  && r.get(risiko.steps, 0, 1000);
         } else if (key == "demo") {
             ok = r.get(demoEnd, 0, 1);
+        } else if (key == "extensions") {
+            ok = r.get(extraCards, 0, 1);
         } else if (key == "stages") {
             ok = r.get(totalStages, 0, 1 << 20);
         } else if (key == "turn") {
@@ -296,6 +300,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     if (version >= 2 && seen["risiko"] != 1) return fail("Eintrag 'risiko' fehlt oder ist doppelt");
     if (version >= 3 && seen["demo"] != 1) return fail("Eintrag 'demo' fehlt oder ist doppelt");
     if (version >= 4 && seen["stages"] != 1) return fail("Eintrag 'stages' fehlt oder ist doppelt");
+    if (version >= 5 && seen["extensions"] != 1) return fail("Eintrag 'extensions' fehlt oder ist doppelt");
     if ((Game::Phase(phase) == Game::Phase::Risiko) != (risiko.level != 0)) return fail("Risiko-Zustand passt nicht zur Phase");
     if (seen["player"] != kPlayerSlots || seen["hand"] != kPlayerSlots || seen["town"] != int(towns.size())
         || seen["money"] != int(money.size()))
@@ -340,6 +345,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     g.remaining_ = remaining;
     g.risiko_ = risiko;
     g.demoEnd_ = demoEnd;
+    g.computerExtraCards_ = extraCards != 0;
     g.totalStages_ = totalStages >= 0 ? totalStages : remaining; // formats 1-3: the stages left
     g.messages_.clear();
     return true;

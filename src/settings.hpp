@@ -17,6 +17,9 @@ struct Settings {
     std::array<int, kCount> value{1, 1, 1, 1, 1, 1, 1, 1};
     int subtitle = 0; // DS:B5DF
     int showIntro = 1; // seg5:0174: [Setup] ShowIntro (default 1) plays the intro seg7:0000
+    // [Extensions] (recomb only): ComputerExtraCards lets computers also play the
+    // cards rally.exe's scores never pick (applied to new games, saved with them).
+    bool computerExtraCards = false;
     // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of
     // seg6:0EE0 are multiplied by 1.0 / 1.5 / 2.0 / 3.0 (DS:858E).
     int pause = 0;

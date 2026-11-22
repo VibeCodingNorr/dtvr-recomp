@@ -148,6 +148,7 @@ static int run(int argc, char** argv) {
     int loadSlot = -1;           // --game: load save slot 0-8
     bool noTitle = false;        // --game: start the game without the title menu
     bool intro = false, noIntro = false; // --game: force or skip the intro before the title
+    bool computerCards = false;          // --game: computers also play the cards rally.exe never picks
     bool openSetup = false;      // --game: open the player setup (screenshots)
     bool openOverview = false;   // --game: open Übersicht (screenshots)
     bool openSurroundings = false; // --game: start Umfeld (tests)
@@ -177,7 +178,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--no-title] [--intro|--no-intro] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -210,6 +211,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--no-title") noTitle = true;
         else if (arg == "--intro") intro = true;
         else if (arg == "--no-intro") noIntro = true;
+        else if (arg == "--computer-cards") computerCards = true;
         else if (arg == "--setup") openSetup = true;
         else if (arg == "--overview") openOverview = true;
         else if (arg == "--surroundings") openSurroundings = true;
@@ -291,6 +293,7 @@ static int run(int argc, char** argv) {
         options.fullscreen = fullscreen;
         options.intro = intro;
         options.noIntro = noIntro;
+        options.computerExtraCards = computerCards;
         // The title menu comes first unless a test option asks for a specific state.
         options.title = !noTitle && loadSlot < 0 && menuName.empty() && !openCards && !holdRight && !openSave
                         && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup

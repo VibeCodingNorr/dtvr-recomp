@@ -52,7 +52,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMB-SAVE 4\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMB-SAVE 5\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -99,6 +99,25 @@ int main() {
         const size_t ms = missing.find("\nstages ");
         missing.erase(ms, missing.find('\n', ms + 1) - ms);
         CHECK(!SaveCodec::decode(c, missing, error)); // format 4 needs it
+    }
+
+    // Format 5 (round 98): the recomb extension record; format 4 saves load with it off.
+    {
+        Game ext(board, towns, 1, 2, 5, 1);
+        ext.setComputerExtraCards(true);
+        const std::string v5 = SaveCodec::encode(ext);
+        CHECK(v5.find("\nextensions 1\n") != std::string::npos);
+        Game d(board, towns, 1, 0, 6, 1);
+        CHECK(SaveCodec::decode(d, v5, error) && d.computerExtraCards());
+        std::string v4 = v5;
+        v4.replace(0, 18, "DTVR-RECOMB-SAVE 4");
+        const size_t es = v4.find("\nextensions ");
+        v4.erase(es, v4.find('\n', es + 1) - es);
+        CHECK(SaveCodec::decode(d, v4, error) && !d.computerExtraCards());
+        std::string missing = v5;
+        const size_t ms = missing.find("\nextensions ");
+        missing.erase(ms, missing.find('\n', ms + 1) - ms);
+        CHECK(!SaveCodec::decode(d, missing, error)); // format 5 needs it
     }
 
     // Rejected input leaves the game unchanged.

@@ -99,6 +99,11 @@ public:
     // steps away has no sea-route bit 0x04. Without any, CreateWindow fails and the
     // card takes the water path (seg3:1E02: sound 0x12, text 5500).
     std::array<bool, 4> nailsDirections() const;
+    // Recomb extension (not in rally.exe, docs/formats.md "Computer card play"):
+    // computers also play the cards whose original score never wins. Part of the
+    // game state (saved), off by default.
+    void setComputerExtraCards(bool on) { computerExtraCards_ = on; }
+    bool computerExtraCards() const { return computerExtraCards_; }
     // europe.pit properties of a map cell (seg2:3260), 0 without map data.
     uint16_t cellProperties(int x, int y) const;
     // "Karte einsetzen" (seg4:0930 -> seg2:0B08): false with text 1020 + random(2)
@@ -306,6 +311,7 @@ private:
     bool obstacleConfirmed_ = false;
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
+    bool computerExtraCards_ = false;       // recomb extension: computers also play the cards rally.exe never picks
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
