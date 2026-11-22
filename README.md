@@ -103,7 +103,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 41. Driving sounds, Dr. Drago's laugh, pause keys 1–4 with their voice memos, Credits.
 42. Demo from the title: four computer drivers as in the original; Escape or a
     right click return to the title.
-43. *Next:* the remaining dialog sounds, music and the stage results.
+43. Stage end as in the original: the missing random draws and the result texts
+    (save format 4, rules revision 27).
+44. *Next:* the finish and victory sequences (ZIEL, SIEG) and the year balance.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

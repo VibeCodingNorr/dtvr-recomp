@@ -52,7 +52,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMB-SAVE 3\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMB-SAVE 4\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -83,6 +83,22 @@ int main() {
         v1.erase(d, v1.find('\n', d + 1) - d);
         Game c(board, towns, 1, 0, 3, 1);
         CHECK(SaveCodec::decode(c, v1, error) && SaveCodec::encode(c) == saved);
+    }
+
+    // Format 3 (round 26, no stages record): the total is taken from the stages left.
+    {
+        Game staged(board, towns, 1, 5, 3, 1);
+        std::string v3 = SaveCodec::encode(staged);
+        CHECK(v3.find("\nstages 5\n") != std::string::npos);
+        v3.replace(0, 18, "DTVR-RECOMB-SAVE 3");
+        const size_t st = v3.find("\nstages ");
+        v3.erase(st, v3.find('\n', st + 1) - st);
+        Game c(board, towns, 1, 9, 4, 1);
+        CHECK(SaveCodec::decode(c, v3, error) && c.totalStages() == c.remainingStages());
+        std::string missing = SaveCodec::encode(staged);
+        const size_t ms = missing.find("\nstages ");
+        missing.erase(ms, missing.find('\n', ms + 1) - ms);
+        CHECK(!SaveCodec::decode(c, missing, error)); // format 4 needs it
     }
 
     // Rejected input leaves the game unchanged.

@@ -60,6 +60,7 @@ Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<
         notice(961 + rng_.random(2), {playerArg(human), playerArg(slot)});
     }
     remaining_ = rounds;
+    totalStages_ = rounds; // DS:A106 (seg4:0E29)
     current_ = firstActivePlayer(players_);
     // Deck (seg3:0000/01AD) and starting hands (seg3:0286, [Setup] defaultCards).
     deck_.shuffle(rng_);
@@ -229,14 +230,26 @@ void Game::arrive() {
     case 6:
         if (field == destination_) {
             const auto r = reachDestination(remaining_, calendar_.inflation);
+            if (!r.gameOver) rng_.random(1); // seg2:12D8: music Z1 / Z2 before the finish (seg7:2628)
             economy_.addMoney(current_, r.reward);
             messages_.push_back(who + " erreicht das Ziel " + townName(field) + ": " + money(r.reward));
+            if (r.gameOver) // seg2:1231: the Master-Rallye texts 354-356
+                notice(354 + rng_.random(2), {playerArg(current_), moneyArg(r.reward)});
+            else { // seg2:136F: texts 350-352 with stage number A106 - A104 + 1 and A106
+                NoticeArg round, total;
+                round.text = std::to_string(totalStages_ - remaining_ + 1);
+                total.text = std::to_string(totalStages_);
+                notice(350 + rng_.random(2), {playerArg(current_), round, total, moneyArg(r.reward)});
+            }
             if (r.gameOver) {
                 phase_ = Phase::GameOver;
                 messages_.push_back("Spielende.");
                 return;
             }
             remaining_ = r.remaining;
+            // seg2:1486: the stage announcement seg7:372F(1) draws rand() % 5 (seg7:3B4E);
+            // before the last stage seg7:372F(3) draws nothing.
+            if (remaining_ != 0) rng_.rand();
             origin_ = field;
             destination_ = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")

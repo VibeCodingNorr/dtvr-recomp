@@ -167,6 +167,7 @@ public:
     int origin() const { return origin_; }
     int destination() const { return destination_; }
     int remainingStages() const { return remaining_; }
+    int totalStages() const { return totalStages_; } // DS:A106
     int allowance() const { return counter_.allowance(); }
     int stepsTaken() const { return counter_.taken(); }
     const Calendar& calendar() const { return calendar_; }
@@ -249,6 +250,7 @@ private:
     int current_ = 0;
     int origin_ = -1, destination_ = -1;
     int remaining_ = 0;
+    int totalStages_ = 0;
     std::vector<std::string> messages_;
 };
 

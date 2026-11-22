@@ -274,7 +274,7 @@ Confirmed from code unless marked otherwise.
   current destination, a field with `flagset & DS:A10F` (0x4000 after a new
   game) and any idx for which an active player's +0x3C equals idx. That last
   test compares a field number with a list index; the rebuild mirrors it.
-- **Stages**: DS:A104 = remaining stages, read with key `Rounds` (DS:184D,
+- **Stages** (see also "Stage end", round 43): DS:A104 = remaining stages, read with key `Rounds` (DS:184D,
   seg8:0A6A; new game default 99 at seg4:0E23), DS:A106 = total. Reaching the
   destination with A104 ≠ 0 pays 100,000 × inflation, decrements A104 (at 0:
   "last stage" message seg7:372F(3)), sets the origin to the reached field and
@@ -1220,6 +1220,28 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - Rebuilt in `src/game_screen.cpp`: per player, zoom 1 shows half the world area
   twice as large (world and vehicles); Umfeld uses the halved viewport. The zoom
   flag is not part of the save file yet.
+
+### Stage end (round 43)
+
+- **Order at the destination** (seg2:11A6 ff.), stages left DS:A104 ≠ 0: music
+  `random(1)` → Z1 or Z2 (seg2:12D8, seg1:2A30 plays `snd/midi` only with Midi
+  on, the draw happens always), the finish sequence seg7:2628 (window ZIEL, no
+  random numbers), the reward via seg2:59E6, text 350 + random(2) (seg2:136F:
+  player, stage A106 − A104 + 1, total A106, amount), the destination town's
+  dialog seg1:4BDD, then — with A104 decremented — at 0 music A1 and the last-
+  stage announcement seg7:372F(3), otherwise music (DS:1A55) and seg7:372F(1),
+  which draws a raw rand() % 5 (seg7:3B4E); then the next destination and Dr.
+  Drago (seg2:9C97).
+- **Master-Rallye** (A104 = 0): music Z1 without a draw (seg2:11C2), seg7:2628,
+  the reward, text 354 + random(2) (seg2:1231: player, amount), the victory
+  sequence seg7:71C4 (window SIEG) and WM_COMMAND 0x424.
+- **Corrections:** the rebuild did not draw these numbers before round 43
+  (rules revision 27) and did not keep the total stage count DS:A106 (save
+  format 4, record `stages`).
+- **Pictures** (not shown yet): butt/ziel.bmp, zielausl.bmp, zielclub.bmp,
+  sieg.bmp, bilanz.bmp (480 × 360), butt/<lang>/banner.bmp, the town photos
+  butt/<lang>/ziel/<town>.bmp (480 × 240) and the animations in
+  butt/sbs/ziel and butt/sbs/sieg; window ZIEL 0x1F0 × 0x178.
 
 ### Sounds (round 40)
 
