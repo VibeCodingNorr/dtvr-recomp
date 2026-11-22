@@ -189,6 +189,18 @@ int main() {
     CHECK(cardKind(36) == CardKind::Unsupported && cardKind(26) == CardKind::Risiko && cardStatusFlag(CardKind::Zucker) == 0x02);
     CHECK(cardNeedsTarget(CardKind::Fiskus) && !cardNeedsTarget(CardKind::Konto));
 
+    // Mitspieler (round 86, seg2:5E93): a human who rolled hands the turn to the
+    // computer, which finishes it; switching back makes the slot human again.
+    {
+        Game swap(board, towns, 2, 0, 5, 1, nullptr, nullptr, false);
+        swap.setRandomEvents(false);
+        CHECK(swap.roll() && swap.phase() == Game::Phase::Move && swap.currentPlayer() == 0);
+        CHECK(swap.setComputer(0, true) && swap.isComputer(0));
+        for (int guard = 0; guard < 50 && swap.currentPlayer() == 0; ++guard) swap.runComputerTurn();
+        CHECK(swap.currentPlayer() == 1 && swap.phase() == Game::Phase::Roll);
+        CHECK(swap.setComputer(0, false) && !swap.isComputer(0));
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");
     return failures != 0;

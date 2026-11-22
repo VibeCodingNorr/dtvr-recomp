@@ -1236,6 +1236,17 @@ own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
   seg8:0362, MAIN1; 1044 Zurück only closes; 1064 Rallye beenden seg4:0EDF,
   MAIN1 again when that returns 0; 1065 Weiter spielen seg4:0753; 1066
   Mitspieler seg4:0803.
+  *Round 86:* 1060 Neues Spiel (seg4:075B) clears DS:94C4 / 96A0 / 14, stops the
+  timer DS:A7C8, closes the game windows and returns to the title (seg8:03AB);
+  1065 Weiter spielen calls seg2:068F (ONFIELD again); 1066 Mitspieler (seg4:0804)
+  opens SELPLAYER with all drivers (seg2:51EA(0xFF)) and passes the choice to
+  seg2:5E93, which toggles its status between 1 (human) and 2 (computer) and, for
+  the current driver, redraws the portrait (seg2:2D8D) and restarts the computer
+  state machine (seg5:6CE8, 6BF2). Rebuilt in `src/game_window.cpp`; a turn handed
+  over after the spin is finished by the computer from its move or town plan
+  (`Game::computerAdvance`; **assumption:** the restart within a turn in progress
+  is not traced, the route over the remaining fields draws its numbers as a normal
+  route plan).
 
 Rebuilt in `src/ne_strings.cpp` (readNeMenu) and `src/menu_view.cpp`; flow in
 `src/game_screen.cpp`. Simplifications: ONFIELD opens whenever a human player is

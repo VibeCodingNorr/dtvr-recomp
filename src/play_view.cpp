@@ -137,9 +137,11 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
 
 bool PlayView::update(Uint32 now, bool stepwise) {
     Game& g = *game_;
-    if (stepwise && (g.computerTurnRunning() || (g.phase() == Game::Phase::Roll && g.computerControls())))
-        return g.computerAdvance();
-    if (g.phase() == Game::Phase::Roll && g.computerControls()) return g.runComputerTurn(); // computer slots
+    // Computer slots; also a turn handed over during the move (Mitspieler, seg2:5E93).
+    const bool computerDue = g.computerControls() && (g.phase() == Game::Phase::Roll || g.phase() == Game::Phase::Move
+                                                      || g.phase() == Game::Phase::Arrived);
+    if (stepwise && (g.computerTurnRunning() || computerDue)) return g.computerAdvance();
+    if (computerDue) return g.runComputerTurn();
     if (g.phase() != Game::Phase::Risiko) { nextTick_ = 0; return false; }
     if (!nextTick_) nextTick_ = now + Uint32(g.risikoTickMs());
     if (now < nextTick_) return false;

@@ -116,7 +116,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int balanceSeen = play.game().balanceSerial();
     int announceSeen = play.game().announceSerial();
     int shopSerial = -1;
-    int targetCardSlot = -1; // hand slot waiting for the target choice
+    int targetCardSlot = -1; // hand slot waiting for the target choice (-2: Mitspieler)
     int flightCardSlot = -1; // hand slot of the Flugzeug card being booked
     int nailsCardSlot = -1;  // hand slot of the Nägel card waiting for a direction
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
@@ -194,6 +194,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: askQuit(true); break;                         // Rallye beenden (seg4:073F -> 0EDF)
         case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
+        case 1060: openTitle(); break;                           // Neues Spiel: seg4:075B, back to the title
+        case 1065: break;                                        // Weiter spielen: seg4:0753, ONFIELD again
+        case 1066: {                                             // Mitspieler: seg4:0804 -> seg2:51EA(0xFF)
+            const Game& g = play.game();
+            std::vector<int> all;
+            std::array<uint8_t, kPlayerSlots> status{};
+            for (int p = 0; p < kPlayerSlots; ++p) {
+                status[size_t(p)] = g.players()[size_t(p)].status;
+                if (status[size_t(p)]) all.push_back(p);
+            }
+            targetCardSlot = -2;
+            screen.selectPlayer().open(all, status);
+            break;
+        }
         case 1032: case 1040: screen.toggleZoom(); break;       // Zoom: seg6:2E54(3), then centred
         case 1034: case 1041: screen.overview().open(); break;  // Übersicht: seg1:A240
         case 1035: case 1043: screen.startSurroundings(); break; // Umfeld: seg6:3C94
@@ -610,7 +624,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (screen.selectPlayer().isOpen()) { // SELPLAYER (seg2:5386)
                 const SbButtonGroup::Input input = screen.selectPlayer().handle(event);
                 if (input.sound >= 0) sound.play(2, input.sound);
-                if (input.id >= 0) {
+                if (input.id >= 0 && targetCardSlot == -2) {
+                    // seg2:5E93: the chosen driver changes between human and computer; for
+                    // the current one the computer turn starts or ends (seg5:6CE8 / 6BF2).
+                    screen.selectPlayer().close();
+                    Game& g = play.game();
+                    if (g.setComputer(input.id, !g.isComputer(input.id))) report();
+                } else if (input.id >= 0) {
                     screen.selectPlayer().close();
                     if (play.game().playCard(targetCardSlot, input.id)) report();
                 } else if (input.cancel) {
