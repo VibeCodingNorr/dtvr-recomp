@@ -47,6 +47,18 @@ without requiring FUSE. Packaging also needs `rsvg-convert` to export our own
 icon as PNG outside the checkout. The builder never downloads dependencies implicitly.
 Preserve all runtime third-party licenses and check redistribution terms.
 
+For the approved installer typography use a Python/Tk runtime with Xft/fontconfig
+support. A no-Xft Tk build can expose only the X server's fixed bitmap font.
+The locally prepared runtime uses Python 3.12 with Tcl/Tk 8.6 and Xft; its extra
+Tcl/Tk licenses are retained alongside the Python licenses. Desktop X11/Xft and
+fontconfig libraries remain host runtime dependencies. Validate other target
+distributions rather than assuming compatibility from the local test.
+
+Packaging records the Tcl/Tk versions and selects their bundled script directories
+in AppRun, overriding inherited Tcl/Tk paths. It also rasterizes our own SVG logo
+and icon for Tk, so branding does not require rsvg-convert on the end user's host.
+Generated branding is external packaging output, never tracked original media.
+
 ```sh
 python3 tools/build_appimage.py \
   --python-runtime /path/to/portable-python \

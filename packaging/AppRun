@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -eu
 app_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-unset PYTHONHOME PYTHONPATH
+unset PYTHONHOME PYTHONPATH TCL_LIBRARY TK_LIBRARY
+if [ -f "$app_dir/tk-runtime.sh" ]; then
+    . "$app_dir/tk-runtime.sh"
+fi
 export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1
 PATH="$app_dir/usr/python/bin:$PATH"
 export PATH

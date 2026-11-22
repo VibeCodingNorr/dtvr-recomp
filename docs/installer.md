@@ -17,6 +17,13 @@ SoundFont and Classic/Dry style, then click **Installieren und kompilieren**.
 The assistant automatically configures CMake, compiles, tests, installs and
 verifies the result. No manual compiler invocation is needed.
 
+The approved design uses a dark project-branding sidebar, three visible phases
+(Vorbereiten / Installieren / Losspielen), light cards and a mint primary action.
+Music options expand only when needed. Progress/logs and successful completion
+have separate views; the log remains accessible from every phase. Cards reflow
+and the form scrolls on smaller windows. Existing import/update behavior stays in
+`installer_gui.py`; `installer_layout.py` and `installer_theme.py` own presentation.
+
 The project-owned folder chooser supports typed paths, directory navigation,
 hidden folders and selecting the current folder. Its optional **Systemdialog**
 button opens the standard Tk/platform directory chooser instead. File selection

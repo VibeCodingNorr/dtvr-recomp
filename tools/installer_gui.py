@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Native Linux installer assistant: select an ISO and compile automatically."""
 
-import base64
 import json
 import os
 from pathlib import Path
@@ -23,6 +22,7 @@ from installer_diagnostics import DiagnosticLog
 from installer_dialogs import DependencyDialog
 from installer_folders import choose_directory
 from project_version import read_version, version_tuple
+from installer_layout import InstallerLayout
 
 STAGES = {1: "ISO und Voraussetzungen prüfen", 2: "Originaldaten importieren",
           3: "Ogg-Audio vorbereiten", 4: "Linux-Build kompilieren",
@@ -48,119 +48,14 @@ class InstallerWindow:
         self.bank = tk.StringVar()
         self.style = tk.StringVar(value="Classic — Hall und Chorus")
         self.status = tk.StringVar(value="Original-ISO auswählen, dann prüfen oder installieren.")
-        root.title(f"DTVR Recomb {read_version()} — Installer")
-        root.geometry("940x840")
-        root.minsize(820, 780)
-        root.configure(bg="#f3f5f7")
-        style = ttk.Style(root)
-        style.theme_use("clam")
-        style.configure("TFrame", background="#f3f5f7")
-        style.configure("TLabel", background="#f3f5f7", font=("TkDefaultFont", 10))
-        style.configure("TButton", padding=(12, 7), font=("TkDefaultFont", 10))
-        style.configure("Primary.TButton", background="#6ce5c2", foreground="#142338")
-        style.map("Primary.TButton", background=[("active", "#92efd4"), ("disabled", "#dce2e8")])
-        style.configure("Horizontal.TProgressbar", background="#6ce5c2", troughcolor="#dce2e8")
-        style.configure("Title.TLabel", font=("TkDefaultFont", 12, "bold"))
         self.controls = []
-        self._header()
-        body = ttk.Frame(root, padding=(28, 18))
-        body.pack(fill="both", expand=True)
-        body.columnconfigure(1, weight=1)
-        self._path_row(body, 0, "Original-ISO", self.iso, self._choose_iso)
-        output_entry, _ = self._path_row(body, 1, "Zielordner", self.output, self._choose_output)
-        output_entry.bind("<FocusOut>", lambda event: self._mode_changed())
-        ttk.Label(body, text="Musik vorbereiten").grid(row=2, column=0, sticky="w", pady=8)
-        self.audio_choice = ttk.Combobox(body, textvariable=self.audio, state="readonly",
-                                        values=("Nur CD-Aufnahmen vorbereiten", "Vollständiges Ogg-Set aus Soundfont"))
-        self.audio_choice.grid(row=2, column=1, columnspan=2, sticky="ew", pady=8)
-        self.audio_choice.bind("<<ComboboxSelected>>", lambda _: self._soundfont_state())
-        self.bank_entry, self.bank_button = self._path_row(body, 3, "Soundfont (optional)", self.bank, self._choose_bank)
-        ttk.Label(body, text="Klangvariante").grid(row=4, column=0, sticky="w", pady=8)
-        self.style_choice = ttk.Combobox(body, textvariable=self.style, state="readonly",
-                                        values=("Classic — Hall und Chorus", "Dry — ohne Effekte"))
-        self.style_choice.grid(row=4, column=1, columnspan=2, sticky="ew", pady=8)
-        modes = ttk.Frame(body)
-        modes.grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 4))
-        for label, update in (("Neu installieren", False), ("Vorhandene Installation aktualisieren", True)):
-            choice = ttk.Radiobutton(modes, text=label, variable=self.update, value=update, command=self._mode_changed)
-            choice.pack(side="left", padx=(0, 18))
-            self.controls.append(choice)
-        ttk.Label(body, textvariable=self.detail, wraplength=850).grid(
-            row=6, column=0, columnspan=3, sticky="w", pady=(0, 14))
-        actions = ttk.Frame(body)
-        actions.grid(row=7, column=0, columnspan=3, sticky="ew")
-        self.check_button = ttk.Button(actions, text="Voraussetzungen prüfen", command=lambda: self._begin(True))
-        self.check_button.pack(side="left")
-        self.install_button = ttk.Button(actions, text="Installieren und kompilieren", style="Primary.TButton", command=lambda: self._begin(False))
-        self.install_button.pack(side="left", padx=10)
-        self.cancel_button = ttk.Button(actions, text="Abbrechen", command=self._cancel, state="disabled")
-        self.cancel_button.pack(side="right")
-        ttk.Label(body, textvariable=self.status, style="Title.TLabel", wraplength=810).grid(
-            row=8, column=0, columnspan=3, sticky="w", pady=(18, 8))
-        self.progress = ttk.Progressbar(body, maximum=7)
-        self.progress.grid(row=9, column=0, columnspan=3, sticky="ew", pady=(0, 10))
-        self.log = tk.Text(body, height=9, wrap="word", bg="#101c2e", fg="#dce6ef",
-                           insertbackground="white", font=("TkFixedFont", 9), relief="flat", padx=12, pady=10)
-        self.log.grid(row=10, column=0, columnspan=3, sticky="nsew")
-        self.log.configure(state="disabled")
-        body.rowconfigure(10, weight=1)
-        footer = ttk.Frame(body)
-        footer.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(12, 0))
-        self.launch_button = ttk.Button(footer, text="Spiel starten", command=self._launch, state="disabled")
-        self.launch_button.pack(side="left")
-        self.folder_button = ttk.Button(footer, text="Ordner öffnen", command=self._open_folder, state="disabled")
-        self.folder_button.pack(side="left", padx=10)
-        self.backup_button = ttk.Button(footer, text="Sicherung öffnen", command=lambda: self._open_folder(self.backup), state="disabled")
-        self.backup_button.pack(side="left")
-        helpers = ttk.Frame(body)
-        helpers.grid(row=12, column=0, columnspan=3, sticky="ew", pady=(10, 0))
-        self.packages_button = ttk.Button(helpers, text="Pakete prüfen", command=self._dependencies)
-        self.packages_button.pack(side="left")
-        self.controls.append(self.packages_button)
-        ttk.Button(helpers, text="Diagnose speichern", command=self._export_diagnostic).pack(side="left", padx=10)
-        ttk.Button(helpers, text="Schließen", command=self._close).pack(side="right")
+        self.operation = None
+        self.layout = InstallerLayout(self)
         self._soundfont_state()
         self._mode_changed()
+        self.iso.trace_add("write", lambda *args: self.iso_hint.set("ISO ausgewählt. Mit „Nur prüfen“ die Ausgabe verifizieren."))
         root.protocol("WM_DELETE_WINDOW", self._close)
         root.after(100, self._poll)
-
-    def _header(self):
-        canvas = tk.Canvas(self.root, height=105, bg="#101c2e", highlightthickness=0)
-        canvas.pack(fill="x")
-        # Our own road/die mark, drawn with native geometry; no original game assets.
-        canvas.create_line(36, 104, 36, 83, 83, 75, 83, 27, fill="#f5edda", width=13, smooth=True)
-        canvas.create_line(36, 104, 36, 83, 83, 75, 83, 27, fill="#142338", width=2, dash=(4, 4), smooth=True)
-        canvas.create_rectangle(23, 19, 63, 59, fill="#6ce5c2", outline="")
-        for x, y in ((33, 29), (53, 29), (43, 39), (33, 49), (53, 49)):
-            canvas.create_oval(x-3, y-3, x+3, y+3, fill="#142338", outline="")
-        canvas.create_oval(75, 19, 91, 35, fill="#f3b64c", outline="#142338", width=3)
-        canvas.create_text(122, 38, anchor="w", text="DTVR RECOMB", fill="#f5edda", font=("TkDefaultFont", 24, "bold"))
-        canvas.create_text(124, 73, anchor="w", text="Aus deiner Original-ISO zum nativen Linux-Build", fill="#6ce5c2", font=("TkDefaultFont", 12))
-        renderer = shutil.which("rsvg-convert")
-        if renderer:
-            try:
-                banner = subprocess.run([renderer, "-w", "350", "-h", "105", str(REPO / "assets/branding/logo.svg")],
-                                        check=True, capture_output=True, timeout=5).stdout
-                self.banner = tk.PhotoImage(data=base64.b64encode(banner))
-                canvas.delete("all")
-                canvas.create_image(0, 0, anchor="nw", image=self.banner)
-                canvas.create_text(375, 35, anchor="w", text=f"INSTALLER {read_version()}", fill="#f5edda", font=("TkDefaultFont", 18, "bold"))
-                canvas.create_text(375, 70, anchor="w", text="ISO auswählen · automatisch kompilieren", fill="#6ce5c2", font=("TkDefaultFont", 12))
-                png = subprocess.run([renderer, "-w", "64", "-h", "64", str(REPO / "assets/branding/icon.svg")],
-                                     check=True, capture_output=True, timeout=5).stdout
-                self.icon = tk.PhotoImage(data=base64.b64encode(png))
-                self.root.iconphoto(True, self.icon)
-            except (OSError, subprocess.SubprocessError, tk.TclError):
-                pass
-
-    def _path_row(self, parent, row, label, variable, browse):
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 16), pady=8)
-        entry = ttk.Entry(parent, textvariable=variable)
-        entry.grid(row=row, column=1, sticky="ew", pady=8)
-        button = ttk.Button(parent, text="Auswählen …", command=browse)
-        button.grid(row=row, column=2, padx=(10, 0), pady=8)
-        self.controls += [entry, button]
-        return entry, button
 
     def _choose_iso(self):
         path = filedialog.askopenfilename(title="Eigene Original-ISO auswählen", filetypes=(("Disc-Abbild", "*.iso *.ISO *.bin"), ("Alle Dateien", "*")))
@@ -188,16 +83,20 @@ class InstallerWindow:
             except (OSError, ValueError, AttributeError):
                 pass
             self.detail.set(f"Update: {version} → {read_version()}. Spiel vorher schließen. Die bisherige Installation bleibt als Sicherung erhalten.")
-            self.install_button.configure(text="Update bauen und installieren")
+            self.install_button.configure(text="Update installieren  →")
+            self.output_hint.set("Vorhandene Installation aktualisieren; eine vollständige Sicherung bleibt erhalten.")
         else:
             self.detail.set("Eigene ISO erforderlich. Ein neuer Zielordner wird angelegt; vorhandene Installationen bleiben erhalten.")
-            self.install_button.configure(text="Installieren und kompilieren")
+            self.install_button.configure(text="Installieren  →")
+            self.output_hint.set("Eine neue Installation wird hier angelegt.")
 
     def _dependencies(self):
         if self.busy:
             return
         bank = self.bank.get().strip() if self.audio.get().startswith("Vollständiges") else ""
+        self.operation = "dependencies"
         self.status.set("Alle Pakete und Bibliotheken werden geprüft …")
+        self.system_state.set("Voraussetzungen werden geprüft …")
         self._append("Voraussetzungen prüfen (einschließlich CD-Audio).\n")
         self.worker.start(dependency_command(bank or ("requested" if self.audio.get().startswith("Vollständiges") else "")), True)
         self._set_busy(True)
@@ -246,11 +145,15 @@ class InstallerWindow:
             command = installer_command(self.iso.get().strip(), self.output.get().strip(), bank,
                                         "dry" if self.style.get().startswith("Dry") else "classic", check, self.update.get())
             self.active_output = Path(self.output.get().strip()).expanduser().resolve()
+            self.operation = "check" if check else "install"
             self.progress.configure(value=0)
+            self.system_state.set("ISO und Voraussetzungen werden geprüft …")
             self.status.set("Voraussetzungen werden geprüft …" if check else "Installation wird vorbereitet …")
             self._append("\n--- Vorabprüfung ---\n" if check else "\n--- Installation ---\n")
             self.worker.start(command, check)
             self._set_busy(True)
+            if not check:
+                self.layout.show("working")
         except (OSError, ValueError) as error:
             messagebox.showerror("Eingabe prüfen", str(error), parent=self.root)
 
@@ -272,16 +175,21 @@ class InstallerWindow:
                 elif kind == "stage":
                     self.status.set(f"Schritt {data}/7: {STAGES[data]}")
                     self.progress.configure(value=data-1)
+                    if self.operation == "install":
+                        self.layout.step(0 if data == 1 else 1)
                 elif kind == "done":
                     self._set_busy(False)
                     if data["ok"] and data["check"] and data["report"].get("kind") == "dependencies":
                         report = data["report"]
+                        self.system_state.set("✓  Voraussetzungen erfüllt" if report["ready"] else "Voraussetzungen fehlen – Pakete prüfen")
                         self.diagnostic.append(json.dumps(report, ensure_ascii=False))
                         self.status.set("Alle Voraussetzungen vorhanden." if report["ready"] else "Voraussetzungen fehlen. Die Paketübersicht zeigt die Details.")
                         DependencyDialog(self.root, report)
                     elif data["ok"] and data["check"]:
                         report = data["report"]
                         self.status.set("Prüfung erfolgreich. Bereit zum Installieren und Kompilieren.")
+                        self.iso_hint.set("✓  Unterstützte Ausgabe erkannt")
+                        self.system_state.set("✓  Voraussetzungen erfüllt")
                         self._append(f"ISO erkannt: {report['program_files']} Dateien. Build-Werkzeuge und Zielordner geprüft.\n")
                         if report.get("update"):
                             self._append(f"Update von {report['previous_version']}; bisherige Installation wird als Sicherung behalten.\n")
@@ -300,10 +208,17 @@ class InstallerWindow:
                         self.progress.configure(value=7)
                         self.launch_button.configure(state="normal")
                         self.folder_button.configure(state="normal" if shutil.which("xdg-open") else "disabled")
+                        self.layout.show("complete")
                     elif data["cancelled"]:
                         self.status.set("Abgebrochen. Du kannst einen neuen Installationslauf starten.")
+                        self.system_state.set("Vorgang abgebrochen")
+                        if self.operation == "install":
+                            self.layout.show("working")
                     else:
                         self.status.set("Installation nicht abgeschlossen. Details stehen im Protokoll.")
+                        self.system_state.set("Prüfung fehlgeschlagen – Protokoll verfügbar")
+                        if self.operation == "install":
+                            self.layout.show("working")
                         self._append(data["error"] + "\n")
                         if data.get("dependencies"):
                             self.diagnostic.append(json.dumps(data["dependencies"], ensure_ascii=False))

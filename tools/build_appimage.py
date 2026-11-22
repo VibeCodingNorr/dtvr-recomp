@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import platform
+import re
 import shutil
 import subprocess
 import tarfile
@@ -78,21 +79,37 @@ def build(python_runtime, appimagetool, runtime, output, arch):
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1")
         env.pop("PYTHONHOME", None)
         env.pop("PYTHONPATH", None)
-        probe = subprocess.check_output([str(bundled / "bin/python3"), "-I", "-c",
-                "import sys, tkinter; print(sys.prefix)"], env=env, text=True).strip()
-        if Path(probe).resolve() != bundled.resolve():
+        probe = json.loads(subprocess.check_output([str(bundled / "bin/python3"), "-I", "-c",
+                "import sys, tkinter, json; print(json.dumps(dict(prefix=sys.prefix, "
+                "tcl=str(tkinter.TclVersion), tk=str(tkinter.TkVersion))))"], env=env, text=True))
+        if Path(probe["prefix"]).resolve() != bundled.resolve():
             raise ValueError("Python runtime failed the relocation/Tk import check")
+        tk_environment = ["# Generated local Tcl/Tk resource selection; no host scripts."]
+        for key in ("tcl", "tk"):
+            resource_version = probe[key]
+            if not re.fullmatch(r"[0-9]+\.[0-9]+", resource_version):
+                raise ValueError("Invalid bundled Tcl/Tk version")
+            directory = f"$app_dir/usr/python/lib/{key}{resource_version}"
+            if not (bundled / f"lib/{key}{resource_version}").is_dir():
+                raise ValueError(f"Missing bundled {key} scripts")
+            tk_environment.append(f'export {key.upper()}_LIBRARY="{directory}"')
+        (appdir / "tk-runtime.sh").write_text("\n".join(tk_environment) + "\n")
         shutil.copy2(source / "packaging/AppRun", appdir / "AppRun")
         (appdir / "AppRun").chmod(0o755)
         subprocess.run(["rsvg-convert", "-w", "256", "-h", "256",
                         str(source / "assets/branding/icon.svg"), "-o",
                         str(appdir / "dtvr-recomb-setup.png")], check=True)
         shutil.copy2(appdir / "dtvr-recomb-setup.png", appdir / ".DirIcon")
+        for name, width, height in (("logo", 224, 67), ("icon", 64, 64)):
+            subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height),
+                            str(source / f"assets/branding/{name}.svg"), "-o",
+                            str(source / f"assets/branding/installer-{name}.png")], check=True)
         (appdir / "dtvr-recomb-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"
             f"Name=DTVR Recomb Setup {version}\nExec=AppRun\nIcon=dtvr-recomb-setup\n"
             "Terminal=false\nCategories=Utility;\n")
         metadata = {"project_version": version, "architecture": arch,
+                    "tcl_version": probe["tcl"], "tk_version": probe["tk"],
                     "commit": revision,
                     "appimagetool_sha256": digest(appimagetool), "runtime_sha256": digest(runtime)}
         (appdir / "build-info.json").write_text(json.dumps(metadata, indent=2) + "\n")

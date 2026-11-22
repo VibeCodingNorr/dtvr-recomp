@@ -79,6 +79,9 @@ class InstallerUiTests(unittest.TestCase):
         app._poll()
         self.assertEqual(app.backup, self.directory / "backup/installation")
         self.assertIn("Sicherung:", app.detail.get())
+        self.assertEqual(app.layout.phase, "complete")
+        app.layout.show_log()
+        self.assertEqual(app.layout.return_phase, "complete")
         app.update.set(False)
         app._mode_changed()
         self.assertIn("neuer Zielordner", app.detail.get())
@@ -107,6 +110,43 @@ class InstallerUiTests(unittest.TestCase):
             app._export_diagnostic()
         self.assertNotIn(str(self.directory), target.read_text())
         self.assertIn("Compiler missing: cmake", target.read_text())
+
+    def test_design_preserves_music_controls_and_cancellation_view(self):
+        from installer_gui import InstallerWindow
+        app = InstallerWindow(self.root)
+        self.assertEqual(app.layout.phase, "prepare")
+        app.layout.toggle_music()
+        self.root.update_idletasks()
+        self.assertTrue(app.layout.music_open)
+        app.audio.set("Vollständiges Ogg-Set aus Soundfont")
+        app._soundfont_state()
+        self.assertEqual(str(app.bank_entry.cget("state")), "normal")
+        app.operation = "install"
+        app._set_busy(True)
+        app.layout.show("working")
+        self.assertEqual(str(app.bank_entry.cget("state")), "disabled")
+        app.worker.events.put(("stage", 4))
+        app.worker.events.put(("done", {"ok": False, "check": False, "cancelled": True, "error": ""}))
+        app._poll()
+        self.assertFalse(app.busy)
+        self.assertEqual(app.layout.phase, "working")
+        self.assertEqual(app.progress.cget("value"), 3)
+        app.layout.prepare_again()
+        self.assertEqual(app.layout.phase, "prepare")
+        self.assertEqual(str(app.bank_entry.cget("state")), "normal")
+
+    def test_design_fits_minimum_size_and_expands_cards(self):
+        from installer_gui import InstallerWindow
+        app = InstallerWindow(self.root)
+        self.root.geometry("960x760")
+        app.layout.toggle_music()
+        self.root.update()
+        for widget in (app.check_button, app.install_button):
+            self.assertGreater(widget.winfo_width(), 1)
+            self.assertLessEqual(widget.winfo_rootx() + widget.winfo_width(),
+                                 self.root.winfo_rootx() + self.root.winfo_width())
+        self.assertGreater(app.layout.viewport.winfo_height(), 100)
+        self.assertTrue(app.layout.music_details.winfo_ismapped())
 
 
 if __name__ == "__main__":
