@@ -32,7 +32,20 @@ bool Game::nailsInWater() const {
     // At rest the plane state 2 holds on sea fields (cell 0x09 = field + water); land
     // fields (0x03) are reached after the landing (seg2:2866) has ended it.
     const Field& f = board_.fields[size_t(players_[size_t(current_)].field)];
-    return (cellProperties(f.x, f.y) & TileProperties::kWater) != 0;
+    if ((cellProperties(f.x, f.y) & TileProperties::kWater) != 0) return true;
+    const auto d = nailsDirections();
+    return !(d[0] || d[1] || d[2] || d[3]); // seg3:1D43: no window, the same message
+}
+
+std::array<bool, 4> Game::nailsDirections() const {
+    std::array<bool, 4> available{};
+    if (current_ < 0) return available;
+    const Field& f = board_.fields[size_t(players_[size_t(current_)].field)];
+    static constexpr int dx[4] = {0, 2, 0, -2}, dy[4] = {-2, 0, 2, 0}; // seg3:226E ff.
+    for (size_t k = 0; k < 4; ++k)
+        available[k] = f.next[k] != Field::kNone
+                       && (cellProperties(f.x + dx[k], f.y + dy[k]) & TileProperties::kSeaRoute) == 0;
+    return available;
 }
 
 bool Game::playCard(int handSlot, int target) {
@@ -73,8 +86,8 @@ bool Game::playCard(int handSlot, int target) {
     }
     const int here = players_[size_t(current_)].field;
     const bool water = kind == CardKind::Naegel && nailsInWater();
-    if (kind == CardKind::Naegel && !water && (target < 1 || target > 4
-                                     || board_.fields[size_t(here)].next[size_t(target) - 1] == Field::kNone)) {
+    if (kind == CardKind::Naegel && !water
+        && (target < 1 || target > 4 || !nailsDirections()[size_t(target) - 1])) { // seg3:1FF2 ff.
         messages_.push_back("Naegel: Richtung mit Strasse waehlen (1-4)");
         return false;
     }

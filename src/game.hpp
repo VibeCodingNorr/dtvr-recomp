@@ -94,6 +94,11 @@ public:
     // sea field (cell bits field + water); Nägel then fall into the water without
     // asking for a direction.
     bool nailsInWater() const;
+    // seg3:225A ff. (WM_CREATE of the Nägel window): direction 0 up, 1 right, 2 down,
+    // 3 left is available when the player's field links there and the cell two
+    // steps away has no sea-route bit 0x04. Without any, CreateWindow fails and the
+    // card takes the water path (seg3:1E02: sound 0x12, text 5500).
+    std::array<bool, 4> nailsDirections() const;
     // europe.pit properties of a map cell (seg2:3260), 0 without map data.
     uint16_t cellProperties(int x, int y) const;
     // "Karte einsetzen" (seg4:0930 -> seg2:0B08): false with text 1020 + random(2)

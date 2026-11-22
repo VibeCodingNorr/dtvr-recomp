@@ -415,6 +415,21 @@ void GameScreen::cyclePalette(bool on) {
     SDL_SetPaletteColors(world_->format->palette, colors, 0x90, 10);
 }
 
+SDL_Texture* GameScreen::compassTexture() {
+    const int p = game_.currentPlayer();
+    if (!world_ || p < 0) return nullptr;
+    const Field& f = board_.fields[size_t(game_.players()[size_t(p)].field)];
+    // Without the vehicles of the map DIB (approximation: the world bitmap only).
+    SDL_Rect source{f.x * WorldMap::kTile - 0x28, f.y * WorldMap::kTile - 0x28, 0x60, 0x60};
+    Surface rgb(SDL_CreateRGBSurfaceWithFormat(0, 0x60, 0x60, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);
+    if (!rgb) return nullptr;
+    SDL_FillRect(rgb.get(), nullptr, SDL_MapRGB(rgb->format, 0, 0, 0));
+    SDL_Rect to{0, 0, 0x60, 0x60};
+    SDL_BlitSurface(world_.get(), &source, rgb.get(), &to);
+    compass_.reset(SDL_CreateTextureFromSurface(renderer_, rgb.get()));
+    return compass_.get();
+}
+
 void GameScreen::drawMap() {
     // The map window clears its WinG bitmap (PATBLT BLACKNESS, seg6:171E) and draws
     // the world from the tile origin DS:956A/9568 into DS:94DA..94DE.
@@ -626,7 +641,7 @@ void GameScreen::draw() {
     cards_.draw(sprite("dis_d")); // "dis_%c" with the language letter DS:A0F0 (seg1:190D)
     selectPlayer_.draw();
     flight_.draw();
-    nails_.draw();
+    if (nails_.isOpen()) nails_.draw(compassTexture());
     invest_.draw();
     save_.draw(slots_);
     mouseControl_.draw(game_.phase() == Game::Phase::Arrived); // M1 once the move is done (seg4:12FC)

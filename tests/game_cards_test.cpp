@@ -118,6 +118,13 @@ int main() {
         }
         CHECK(g != nullptr);
         if (g) {
+            // Round 96 (seg3:225A): only directions with a link are available; the
+            // line board links right only from the start field.
+            const auto dirs = g->nailsDirections();
+            const Field& start = board.fields[size_t(g->playerField(0))];
+            for (size_t k = 0; k < 4; ++k) CHECK(dirs[k] == (start.next[k] != Field::kNone));
+            for (int d = 1; d <= 4; ++d)
+                if (!dirs[size_t(d - 1)]) CHECK(!g->playCard(nails, d)); // refused like seg3:1FF7
             CHECK(g->playCard(nails, 2) && g->obstacles().count() == 1);
             g->takeNotices();
             int asked = 0;

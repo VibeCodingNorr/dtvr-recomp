@@ -233,7 +233,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.cardShop) screen.cardShop().open(play.game());
-    if (options.nails) screen.nails().open();
+    if (options.nails) screen.nails().open(play.game().nailsDirections());
     if (options.invest) screen.invest().open(true, "Vera, ein verrückter Professor fragt Dich, ob Du in seine Forschungen investieren willst.", 50000);
     if (options.flight) screen.flight().open(play.game().eastOpen(), play.game().remainingStages() == 0);
     if (options.selectPlayer) {
@@ -715,7 +715,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     }
                     if (kind == CardKind::Naegel) { // seg3:1C96: the direction window
                         nailsCardSlot = slot;
-                        screen.nails().open();
+                        screen.nails().open(g.nailsDirections());
                         continue;
                     }
                     if (kind == CardKind::Flugzeug) { // seg3:31D5: the booking window

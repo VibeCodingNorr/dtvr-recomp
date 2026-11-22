@@ -1751,14 +1751,24 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (0x87, 0xDC), (0x78, 0xEB); left (6, 0x78), (0x15, 0x69), (0x15, 0x87) are
   tested with CreatePolygonRgn / PtInRegion (seg3:1F5D) and post VK_UP / RIGHT /
   DOWN / LEFT; then `%s\flc\karte1.flc` (an FLC film) and `%s\snd\Naegel.wav`.
-- **Rebuilt** (`src/nails_view.cpp`): the window with the triangles, the arrow
-  keys and text 510. **Not rebuilt / assumptions:** the paint of the window (the
-  arrows are filled in the text colour, the compass interior stays empty), the
-  film; the window centred. **Deviation found in round 95** (rebuild pending): the
-  procedure (dispatch seg3:2769) has no Escape and no right button, so it cannot be
-  cancelled; an arrow key or a click on a triangle only selects an available
-  direction (DS:8C10, flags DS:320A–3210), Enter or a click inside the inflated
-  client rectangle (seg3:1FCC) confirms it (seg3:2096).
+- **Window** (round 96): WM_CREATE (seg3:223D) marks direction n (up, right, down,
+  left) available (DS:320A–3210) when the player's field links there (field record
+  +2 + 2n ≠ 0xFFFF) and the cell two steps away lacks the sea-route bit 0x04; the
+  last available one is selected (DS:8C10). Without any the window fails
+  (seg3:241C) and the card takes the water path (seg3:1E02: sound 0x12 on channel
+  5, text 5500). Paint (seg3:24AD): n.bmp; the 0x60 × 0x60 map pixels from the
+  player − 0x28 stretched to (0x19, 0x19, 0xC0, 0xC0) (seg3:2517); the available
+  triangles in PALETTEINDEX(0), the selected in 0xED (black / red, seg3:27C8);
+  text 510 in the client rect with left + 0xF0 inflated by (−10, −20), Arial 18
+  weight 400, colour 0x45; text 114 (Ok) from top + 0xBE in weight 600, white,
+  centred. Input (dispatch seg3:2769): no Escape, no right button — it cannot be
+  cancelled; an arrow key or a click on a triangle selects an available direction
+  (seg3:1FF2 ff.); Enter or a click on (0x118, 0xD2)–(0x1FE, 0xF0) confirms it
+  (seg3:1FA4, seg3:2096).
+- **Rebuilt** (`src/nails_view.cpp`, `Game::nailsDirections`, rules revision 36):
+  all of the above. **Approximations:** the compass shows the world bitmap
+  without the vehicles of the map DIB; the film follows as before; the window
+  centred.
 - **Water case** (round 75, rules revision 32): player record +0x2D is the
   vehicle state — 0 land, 1 turning into a boat (+0x2E counts up to 0x18,
   seg2:1793), 2 boat, 3 turning back (seg2:17EE, back to 0 at +0x2E = 0) —

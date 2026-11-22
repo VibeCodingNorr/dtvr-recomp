@@ -134,6 +134,9 @@ public:
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
     SDL_Texture* sprite(const std::string& name);            // SBS frame by name (any loaded file)
+    // seg3:2517: the 0x60 x 0x60 world pixels from (player - 0x28) for the Nägel compass.
+    SDL_Texture* compassTexture();
+    Texture compass_{nullptr, SDL_DestroyTexture};
     using SpriteSet = std::map<std::string, Texture>;
     void loadSprites(const std::filesystem::path& relative, SpriteSet& into);
     void loadSprites(const std::filesystem::path& relative) { loadSprites(relative, sprites_); }
