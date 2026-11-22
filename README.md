@@ -113,7 +113,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     by cash and property value, crowd, band and speaker.
 47. Year balance show BILANZ: the show master pulls the lever for every driver and
     announces the result (positive or negative year) with the original voices.
-48. *Next:* the stage announcement and the remaining dialog sounds.
+48. The game window's flow moved to its own module (src/game_window.cpp).
+49. *Next:* the stage announcement ("Zielsuche": club map, lights, voices).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
