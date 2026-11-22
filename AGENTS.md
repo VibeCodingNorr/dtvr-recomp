@@ -51,6 +51,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `tests/sbs_test.cpp`: synthetic and malformed-input parser tests (ctest).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.
+- `tests/test_cd_audio.py`: generated-tone conversion and audio layout validation.
+- `docs/cd-audio.md`: provisional boundaries, provenance and native playback requirements.
 - `tools/iso9660.py`: bounded primary-tree reader for standard/raw Mode 1 ISO images.
 - `tests/test_iso9660.py`: synthetic ISO fixtures and malformed-input checks.
 - `docs/installer.md`: distribution contract, supported media and installer stages.

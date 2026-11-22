@@ -12,6 +12,7 @@ import tempfile
 
 from inspect_game import inspect_game
 from iso9660 import IsoImage
+from cd_audio import audio_layout, convert_audio
 
 KNOWN_EXE = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83"
 REPO = Path(__file__).resolve().parent.parent
@@ -50,6 +51,13 @@ def install(iso, output, jobs):
             if not (data / "program" / required).is_file():
                 raise ValueError(f"Required original data missing: {required}")
         print(f"Validated original executable; extracted {count} files.", flush=True)
+        iso_hash = digest(iso)
+        layout = audio_layout(iso_hash, iso.stat().st_size)
+        if layout is not None:
+            audio = convert_audio(iso, data / "music", layout)
+        else:
+            audio = {"status": "no-known-layout", "regions": []}
+            print("No verified audio-region profile for this image; no CD audio converted.", flush=True)
         build = Path(temporary) / "build"
         subprocess.run(["cmake", "-S", str(REPO), "-B", str(build),
                         "-DCMAKE_BUILD_TYPE=Release"], check=True)
@@ -62,7 +70,8 @@ def install(iso, output, jobs):
             subprocess.run([str(binary), "--data", str(data), "--smoke-test", *view],
                            env=env, check=True)
         manifest = {"schema_version": 1, "capability": "native-data-viewer",
-                    "iso_sha256": digest(iso), "iso_sector_size": sector_size,
+                    "iso_sha256": iso_hash, "iso_sector_size": sector_size,
+                    "cd_audio": audio,
                     "executable_sha256": KNOWN_EXE,
                     "files": {p.relative_to(stage).as_posix(): digest(p)
                               for p in sorted(stage.rglob("*")) if p.is_file()}}

@@ -15,6 +15,8 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
 2. Read the ISO9660 primary directory tree with bounded extents and validated names.
    Extract only `program/` into a temporary directory beside the target.
 3. Validate the original `rally.exe` by SHA-256 and check required viewer assets.
+   For the known mixed-mode image, convert recovered CD audio regions to local
+   Ogg Vorbis files using FFmpeg and validate them with ffprobe.
 4. Configure and compile this checkout in Release mode, run CTest, and install the
    native executable into staging. No original Windows program is executed.
 5. Run overview, tile and sprite smoke checks against the extracted data.
@@ -28,6 +30,12 @@ The final installation has `bin/dtvr-recomb`, `data/program/`, `manifest.json` a
 package. Build dependencies must already be installed. Paths containing spaces
 are supported. No privileged mount, Wine, extraction service or external archive
 program is needed. Installation never modifies the source ISO.
+
+CD audio import additionally requires FFmpeg with `libvorbis` and `ffprobe`.
+Converted files and provenance go into `data/music/`. See [CD audio](cd-audio.md)
+for the provisional segment layout and the native playback integration plan.
+The current viewer does not yet play music. The intended game uses these local
+Ogg assets through the recovered original music cues, without a mounted disc.
 
 ## Supported inputs and limits
 

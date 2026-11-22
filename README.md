@@ -27,6 +27,12 @@ The ISO can be disconnected after installation. The installed application is
 currently the data viewer; extracting the ISO does not yet translate its executable
 or produce a playable reconstruction. See [installer details](docs/installer.md).
 
+For the known mixed-mode image, installation also converts six recovered audio
+regions to Ogg Vorbis in `data/music/` (requires FFmpeg/libvorbis and ffprobe).
+Original track IDs and playback triggers still need reconstruction; the viewer
+does not yet play music. The intended native game plays local Ogg assets in place
+of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
+
 ## Build and run
 
 Requires a C++17 compiler, CMake, pkg-config and SDL2 development files.
