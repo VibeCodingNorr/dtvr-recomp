@@ -24,10 +24,17 @@ public:
     // category (seg3:0701, otherwise message 0x7ED(1) to its SBBUTTON); a negative
     // mask enables every card (the discard choice of seg3:1057).
     bool open(const Game& game, int mask);
-    void close() { buttons_.clear(); }
+    void close() { buttons_.clear(); pressed_ = -1; }
     bool isOpen() const { return !buttons_.empty(); }
-    // The hand slot of a clicked enabled card, -1 otherwise.
-    int slotAt(int x, int y) const;
+    // SBBUTTON input (seg1:0E78). `sound` is the effect for channel 2 (-1 none).
+    struct Input { int slot = -1; bool cancel = false; int sound = -1; };
+    // Left button down (seg1:1311): focus; a disabled card sounds 7, else it is pressed.
+    Input mouseDown(int x, int y);
+    // Left button up (seg1:1398): a card released over itself is activated (Plopp02).
+    Input mouseUp(int x, int y);
+    // Keys (seg1:10B4): arrows move the focus (sound 8), Tab / Shift+Tab right / left,
+    // space or Return activate the focused card, Escape / Backspace cancel.
+    Input key(SDL_Keycode key, Uint16 mod);
     // `disabled` is the frame dis_<language> of <n>_assort.sbs laid over a disabled
     // card (SBBUTTON paint seg1:1902, state bit 0x10).
     void draw(SDL_Texture* disabled);
@@ -35,12 +42,17 @@ public:
 private:
     SDL_Texture* picture(int type);
     bool enabled(int type) const;
+    int indexOfSlot(int slot) const;
+    Input activate(int index);
+    bool moveFocus(int dx, int dy);
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     ScreenLayout layout_;
     std::vector<std::pair<CardButton, int>> buttons_; // button, card type
     int mask_ = -1;
+    int focus_ = -1;   // hand slot with state bit 4 (red frame)
+    int pressed_ = -1; // hand slot with state bit 1 (picture at (1, 1))
     std::map<int, Texture> pictures_;
 };
 

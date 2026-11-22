@@ -129,7 +129,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 58. Risiko window: the light frames and pressed buttons of risiko.sbs, CHANCE / STOP by mouse.
 59. Card window masks: only the cards of the current category react (seg3:0701).
 60. SBBUTTON decoded (seg1:0E78): disabled cards show the original GESPERRT overlay.
-61. *Next:* keyboard focus with the red frame and the pressed offset of SBBUTTON.
+61. SBBUTTON input: focus frame, pressed offset, release-to-play, arrow keys and sounds.
+62. *Next:* check which other windows create SBBUTTON controls and give them the same states.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

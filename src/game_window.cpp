@@ -520,9 +520,19 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (cards.isOpen()) { // the card buttons; Escape or the right button closes the window
-                if (click && event.button.button == SDL_BUTTON_LEFT) {
-                    const int slot = cards.slotAt(event.button.x, event.button.y);
-                    if (slot < 0) continue;
+                // SBBUTTON (seg1:0E78): a card plays when the button is released over it,
+                // or by space / Return on the focused card; arrows move the focus.
+                CardView::Input input;
+                if (click && event.button.button == SDL_BUTTON_LEFT)
+                    input = cards.mouseDown(event.button.x, event.button.y);
+                else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
+                    input = cards.mouseUp(event.button.x, event.button.y);
+                else if (event.type == SDL_KEYDOWN)
+                    input = cards.key(event.key.keysym.sym, event.key.keysym.mod);
+                if (input.sound >= 0) sound.play(2, input.sound);
+                if (input.cancel && !play.game().yellowCardPending()) { cards.close(); continue; } // no cancel in discard mode
+                if (input.slot >= 0) {
+                    const int slot = input.slot;
                     // seg2:51EA: a card with a target asks for the player when more than one is
                     // possible (excluded: the player; Tschüss excludes nobody, argument 0xFF).
                     const Game& g = play.game();
@@ -563,7 +573,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 const bool mustDiscard = play.game().yellowCardPending(); // no cancel in discard mode
                 if (!mustDiscard && click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
-                if (!mustDiscard && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
+                if (event.type == SDL_KEYDOWN || click) continue; // the window keeps the keyboard
             }
             if (screen.cardShop().isOpen()) { // seg3:4640
                 const auto action = screen.cardShop().handle(event, play.game());

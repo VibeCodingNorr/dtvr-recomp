@@ -1223,8 +1223,24 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (focus) a rectangle with CreatePen(PS_INSIDEFRAME, 5, PALETTERGB(255, 0, 0)) and
   the null brush around the client area. Rebuilt: disabled cards ignore clicks
   (masks 2 from the menu, 1 from the town dialog, all for the discard choice)
-  and show DIS_D. Not rebuilt: the pressed offset and the red focus frame
-  (keyboard focus of the card buttons). Rebuilt (`src/layout.cpp` cardWindowLayout,
+  and show DIS_D.
+- **SBBUTTON input** (round 61): WM_SETFOCUS / KILLFOCUS set / clear bit 4
+  (seg1:1111 / 1157). The card window calls SetFocus on the occupied slots 0…7 in
+  turn (seg3:0A77), so the highest occupied slot keeps the focus. Left button
+  down (seg1:1311): SetCapture, focus; a disabled button plays sound 7 on channel
+  2, otherwise bits 9 (pressed, captured) are set. Button up (seg1:1398): bits 9
+  cleared; inside the client rectangle the button sends itself space (0x20),
+  which plays Plopp02 on channel 2 and posts WM_COMMAND. Keys (seg1:10B4):
+  Backspace / Escape post WM_COMMAND 0xFFFF to the parent (cancel); Tab posts
+  VK_LEFT with Shift, else VK_RIGHT (seg1:1060); Return sends space to itself
+  when bit 8 of the window data +0x1B1 is set, else it goes to the parent
+  (seg1:0FD7); right (seg1:2474) / left (250A) walk the siblings with
+  GetNextWindow(GW_HWNDPREV / GW_HWNDNEXT) to the first one with the same top,
+  down (25A0) / up (267F) to the same left, else the adjacent sibling; a found
+  button with an id in 0x1388–0x1770 gets the focus and sound 8 on channel 2.
+  Rebuilt in `src/card_view.cpp`; **approximation:** the neighbours are chosen
+  by position (nearest in the row / column) instead of the sibling z-order;
+  Return activates the focused card. Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
   the digit keys (target `T`, nail direction by arrow key); Escape or the right
   button close the window (assumption); a played card closes it.
