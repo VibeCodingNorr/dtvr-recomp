@@ -174,6 +174,24 @@ int resolveTarget(const std::vector<PlayerSlot>& players, int current, int reque
     return requested;
 }
 
+int resolveAnyTarget(const std::vector<PlayerSlot>& players, int requested) {
+    if (activePlayerCount(players) == 1) return firstActivePlayer(players);
+    if (requested < 0 || requested >= kPlayerSlots || size_t(requested) >= players.size()) return -1;
+    return players[size_t(requested)].status ? requested : -1;
+}
+
+int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view, MsRandom& rng) {
+    const int count = int(board.fields.size());
+    for (int tries = 0; tries < 100000; ++tries) { // the original loops without a limit
+        const int f = rng.random(count - 1);
+        const Field& field = board.fields[size_t(f)];
+        const CellRect r{field.x - 3, field.y - 3, field.x + 4, field.y + 4};
+        const bool visible = r.left < view.right && view.left < r.right && r.top < view.bottom && view.top < r.bottom;
+        if (!visible && !(field.flags & routeMask)) return f;
+    }
+    return -1;
+}
+
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
                       const TurnHooks& hooks) {
     auto call = [](const std::function<void()>& f) { if (f) f(); };

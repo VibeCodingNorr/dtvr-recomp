@@ -157,6 +157,14 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
 // slot, with two the other active player, otherwise the requested active
 // player other than `current` (chosen in a dialog); -1 if that is not valid.
 int resolveTarget(const std::vector<PlayerSlot>& players, int current, int requested);
+// seg2:51EA(0xFF): like resolveTarget, but every active player (the current one
+// included) may be chosen; with two players the dialog is shown as well.
+int resolveAnyTarget(const std::vector<PlayerSlot>& players, int requested);
+
+// seg2:47D2: random(fields - 1) until the field is not masked (DS:A10F) and its
+// cell, inflated by 3 (seg2:46C8), does not intersect the visible map area.
+struct CellRect { int left = 0, top = 0, right = 0, bottom = 0; };
+int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view, MsRandom& rng);
 constexpr uint16_t kFlagCardsBlocked = 0x08; // checked at seg2:0B29, texts 1020-1022
 
 // Start field: first kind-6 field whose town name equals `name` ignoring ASCII case

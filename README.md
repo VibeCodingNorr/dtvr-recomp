@@ -28,7 +28,7 @@ no overall completion percentage is claimed.
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 26 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. The eight property cards, Steuerlos, Tschüss, Risiko, card fields and computer players are still open. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#professor-football-club-and-further-cards-round-13) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 35 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Steuerlos (needs computer players), Risiko (a timed mini-game), card fields and computer players are still open. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#property-cards-tschüss-steuerlos-and-risiko-round-14) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -60,8 +60,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     uninsured properties in a town (Versicherung, Nessie protect).
 13. Professor and football club investments; cards Erdbeben, Nägel, Punch,
     Konferenz, Flugzeug and Verdoppeln; play view split from the viewer.
-14. *Next:* property cards, Steuerlos, Tschüss, Risiko, card fields, then
-    computer players.
+14. Property cards 1–8 in the town dialog, Tschüss; Steuerlos and Risiko traced.
+15. *Next:* card fields, then computer players (with Steuerlos).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -139,11 +139,13 @@ Start it with `play --play --players 2` (1–8 players, `--rounds N` stages,
 `--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
-hand slot (26 of 41 card types are rebuilt; with three or more players **T**
+hand slot (35 of 41 card types are rebuilt; with three or more players **T**
 chooses the target; Nägel waits for an arrow key, Flugzeug flies to the current
 destination). When the professor or the football club makes an offer, **I**
 invests half the cash (rounded to 1,000) and **N** declines. After stopping in a town the terminal lists its
-properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it. Status
+properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it and
+**Ctrl+1–8** plays a property card (Kaufen, Gold, Platin, Mieten, Nimm,
+Abkaufen, Kredit, Verkaufen) whose mode lasts until the turn ends. Status
 (including cash) is shown in the window title, the log and your hand in the
 terminal. The other card effects, card fields, computer players, saves,
 multiplayer and native music playback are not implemented yet.
@@ -179,6 +181,7 @@ ISO after installation; subsequent launches use the installed local data.
 | W / arrows / Enter | With `--play`: spin, drive one field, end the turn |
 | 1–8 | With `--play`: play the hand card in that slot instead of spinning |
 | 1–9, 0 | With `--play`, after stopping in a town: buy property 1–10 (with Shift: sell) |
+| Ctrl+1–8 | With `--play`, after stopping in a town: play a property card |
 | T | With `--play`: choose the card target player (three or more players) |
 | I / N | With `--play`: accept / decline a professor or football club investment |
 | Escape | Exit |

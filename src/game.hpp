@@ -46,6 +46,11 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    // DS:3FC6 town dialog mode set by property cards 1-8 (card type + 1), 0xFF = none.
+    int propertyMode() const { return propertyMode_; }
+    // Visible map area in cells (seg2:46C8 uses the window); Tschüss avoids it.
+    // Default: 40 x 30 cells centred on the target (assumption, see docs).
+    static CellRect viewAround(const Field& f) { return {f.x - 20, f.y - 15, f.x + 20, f.y + 15}; }
     // Sell an own entry of the town the player stopped in (seg1:832A, full value).
     bool sellProperty(int entry);
     const Hand& hand(int player) const { return hands_[size_t(player)]; }
@@ -92,6 +97,7 @@ private:
     bool playWeihnachten();      // seg3:1156
     void playHauAb();            // seg3:3EFB
     void playPunch();            // seg3:2D17 (game_cards.cpp)
+    void playTschuess(int target); // seg3:28ED
     // game_events.cpp
     void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
     void applyEvent(EventKind kind);
@@ -116,6 +122,7 @@ private:
     EventKind offer_ = EventKind::None;     // pending professor / football offer
     int eventPlayer_ = 0;                   // DS:94E2 while the event trigger runs
     bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
+    int propertyMode_ = 0xFF;               // DS:3FC6
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113

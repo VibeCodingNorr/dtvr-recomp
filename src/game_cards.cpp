@@ -17,7 +17,10 @@ std::string amountText(double v) {
 
 bool Game::playCard(int handSlot, int target) {
     messages_.clear();
-    if (phase_ != Phase::Roll || handSlot < 0 || handSlot >= 8) return false;
+    // The card window allows category 2 before spinning (seg4:0951) and category 1
+    // from the town dialog (seg1:54C1); seg3:0701 compares (category & DS:18).
+    const bool inTown = phase_ == Phase::Arrived && townAt(players_[size_t(current_)].field) >= 0;
+    if ((phase_ != Phase::Roll && !inTown) || handSlot < 0 || handSlot >= 8) return false;
     auto& slot = hands_[size_t(current_)][size_t(handSlot)];
     const int type = deck_.typeOfSlot(slot);
     if (type < 0) return false;
@@ -28,6 +31,14 @@ bool Game::playCard(int handSlot, int target) {
         return false;
     }
     const CardKind kind = cardKind(type);
+    if ((cardTypes()[size_t(type)].category & (inTown ? 1 : 2)) != cardTypes()[size_t(type)].category) {
+        messages_.push_back("Karte " + card + (inTown ? ": nur vor dem Drehen" : ": nur im Stadtdialog"));
+        return false;
+    }
+    if (kind == CardKind::Property && propertyMode_ != 0xFF) { // seg1:549E: one mode at a time
+        messages_.push_back("Karte " + card + ": eine Grundstueckskarte ist schon aktiv");
+        return false;
+    }
     if (kind == CardKind::Unsupported) {
         messages_.push_back("Karte " + card + ": Wirkung noch nicht nachgebaut");
         return false;
@@ -37,6 +48,10 @@ bool Game::playCard(int handSlot, int target) {
     if (cardNeedsTarget(kind)) {
         victim = resolveTarget(players_, current_, target);
         if (victim < 0) { messages_.push_back("Karte " + card + ": Zielspieler waehlen"); return false; }
+    }
+    if (kind == CardKind::Tschuess) {
+        victim = resolveAnyTarget(players_, target);
+        if (victim < 0) { messages_.push_back("Tschuess: Zielspieler waehlen"); return false; }
     }
     const int here = players_[size_t(current_)].field;
     if (kind == CardKind::Naegel && (target < 1 || target > 4
@@ -105,6 +120,11 @@ bool Game::playCard(int handSlot, int target) {
         arrive();
         return true;
     }
+    case CardKind::Property: // seg3:134D-1481: the town dialog buys / sells in this mode
+        propertyMode_ = type + 1;
+        messages_.push_back("Kaufmodus " + card + " aktiv bis zum Zugende");
+        return true;
+    case CardKind::Tschuess: playTschuess(victim); break;
     case CardKind::Verdoppeln: // seg3:3FBB: the next card is not used up
         doubleNext_ = true;
         messages_.push_back("Die naechste Karte bleibt auf der Hand");
@@ -146,6 +166,16 @@ void Game::playPunch() {
         return;
     }
     messages_.push_back("Punch: niemand auf diesem Feld");
+}
+
+void Game::playTschuess(int target) {
+    // seg3:28ED: the target is picked up and set down on a random field that is
+    // not visible (seg2:47D2, then seg2:04AD); afterwards nextPlayer.
+    const Field& at = board_.fields[size_t(players_[size_t(target)].field)];
+    const int field = pickHiddenField(board_, routeMask(), viewAround(at), rng_);
+    if (field < 0) return;
+    players_[size_t(target)].field = field;
+    messages_.push_back("Tschuess! Spieler " + std::to_string(target + 1) + " landet bei " + townName(field));
 }
 
 bool Game::invest(int amount) {

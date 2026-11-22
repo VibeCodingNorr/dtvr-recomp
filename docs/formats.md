@@ -364,7 +364,7 @@ computer players.
   | Mode | Card | Rule in seg1:7DC5 |
   | --- | --- | --- |
   | none (0xFF) | — | free entry; cash (+0x42) ≥ value; pay value |
-  | 2 | Verkaufen | not handled here (open) |
+  | 2 | Verkaufen | not handled here: normal purchase (round 14); selling × 1.5 |
   | 3, 4, 5 | Kaufen, Gold, Platin | free entry; price value × 0.75 / 0.5 / 0.1 (DS:86A6/AE/B6) |
   | 6 | Mieten | another player's entry: landlord = owner, months = 12, owner = player |
   | 7 | Nimm | another player's entry: owner = player |
@@ -632,6 +632,43 @@ player's last step as facing (right before the first move); the viewer invests
 half the cash rounded to 1,000 with I and flies to the current destination with
 Flugzeug. Open: property cards 1–8 (town dialog modes), Steuerlos, Tschüss,
 Risiko, card fields, Nebel, computer players.
+
+### Property cards, Tschüss, Steuerlos and Risiko (round 14)
+
+- **Card window mask** DS:18: seg3:0887(mask) / seg3:0EE8(mask) set it; a card is
+  enabled when `(category & DS:18) == category` (seg3:0701). Before spinning the
+  mask is 2 (seg4:0951), from the town dialog's card button 1 (seg1:54C1), after
+  a card 0. Category 1 = property cards 1–8, 2 = all other playable cards,
+  4 = the passive protection cards (never enabled).
+- **Property cards** (seg3:134D–1481) only set DS:3FC6 = card type + 1 and switch
+  the advisor view (seg5:71B3(0xB), DS:8CDC; humans only). The town dialog's
+  card button works only while DS:3FC6 = 0xFF (seg1:549E), so one mode is active
+  at a time. Opening a town dialog resets the mode (seg1:4CE1 / 4FB9), closing it
+  too (seg1:5399 / 5508 / 5767). seg1:7DC5 resets it after a purchase in mode 6
+  (Mieten, seg1:7F87) or 7 (Nimm, seg1:802C); the other modes stay for further
+  purchases or sales until the dialog closes. Mode 2 (and 0xFF) buys at the normal
+  price; the discount branches are only taken for 3/4/5 (seg1:819B–826A).
+- **Tschüss** (card 19, seg3:28ED): target from seg2:51EA(0xFF), i.e. any active
+  player including the current one (with two players the dialog is shown too).
+  The target gets bit 0x10 while it is carried, then seg2:04AD sets it onto the
+  field from seg2:47D2: `random(fields − 1)` (DS:9CFA) until the field is not
+  masked (DS:A10F) and its cell rectangle inflated by 3 (seg2:46C8, INFLATERECT)
+  does not intersect the visible map rectangle (DS:956A/9568 + window size >> 4,
+  seg2:42A4). Then nextPlayer (if DS:2EAE = 0).
+- **Steuerlos** (card 13, seg3:1994): sets bit 0x20 of the target's +0x40 and
+  spins (WM_COMMAND 10000). At the target's turn seg2:0A6F/0AB8 saves its status
+  byte in DS:10, sets it to 2 (computer) and clears the bit; seg5:7509 (computer
+  driving) tests the bit. The effect is a computer-driven turn, so it needs the
+  computer players.
+- **Risiko** (card 26, seg7:674D): opens its own window with a timed reaction
+  game (seg10:1DDE clock, a 25-tick limit at seg7:693A, ±100 steps on DS:9C92,
+  result booked through seg2:7F14). Not rebuilt.
+
+Rebuilt in `src/game_cards.cpp`, `src/game.cpp` and `src/rules.cpp`
+(`resolveAnyTarget`, `pickHiddenField`). Assumption: the visible map area is
+40 × 30 cells centred on the Tschüss target (a 640 × 480 view; the original uses
+the actual window and scroll position, so its random sequence can differ).
+Open: Steuerlos (computer players), Risiko (mini-game), card fields, Nebel.
 
 ### SBS: remaining hypotheses
 

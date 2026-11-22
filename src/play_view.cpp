@@ -32,16 +32,19 @@ void PlayView::printLog(std::ostream& out) const {
     const int p = g.currentPlayer();
     const int town = g.townAt(g.playerField(p));
     if (g.phase() == Game::Phase::Arrived && town >= 0) {
+        const int pm = g.propertyMode();
+        const BuyMode mode = pm >= 3 && pm <= 9 ? BuyMode(pm) : BuyMode::Normal;
+        if (pm != 0xFF) out << "Kaufmodus: " << cardTypes()[size_t(pm - 1)].name << "\n";
         for (int e = 0; e < 10; ++e) { // town dialog subset: keys 1-9, 0 buy, with Shift sell
             if (!g.economy().entryExists(town, e)) continue;
             const auto owner = g.economy().town(town).entries[size_t(e)].owner;
             out << "  [" << (e + 1) % 10 << "] " << oemToUtf8(towns_[size_t(town)].entries[size_t(e)].name) << " "
-                << int64_t(g.economy().price(town, e, BuyMode::Normal)) << " "
+                << int64_t(g.economy().price(town, e, mode)) << " "
                 << (owner == kNoOwner ? std::string("frei") : "Spieler " + std::to_string(owner + 1)) << "\n";
         }
     }
-    if (g.phase() == Game::Phase::Roll) {
-        out << "Hand Spieler " << p + 1 << ":";
+    if (g.phase() == Game::Phase::Roll || (g.phase() == Game::Phase::Arrived && town >= 0)) {
+        out << "Hand Spieler " << p + 1 << (g.phase() == Game::Phase::Arrived ? " (Strg+Ziffer):" : ":");
         for (int i = 0; i < 8; ++i)
             if (g.hand(p)[size_t(i)] != Deck::kTaken) out << " [" << i + 1 << "] " << g.cardName(g.hand(p)[size_t(i)]);
         out << "\n";
@@ -75,11 +78,14 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     if ((key >= SDLK_1 && key <= SDLK_9) || key == SDLK_0) {
         const int digit = key == SDLK_0 ? 9 : int(key - SDLK_1);
         if (g.phase() == Game::Phase::Arrived) {
-            (mod & KMOD_SHIFT) ? g.sellProperty(digit) : g.buyProperty(digit);
+            if (mod & KMOD_CTRL) { if (digit < 8) g.playCard(digit, cardTarget_); }
+            else (mod & KMOD_SHIFT) ? g.sellProperty(digit) : g.buyProperty(digit);
         } else if (digit < 8) {
             const CardKind kind = cardKind(g.deck().typeOfSlot(g.hand(g.currentPlayer())[size_t(digit)]));
             if (kind == CardKind::Naegel) pendingNails_ = digit;          // direction follows
             else if (kind == CardKind::Flugzeug) g.playCard(digit, g.townAt(g.destination())); // viewer: fly to the goal
+            else if (kind == CardKind::Tschuess) // without T: the next other player
+                g.playCard(digit, cardTarget_ >= 0 ? cardTarget_ : (g.currentPlayer() + 1) % activePlayerCount(g.players()));
             else g.playCard(digit, cardTarget_);
         }
         return true;

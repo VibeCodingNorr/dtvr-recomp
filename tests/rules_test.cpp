@@ -187,6 +187,31 @@ int main() {
     st = reachDestination(0, 1.5);
     CHECK(st.reward == 450000.0 && st.gameOver);
 
+    // seg2:51EA(0xFF): anyone active, the current player included.
+    {
+        std::vector<PlayerSlot> ps(8);
+        ps[0].status = ps[3].status = 1;
+        CHECK(resolveAnyTarget(ps, 0) == 0 && resolveAnyTarget(ps, 3) == 3);
+        CHECK(resolveAnyTarget(ps, 1) == -1 && resolveAnyTarget(ps, -1) == -1);
+        ps[3].status = 0;
+        CHECK(resolveAnyTarget(ps, -1) == 0);
+    }
+    // seg2:47D2: only fields whose cell +-3 lies outside the view and that are not masked.
+    {
+        Board hb;
+        hb.fields.resize(4);
+        hb.fields[0].x = 10; hb.fields[1].x = 14; hb.fields[2].x = 15; hb.fields[3].x = 40;
+        hb.fields[3].flags = 0x4000;
+        const CellRect view{0, 0, 12, 12};
+        MsRandom hr(5);
+        for (int i = 0; i < 50; ++i) {
+            const int f = pickHiddenField(hb, 0x4000, view, hr);
+            CHECK(f == 2);                    // 14 - 3 = 11 still intersects, 40 is masked
+        }
+        hb.fields[2].x = 11;
+        CHECK(pickHiddenField(hb, 0x4000, view, hr) == -1);
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("rules_test: OK");
     return failures != 0;

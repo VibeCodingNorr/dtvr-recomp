@@ -73,10 +73,14 @@ bool Game::buyProperty(int entry) {
     const int kind = board_.fields[size_t(field)].kind;
     const int town = townAt(field);
     if ((kind != 4 && kind != 6) || town < 0) return false;
-    if (!economy_.buy(current_, town, entry, BuyMode::Normal)) return false;
+    // seg1:7DC5: modes 3-9 come from a property card; 2 (Verkaufen) and 0xFF buy normally.
+    const BuyMode mode = propertyMode_ >= 3 && propertyMode_ <= 9 ? BuyMode(propertyMode_) : BuyMode::Normal;
+    const double price = economy_.price(town, entry, mode);
+    if (!economy_.buy(current_, town, entry, mode)) return false;
+    if (mode == BuyMode::Rent || mode == BuyMode::Take) propertyMode_ = 0xFF; // seg1:7F87 / 802C
     messages_.push_back("Spieler " + std::to_string(current_ + 1) + " kauft "
                         + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name) + " in "
-                        + townName(field) + " fuer " + money(-economy_.price(town, entry, BuyMode::Normal)));
+                        + townName(field) + (mode == BuyMode::Credit ? " auf Kredit" : " fuer " + money(-price)));
     return true;
 }
 
@@ -102,7 +106,7 @@ bool Game::sellProperty(int entry) {
     messages_.clear();
     if (phase_ != Phase::Arrived) return false;
     const int town = townAt(players_[size_t(current_)].field);
-    if (town < 0 || !economy_.sell(current_, town, entry, false)) return false;
+    if (town < 0 || !economy_.sell(current_, town, entry, propertyMode_ == 2)) return false; // x1.5 with Verkaufen
     messages_.push_back("Spieler " + std::to_string(current_ + 1) + " verkauft "
                         + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name));
     return true;
@@ -159,6 +163,7 @@ bool Game::step(Direction d) {
 void Game::arrive() {
     // seg2:0D38 / dispatch seg2:160C.
     phase_ = Phase::Arrived;
+    propertyMode_ = 0xFF; // a new town dialog starts without a card mode (seg1:4FB9)
     const int field = players_[size_t(current_)].field;
     const Field& f = board_.fields[size_t(field)];
     const std::string who = "Spieler " + std::to_string(current_ + 1);
@@ -226,6 +231,7 @@ bool Game::endTurn() {
 
 void Game::advanceTurn() {
     doubleNext_ = false;
+    propertyMode_ = 0xFF; // the town dialog closes (seg1:5399 / 5508 / 5767)
     declineInvestment();
     for (const auto& gone : obstacles_.tick()) { // seg8:61FE before the player loop (seg2:071B)
         if (gone.type == kProfessorInvestment || gone.type == kFootballInvestment) {

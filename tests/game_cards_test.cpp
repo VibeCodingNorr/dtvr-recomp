@@ -10,21 +10,34 @@ using namespace dtvr;
 static int failures = 0;
 #define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); ++failures; } } while (0)
 
-// Ring of 13 fields: London (kind 6) at 0, Rom (kind 6) at 12, blue fields between.
+// Ring of 13 fields ten cells apart: London (kind 6) at 0, Rom (kind 6) at 12,
+// small towns (kind 4) with one property worth 10,000 between.
 static Board ring(std::vector<Town>& towns) {
     Board b;
     b.fields.resize(13);
     for (int i = 0; i < 13; ++i) {
         Field& f = b.fields[size_t(i)];
-        f.x = uint8_t(i); f.kind = 1;
+        f.x = uint8_t(i * 10); f.kind = 4;
         f.next = {Field::kNone, int16_t((i + 1) % 13), Field::kNone, int16_t((i + 12) % 13)};
     }
     b.fields[0].kind = 6;
     b.fields[12].kind = 6;
-    towns.resize(2);
+    towns.resize(13);
     towns[0].x = 0; towns[0].name = "London";
-    towns[1].x = 12; towns[1].name = "Rom";
+    towns[1].x = 120; towns[1].name = "Rom";
+    for (int i = 1; i < 12; ++i) {
+        towns[size_t(i + 1)].x = uint16_t(i * 10);
+        towns[size_t(i + 1)].name = "Stadt";
+        towns[size_t(i + 1)].entries[0].name = "Haus";
+        towns[size_t(i + 1)].entries[0].value = 10000;
+    }
     return b;
+}
+
+// Spin and drive right until the move ends.
+static void driveRight(Game& g) {
+    g.roll();
+    while (g.phase() == Game::Phase::Move) g.step(Direction::Right);
 }
 
 // First seed whose starting hand of `player` (8 cards) contains a card of `type`.
@@ -69,8 +82,8 @@ int main() {
 
     // Flugzeug (27): fly to Rom, the destination of the last stage -> game over.
     if (auto g = gameWithCard(board, towns, 1, 0, 27, slot)) {
-        CHECK(g->fieldOfTown(1) == 12 && g->fieldOfTown(5) == -1);
-        CHECK(!g->playCard(slot, 9));
+        CHECK(g->fieldOfTown(1) == 12 && g->fieldOfTown(5) == 4 && g->fieldOfTown(20) == -1);
+        CHECK(!g->playCard(slot, 99));
         CHECK(g->playCard(slot, 1) && g->playerField(0) == 12 && g->phase() == Game::Phase::GameOver);
     } else CHECK(false);
 
@@ -89,6 +102,49 @@ int main() {
     // Erdbeben (17): the turn ends; no town properties are owned here.
     if (auto g = gameWithCard(board, towns, 2, 0, 17, slot)) {
         CHECK(g->playCard(slot) && g->currentPlayer() == 1);
+    } else CHECK(false);
+
+    // Kaufen (2): only from the town dialog; buys for 75 %, one mode at a time,
+    // reset when the turn ends.
+    if (auto g = gameWithCard(board, towns, 2, 0, 2, slot)) {
+        CHECK(!g->playCard(slot));                    // category 1 not before spinning
+        driveRight(*g);
+        CHECK(g->phase() == Game::Phase::Arrived && g->townAt(g->playerField(0)) >= 2);
+        const double before = g->cash(0);
+        CHECK(g->playCard(slot) && g->propertyMode() == 3);
+        CHECK(g->buyProperty(0) && g->cash(0) == before - 7500);
+        CHECK(g->propertyMode() == 3);                // stays until the dialog closes
+        CHECK(g->endTurn() && g->propertyMode() == 0xFF);
+    } else CHECK(false);
+
+    // Nimm (6): takes another player's property, then the mode ends at once.
+    // Seed search: player 2 holds Nimm and both first spins reach the same town.
+    bool nimm = false;
+    for (uint16_t seed = 1; seed < 5000 && !nimm; ++seed) {
+        Game g(board, towns, 2, 0, seed, 8);
+        g.setRandomEvents(false);
+        int card = -1;
+        for (int s = 0; s < 8; ++s) if (g.deck().typeOfSlot(g.hand(1)[size_t(s)]) == 6) card = s;
+        if (card < 0) continue;
+        driveRight(g);
+        if (g.phase() != Game::Phase::Arrived || !g.buyProperty(0)) continue;
+        const int field = g.playerField(0);
+        g.endTurn();
+        if (g.currentPlayer() != 1) continue;
+        driveRight(g);
+        if (g.phase() != Game::Phase::Arrived || g.playerField(1) != field) continue;
+        nimm = true;
+        CHECK(g.playCard(card) && g.propertyMode() == 7);
+        CHECK(g.buyProperty(0) && g.propertyMode() == 0xFF);
+        CHECK(g.economy().town(g.townAt(field)).entries[0].owner == 1);
+    }
+    CHECK(nimm);
+
+    // Tschüss (19): the target lands on a field outside the 40 x 30 view.
+    if (auto g = gameWithCard(board, towns, 2, 0, 19, slot)) {
+        CHECK(g->playCard(slot, 1) && g->currentPlayer() == 1);
+        const int f = g->playerField(1);
+        CHECK(f >= 3 && f <= 12);                     // x >= 30: the inflated cell misses x -20..20
     } else CHECK(false);
 
     // Investments need an offer.

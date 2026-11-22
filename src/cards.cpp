@@ -61,6 +61,9 @@ CardKind cardKind(int type) {
     case 21: return CardKind::Konferenz;  // seg3:2F5F
     case 27: return CardKind::Flugzeug;   // seg3:31D5
     case 40: return CardKind::Verdoppeln; // seg3:3FBB
+    case 19: return CardKind::Tschuess;   // seg3:28ED
+    case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
+        return CardKind::Property;        // seg3:134D-1481: DS:3FC6 = type + 1
     default: return CardKind::Unsupported;
     }
 }

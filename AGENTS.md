@@ -22,8 +22,9 @@ src/game_drago.cpp); the event trigger, event tables, Eastern Europe and robbers
 (src/events.cpp, src/game_events.cpp); road obstacles and property damage with
 the passive cards (src/obstacles.cpp); professor / football investments and the
 cards Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln (src/game_cards.cpp).
-The SDL play mode lives in src/play_view.cpp. No property cards, Steuerlos,
-Tschüss, Risiko, card fields, AI, save support,
+Property cards 1-8 in the town dialog and Tschüss follow in round 14.
+The SDL play mode lives in src/play_view.cpp. No Steuerlos, Risiko mini-game,
+card fields, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -162,7 +163,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace the property cards (town dialog modes), Steuerlos, Tschüss, Risiko and the
-card field dialog; then computer players.
+Trace the card field dialog; then computer players (including Steuerlos, which
+hands a turn to the computer). Risiko is a timed mini-game still to be analysed.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.
