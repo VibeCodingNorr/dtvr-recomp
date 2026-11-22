@@ -56,10 +56,11 @@ The viewer only reads these files.
 | M | Cycle overview / graphics blocks / sprites / world map |
 | Left / Right | Previous / next SBB or SBS file; month in world view |
 | V | World view: toggle tile 0x33 (`[Setup] Views`) |
+| G | World view: show board fields (coloured by kind), links and towns |
 | Escape | Exit |
 
 Start directly in block view with `--tiles`, in sprite view with `--sprites` or
-in world view with `--world [--month 0-11] [--no-views]`. The world view composes
+in world view with `--world [--month 0-11] [--no-views] [--graph]`. The world view composes
 `map/europe.map` from the season's SBB tiles using the rules recovered from
 `rally.exe` (two layers, mirroring, three draw passes, colour key 0); see
 docs/formats.md.

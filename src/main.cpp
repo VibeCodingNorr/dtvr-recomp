@@ -1,3 +1,4 @@
+#include "board.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
 
@@ -140,17 +141,17 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
-    bool smoke = false, views = true;
+    bool smoke = false, views = true, graph = false;
     int month = 2;
     View view = View::Overview;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--help") {
-            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views]]\n"
+            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
-                         "V: Baustein 0x33 (Views) | Mausrad: Zoom\n"
+                         "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -160,6 +161,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--sprites") view = View::Sprites;
         else if (arg == "--world") view = View::World;
         else if (arg == "--no-views") views = false;
+        else if (arg == "--graph") graph = true;
         else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
     }
@@ -170,6 +172,18 @@ static int run(int argc, char** argv) {
     if (view == View::Tiles && tiles.empty()) throw std::runtime_error("Keine SBB-Dateien gefunden");
     if (view == View::Sprites && sprites.empty()) throw std::runtime_error("Keine SBS-Dateien gefunden");
     const auto overview = loadBmp(root / "butt/1/map.bmp");
+    // Board data for the world-view overlay (loader seg5:14C0); optional elsewhere.
+    dtvr::Board board;
+    std::vector<dtvr::Town> towns;
+    if (view == View::World || fs::is_regular_file(root / "map/europe.inf")) {
+        const auto info = dtvr::parseBoardInfo(readFile(root / "map/europe.inf"));
+        board = dtvr::parseBoard(readFile(root / "map/europe.str"), info.fields);
+        fs::path townFile;
+        for (const auto& candidate : findFiles(root / "map", ".tow")) townFile = candidate;
+        if (!townFile.empty()) towns = dtvr::parseTowns(readFile(townFile), info.towns);
+        std::cout << "Spielbrett: " << board.fields.size() << " Felder, " << board.lists.size()
+                  << " Feldlisten, " << towns.size() << " Staedte\n";
+    }
     if (!overview->format->palette) throw std::runtime_error("map.bmp hat keine Palette");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) throw std::runtime_error(SDL_GetError());
     struct Quit { ~Quit() { SDL_Quit(); } } quit;
@@ -233,6 +247,7 @@ static int run(int argc, char** argv) {
                     while ((view == View::Tiles && tiles.empty()) || (view == View::Sprites && sprites.empty()));
                     load(); break;
                 case SDLK_v: if (view == View::World) { views = !views; load(); } break;
+                case SDLK_g: graph = !graph; break;
                 case SDLK_RIGHT: step(1); break;
                 case SDLK_LEFT: step(-1); break;
                 default: break;
@@ -255,6 +270,34 @@ static int run(int argc, char** argv) {
         SDL_FRect target{x, y, width * zoom, height * zoom};
         if (SDL_RenderCopyF(renderer.get(), texture.get(), nullptr, &target) != 0)
             throw std::runtime_error(SDL_GetError());
+        if (view == View::World && graph) {
+            // Field graph from europe.str: cell centres, links up/right/down/left.
+            const float cell = dtvr::WorldMap::kTile * zoom;
+            auto cx = [&](int c) { return x + (c + 0.5f) * cell; };
+            auto cy = [&](int c) { return y + (c + 0.5f) * cell; };
+            // Colours of the marker tile under each kind (layer-1 tile 15 + kind).
+            static const SDL_Color kinds[7] = {{0, 0, 0, 255}, {30, 144, 255, 255}, {230, 60, 20, 255},
+                {240, 200, 0, 255}, {230, 230, 230, 255}, {190, 60, 190, 255}, {110, 110, 110, 255}};
+            SDL_SetRenderDrawColor(renderer.get(), 0, 255, 255, 255);
+            for (const auto& f : board.fields)
+                for (int k : {1, 2}) // right and down; links are symmetric
+                    if (f.next[k] != dtvr::Field::kNone) {
+                        const auto& n = board.fields[size_t(f.next[k])];
+                        SDL_RenderDrawLineF(renderer.get(), cx(f.x), cy(f.y), cx(n.x), cy(n.y));
+                    }
+            const float r = std::max(2.f, cell * 0.25f);
+            for (const auto& f : board.fields) {
+                const SDL_Color c = kinds[f.kind < 7 ? f.kind : 0];
+                SDL_SetRenderDrawColor(renderer.get(), c.r, c.g, c.b, 255);
+                const SDL_FRect box{cx(f.x) - r, cy(f.y) - r, 2 * r, 2 * r};
+                SDL_RenderFillRectF(renderer.get(), &box);
+            }
+            SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
+            for (const auto& t : towns) {
+                const SDL_FRect box{cx(t.x) - 2 * r, cy(t.y) - 2 * r, 4 * r, 4 * r};
+                SDL_RenderDrawRectF(renderer.get(), &box);
+            }
+        }
         if (!screenshot.empty()) {
             int w, h; SDL_GetRendererOutputSize(renderer.get(), &w, &h);
             Surface shot(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);

@@ -104,6 +104,58 @@ offset in the instruction is the real target.
   width/height from frame +0/+2 and pixels from frame +8, and blits with key 0.
   **Index 0 is transparent for SBS frames.**
 
+### Board: fields, towns (round 3)
+
+- **europe.inf** (4 bytes): uint16 field count (700) → DS:9CFA, uint16 town
+  count (115) → DS:9C80 (seg5:1714–1724). Both are loop bounds, e.g. seg6:2327
+  (fields) and seg6:2411 (towns).
+- **europe.str** → DS:52. Field table of `count` × 16 bytes (index × 16,
+  `shl si,4`). The original debug dump at seg6:2331 prints the members with the
+  format string DS:16DE — `Number`, `oben`, `rechts`, `unten`, `links`,
+  `whatisit`, `offset`, `flagset` — which gives the layout:
+
+  | Offset | Size | Field |
+  | --- | --- | --- |
+  | 0 | 1 | x (map cell); compared with DS:955E at seg6:233B |
+  | 1 | 1 | y (map cell); compared with DS:9560 at seg6:2352 |
+  | 2, 4, 6, 8 | 2 each | neighbour field index up, right, down, left; −1 = none |
+  | 0x0A | 2 | `whatisit` (kind); 6 → town lookup (seg6:23EA), 5 → "Cardfield found" (seg6:2487) |
+  | 0x0C | 2 | `offset`: file offset of a field list, 0 if none |
+  | 0x0E | 2 | `flagset` |
+
+  Several callers convert x/y to pixels with `shl ax,4` (e.g. seg2:00F6), i.e.
+  map cells of 16 pixels.
+- Checked on this copy: all 1,602 links are symmetric and axis-aligned
+  (up = y−1, right = x+1, down = y+1, left = x−1); the graph of 700 fields is
+  connected; no two fields share a cell. Degrees: 477 × 2, 187 × 3, 19 × 1, 17 × 4.
+- **Field lists** follow the table (byte 11,200 to EOF): `char name[14]` (OEM),
+  `uint16 n`, `uint16 values[n]`. 119 lists end exactly at EOF; 131 field
+  offsets hit list starts, 4 (kind 5) equal the file size (empty). Only kinds 4,
+  5 and 6 have offsets. Names include places off the map (`New York`,
+  `Reykjavik`); the meaning of the values (0–2700) is open.
+- **Towns** `europe_%c.tow` (DS:027E, letter from DS:A0F0) → DS:4E. Records of
+  0x176 bytes (seg6:241B): uint16 x (+0), uint16 y (+2), uint16 at +4 (0 in all
+  records), name at +6 (looked up with `lstrcmp` at seg5:5E51), then ten
+  0x22-byte entries from +0x22: name (24 bytes), uint32 at +0x18 (heavily used,
+  e.g. 100,000 for London's first entry), three uint16 at +0x1C/+0x1E/+0x20.
+  The file holds 120 records; the game uses the first 115 (DS:9C80). Text is in
+  OEM code page 850 (`0x94` = ö; the game imports `KEYBOARD.OEMTOANSI`).
+- Every one of the 115 towns lies on a field: 46 of kind 6, 69 of kind 4. Every
+  kind-6 field carries a town.
+
+### Board: data correlations (not yet confirmed in code)
+
+- Each field lies on a layer-1 map cell whose tile is `15 + kind` (tiles 16–21:
+  yellow = kind 3, blue = 1, red = 2, striped = 6, white = 4, violet = 5); this
+  holds for all 700 fields. These are the coloured markers on the roads.
+- `flagset` bit 14 (0x4000) is set on exactly the 176 fields whose layer-1 map
+  cell has bit 12 (0x1000). Other `flagset` bits (0–4) and the game meaning of
+  the marker colours are open.
+- `europe.ind`, `.edt`, `.eit`, `.oit`, `.c88`, `.cvc` and `.001` are not named
+  anywhere in `rally.exe` (no format string or literal); they may be editor
+  files. `europe.pit` (→ DS:46) and `europe.car` (→ DS:4A) are loaded but not
+  yet analysed.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256
@@ -118,8 +170,8 @@ offset in the instruction is the real target.
 
 ## Open questions
 
-The fields in `.ind`, `.pit`, `.car`, `.str`, `.tow`, `europe.inf` and the
-remaining tables need to be derived from the loader's consumers. File sizes
+The contents of `.pit`, `.car`, the field-list values, town entry fields and
+`flagset` bits need to be derived from their consumers. File sizes
 alone do not establish record layouts. Palette selection, colour cycling, bit 12
 of map cells and the viewport (which map area is shown at which position) are
 not yet traced. What the game's month counter is, and where DS:B5DC is set, is
@@ -134,7 +186,9 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
    transparency and palette selection from the executable.
 2. ~~Locate original map-loader routines and derive tile mapping.~~ Done.
    Palette selection and colour cycling are still open.
-3. Decode cities and the road graph; validate against the overview and original.
+3. ~~Decode cities and the road graph.~~ Field graph and town records decoded and
+   validated against the composed map. Movement rules, field effects and the
+   meaning of marker colours are next.
 4. Reconstruct one human player's complete turn before implementing more rules.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.

@@ -10,7 +10,8 @@ The current C++17 / SDL2 executable is a data viewer. It loads the original Euro
 overview and presents SBB bitmap strips as a graphics-block grid. Zoom, pan, view
 switching and SBB file navigation are implemented. SBS frames are decoded and
 the full world map is composed from europe.map with rules recovered from
-rally.exe. No game rules, AI, save support,
+rally.exe. The board (700 fields, links, 115 towns) is decoded and shown as an
+overlay. No game rules, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Local original data
@@ -54,6 +55,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/sbs.{hpp,cpp}`: bounds-checked SBSF sprite container parser (no SDL).
 - `src/worldmap.{hpp,cpp}`: europe.map cells, season table, SBB tile split and
   map composition following rally.exe (no SDL).
+- `src/board.{hpp,cpp}`: europe.inf, europe.str field graph and lists, town records,
+  OEM code page 850 conversion (no SDL).
 - `tests/*_test.cpp`: synthetic and malformed-input tests (ctest).
 - `tools/ne.py`, `tools/ne_disasm.py`: NE parser and annotated objdump disassembly.
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
@@ -93,6 +96,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace palette selection and the map viewport, then recover the city/road graph.
+Trace movement over the field graph and what each field kind does, then
+palette selection and the map viewport.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.
