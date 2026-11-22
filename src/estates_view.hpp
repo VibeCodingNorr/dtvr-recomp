@@ -25,7 +25,13 @@ public:
                 TextRenderer& text, SpriteLookup sprite);
 
     // seg1:4CF1: no tab, no selected row, scrolled to the top.
-    void open(int town);
+    // `handEmpty`: seg1:4D18 locks Karte (DS:3FBA = 2) when seg2:3C00 counts no hand card.
+    void open(int town, bool handEmpty = false);
+    // seg1:8D1A after the card window of the town dialog (seg4:0AB0 / 0B27): back to
+    // the header; with a property card mode (DS:3FC6) Karte is locked, the focus goes to
+    // Verkaufen (mode 2, Kaufen locked) or Kaufen (Verkaufen locked) and the posted
+    // Enter opens that tab. Returns true when a tab opened (Plopp02).
+    bool afterCardWindow(int propertyMode);
     // Statistik (seg1:4DE5): the variant with bit 0x10 in DS:3FC2 for `player`.
     void openStatistics(int player);
     // seg1:4E39 -> seg1:4EA8(0): the statistics as the forced sale (DS:3FC2 = 0x10):
@@ -68,6 +74,9 @@ private:
     int town_ = -1;
     EstatesTab tab_ = EstatesTab::None; // DS:3FC2 / DS:3FBC
     int focus_ = 0; // DS:3FB6: header focus 0 Kaufen, 1 Verkaufen, 2 Karte, 3 close; -1 = 0xFF
+    int locked_ = -1;        // DS:3FB8: the locked header item (0xFF none; 3 the forced sale)
+    bool cardsLocked_ = false; // DS:3FBA == 2: Karte is locked
+    bool isLocked(int item) const { return item >= 0 && (item == locked_ || (item == 2 && cardsLocked_)); }
     int selected_ = -1;                 // DS:3FBE, index into the rows
     int scroll_ = 0;                    // DS:8C4C, first visible row
     bool statistics_ = false;

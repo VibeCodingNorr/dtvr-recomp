@@ -168,7 +168,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 97. Statistics sorted as rally.exe and Windows 3.x lstrcmp do.
 98. The stage count window after the player setup, with a slider (recomb addition).
 99. Text smoothing in three modes (F12): Original, canvas size, screen resolution.
-100. *Next:* remaining presentation details (compare windows with rally.exe).
+100. Locked town dialog items (empty hand, property card modes) and the statistics header arrows.
+101. *Next:* remaining presentation details (compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

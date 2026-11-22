@@ -47,13 +47,28 @@ void EstatesView::afterForcedSale(int count) {
     }
 }
 
-void EstatesView::open(int town) {
+void EstatesView::open(int town, bool handEmpty) {
+    locked_ = -1;              // seg1:4CFD
+    cardsLocked_ = handEmpty;  // seg1:4D09 / 4D26
     statistics_ = false;
     town_ = town;
     tab_ = EstatesTab::None;
     focus_ = 0; // seg1:4CEB
     selected_ = -1;
     scroll_ = 0;
+}
+
+bool EstatesView::afterCardWindow(int propertyMode) {
+    if (!isOpen() || statistics_) return false;
+    tab_ = EstatesTab::None; // seg1:8D33: DS:3FC2 = 0
+    if (propertyMode == 0xFF) return false;
+    cardsLocked_ = true;                       // seg1:8D44
+    selected_ = -1;                            // seg1:8D4F
+    focus_ = propertyMode == 2 ? 1 : 0;        // seg1:8D5B ff.
+    locked_ = propertyMode == 2 ? 0 : 1;
+    tab_ = focus_ == 1 ? EstatesTab::Sell : EstatesTab::Buy; // the posted VK_RETURN (seg1:8E25)
+    focus_ = -1;
+    return true;
 }
 
 SDL_Rect EstatesView::box() const {
@@ -138,6 +153,8 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
                 }
                 action.kind = Action::Kind::Tab; // Plopp02 either way (seg1:56AB)
             }
+        } else if (isLocked(focus_)) {
+            // seg1:540F: Enter on a locked item does nothing
         } else if (focus_ == 0) selectTab(EstatesTab::Buy);
         else if (focus_ == 1) selectTab(EstatesTab::Sell);
         else if (focus_ == 2) action.kind = Action::Kind::Cards;
@@ -227,10 +244,12 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
     for (int i = 0; i < 3 && !statistics_; ++i) {
         const auto it = texts_.find(321 + i); // LoadString 0x141-0x143: Kaufen, Verkaufen, Karte
         const std::string label = it == texts_.end() ? std::string() : it->second;
-        // seg1:738C: with a header focus the focused item is white, the others 0x45;
-        // otherwise the active tab is yellow (pressed items 0x43 are not tracked).
+        // seg1:738C / 740D / 7493: with a header focus the focused item is white, or 0x43
+        // when it is locked (DS:3FB8; Karte DS:3FBA), the others 0x45; without a focus the
+        // active tab DS:3FBC is 0x2C (yellow).
         const bool active = (i == 0 && tab_ == EstatesTab::Buy) || (i == 1 && tab_ == EstatesTab::Sell);
-        const SDL_Color colour = focus_ >= 0 ? (i == focus_ ? kWhite : kBrown) : active ? kYellow : kBrown;
+        const SDL_Color colour = focus_ >= 0 ? (i == focus_ ? (isLocked(i) ? kGray : kWhite) : kBrown)
+                                             : active ? kYellow : kBrown;
         text_.draw(renderer_, label, ScreenRect{b.x + kTabX[i], b.y + 10, 140, kRow},
                    TextStyle{20, false, false, false, false, 0, colour});
     }
@@ -277,32 +296,33 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
 }
 
 void EstatesView::drawStatisticsHeader() {
-    // seg1:7506: text 375 (Ansehen) at x 28, then PFEIL1 at (x - 15, 8) before the
-    // category (361 + DS:8C48) at x 160 and the sort order (368 + DS:8C4A) at x 266
-    // (German offsets 0x84 / 0x6A, seg1:766F / 77C4).
+    // seg1:7506: an arrow at (14, 8), text 375 (Ansehen) at x 28, then arrows at
+    // (x - 15, 8) before the category (361 + DS:8C48) at x 160 and the sort order
+    // (368 + DS:8C4A) at x 266 (German offsets 0x84 / 0x6A, seg1:766F / 77C4).
     const SDL_Rect b = box();
     auto label = [&](int id) {
         const auto it = texts_.find(id);
         return it == texts_.end() ? std::string() : it->second;
     };
-    auto arrow = [&](int x) {
-        if (SDL_Texture* t = sprite_("PFEIL1")) {
+    // seg1:752A / 7687 / 77DC: pfeil2 before the item with the focus (DS:3FB6), else pfeil1.
+    auto arrow = [&](int x, int item) {
+        if (SDL_Texture* t = sprite_(item == focus_ ? "PFEIL2" : "PFEIL1")) {
             int w = 0, h = 0;
             SDL_QueryTexture(t, nullptr, nullptr, &w, &h);
             const SDL_Rect dst{b.x + x - 15, b.y + 8, w, h};
             SDL_RenderCopy(renderer_, t, nullptr, &dst);
         }
     };
-    // seg1:7606 ff.: the item with the focus (DS:3FB6) white, the others 0x45; the
-    // arrows' pfeil1 / pfeil2 choice by the focus (seg1:752A) is not traced in full.
+    // seg1:7606 ff.: the item with the focus (DS:3FB6) white, the others 0x45.
     auto style = [&](int item) {
         return TextStyle{20, false, false, false, false, 0, item == focus_ ? kWhite : kBrown};
     };
     // Text 360 Verkaufen in the forced sale (DS:3FC2 = 0x10), 375 Ansehen otherwise.
+    arrow(28 + 1, 0); // x 0 + 0xE = 28 - 15 + 1
     text_.draw(renderer_, label(forced_ ? 360 : 375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style(0));
-    arrow(160);
+    arrow(160, 1);
     text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style(1));
-    arrow(266);
+    arrow(266, 2);
     text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + 266, b.y + 10, 280, kRow}, style(2));
 }
 

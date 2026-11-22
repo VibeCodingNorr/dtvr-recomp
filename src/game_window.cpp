@@ -171,6 +171,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     std::array<uint8_t, kPlayerSlots> pendingStatus{};
     std::array<std::string, kPlayerSlots> pendingNames;
     uint16_t pendingSeed = 0;
+    bool cardsFromEstates = false; // the card window was opened by the town dialog's Karte (mask 1)
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
@@ -343,6 +344,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
+        if (cardsFromEstates && !cards.isOpen()) { // seg4:0AB0 / 0B27 -> seg1:8D1A
+            cardsFromEstates = false;
+            if (screen.estates().afterCardWindow(play.game().propertyMode())) sound.play(2, 2); // the posted Enter
+        }
         // seg3:1057: after text 403 the card window opens in discard mode (seg3:0887(0)) and
         // stays until a card is dropped.
         if (!screen.title() && !moving && play.game().yellowCardPending() && !screen.messages().open() && !cards.isOpen()
@@ -361,7 +366,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (!estates.isOpen()) estates.open(options.openEstates);
             } else if (town < 0) estates.close();
             else if (moving) {} // the dialog opens when the car has arrived
-            else if (!estates.isOpen() || estates.town() != town) estates.open(town);
+            else if (!estates.isOpen() || estates.town() != town)
+                estates.open(town, play.game().handCount(play.game().currentPlayer()) == 0);
         }
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
@@ -833,7 +839,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     sound.play(2, 2); // seg1:5436 / 546D: Plopp02
                 } else if (action.kind == Kind::Cards) { // the card window for property cards
                     sound.play(2, 2); // seg1:54B2
-                    if (g.openCardWindow() && cards.open(g, 1)) cardWindowState = turnState();
+                    if (g.openCardWindow() && cards.open(g, 1)) {
+                        cardWindowState = turnState();
+                        cardsFromEstates = true;
+                    }
                 } else if (action.kind == Kind::ForcedSell) { // seg1:57A4 -> seg1:8327
                     const bool sold = g.forcedSell(action.town, action.entry);
                     sound.play(2, sold ? 2 : 7); // seg1:57F7 / 58DE

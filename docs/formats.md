@@ -1392,8 +1392,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   DS:948C = seg1:7CDE(town): one player owns every entry.
 - **Header** seg1:7275: frame KO_Z (558 × 42) at (0, 0); texts 321 Kaufen, 322
   Verkaufen, 323 Karte (LoadString) in Arial 20 weight 400 at x = 18, 160, 336,
-  y = 10; colour 0x2C (255, 247, 0) for the active tab, 0x45 otherwise (pressed:
-  0xFF / 0x43).
+  y = 10; colour 0x2C (255, 247, 0) for the active tab, 0x45 otherwise.
 - **Rows** seg1:65A7: row i at y = (i − scroll + 1) · 42, frame GR_Z or GR_ZI for
   the selected row; owner icon (seg1:6163) at x = 0: `0n` free, otherwise
   `%c_n` with the owner's portrait letter (seg2:2D43), `%c_m` when DS:948C is
@@ -1415,8 +1414,17 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (0 at the stop, seg1:4CEB): left / right step it over four items with wrap-around
   (seg1:58EF / 591B), Enter (seg1:5406) selects Kaufen, Verkaufen, Karte or item 3,
   which closes the dialog with Plopp02 (seg1:54F8; Zaehler2 instead while DS:3FB8 =
-  3). With a focus the focused tab text is white (0xFF; 0x43 while pressed), the
-  others 0x45 (seg1:738C); a selected tab clears it. With a tab, up / down move the
+  3). With a focus the focused tab text is white (0xFF), the others 0x45
+  (seg1:738C / 740D / 7493); a selected tab clears it. *Round 110:* the 0x43 case
+  is not "pressed" but **locked**: item 0 and 1 compare the focus with DS:3FB8,
+  Karte with the byte DS:3FBA, and a focused locked item is 0x43; Enter on it does
+  nothing (seg1:540F → 5C1C). Opening clears both (seg1:4CFD / 4D09) and locks
+  Karte (DS:3FBA = 2) when seg2:3C00 counts no hand card. After the card window
+  of the dialog (seg4:0AB0 played, 0B27 cancelled) seg1:8D1A returns to the
+  header; with a property card mode DS:3FC6 it locks Karte, sets the focus to
+  Verkaufen with Kaufen locked (mode 2) or to Kaufen with Verkaufen locked (modes
+  3–9), and posts VK_RETURN, which opens that tab. Rebuilt in
+  `EstatesView::open` / `afterCardWindow`. With a tab, up / down move the
   row with wrap-around (seg1:5942 / 5A7F; the statistics stop at the ends).
   Escape / Backspace and the right button (seg1:5365 sends VK_BACK) leave an
   active tab with Plopp02 and give it the header focus again (seg1:53BE),
@@ -1430,8 +1438,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   header ignores clicks; a row click selects and acts only with a tab (seg1:6037).
   A purchase or sale that succeeds sends VK_DOWN to the dialog (seg1:55A5 / 5646),
   so the selection moves on. DS:3FB8 = 3 marks the forced sale (Statistik).
-  **Assumptions:** the
-  pressed-tab colours, the category
+  **Assumptions:** the category
   icons and the statistics variant (ZW_Z rows, PFEIL1 / PFEIL2 page buttons,
   seg1:7506, paging by seven at seg1:59C7 / 5B15) are not drawn yet; the card
   modes Abkaufen / Kredit use the checks of the economy. Scrolling follows
@@ -2396,7 +2403,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `src/estates_view.cpp` (rules revision 38).
 - **Rebuilt** (`statisticsRows` in `src/estates.cpp`, `src/estates_view.cpp`):
   the list of the current player with rented entries, header, rows and input as
-  above. **Assumption:** the pfeil1 / pfeil2 choice of the header arrows.
+  above. Header arrows (round 110, seg1:752A / 7687 / 77DC): pfeil2 before the
+  item with the focus, pfeil1 before the others, at (14, 8) before item 0 and
+  15 pixels before items 1 and 2.
 - **Loading:** the original loads from the title menu MAIN (1021, round 35);
   `--game --load <slot>` loads a slot directly.
 
