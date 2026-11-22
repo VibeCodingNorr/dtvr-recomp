@@ -33,7 +33,7 @@ no overall completion percentage is claimed.
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes. Driver names come from the language file at run time. Not yet: saving/loading from the program's interface, autosave rotation. | [AI](src/ai.cpp), [saves](docs/save-format.md), [architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
-| Optional graphics | ⬜ Planned | Pixel scaling, shaders and restrained parallax; effects remain optional. | [Graphics](docs/architecture.md#optional-graphics) |
+| Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); shaders, smoothing filters, separately scaled text and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
 Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/formats.md)):
@@ -131,7 +131,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 60. SBBUTTON decoded (seg1:0E78): disabled cards show the original GESPERRT overlay.
 61. SBBUTTON input: focus frame, pressed offset, release-to-play, arrow keys and sounds.
 62. Shared SBBUTTON group for the card window, SELPLAYER, OPTION and PLAYER (focus, press, keys, sounds).
-63. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
+63. Window / fullscreen with pixel scaling (F11, Alt+Enter, `--fullscreen`, `[Display]`).
+64. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -211,6 +212,12 @@ python3 tools/installation_manifest.py /path/to/installation
 **F8** opens music controls from the game/title/options menus: Up/Down selects a
 complete installed Klangset, Left/Right adjusts volume, Space toggles music and
 Escape returns. Set changes apply at the next piece; settings persist locally.
+
+**F11** or **Alt+Enter** switches the game window between window and fullscreen
+(`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or
+1024 × 768) is scaled by whole numbers with black borders; the window can be resized.
+`[Display]` in `settings.ini` keeps `Fullscreen` and `IntegerScale` (0 stretches to
+the largest fitting size with the canvas proportions).
 
 Run the installed `play` launcher without arguments (or use **Spiel starten** in
 the installer) for the game window with its title menu. `play --game` also opens

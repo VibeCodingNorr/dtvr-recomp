@@ -164,6 +164,7 @@ private:
 
 struct GameWindowOptions {
     int canvasWidth = 0;          // 0: the largest canvas that fits the screen (seg5:1227)
+    bool fullscreen = false;      // start in fullscreen (also [Display] Fullscreen)
     bool smokeTest = false;       // draw `frames` frames and exit
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)

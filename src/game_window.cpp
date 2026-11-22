@@ -5,6 +5,7 @@
 
 #include "board.hpp"
 #include "panel.hpp"
+#include "settings.hpp"
 #include "music_menu.hpp"
 #include "ne_strings.hpp"
 
@@ -34,14 +35,22 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     SDL_DisplayMode display{};
     if (SDL_GetDesktopDisplayMode(0, &display) != 0) display.w = 1024, display.h = 768;
     const ScreenLayout layout = layoutForScreen(display.w, display.h, options.canvasWidth);
+    // The canvas keeps the original size; SDL scales it into the window or the
+    // desktop (logical size, black borders) and maps mouse coordinates back.
+    const Settings displaySettings = loadSettings(defaultSettingsFile());
+    const bool startFullscreen = options.fullscreen || (displaySettings.fullscreen && !options.smokeTest);
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
         SDL_CreateWindow("Die total verrueckte Rallye", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, layout.width,
-                         layout.height, 0),
+                         layout.height, SDL_WINDOW_RESIZABLE | (startFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0)),
         SDL_DestroyWindow);
     if (!window) throw std::runtime_error(SDL_GetError());
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer(
         SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
     if (!renderer) throw std::runtime_error(SDL_GetError());
+    if (SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height) != 0
+        || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale ? SDL_TRUE : SDL_FALSE) != 0)
+        throw std::runtime_error(SDL_GetError());
     std::map<int, std::string> texts; // language file (texts in UTF-8)
     std::vector<uint8_t> language;    // also holds the menu resources
     if (const fs::path file = findCaseInsensitive(root, "dat/d/rally_d.dat"); !file.empty()) language = readFile(file);
@@ -346,8 +355,24 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_WINDOWEVENT) {
+                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) // keep the canvas centred and scaled
+                    SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height);
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) music.setFocused(false);
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) music.setFocused(true);
+            }
+            if (event.type == SDL_KEYDOWN && !event.key.repeat
+                && (event.key.keysym.sym == SDLK_F11
+                    || (event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT)))) {
+                Settings s = screen.settings(); // window / fullscreen (recomb, [Display])
+                s.fullscreen = !(SDL_GetWindowFlags(window.get()) & SDL_WINDOW_FULLSCREEN_DESKTOP);
+                if (SDL_SetWindowFullscreen(window.get(), s.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0) {
+                    SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height); // new output size
+                    screen.applySettings(s);
+                }
+                else
+                    std::cerr << "Vollbild: " << SDL_GetError() << "\n";
+                heldArrow = SDLK_UNKNOWN;
+                continue;
             }
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8) {
                 if (!event.key.repeat) musicMenu.toggle();
@@ -640,12 +665,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         musicMenu.draw(screen.textRenderer(), screen.options().isOpen());
         const bool last = options.smokeTest && frame >= options.frames;
         if (!options.screenshot.empty() && (last || !options.smokeTest)) {
-            Surface shot(SDL_CreateRGBSurfaceWithFormat(0, layout.width, layout.height, 32, SDL_PIXELFORMAT_ARGB8888),
-                         SDL_FreeSurface);
-            if (!shot || SDL_RenderReadPixels(renderer.get(), nullptr, SDL_PIXELFORMAT_ARGB8888, shot->pixels,
-                                              shot->pitch) != 0
-                || SDL_SaveBMP(shot.get(), options.screenshot.c_str()) != 0)
-                throw std::runtime_error(SDL_GetError());
+            int outW = layout.width, outH = layout.height; // the scaled output, borders included
+            SDL_GetRendererOutputSize(renderer.get(), &outW, &outH);
+            Surface shot(SDL_CreateRGBSurfaceWithFormat(0, outW, outH, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);
+            // ReadPixels(NULL) reads the viewport; without the logical size it is the whole output.
+            SDL_RenderSetLogicalSize(renderer.get(), 0, 0);
+            SDL_RenderSetViewport(renderer.get(), nullptr);
+            const bool read = shot && SDL_RenderReadPixels(renderer.get(), nullptr, SDL_PIXELFORMAT_ARGB8888,
+                                                           shot->pixels, shot->pitch) == 0;
+            SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height);
+            if (!read || SDL_SaveBMP(shot.get(), options.screenshot.c_str()) != 0) throw std::runtime_error(SDL_GetError());
         }
         SDL_RenderPresent(renderer.get());
         if (last) break;

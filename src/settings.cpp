@@ -29,6 +29,9 @@ std::string Settings::encode() const {
     for (int i = 0; i < kCount; ++i) o << key(i) << '=' << value[size_t(i)] << '\n';
     o << "Subtitle=" << subtitle << '\n';
     o << "Pause=" << pause << '\n';
+    o << "[Display]\n";
+    o << "Fullscreen=" << int(fullscreen) << '\n';
+    o << "IntegerScale=" << int(integerScale) << '\n';
     return o.str();
 }
 
@@ -44,6 +47,8 @@ Settings Settings::decode(const std::string& text) {
         try { v = std::stoi(line.substr(eq + 1)); } catch (const std::exception&) { continue; }
         if (name == "Subtitle") { s.subtitle = v != 0; continue; }
         if (name == "Pause") { s.pause = v >= 0 && v <= 3 ? v : 0; continue; } // seg6:0D89
+        if (name == "Fullscreen") { s.fullscreen = v != 0; continue; }
+        if (name == "IntegerScale") { s.integerScale = v != 0; continue; }
         for (int i = 0; i < kCount; ++i)
             if (name == key(i) && v >= 0 && v < states(i)) s.value[size_t(i)] = v;
     }

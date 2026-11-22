@@ -20,6 +20,10 @@ struct Settings {
     // seg6:0EE0 are multiplied by 1.0 / 1.5 / 2.0 / 3.0 (DS:858E).
     int pause = 0;
     double pauseFactor() const { static const double f[4] = {1.0, 1.5, 2.0, 3.0}; return f[pause & 3]; }
+    // [Display] (recomb only, not in rally.exe): fullscreen on the desktop resolution
+    // and whole-number scaling of the canvas with black borders.
+    bool fullscreen = false;
+    bool integerScale = true;
 
     static const char* key(int index);       // profile key ("Wave", "Midi", ...)
     static const char* switchName(int index); // picture name ("fx", "midi", ...)
