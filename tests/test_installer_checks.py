@@ -71,8 +71,8 @@ class PreflightTests(unittest.TestCase):
             validate_output(link)
 
     def test_ttf_and_explicit_update_selection(self):
-        with patch("installer_checks.subprocess.run", side_effect=[
-                subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 1)]):
+        with patch("installer_checks.subprocess.run", side_effect=lambda command, **kwargs:
+                subprocess.CompletedProcess(command, int("SDL2_ttf" in command))):
             with self.assertRaisesRegex(ValueError, "SDL2_ttf"):
                 preflight(self.iso, self.output)
         self.output.mkdir(parents=True)
@@ -94,9 +94,8 @@ class PreflightTests(unittest.TestCase):
                 preflight(self.iso, self.output)
 
     def test_native_ogg_dependencies(self):
-        with patch("installer_checks.subprocess.run", side_effect=[
-                subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 0),
-                subprocess.CompletedProcess([], 1)]):
+        with patch("installer_checks.subprocess.run", side_effect=lambda command, **kwargs:
+                subprocess.CompletedProcess(command, int("vorbisfile" in command))):
             with self.assertRaisesRegex(ValueError, "vorbisfile"):
                 preflight(self.iso, self.output)
 

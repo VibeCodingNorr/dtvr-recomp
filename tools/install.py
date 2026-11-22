@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 from inspect_game import inspect_game
@@ -17,6 +18,8 @@ from installer_checks import KNOWN_EXE, REPO, default_output, validate_output, d
 from installation_manifest import write_manifest, verify_installation
 from project_version import read_version
 from installer_update import update_info, preserve_files, publish
+from installer_dependencies import DependencyError, dependency_report
+from installer_checks import interface_font
 
 
 def install(iso, output, jobs, soundfonts=None, music_style="classic",
@@ -98,12 +101,17 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         if backup:
             print(f"Previous installation preserved at: {backup}", flush=True)
     print(f"Installed native build. Start with: {output / 'play'}", flush=True)
+    print("DTVR_RESULT:" + json.dumps({"project_version": read_version(),
+          "previous_version": previous.get("project_version") if previous else None,
+          "backup": str(backup) if backup else None, "output": str(output)}), flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DTVR Recomb Setup {read_version()}")
-    parser.add_argument("--iso", type=Path, required=True)
+    parser.add_argument("--iso", type=Path)
+    parser.add_argument("--dependencies", action="store_true",
+                        help="List all host dependencies as JSON, without requiring an ISO or writing files")
     parser.add_argument("--output", type=Path, default=default_output(),
                         help="New installation directory outside the checkout (default: XDG data directory)")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 8))
@@ -115,6 +123,11 @@ def main():
     parser.add_argument("--check", action="store_true", help="Check ISO, dependencies and destination without writing files")
     parser.add_argument("--update", action="store_true", help="Update a verified installation and retain a complete backup; close the game first")
     args = parser.parse_args()
+    if args.dependencies:
+        print(json.dumps(dependency_report(interface_font(), audio=True, render=bool(args.soundfont)), indent=2))
+        return
+    if args.iso is None:
+        parser.error("--iso is required for installation or media preflight")
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     if not args.soundfont and (args.music_style != "classic" or args.music_pack_id != "rendered-gm"
@@ -129,6 +142,9 @@ def main():
                     args.music_pack_id, args.music_pack_name, args.update)
     except KeyboardInterrupt:
         parser.exit(130, "Installation cancelled; temporary staging was cleaned up.\n")
+    except DependencyError as error:
+        print("DTVR_DEPENDENCIES:" + json.dumps(error.report), file=sys.stderr)
+        parser.exit(1, f"Installation failed: {error}\n")
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Installation failed: {error}\n")
 

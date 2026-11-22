@@ -42,6 +42,19 @@ disk, changes system permissions or requires root. Process tests have bounded
 timeouts. SIGKILL and power failure do not offer cooperative cleanup guarantees;
 recovery from a power loss between the publication renames remains manual.
 
+## Graphical installer checks
+
+Optional GUI checks exercise the custom folder chooser, system-dialog fallback,
+dependency-command copying, update/version display and redacted export. Run with
+a Python interpreter that has working Tk and a graphical display, or through Xvfb:
+
+```sh
+xvfb-run -a env DTVR_TEST_GUI=1 python3 -m unittest discover -s tests -p 'test_installer_ui.py' -v
+```
+
+These checks are skipped by default to avoid opening windows during ordinary
+unit-test runs. Pure dependency, privacy and folder-listing tests run normally.
+
 ## Checking an actual AppImage without FUSE mounting
 
 Supply a previously built setup artifact and its adjacent SHA-256 sidecar:

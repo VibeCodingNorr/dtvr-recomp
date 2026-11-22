@@ -17,6 +17,28 @@ SoundFont and Classic/Dry style, then click **Installieren und kompilieren**.
 The assistant automatically configures CMake, compiles, tests, installs and
 verifies the result. No manual compiler invocation is needed.
 
+The project-owned folder chooser supports typed paths, directory navigation,
+hidden folders and selecting the current folder. Its optional **Systemdialog**
+button opens the standard Tk/platform directory chooser instead. File selection
+for the ISO and SoundFont still uses the standard file chooser.
+
+Choose **Neu installieren** or **Vorhandene Installation aktualisieren** explicitly.
+Update mode shows the detected previous version and the target version; successful
+updates show the retained backup and offer **Sicherung öffnen**.
+
+**Pakete prüfen** checks all build/audio dependencies without requiring an ISO.
+The separate overview shows available, missing and currently uncheckable items.
+For Debian/Ubuntu and Arch-derived systems it offers a copyable command containing
+the missing packages; commands are never executed by the installer. Without
+pkg-config, library checks are marked uncheckable until it is installed. Unknown
+distributions show the component list without guessing a package command.
+
+**Diagnose speichern** exports a bounded local text log. Selected paths and the
+home directory are replaced; remaining lines containing absolute or encoded paths
+are removed conservatively. Hostname, original assets and environment dumps are
+not collected. No log is sent anywhere. Some path-bearing error lines are omitted
+to preserve privacy. The normal on-screen log remains available locally.
+
 The GUI uses a background process/event queue; only the main thread updates Tk.
 It shows seven stages and a bounded log. Cancel interrupts the dedicated installer
 process group; normal interruption cleans staging. Closing an active window
@@ -156,6 +178,7 @@ automatically deleted. Updates are local and explicit; there is no network updat
 ## Read-only checks
 
 ```sh
+python3 tools/install.py --dependencies
 python3 tools/install.py --iso /path/to/game.iso --output /path/to/new/installation --check
 python3 tools/installation_manifest.py /path/to/installation
 ```
@@ -174,3 +197,10 @@ GUI command construction, stage events and subprocess cancellation. Local Xvfb
 checks exercised actual GUI import/build/start, responsive updates and cancellation
 during disc-audio conversion. Killing the installer with SIGKILL or losing power
 cannot guarantee cleanup; ordinary errors and cooperative cancellation do.
+
+Package mapping references: [Ubuntu development package](https://packages.ubuntu.com/noble/libsdl2-dev),
+[Ubuntu fonts](https://packages.ubuntu.com/noble/fonts-liberation),
+[Debian JSON development package](https://packages.debian.org/trixie/libjson-c-dev),
+[Arch SDL2 compatibility package](https://archlinux.org/packages/extra/x86_64/sdl2-compat/),
+[Arch SDL2_ttf](https://archlinux.org/packages/extra/x86_64/sdl2_ttf/) and
+[Arch Liberation fonts](https://archlinux.org/packages/extra/any/ttf-liberation/).

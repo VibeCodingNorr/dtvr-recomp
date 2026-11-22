@@ -30,6 +30,13 @@ def installer_command(iso, output, soundfont="", style="classic", check=False, u
     return command
 
 
+def dependency_command(soundfont=""):
+    command = [sys.executable, "-u", str(REPO / "tools/install.py"), "--dependencies"]
+    if soundfont:
+        command += ["--soundfont", str(soundfont)]
+    return command
+
+
 class InstallerProcess:
     def __init__(self):
         self.events = queue.Queue()
@@ -62,6 +69,7 @@ class InstallerProcess:
     def _work(self, command, check):
         tail = deque(maxlen=30)
         checked_output = []
+        details = {}
         try:
             with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                   text=True, encoding="utf-8", errors="replace", bufsize=1,
@@ -72,6 +80,12 @@ class InstallerProcess:
                     self.cancel()
                 for line in process.stdout:
                     tail.append(line)
+                    if line.startswith("DTVR_DEPENDENCIES:"):
+                        details["dependencies"] = json.loads(line.partition(":")[2])
+                        continue
+                    if line.startswith("DTVR_RESULT:"):
+                        details["installation"] = json.loads(line.partition(":")[2])
+                        continue
                     if check:
                         checked_output.append(line)
                     else:
@@ -82,6 +96,7 @@ class InstallerProcess:
                 code = process.wait()
             result = {"ok": code == 0, "cancelled": self.cancel_requested.is_set() and code != 0,
                       "check": check, "error": "".join(tail)[-6000:]}
+            result.update(details)
             if check and code == 0:
                 result["report"] = json.loads("".join(checked_output))
         except (OSError, ValueError) as error:

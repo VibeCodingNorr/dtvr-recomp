@@ -10,6 +10,7 @@ import subprocess
 from cd_audio import audio_layout
 from iso9660 import IsoImage
 from soundtrack import soundfont_info, validate_identity
+from installer_dependencies import DependencyError, dependency_report
 
 KNOWN_EXE = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83"
 REPO = Path(__file__).resolve().parents[1]
@@ -87,32 +88,11 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     if soundfonts:
         validate_identity(music_pack_id, music_pack_name, music_style)
         banks = [soundfont_info(Path(path)) for path in soundfonts]
-    requirements = ["cmake", "ctest", "c++", "pkg-config"]
-    if has_cd or soundfonts:
-        requirements += ["ffmpeg", "ffprobe"]
-    if soundfonts:
-        requirements.append("fluidsynth")
-    missing = [name for name in requirements if not shutil.which(name)]
-    if missing:
-        raise ValueError("Missing dependencies: " + ", ".join(missing))
-    sdl = subprocess.run(["pkg-config", "--atleast-version=2.0.10", "sdl2"], capture_output=True)
-    if sdl.returncode:
-        raise ValueError("SDL2 development files >= 2.0.10 are required (pkg-config sdl2)")
-    ttf = subprocess.run(["pkg-config", "--exists", "SDL2_ttf"], capture_output=True)
-    if ttf.returncode:
-        raise ValueError("SDL2_ttf development files are required for text in the game interface (pkg-config SDL2_ttf)")
-    for module in ("vorbisfile", "json-c >= 0.15"):
-        result = subprocess.run(["pkg-config", "--exists", module], capture_output=True)
-        if result.returncode:
-            raise ValueError(f"Development files required for native Ogg music: {module} (pkg-config)")
     font = interface_font()
-    if not font:
-        raise ValueError("Install a complete Arial or Liberation Sans font family (regular, bold, italic, bold italic) for readable game text")
-    if has_cd or soundfonts:
-        codecs = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"],
-                                capture_output=True, text=True, timeout=30)
-        if codecs.returncode or "libvorbis" not in codecs.stdout:
-            raise ValueError("FFmpeg must provide the libvorbis encoder")
+    dependencies = dependency_report(font, audio=has_cd, render=bool(soundfonts))
+    if not dependencies["ready"]:
+        raise DependencyError(dependencies)
+    requirements = dependencies["requirements"]
     parent = output.parent
     while not parent.exists():
         parent = parent.parent
@@ -128,5 +108,5 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
             "program_files": len(files), "cd_audio_supported": has_cd,
             "soundfonts": banks, "dependencies": requirements,
             "update": update, "previous_version": previous.get("project_version") if previous else None,
-            "interface_font": font,
+            "interface_font": font, "dependency_report": dependencies,
             "free_bytes": free, "estimated_reserve_bytes": reserve}

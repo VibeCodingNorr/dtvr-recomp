@@ -46,6 +46,19 @@ class ProcessTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["report"]["program_files"], 4)
 
+    def test_dependency_failure_and_installation_result_are_structured(self):
+        worker = InstallerProcess()
+        worker.start([sys.executable, "-c",
+                      "print('DTVR_DEPENDENCIES:{\"ready\": false}'); raise SystemExit(1)"], check=True)
+        result = self.wait_done(worker)[-1][1]
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["dependencies"]["ready"])
+        worker.start([sys.executable, "-c",
+                      "print('DTVR_RESULT:{\"project_version\":\"0.0.1\",\"backup\":\"backup path\"}')"])
+        result = self.wait_done(worker)[-1][1]
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["installation"]["backup"], "backup path")
+
     def test_cancellation(self):
         worker = InstallerProcess()
         worker.start([sys.executable, "-u", "-c",
