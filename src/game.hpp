@@ -66,6 +66,9 @@ public:
     // needed with three or more players, seg2:51EA), the direction 1..4 for Nägel,
     // the town index for Flugzeug; ignored otherwise.
     bool playCard(int handSlot, int target = -1);
+    // "Karte einsetzen" (seg4:0930 -> seg2:0B08): false with text 1020 + random(2)
+    // when the current player's cards are blocked.
+    bool openCardWindow();
     // Professor / football club offer (seg8:6FBF): invest a multiple of 1,000 up to
     // the cash, or decline. Spinning or playing a card declines.
     EventKind investmentOffer() const { return offer_; }

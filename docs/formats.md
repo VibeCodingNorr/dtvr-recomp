@@ -943,7 +943,7 @@ of PLINFO (texts), menus (MENU / SBBUTTON), slot machine (SLOT), messages
   `sbs/<n>_assort.sbs` with upper-case names (`ZAHL_0`); seg6:406D therefore
   compares names without regard to case.
 - **Keys of the main window** seg4:0259 (virtual keys): Escape / Backspace open the
-  menu (seg5:5214, MENU 192 × 48 at (0, 0)), Enter seg2:0BC3, Space centres the
+  menu RIGHTBTN (seg4:01D1 → seg5:5214, see "In-game menu"), Enter seg2:0BC3, Space centres the
   map on the current player (seg2:3216, 05A8), arrows set the steering direction
   DS:A77A (1 up, 2 right, 3 down, 4 left), Insert / Delete seg6:2E54(3), keys 1–4
   seg6:0DA0(key − 1), C seg2:7F72, Q seg4:0EDF.
@@ -1082,8 +1082,53 @@ Erdbeben card uses the event texts 5201 + random(2) with the town (seg3:1C00).
 Nägel shows 5500 when the nails fall into water and Flugzeug 8300 for the fog
 over Brussels; both cases are not modelled yet. Cards without a text of their
 own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
-The in-game menu (Escape / Backspace, MENU) is drawn over the menu resource
-`RIGHTBTN` (seg5:5420 ff.: GetMenuItemCount / State / ID); still to be decoded.
+### In-game menu (round 28)
+
+- **Resources:** RT_MENU in `dat/<lang>/rally_<lang>.dat`, named MAIN (title),
+  MAIN1 (1065 Weiter spielen, 1060 Neues Spiel, 1062 Spiel speichern, 1066
+  Mitspieler, 1063 Optionen, 1064 Rallye beenden), ONFIELD (1030 Würfeln, 1031
+  Karte einsetzen, 1032 Zoom, 1034 Übersicht, 1035 Umfeld, 1036 Statistik, 1033
+  Hauptmenü), ONTOWN (1050–1053, grayed at first), RIGHTBTN (1040 Zoom, 1041
+  Übersicht, 1043 Umfeld, 1042 Statistik, 1044 Zurück), TOWNINFO. Items of the
+  first popup are used (GetSubMenu(menu, 0)). Checked items (MF_CHECKED 0x08):
+  MAIN Neues Spiel, MAIN1 Weiter spielen, RIGHTBTN Zurück, TOWNINFO Beenden.
+- **Window** seg5:5214(&handle, name, x, y, ?): one menu at a time (DS:9EDE; an
+  open one is destroyed first, seg5:52AC). CreateWindow class MENU, child of the
+  canvas DS:40, 192 × 48; WM_CREATE (seg5:5699) loads the menu, sets the props
+  MENU / MENUSUB / FOCUS = 0 and resizes to 192 × (items + 1) · 32 (seg5:5733);
+  x = 0 centres it on the canvas (seg6:0000). Callers pass (0, 0) except TOWNINFO
+  (element 1). Opened by: Escape / Backspace RIGHTBTN (seg4:01D1), the turn start
+  ONFIELD (seg2:0864 → seg2:068F, after the message windows are gone, seg6:03F7),
+  Hauptmenü MAIN1 (seg4:09DE), the title MAIN (seg8:0DDF).
+- **Paint** seg5:57F0: WinG bitmap of the client size; items from y = 0, each the
+  height of its frame: SBS `MENUG` (focused item) or `MENUN` (160 × 32, in
+  `sbs/assorted.sbs`) blitted at (0, y) by seg5:4FC6. Text via seg2:314A, Arial
+  weight 600 height 16, no shadow, at (+18, +7), focused (+20, +9); colour 0x43
+  (123, 95, 27) for grayed / disabled items, 0xA4 (255, 239, 239) focused, 0x45
+  otherwise. The last 32-pixel row and the 32 pixels right of the frames are
+  not painted by the items (content there unknown; not drawn).
+- **Input** seg5:52E7: mouse over an item sets FOCUS, a click sends WM_COMMAND
+  (id) to the main window DS:42; keys (seg5:5657): Escape / Backspace the checked
+  item (none: seg5:5C08), Tab / Down next (wrapping), Up previous, Enter the
+  focused item (grayed / disabled: only a sound, seg1:2C9B(2, 7, 0)), `1`–`4` are
+  passed to the main window.
+- **Commands** seg4:0B76 (jump tables seg4:0BE4, 0C21): every entry first closes
+  the menu. 1030 Würfeln seg2:6426(1, 5, 1); 1031 Karte einsetzen: blocked cards
+  → text 1020 and the menu stays, else seg3:0887(2), seg3:10D7(0) (card window);
+  1032 / 1040 Zoom seg6:2E54(3) and centring on the player; 1034 / 1041
+  Übersicht seg1:A240; 1035 / 1043 Umfeld seg6:3C94; 1036 / 1042 Statistik
+  seg1:4DE5 (ONFIELD entries reopen ONFIELD afterwards); 1033 Hauptmenü →
+  seg8:0362, MAIN1; 1044 Zurück only closes; 1064 Rallye beenden seg4:0EDF,
+  MAIN1 again when that returns 0; 1065 Weiter spielen seg4:0753; 1066
+  Mitspieler seg4:0803.
+
+Rebuilt in `src/ne_strings.cpp` (readNeMenu) and `src/menu_view.cpp`; flow in
+`src/game_screen.cpp`. Simplifications: ONFIELD opens whenever a human player is
+in the spin phase and no window is open (also after RIGHTBTN Zurück, which in the
+original only closes); without a card window, "Karte einsetzen" closes the menu
+and the digit keys play a hand card; Rallye beenden quits without seg4:0EDF;
+Zoom, Übersicht, Umfeld, Statistik and MAIN1 entries besides 1064 / 1065 do
+nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 
 ### SBS: remaining hypotheses
 

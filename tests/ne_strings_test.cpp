@@ -38,6 +38,33 @@ static std::vector<uint8_t> file() {
     return d;
 }
 
+// The synthetic file with an RT_MENU "ONFIELD" (popup with two items, the second
+// a nested popup) as a named resource at 0x280.
+static std::vector<uint8_t> menuFile() {
+    auto d = file();
+    const size_t t = 0x80;
+    put16(d, t + 22, 0x8004);      // RT_MENU after the strings
+    put16(d, t + 24, 1);
+    put16(d, t + 30, 0x280 >> 4);
+    put16(d, t + 32, 0x40 >> 4);
+    put16(d, t + 36, 0x30);        // named: string at table + 0x30
+    put16(d, t + 42, 0);
+    d[t + 0x30] = 7;
+    for (int i = 0; i < 7; ++i) d[t + 0x31 + i] = uint8_t("onfield"[i]);
+    size_t p = 0x280 + 4;
+    auto item = [&](unsigned flags, int id, const std::string& s) {
+        put16(d, p, flags); p += 2;
+        if (!(flags & 0x10)) { put16(d, p, unsigned(id)); p += 2; }
+        for (char c : s) d[p++] = uint8_t(c);
+        d[p++] = 0;
+    };
+    item(0x90, 0, "ONFIELD");
+    item(0x08, 1030, "W\xfcrfeln");
+    item(0x90, 0, "Sub");
+    item(0x80, 7, "x");
+    return d;
+}
+
 int main() {
     auto texts = readNeStrings(file());
     CHECK(texts.size() == 2 && texts.count(120) && texts.count(127));
@@ -57,6 +84,18 @@ int main() {
     CHECK(!throws(clipped) && readNeStrings(clipped)[127].size() == 0x40 - 21);
     bad = file(); bad.resize(0x84);                   // table truncated
     CHECK(throws(bad));
+
+    const auto menu = readNeMenu(menuFile(), "ONFIELD");
+    CHECK(menu.size() == 2 && menu[0].id == 1030 && menu[0].flags == 0x08 && menu[0].text == "W\xfcrfeln");
+    CHECK(menu[1].flags == 0x90 && menu[1].text == "Sub");
+    CHECK(readNeMenu(menuFile(), "MAIN").empty());
+    auto menuThrows = [](std::vector<uint8_t> d) {
+        try { readNeMenu(d, "ONFIELD"); } catch (const std::runtime_error&) { return true; }
+        return false;
+    };
+    auto broken = menuFile(); broken[0x280 + 4 + 2 + 8 + 4 + 10] = 'y';  // overwrite a terminator
+    for (size_t i = 0x280 + 4; i < 0x2C0; ++i) if (broken[i] == 0 && i > 0x2A0) broken[i] = 'z';
+    CHECK(menuThrows(broken));
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("ne_strings_test: OK");

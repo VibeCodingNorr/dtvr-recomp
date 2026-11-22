@@ -7,6 +7,7 @@
 #include "worldmap.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <iostream>
 #include <stdexcept>
@@ -32,12 +33,14 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                        const Board& board, const std::vector<Town>& towns, const Game& game,
                        std::map<int, std::string> texts)
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
-      texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_) {
+      texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
+      menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }) {
     seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
     // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
     loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
+    loadSprites(fs::path("sbs") / "assorted.sbs"); // MENUN / MENUG of the menu window
     for (int p = 0; p < kPlayerSlots; ++p)
         if (game_.players()[size_t(p)].status)
             loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
@@ -210,6 +213,7 @@ void GameScreen::draw() {
         slot_.start(game_.lastReels(), now);
     }
     slot_.draw(layout_.map, now);
+    menu_.draw();
     messages_.draw(game_);
 }
 
@@ -227,30 +231,80 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
     if (!renderer) throw std::runtime_error(SDL_GetError());
     std::map<int, std::string> texts; // language file (texts in UTF-8)
-    const fs::path language = findCaseInsensitive(root, "dat/d/rally_d.dat");
+    std::vector<uint8_t> language;    // also holds the menu resources
+    if (const fs::path file = findCaseInsensitive(root, "dat/d/rally_d.dat"); !file.empty()) language = readFile(file);
     if (!language.empty())
-        for (const auto& [id, raw] : readNeStrings(readFile(language))) texts.emplace(id, ansiToUtf8(raw));
+        for (const auto& [id, raw] : readNeStrings(language)) texts.emplace(id, ansiToUtf8(raw));
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
     auto report = [&] {
         play.printLog(std::cout);
         SDL_SetWindowTitle(window.get(), play.title().c_str());
     };
+    MenuView& menu = screen.menu();
+    auto openMenu = [&](const std::string& name) {
+        std::vector<NeMenuItem> items;
+        try {
+            if (!language.empty()) items = readNeMenu(language, name);
+        } catch (const std::exception& e) {
+            std::cerr << "Menue " << name << ": " << e.what() << "\n";
+        }
+        if (items.empty()) menu.close();
+        else menu.open(name, std::move(items));
+    };
+    // The turn menu ONFIELD opens for a human player before the spin (seg2:0864 ->
+    // seg2:068F). It stays away after "Karte einsetzen" until the turn state changes.
+    auto turnState = [&] {
+        const Game& g = play.game();
+        const int p = g.currentPlayer();
+        return std::array<int, 4>{p, int(g.phase()), g.spinSerial(), p >= 0 ? g.handCount(p) : 0};
+    };
+    std::array<int, 4> cardWindowState{-2, 0, 0, 0};
+    auto turnMenuDue = [&] {
+        const Game& g = play.game();
+        return g.phase() == Game::Phase::Roll && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer())
+            && turnState() != cardWindowState;
+    };
+    bool running = true;
+    auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
+        menu.close();
+        switch (id) {
+        case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
+        case 1031:                                               // Karte einsetzen
+            if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
+            cardWindowState = turnState(); // no card window yet: the digit keys play a hand card
+            break;
+        case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
+        case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
+        default: break; // Zoom, Übersicht, Umfeld, Statistik, Neues Spiel, Speichern ...: not built yet
+        }
+    };
+    if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.rollAtStart && play.game().roll()) report();
     report();
-    bool running = true;
     for (int frame = 1; running; ++frame) {
         for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
-        // The message window is modal (seg6:0FB4): nothing else runs while it is open.
-        if (!screen.messages().open() && play.update(SDL_GetTicks())) report();
+        // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
+        const bool modal = screen.messages().open() || menu.isOpen();
+        if (!modal && play.update(SDL_GetTicks())) report();
+        if (!screen.messages().open() && !menu.isOpen() && turnMenuDue() && !options.rollAtStart)
+            openMenu("ONFIELD");
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
-            if (event.type != SDL_KEYDOWN && !click) continue;
-            if (screen.messages().open()) { screen.messages().dismiss(); continue; }
-            if (click) continue;
-            if (event.key.keysym.sym == SDLK_ESCAPE) running = false;
-            else if (play.handleKey(event.key.keysym.sym, event.key.keysym.mod)) report();
+            if (screen.messages().open()) {
+                if (event.type == SDL_KEYDOWN || click) screen.messages().dismiss();
+                continue;
+            }
+            if (menu.isOpen()) {
+                if (const int id = menu.handle(event)) command(id);
+                continue;
+            }
+            if (event.type != SDL_KEYDOWN) continue;
+            const SDL_Keycode key = event.key.keysym.sym;
+            const bool risiko = play.game().phase() == Game::Phase::Risiko;
+            if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
+            else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();
         }
         SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
         SDL_RenderClear(renderer.get());

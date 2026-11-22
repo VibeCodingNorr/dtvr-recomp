@@ -24,7 +24,7 @@ no overall completion percentage is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; viewport and palette cycling still open. | [World map](src/worldmap.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites, and the slot machine with spinning reels, all at the original positions with art and text loaded from the installation. The drivers' vehicles are drawn from their SBS sets, and events, the yellow field and the solo opponent are announced in the original message window with the language texts. Still keyboard-driven; the other messages, menu and dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites, and the slot machine with spinning reels, all at the original positions with art and text loaded from the installation. The drivers' vehicles are drawn from their SBS sets, and events, the yellow field and the solo opponent are announced in the original message window with the language texts. The menu window shows the original menus of the language file (turn menu `ONFIELD` before each human spin, Escape/Backspace `RIGHTBTN`, `MAIN1` via Hauptmenü): Würfeln, Karte einsetzen and Rallye beenden work; Zoom, Übersicht, Umfeld, Statistik and the main menu entries besides quitting are not built yet. Driving and card play are still keyboard-driven; the remaining dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
@@ -81,7 +81,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 26. Messages of Dr. Drago, sit-outs, blocked cards, Christmas and investments;
     two missing random draws corrected.
 27. Card messages (Fiskus, Konto, Schulden, Zero, Konferenz, n Felder, Erdbeben).
-28. *Next:* the in-game menu (menu resource RIGHTBTN) and smooth driving.
+28. Menu window with the original menus ONFIELD, RIGHTBTN and MAIN1 (RT_MENU reader).
+29. *Next:* card window, town dialog (ONTOWN) and smooth driving.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -207,7 +208,7 @@ ISO after installation; subsequent launches use the installed local data.
 | Ctrl+1–8 | With `--play`, after stopping in a town: play a property card |
 | T | With `--play`: choose the card target player (three or more players) |
 | I / N | With `--play`: accept / decline a professor or football club investment |
-| Escape | Exit |
+| Escape | Exit (with `--game`: open the menu `RIGHTBTN`; quit through Hauptmenü → Rallye beenden) |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
 For a specific seasonal view, use `play --world --month 0` (months are 0–11).
