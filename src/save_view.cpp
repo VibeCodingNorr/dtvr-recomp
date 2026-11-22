@@ -22,19 +22,24 @@ SDL_Rect SaveView::box() const {
 SaveView::Result SaveView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
     const SDL_Rect b = box();
-    auto footerButton = [&](int x) { return x < b.w / 2 ? kNo : kOk; };
-    if (event.type == SDL_MOUSEMOTION) {
-        const int x = event.motion.x - b.x, y = event.motion.y - b.y;
-        if (x >= 0 && x < b.w && y >= 10 * kRow && y < b.h) button_ = footerButton(x);
-        return Result::None;
-    }
+    auto enter = [&] { return button_ == kNo ? Result::Close : Result::Confirm; };
     if (event.type == SDL_MOUSEBUTTONDOWN) {
         if (event.button.button == SDL_BUTTON_RIGHT) return Result::Close; // seg8:B349: Backspace
+        if (event.button.button != SDL_BUTTON_LEFT) return Result::None;
         const int x = event.button.x - b.x, y = event.button.y - b.y;
-        if (x < 0 || x >= b.w || y < kRow || y >= b.h) return Result::None;
-        if (y < 10 * kRow) { slot_ = y / kRow - 1; return Result::None; }
-        button_ = footerButton(x);
-        return button_ == kNo ? Result::Close : Result::Confirm;
+        if (x < 0 || x >= b.w || y < 0 || y >= b.h) return Result::None;
+        // WM_LBUTTONDBLCLK posts Enter (seg8:B335), independently of hit testing.
+        if (event.button.clicks == 2) return enter();
+        if (y >= kRow && y < 10 * kRow) {
+            // seg8:BA3B: PtInRect bottom = top + 41, leaving a one-pixel gap.
+            if (y % kRow < kRow - 1) slot_ = y / kRow - 1;
+            return Result::None;
+        }
+        // seg8:B974 / B9B4: only [0,150) and [458,558) are clickable.
+        // The right region posts Enter; it retains the keyboard's selected button.
+        if (y >= 10 * kRow && x < 0x96) return Result::Close;
+        if (y >= 10 * kRow && x >= 0x1CA) return enter();
+        return Result::None;
     }
     if (event.type != SDL_KEYDOWN) return Result::None;
     switch (event.key.keysym.sym) { // seg8:B578
@@ -42,7 +47,7 @@ SaveView::Result SaveView::handle(const SDL_Event& event) {
     case SDLK_RIGHT: button_ = kOk; break;
     case SDLK_UP: slot_ = std::max(0, slot_ - 1); break;
     case SDLK_DOWN: slot_ = std::min(kSaveSlots - 1, slot_ + 1); break;
-    case SDLK_RETURN: case SDLK_KP_ENTER: return button_ == kNo ? Result::Close : Result::Confirm;
+    case SDLK_RETURN: case SDLK_KP_ENTER: return enter();
     case SDLK_ESCAPE: case SDLK_BACKSPACE: return Result::Close;
     default: break;
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The save dialog of rally.exe (seg8:B157, procedure seg8:B2F0, paint seg8:B6B4 /
+// The save dialog of rally.exe (seg8:B157, procedure seg8:B301, paint seg8:B6B4 /
 // BA8A; round 33): 558 x 462 pixels, header, nine slot strips and a footer with
 // Nein / Ok, all frames of sbs/ls.sbs. Evidence in docs/formats.md "Save dialog".
 #pragma once
@@ -22,7 +22,8 @@ public:
     SaveView(SDL_Renderer* renderer, const ScreenLayout& layout, const std::map<int, std::string>& texts,
              TextRenderer& text, SpriteLookup sprite);
 
-    void open(bool saving) { open_ = true; saving_ = saving; button_ = kOk; }
+    // seg8:B24E / B253: each opening selects slot 0 and the Ok footer button.
+    void open(bool saving) { open_ = true; saving_ = saving; slot_ = 0; button_ = kOk; }
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     int slot() const { return slot_; }
@@ -43,7 +44,7 @@ private:
     SpriteLookup sprite_;
     bool open_ = false;
     bool saving_ = true; // DS:A052: save (text 800) or load (801)
-    int slot_ = 0;       // DS:A7B8, kept between openings
+    int slot_ = 0;       // DS:A7B8, reset on every opening
     int button_ = kOk;   // DS:8D64: highlighted footer button
 };
 
