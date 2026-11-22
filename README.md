@@ -4,14 +4,18 @@
 
 Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
 Current project version: **0.0.1** ([release and AppImage policy](docs/releases.md)).
-The first milestone is an SDL2 viewer for the original map and graphics blocks.
-There is no playable game logic or executable recompilation yet.
+The game window (`--game`) is playable: title, player setup, the rally with its
+recovered rules, computer opponents, cards, towns, events and the original
+scenes, with all art, text and sounds loaded from your own installation. It is
+a manual reconstruction in C++17 / SDL2, not a translation of the original
+executable, and still incomplete; see the status table.
 
 ## Project status
 
-Current milestone: **native data inspection and installation**. A complete playable
-turn is the next gameplay milestone. Status applies to the supported input version;
-no overall completion percentage is claimed.
+Current milestone: **the original game window, complete and faithful**: every
+window and its input traced from rally.exe, then remaining rule details.
+Status applies to the supported input version; no overall completion percentage
+is claimed.
 
 | Component | Status | Implemented / next step | Source or details |
 | --- | --- | --- | --- |
@@ -20,11 +24,11 @@ no overall completion percentage is claimed.
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
-| Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation records and their exact step rule (seg2:6DCB) drive the finish, victory and all event scenes. Vehicle frames placed as the original sprite list (seg2:3EB0). | [SBS parser](src/sbs.cpp), [event scenes](src/event_scenes.cpp) |
+| Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter, callers of seg2:9497 pass their own key (e.g. 0xFF for the statistics arrows). Animation records and their exact step rule (seg2:6DCB) drive the finish, victory and all event scenes. Vehicle frames placed as the original sprite list (seg2:3EB0). | [SBS parser](src/sbs.cpp), [event scenes](src/event_scenes.cpp) |
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom; the water cycles its palette as the original. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Open: remaining dialogs. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Intro, sights, subtitles, ambient map animations, the stage count window (with a slider as a recomb addition) and the forced sale. Open: remaining presentation details. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. F8 controls set/volume; remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
 | Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and F8 selection. | [Soundtrack builder](docs/soundtracks.md) |
@@ -32,11 +36,12 @@ no overall completion percentage is claimed.
 | Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn. Driver names come from the language file at run time. Not yet: the computer answer to investment offers (they decline). | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
-| Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
+| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick, mouse wheel where the original has page arrows, F8 music menu, F12 text smoothing. Planned: rebinding, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
 | Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
-Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/formats.md)):
+<details>
+<summary>Reconstruction rounds so far (evidence with addresses in <a href="docs/formats.md">docs/formats.md</a>)</summary>
 
 1. SBS sprite container decoded (all 94 files, 1,559 frames).
 2. World map composed with the original loader and draw rules; transparency confirmed.
@@ -171,6 +176,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 100. Locked town dialog items (empty hand, property card modes) and the statistics header arrows.
 101. *Next:* remaining presentation details (compare windows with rally.exe).
 
+</details>
+
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
 all original content comes from the user's ISO.
@@ -208,6 +215,8 @@ Requires Python 3, CMake, a C++17 compiler, pkg-config, SDL2, SDL2_ttf,
 libvorbisfile and json-c >= 0.15 development files.
 Install a complete Arial or Liberation Sans font family for text in the game
 window. The installer checks all four faces and SDL2_ttf before building.
+Times New Roman or Liberation Serif is used for the input fields (as the
+original's SBINPUT); without it the sans face stands in.
 
 The assistant checks prerequisites before importing data and reports missing
 packages/tools; it does not modify system packages or ask for root access.
@@ -250,6 +259,29 @@ python3 tools/installation_manifest.py /path/to/installation
 
 ## How to play
 
+Run the installed `play` launcher without arguments (or **Spiel starten** in the
+installer). The title menu offers Neues Spiel, Spiel laden, Spiel fortsetzen
+(autosave of each turn start), Optionen, Demo, Credits and Rallye beenden.
+A new game asks for the drivers (free / human / computer, names) and then the
+number of stages (1–300).
+
+| Key / input | Game window (as rally.exe unless marked) |
+| --- | --- |
+| Enter | Spin the slot machine, confirm, end the turn after arriving |
+| Arrow keys | Steer field by field; in windows move the focus |
+| Left click on the map | Mouse steering cross (MCTRL) |
+| Escape / Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
+| Space | Centre the map on the current driver |
+| Insert / Delete | Zoom in / out |
+| 1–4 | Pause length of the scenes |
+| Q | Quit question |
+| F1–F8, F10 | Buttons of the button windows (player setup, options, cards) |
+| F9 | Player setup: switch "Computer spielen alle Karten" (recomb) |
+| F8 | Music and Klangset menu (recomb) |
+| F11 / Alt+Enter | Window / fullscreen (recomb) |
+| F12 | Text smoothing: Original / canvas size / screen resolution (recomb) |
+| Mouse wheel | Scroll lists that have page arrows in the original (recomb) |
+
 **F8** opens music controls from the game/title/options menus: Up/Down selects a
 complete installed Klangset, Left/Right adjusts volume, Space toggles music and
 Escape returns. Set changes apply at the next piece; settings persist locally.
@@ -261,20 +293,25 @@ option Joystick is on: d-pad or left stick steer and move through menus, A confi
 **F11** or **Alt+Enter** switches the game window between window and fullscreen
 (`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or
 1024 × 768) is scaled by whole numbers with black borders; the window can be resized.
-`[Display]` in `settings.ini` keeps `Fullscreen` and `IntegerScale` (0 stretches to
-the largest fitting size with the canvas proportions).
 
-Run the installed `play` launcher without arguments (or use **Spiel starten** in
-the installer) for the game window with its title menu. `play --game` also opens
-it explicitly. The older `--play` mode below remains useful for debugging.
+Settings live in `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (else
+`~/.config/dtvr-recomb/settings.ini`): `[Setup]` the original options, `[Default]
+Rounds` the stage count, `[Display]` `Fullscreen`, `IntegerScale` (0 stretches to
+the largest fitting size with the canvas proportions) and `TextSmoothing` (0–2),
+`[Extensions]` `ComputerExtraCards`. Saves are stored in the user's data directory.
 
-The current build is an **inspection viewer with a first playable hotseat rally**.
+### Debugging modes
+
+`play --game` opens the game window explicitly; `play --help` lists the options
+for direct starts (`--resolution`, `--load 0-8`, `--computer-cards`, …).
+
+The older terminal-driven rally `--play` remains useful for testing rules.
 Start it with `play --play --players 2` (humans, `--computers N` adds computer
 players, together 1–8; one human alone gets a computer opponent; `--rounds N` stages,
 `--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
-hand slot (35 of 41 card types are rebuilt; with three or more players **T**
+hand slot (37 of 41 card types are playable, the other four are passive; with three or more players **T**
 chooses the target; Nägel waits for an arrow key, Flugzeug flies to the current
 destination). When the professor or the football club makes an offer, **I**
 invests half the cash (rounded to 1,000) and **N** declines. After stopping in a town the terminal lists its
@@ -282,8 +319,9 @@ properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it and
 **Ctrl+1–8** plays a property card (Kaufen, Gold, Platin, Mieten, Nimm,
 Abkaufen, Kredit, Verkaufen) whose mode lasts until the turn ends. Status
 (including cash) is shown in the window title, the log and your hand in the
-terminal. The game-window controls and current reconstruction gaps are documented
-in the status table; multiplayer remains planned. Ogg music is available in `--game`.
+terminal. Multiplayer remains planned. Ogg music is available in `--game`.
+
+The data viewer is a debugging aid:
 
 1. Have your own supported original ISO and install the dependencies listed above.
 2. Build an installation in a new directory outside this checkout:
