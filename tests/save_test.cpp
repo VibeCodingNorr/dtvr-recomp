@@ -2,6 +2,7 @@
 // Save format: exact round trip, identical continuation, rejected input.
 #include "save.hpp"
 #include "save_slots.hpp"
+#include "settings.hpp"
 
 #include <cstdio>
 #include <filesystem>
@@ -135,6 +136,22 @@ int main() {
     CHECK(!slots.load(4, c, error) && !slots.save(9, a, "x", error));
     CHECK(!slots.hasAuto() && slots.saveAuto(b, error) && slots.hasAuto());
     CHECK(slots.loadAuto(c, error) && SaveCodec::encode(c) == SaveCodec::encode(b));
+
+    // Options (round 39): defaults 1, Subtitle 0; joystick has three states.
+    Settings settings;
+    CHECK(settings.value[Settings::Views] == 1 && settings.subtitle == 0);
+    settings.toggle(Settings::Views);
+    settings.toggle(Settings::Joystick);
+    settings.toggle(Settings::Joystick);
+    CHECK(settings.value[Settings::Views] == 0 && settings.value[Settings::Joystick] == 0);
+    settings.toggle(Settings::Joystick);
+    CHECK(settings.value[Settings::Joystick] == 1); // 1 -> 2 -> 0 -> 1
+    const auto settingsFile = dir / "config" / "settings.ini";
+    CHECK(saveSettings(settingsFile, settings, error));
+    const Settings back = loadSettings(settingsFile);
+    CHECK(back.value == settings.value && back.subtitle == 0);
+    CHECK(Settings::decode("Views=7\nMidi=x\nWave=0\n").value[Settings::Views] == 1);
+    CHECK(Settings::decode("Wave=0\n").value[Settings::Wave] == 0 && loadSettings(dir / "none.ini").value[0] == 1);
     std::filesystem::remove_all(dir);
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

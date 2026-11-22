@@ -45,7 +45,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       slots_(defaultSaveDirectory()),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
       setup_(renderer, root, layout, text_),
-      overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }) {
+      overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
+      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -151,6 +152,13 @@ bool GameScreen::vehicleMoving(int player) const {
     return at.x != f.x * WorldMap::kTile || at.y != f.y * WorldMap::kTile;
 }
 
+void GameScreen::applySettings(const Settings& settings) {
+    settings_ = settings;
+    worldSeason_ = -1; // reload the world with or without the Views tiles
+    std::string error;
+    if (!saveSettings(defaultSettingsFile(), settings_, error)) std::cerr << "Optionen: " << error << "\n";
+}
+
 void GameScreen::toggleZoom() {
     const int p = game_.currentPlayer();
     if (p >= 0) zoom_[size_t(p)] = !zoom_[size_t(p)];
@@ -230,7 +238,7 @@ void GameScreen::drawMap() {
     SDL_RenderFillRect(renderer_, &map);
     const int season = seasonForMonth(game_.calendar().month);
     if (season != worldSeason_) {
-        auto surface = loadWorld(root_, game_.calendar().month, true);
+        auto surface = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0); // [Setup] Views
         world_.reset(SDL_CreateTextureFromSurface(renderer_, surface.get()));
         worldSeason_ = season;
     }
@@ -328,6 +336,10 @@ void GameScreen::drawPlayerInfo() {
 }
 
 void GameScreen::draw() {
+    if (options_.isOpen()) { // OPTION covers the canvas
+        options_.draw();
+        return;
+    }
     if (title_ && setup_.isOpen()) { // PLAYER replaces the title (seg4:0DA9)
         setup_.draw();
         return;
@@ -464,7 +476,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             break;
         }
         case 1025: running = false; break;                       // Rallye beenden
-        case 1023: case 1024: case 1026: openTitle(); break;     // Optionen, Demo, Credits: not built yet
+        case 1023: case 1063: screen.options().open(screen.settings()); break; // Optionen: seg1:ACE7
+        case 1024: case 1026: openTitle(); break;                // Demo, Credits: not built yet
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
@@ -489,6 +502,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openOverview) screen.overview().open();
     if (options.openSurroundings) screen.startSurroundings();
     if (options.zoom) screen.toggleZoom();
+    if (options.openOptions) screen.options().open(screen.settings());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
@@ -520,7 +534,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
-            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen()) openTitle();
+            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.options().isOpen())
+                openTitle();
         } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
                    && !play.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
             std::string error;
@@ -529,7 +544,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
-                           || screen.surroundings();
+                           || screen.surroundings() || screen.options().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -547,6 +562,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (menu.isOpen()) {
                 if (const int id = menu.handle(event)) command(id);
+                continue;
+            }
+            if (screen.options().isOpen()) {
+                const OptionsView::Result r = screen.options().handle(event);
+                if (r == OptionsView::Result::Accept) screen.applySettings(screen.options().settings());
+                if (r != OptionsView::Result::None) {
+                    screen.options().close();
+                    if (screen.title()) openTitle();
+                }
                 continue;
             }
             if (screen.overview().isOpen()) { screen.overview().handle(event); continue; }

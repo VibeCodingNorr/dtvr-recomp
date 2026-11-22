@@ -10,6 +10,7 @@
 #include "card_view.hpp"
 #include "estates_view.hpp"
 #include "save_view.hpp"
+#include "options_view.hpp"
 #include "overview_view.hpp"
 #include "setup_view.hpp"
 #include "menu_view.hpp"
@@ -42,6 +43,10 @@ public:
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
     OverviewView& overview() { return overview_; }
+    OptionsView& options() { return options_; }
+    const Settings& settings() const { return settings_; }
+    // Stores the options (seg1:ACE7 star) and applies them (Views: tile 0x33 on the map).
+    void applySettings(const Settings& settings);
     const SaveSlots& saveSlots() const { return slots_; }
     const std::map<int, std::string>& texts() const { return texts_; }
     std::vector<EstateRow> estateRows() const;
@@ -96,6 +101,8 @@ private:
     SaveView save_;
     SetupView setup_;
     OverviewView overview_;
+    Settings settings_;
+    OptionsView options_;
     int seenSpin_ = 0;
     bool title_ = false;
     bool surroundings_ = false;
@@ -121,6 +128,7 @@ struct GameWindowOptions {
     bool openOverview = false;    // tests: open Übersicht at the start
     bool openSurroundings = false; // tests: start Umfeld
     bool zoom = false;            // tests: zoom in for the current player
+    bool openOptions = false;     // tests: open the options window
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

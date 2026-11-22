@@ -151,6 +151,7 @@ static int run(int argc, char** argv) {
     bool openOverview = false;   // --game: open Übersicht (screenshots)
     bool openSurroundings = false; // --game: start Umfeld (tests)
     bool zoomIn = false;           // --game: zoom in (screenshots)
+    bool openOptions = false;      // --game: open the options window (screenshots)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
@@ -199,6 +200,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--overview") openOverview = true;
         else if (arg == "--surroundings") openSurroundings = true;
         else if (arg == "--zoom") zoomIn = true;
+        else if (arg == "--options") openOptions = true;
         else if (arg == "--estates" && i + 1 < argc) openEstates = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
@@ -250,10 +252,11 @@ static int run(int argc, char** argv) {
         options.openOverview = openOverview;
         options.openSurroundings = openSurroundings;
         options.zoom = zoomIn;
+        options.openOptions = openOptions;
         // The title menu comes first unless a test option asks for a specific state.
         options.title = !noTitle && loadSlot < 0 && menuName.empty() && !openCards && !holdRight && !openSave
                         && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup
-                        && !openSurroundings && !zoomIn;
+                        && !openSurroundings && !zoomIn && !openOptions;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);

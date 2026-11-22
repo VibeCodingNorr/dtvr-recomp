@@ -1220,11 +1220,29 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - Rebuilt in `src/game_screen.cpp`: per player, zoom 1 shows half the world area
   twice as large (world and vehicles); Umfeld uses the halved viewport. The zoom
   flag is not part of the save file yet.
-- **Options** (window OPTION, seg1:ACE7, commands 1023 / 1063): background
-  `%s\%d\%c\menu.bmp`, star / stop of pl_menu, switches
-  `%s\%d\op_menu\%d%s.bmp` with the table DS:7E0A of (name, setting):
-  fx DS:7E10, midi 7E14, spra 7E18, zeit 7E1C, seh 7E20, anim 7E24, farb 7E28,
-  joy DS:7C44 (three states). Not rebuilt yet.
+
+### Options (round 39)
+
+- **Settings** seg5:1FA0 reads the profile section `Setup` (GetPrivateProfileInt
+  via seg5:22C0, default 1): Midi → DS:B5D2, Wave → B5D0, Colorcycle → B5DC,
+  Animations → B5DA, Views → B5D8, Voice → B5D4, TimeOut → B5D6, Subtitle →
+  B5DF (default 0), Joystick → B5DE (cleared without a joystick).
+- **Window** OPTION (seg1:ACE7, commands 1023 / 1063): background
+  `%s\%d\%c\menu.bmp` (butt directory, language letter; the labels are part of
+  the picture: Sound-F/X, Musik, Sprachausgabe, Zeitlimit, Informationen,
+  Animationen, Wellen und Jahreszeiten, Joystick), star / stop of pl_menu at the
+  player setup's places, and eight switches `%s\%d\op_menu\%d%s.bmp` (value,
+  name) at the places of the setup's driver slots 0–7: switch i shows
+  DS:B5D0 + 2i with the name i of the table DS:7E0A (far pointers to fx, midi,
+  spra, zeit, seh, anim, farb, joy; the second words are fixup chains). A copy
+  of the values is kept at DS:9478 (seg1:ADEE) for stop. op_menu holds two
+  pictures per switch and a third for joy (`2joy.bmp`).
+- **Rebuilt** (`src/settings.cpp`, `src/options_view.cpp`): the window, the
+  switches (joy with three states) and the settings in
+  `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (`[Setup]`, the original keys).
+  Applied so far: Views (tile 0x33 on the map). **Assumptions:** a click toggles a
+  switch, star / Enter keep, stop / Escape discard. Not applied yet: the sound
+  settings, TimeOut, Animations, Colorcycle (waves and seasons) and Joystick.
 
 ### Übersicht and Umfeld (round 37)
 
