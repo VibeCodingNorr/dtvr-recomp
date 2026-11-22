@@ -74,6 +74,10 @@ public:
     int slotAt(int position) const { return order_[size_t(position)]; }
     // seg3:59AA: swap the given deck position with the draw position.
     void swapWithPointer(int position);
+    // Save support: the order (slot per position, kTaken = drawn) and both pointers.
+    const std::vector<uint8_t>& order() const { return order_; }
+    // Rejects (returns false, unchanged) an order that is not a valid deck state.
+    bool restore(const std::vector<uint8_t>& order, int pointer, int returnPointer);
 
 private:
     std::vector<uint8_t> slots_;   // DS:9EDA, card type per slot (7-byte records in the original)

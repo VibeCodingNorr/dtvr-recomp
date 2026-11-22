@@ -21,6 +21,7 @@ public:
     // seg6:1343: n <= 0 -> 0, otherwise rand() % (n + 1), i.e. 0..n.
     int random(int n);
     uint32_t state() const { return state_; }
+    void setState(uint32_t state) { state_ = state; } // save support
 
 private:
     uint32_t state_ = 1;
@@ -58,6 +59,9 @@ private:
 class MoveCounter {
 public:
     explicit MoveCounter(int allowance = 0) : allowance_(allowance) {}
+    // Save support: a counter with the steps already taken.
+    MoveCounter(int allowance, std::vector<Direction> history) : allowance_(allowance), history_(std::move(history)) {}
+    const std::vector<Direction>& history() const { return history_; }
     bool step(Direction d, bool commit = true);
     int allowance() const { return allowance_; }
     int taken() const { return int(history_.size()); }

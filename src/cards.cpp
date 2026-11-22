@@ -115,6 +115,22 @@ void Deck::giveBack(int slot) {
     returnPointer_ = returnPointer_ >= size() - 1 ? 0 : returnPointer_ + 1;
 }
 
+bool Deck::restore(const std::vector<uint8_t>& order, int pointer, int returnPointer) {
+    if (order.size() != slots_.size() || pointer < 0 || pointer >= size() || returnPointer < 0
+        || returnPointer >= size())
+        return false;
+    std::vector<bool> seen(slots_.size(), false);
+    for (uint8_t s : order) {
+        if (s == kTaken) continue;
+        if (s >= slots_.size() || seen[s]) return false;
+        seen[s] = true;
+    }
+    order_ = order;
+    pointer_ = pointer;
+    returnPointer_ = returnPointer;
+    return true;
+}
+
 void Deck::swapWithPointer(int position) {
     if (position < 0 || position >= size()) return;
     std::swap(order_[size_t(position)], order_[size_t(pointer_)]);

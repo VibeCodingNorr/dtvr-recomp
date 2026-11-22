@@ -46,6 +46,7 @@ public:
     void remove(int index) { slots_[size_t(index)] = Obstacle{}; } // seg8:697C
     const std::array<Obstacle, kSlots>& slots() const { return slots_; }
     int count() const;
+    void restore(const std::array<Obstacle, kSlots>& slots) { slots_ = slots; } // save support
 
 private:
     std::array<Obstacle, kSlots> slots_{};

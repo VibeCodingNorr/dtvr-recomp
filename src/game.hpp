@@ -24,6 +24,7 @@ namespace dtvr {
 // Assumptions (not yet traced): cards are played before spinning, and the start
 // order of random calls is shuffle, deal, destination.
 class Game {
+    friend class SaveCodec; // src/save.cpp reads and restores the complete state
 public:
     enum class Phase { Roll, Move, Arrived, GameOver };
 

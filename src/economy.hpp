@@ -91,6 +91,11 @@ public:
     std::array<bool, 8> damageTown(int town, const std::array<bool, 8>& insured);
     bool townHasOwner(int town) const;
 
+    // Save support: replaces all town and money state; false (unchanged) on a size mismatch.
+    bool restore(const std::vector<TownState>& towns, const std::vector<PlayerMoney>& money);
+    size_t townCount() const { return states_.size(); }
+    size_t playerCount() const { return money_.size(); }
+
 private:
     void updateWholeOwner(int town); // seg1:7CF6
     uint32_t value(int town, int entry) const;

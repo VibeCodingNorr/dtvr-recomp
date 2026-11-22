@@ -253,4 +253,11 @@ void Economy::settleMonth() {
     }
 }
 
+bool Economy::restore(const std::vector<TownState>& towns, const std::vector<PlayerMoney>& money) {
+    if (towns.size() != states_.size() || money.size() != money_.size()) return false;
+    states_ = towns;
+    money_ = money;
+    return true;
+}
+
 } // namespace dtvr
