@@ -1073,8 +1073,17 @@ showmaster's other portraits.
   card window and of the investment offer before round 26.
 
 Rebuilt in the game (notices with arguments) and shown by the message window.
-Not yet: the texts of the playable cards' own handlers (seg3), the card field,
-the town dialog and the stage results.
+
+**Card texts (round 27):** the handlers load text 11001 + card type (DS:9C71,
+e.g. seg3:1524; no random number): Fiskus 11010 (victim, amount, player),
+Konto 11011 (new balance), Schulden 11012 (victim, player, amount, player),
+Zero 11013 (player), Konferenz 11022, "n Felder" 11030–11035 (player). The
+Erdbeben card uses the event texts 5201 + random(2) with the town (seg3:1C00).
+Nägel shows 5500 when the nails fall into water and Flugzeug 8300 for the fog
+over Brussels; both cases are not modelled yet. Cards without a text of their
+own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
+The in-game menu (Escape / Backspace, MENU) is drawn over the menu resource
+`RIGHTBTN` (seg5:5420 ff.: GetMenuItemCount / State / ID); still to be decoded.
 
 ### SBS: remaining hypotheses
 

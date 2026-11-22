@@ -66,6 +66,7 @@ bool Game::playCard(int handSlot, int target) {
         messages_.push_back("Flugzeug: Zielstadt waehlen");
         return false;
     }
+    const double debt = -cash(current_); // Schulden: the amount passed on (text 11012)
     if (kind == CardKind::Schulden && !economy_.passDebt(current_, victim)) {
         messages_.push_back("Karte " + card + ": nur mit negativem Kontostand");
         return false;
@@ -81,19 +82,27 @@ bool Game::playCard(int handSlot, int target) {
         int allowance = move.fields;
         if (move.reels) allowance += spin(move.reels, move.maximum);
         counter_ = MoveCounter(allowance);
+        if (type >= 29 && type <= 34) notice(11001 + type, {playerArg(current_)}); // "n Felder": 11030-11035
         phase_ = Phase::Move;
         messages_.push_back(std::to_string(allowance) + " Felder");
         return true;
     }
-    case CardKind::Fiskus: messages_.push_back("Steuer " + amountText(economy_.fiskus(victim))); break;
-    case CardKind::Konto: economy_.balanceAccounts(activePlayers()); break;
-    case CardKind::Zero: economy_.zero(current_); break;
-    case CardKind::Schulden: break; // applied above
+    case CardKind::Fiskus: { // card texts are 11001 + type (DS:9C71, seg3:1524)
+        const double tax = economy_.fiskus(victim);
+        messages_.push_back("Steuer " + amountText(tax));
+        notice(11010, {playerArg(victim), moneyArg(tax < 0 ? -tax : tax), playerArg(current_)});
+        break;
+    }
+    case CardKind::Konto: notice(11011, {moneyArg(economy_.balanceAccounts(activePlayers()))}); break;
+    case CardKind::Zero: economy_.zero(current_); notice(11013, {playerArg(current_)}); break;
+    case CardKind::Schulden: // applied above
+        notice(11012, {playerArg(victim), playerArg(current_), moneyArg(debt), playerArg(current_)});
+        break;
     case CardKind::Weihnachten: playWeihnachten(); return true; // ends the turn itself
     case CardKind::HauAb: playHauAb(); return true;
     case CardKind::Erdbeben: { // seg3:1BDE: damage in the town the player stands in
-        rng_.random(2);
         const int town = townAt(here);
+        notice(5201 + rng_.random(2), {townArg(town)}); // seg2:B74D(5201, 3)
         if (town >= 0) damageTown(town, 37);
         break;
     }
@@ -113,6 +122,7 @@ bool Game::playCard(int handSlot, int target) {
             if (p == drago_.holder) placeDrago(drago_, p, rng_); // seg3:30A9
         }
         messages_.push_back("Alle Mitspieler kommen zur Konferenz");
+        notice(11022);
         break;
     }
     case CardKind::Flugzeug: { // seg3:31D5: fly to a town, then the town's field action

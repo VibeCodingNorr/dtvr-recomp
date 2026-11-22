@@ -80,7 +80,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     yellow field and the events; East opening random draw corrected.
 26. Messages of Dr. Drago, sit-outs, blocked cards, Christmas and investments;
     two missing random draws corrected.
-27. *Next:* the cards' own messages, the menu and smooth driving.
+27. Card messages (Fiskus, Konto, Schulden, Zero, Konferenz, n Felder, Erdbeben).
+28. *Next:* the in-game menu (menu resource RIGHTBTN) and smooth driving.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
