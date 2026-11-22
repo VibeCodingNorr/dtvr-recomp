@@ -27,7 +27,7 @@ void Game::eventTick() {
             return;
         }
     }
-    applyEvent(chooseEvent(active, events_.turns, calendar_.month, rng_)); // seg8:180B
+    if (randomEvents_) applyEvent(chooseEvent(active, events_.turns, calendar_.month, rng_)); // seg8:180B
 }
 
 void Game::applyEvent(EventKind kind) {
@@ -57,10 +57,81 @@ void Game::applyEvent(EventKind kind) {
         messages_.push_back(text);
         return;
     }
+    case EventKind::Rain: placeObstacle(kRain, 3); return;     // seg8:42B0
+    case EventKind::Snow: placeObstacle(kSnow, 3); return;     // seg8:535E
+    case EventKind::Rockfall: {                                // seg8:5A76
+        const Cell c = nextRockfallCell(places_);
+        const LinkRef link = linkAtCell(board_, c.x, c.y);
+        const int n = activePlayerCount(players_);
+        obstacles_.add({kRockfall, 4 * n, c.x, c.y, link.field, link.dir});
+        rng_.random(2);
+        messages_.push_back("Ereignis Steinschlag bei (" + std::to_string(c.x) + "," + std::to_string(c.y) + ")");
+        return;
+    }
+    case EventKind::Storm:
+    case EventKind::Drought:
+    case EventKind::Flood: {
+        std::vector<uint8_t> owned(towns_.size());
+        for (size_t t = 0; t < towns_.size(); ++t) owned[t] = economy_.townHasOwner(int(t));
+        const int category = kind == EventKind::Storm ? 4 : kind == EventKind::Drought ? 3 : 1;
+        const int town = pickDamageTown(towns_, owned, category, rng_);  // seg8:6C77
+        rng_.random(2);
+        if (town >= 0) damageTown(town, 37); // Versicherung
+        return;
+    }
+    case EventKind::Nessie: {
+        const int town = townAtCell(towns_, nextNessiePlace(places_));
+        rng_.random(2);
+        if (town >= 0) damageTown(town, 39); // only the Nessie card protects
+        return;
+    }
+    case EventKind::Earthquake: {
+        const int town = townAtCell(towns_, nextQuakePlace(places_));
+        rng_.random(2);
+        if (town >= 0) damageTown(town, 37);
+        return;
+    }
+    case EventKind::Volcano: {
+        const int town = townAtCell(towns_, nextVolcanoPlace(places_));
+        rng_.random(2);
+        rng_.random(2);
+        if (town >= 0) damageTown(town, 37);
+        return;
+    }
     default:
         messages_.push_back("Ereignis " + eventName(kind) + " (Wirkung noch nicht nachgebaut)");
         return;
     }
+}
+
+void Game::placeObstacle(uint16_t type, int durationFactor) {
+    for (int attempt = 0; attempt < 10; ++attempt) { // seg8:4460: up to ten tries
+        const ObstacleSpot spot = pickObstacleSpot(board_, players_, current_, destination_, routeMask(), rng_,
+                                                   map_, props_);
+        if (spot.field < 0) continue;
+        rng_.random(2);
+        obstacles_.add({type, durationFactor * activePlayerCount(players_), spot.x, spot.y, spot.field, spot.dir});
+        messages_.push_back("Ereignis " + std::string(type == kRain ? "Regen" : "Schnee") + ": Strasse bei ("
+                            + std::to_string(spot.x) + "," + std::to_string(spot.y) + ") gesperrt");
+        return;
+    }
+    messages_.push_back("Ereignis ohne passende Strasse");
+}
+
+int Game::findCard(int player, int type) const {
+    for (int s = 0; s < 8; ++s)
+        if (deck_.typeOfSlot(hands_[size_t(player)][size_t(s)]) == type) return s;
+    return -1;
+}
+
+void Game::damageTown(int town, int protectionCard) {
+    std::array<bool, 8> insured{};
+    for (int p = 0; p < kPlayerSlots; ++p) insured[size_t(p)] = findCard(p, protectionCard) >= 0;
+    const auto used = economy_.damageTown(town, insured);
+    for (int p = 0; p < kPlayerSlots; ++p)
+        if (used[size_t(p)]) hands_[size_t(p)][size_t(findCard(p, protectionCard))] = Deck::kTaken; // seg2:3C62
+    messages_.push_back("Schaden in " + oemToUtf8(towns_[size_t(town)].name)
+                        + ": unversicherte Grundstuecke gehen verloren");
 }
 
 } // namespace dtvr

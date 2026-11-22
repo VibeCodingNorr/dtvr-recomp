@@ -84,6 +84,13 @@ public:
     // player with the lowest cash + property value (last of a descending sort).
     int poorest(const std::vector<int>& activePlayers);
 
+    // seg8:4F1B: for every player slot and town entries 0..7 (8 and 9 are not
+    // checked) owned by the player: an insured player keeps them (the card is
+    // used once), otherwise the entry becomes free with burden and rent cleared.
+    // Returns the players whose protection card was used.
+    std::array<bool, 8> damageTown(int town, const std::array<bool, 8>& insured);
+    bool townHasOwner(int town) const;
+
 private:
     void updateWholeOwner(int town); // seg1:7CF6
     uint32_t value(int town, int entry) const;

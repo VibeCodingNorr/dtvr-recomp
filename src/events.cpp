@@ -41,6 +41,44 @@ std::string eventName(EventKind kind) {
     return "?";
 }
 
+namespace {
+constexpr Cell kNessie[13] = {{15, 15}, {63, 72}, {84, 83}, {86, 96}, {75, 134}, {108, 106}, {114, 100},
+                              {137, 86}, {143, 68}, {145, 37}, {171, 81}, {191, 81}, {131, 133}};
+constexpr Cell kQuake[12] = {{211, 224}, {151, 207}, {122, 242}, {185, 175}, {223, 161}, {21, 178},
+                             {47, 196}, {159, 154}, {174, 139}, {123, 109}, {137, 94}, {239, 55}};
+constexpr Cell kVolcano[2] = {{153, 234}, {15, 15}};
+constexpr Cell kRockfall[11] = {{246, 211}, {196, 200}, {44, 212}, {82, 178}, {111, 175}, {152, 158},
+                                {140, 152}, {169, 121}, {144, 20}, {127, 43}, {75, 48}};
+} // namespace
+
+Cell nextNessiePlace(EventPlaces& p) { p.nessie = p.nessie == 12 ? 0 : p.nessie + 1; return kNessie[p.nessie]; }
+Cell nextQuakePlace(EventPlaces& p) { p.quake = p.quake == 11 ? 0 : p.quake + 1; return kQuake[p.quake]; }
+Cell nextVolcanoPlace(EventPlaces& p) { p.volcano = p.volcano < 1 ? 1 : 0; return kVolcano[p.volcano]; }
+Cell nextRockfallCell(EventPlaces& p) { p.rockfall = p.rockfall == 10 ? 0 : p.rockfall + 1; return kRockfall[p.rockfall]; }
+
+int townAtCell(const std::vector<Town>& towns, Cell c) {
+    for (size_t i = 0; i < towns.size(); ++i)
+        if (towns[i].x == c.x && towns[i].y == c.y) return int(i);
+    return -1;
+}
+
+int pickDamageTown(const std::vector<Town>& towns, const std::vector<uint8_t>& ownedAny,
+                   int category, MsRandom& rng) {
+    auto hasCategory = [&](size_t t) {
+        for (const auto& e : towns[t].entries)
+            if (e.words[1] == category) return true;
+        return false;
+    };
+    std::vector<int> list;
+    for (size_t t = 0; t < towns.size(); ++t)
+        if (hasCategory(t) && t < ownedAny.size() && ownedAny[t]) list.push_back(int(t));
+    if (list.empty())
+        for (size_t t = 0; t < towns.size(); ++t)
+            if (hasCategory(t)) list.push_back(int(t));
+    if (list.empty()) return -1;
+    return list[size_t(rng.random(int(list.size()) - 1))];
+}
+
 int nextEventCountdown(int activePlayers, int year, MsRandom& rng) {
     const int base = (10 - (year >> 5)) * activePlayers;
     return base + rng.random(activePlayers);

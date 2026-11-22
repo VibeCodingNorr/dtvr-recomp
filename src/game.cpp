@@ -191,6 +191,18 @@ bool Game::step(Direction d) {
         messages_.push_back("Schlagbaum: Osteuropa ist noch geschlossen"); // seg2:2404
         return false;
     }
+    if (const int o = obstacles_.onLink(board_, p.field, d); o >= 0) { // seg2:2404 with an obstacle
+        const int card = clearingCard(obstacles_.slots()[size_t(o)].type);
+        const int slot = card >= 0 ? findCard(current_, card) : -1;
+        if (slot < 0) {
+            messages_.push_back("Hindernis auf der Strasse - ohne passende Karte geht es nicht weiter");
+            return false;
+        }
+        messages_.push_back("Spieler " + std::to_string(current_ + 1) + " raeumt das Hindernis mit "
+                            + cardName(hands_[size_t(current_)][size_t(slot)]));
+        hands_[size_t(current_)][size_t(slot)] = Deck::kTaken; // seg3:0E11
+        obstacles_.remove(o);                                   // seg8:697C
+    }
     if (!counter_.step(d, true)) return false;
     p.field = next;
     // seg2:B290 when the vehicle stops on a field: Dr. Drago changes hands.
@@ -273,6 +285,9 @@ bool Game::endTurn() {
 }
 
 void Game::advanceTurn() {
+    for (const auto& gone : obstacles_.tick()) // seg8:61FE before the player loop (seg2:071B)
+        if (gone.type) messages_.push_back("Hindernis bei (" + std::to_string(gone.x) + "," + std::to_string(gone.y)
+                                           + ") ist weg");
     TurnHooks hooks;
     hooks.chargeCredits = [this] { economy_.chargeCredits(activePlayers()); };
     hooks.settleMonth = [this] { economy_.settleMonth(); };

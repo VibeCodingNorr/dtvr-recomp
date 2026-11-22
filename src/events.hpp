@@ -50,4 +50,22 @@ int robberyVictim(const std::vector<PlayerSlot>& players, const Board& board,
                   const std::vector<double>& cash, double inflation,
                   const std::vector<bool>& seaTwoRight);
 
+// Fixed locations (map cells) of the events with a cyclic index; the index is
+// advanced before use, so the first event uses entry 1 (Vulkan: toggles, first 1).
+struct EventPlaces {
+    int nessie = 0, quake = 0, volcano = 0, rockfall = 0; // DS:680C, 6AC4, 69F0, 7170
+};
+struct Cell { int x; int y; };
+Cell nextNessiePlace(EventPlaces& p);    // 13 towns at seg8:2A32..
+Cell nextQuakePlace(EventPlaces& p);     // 12 towns at seg8:3C0B..
+Cell nextVolcanoPlace(EventPlaces& p);   // Palermo (Ätna), Reykjavik (Hekla)
+Cell nextRockfallCell(EventPlaces& p);   // 11 road cells at seg8:5A76..
+
+// seg8:6C77: towns with an entry of `category` (+0x1E) and any owned entry;
+// if there is none, every town with such an entry; then random(count - 1).
+// Storm uses category 4, drought 3, flood 1. Returns -1 without candidates.
+int pickDamageTown(const std::vector<Town>& towns, const std::vector<uint8_t>& ownedAny,
+                   int category, MsRandom& rng);
+int townAtCell(const std::vector<Town>& towns, Cell c);
+
 } // namespace dtvr

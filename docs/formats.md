@@ -546,6 +546,50 @@ storm, snow, rockfall, flood, earthquake, drought, Nessie, volcano and the
 professor (road obstacles in DS:5E, property damage, the passive cards Versicherung
 and Nessie), Nebel (text 5180, not in the tables).
 
+### Road obstacles and property damage (round 12)
+
+- **Obstacle table** DS:5E (30 × 0x17 bytes): +0 type, +2/+4 fields of the link,
+  +6/+8 cell, +0xA duration, +0xC saved map value, +0xE layer, +0xF double.
+  seg8:67F8 adds an entry (an obstacle on the same cell is removed first, then
+  the first free slot is used). Types: 0x4 Steinschlag, 0x8 Schnee, 0x10 Regen,
+  0x900 Nägel (card), 0x400/0x800 (seg8:7311/7343, open). The events write the
+  tiles 0x826 / 0x20F / 0x836 into layer 1 and give that tile flag 0x20 through
+  seg2:3305 (which writes `pit[0x1000 + tile]`), so a vehicle entering the cell
+  runs seg2:2404 (round 11). There, obstacle types 4/8/16 can be cleared with card
+  37 Schneepflug, 0x900 with card 39 Nägel weg (humans are asked); otherwise the
+  vehicle stops.
+- **Expiry** seg8:61FE runs once per turn change (seg2:071B, before the player
+  loop): entries with duration 0 are removed (seg8:62FB restores the tile),
+  others count down. Durations: Regen and Schnee 3n, Steinschlag and Nägel 4n
+  (n = active players).
+- **Placement** seg8:5F43 (Regen, Schnee; up to ten tries, seg8:4460): a random
+  active player (seg2:5F03(0xFF)), field distances from the destination with the
+  route mask, `k = random(d − 1)` and k + 1 steps along the shortest way, then the
+  first link (up, right, down, left) whose cell two steps from the field is no
+  sea route and no foreground cell (seg6:2CF7). Steinschlag uses 11 fixed cells
+  cycled through DS:7170 (first index 1). The Nägel card puts its obstacle two
+  cells from the player in the chosen direction (seg3:2096).
+- **Property damage** seg8:4F1B(town, card): every player slot owning entries 0–7
+  of the town (8 and 9 are not checked) either holds the protection card (it is
+  used once) or loses those entries (owner, burden, rent months and landlord
+  cleared); then the whole-town owner is recomputed. Protection: card 38
+  Versicherung, for Nessie only card 40 Nessie.
+- **Damage towns**: Sturm, Dürre and Hochwasser use seg8:6C77(category) with
+  categories 4, 3 and 1 (entry word +0x1E): towns with an entry of that category
+  and any owned entry, otherwise all towns with such an entry, random(count − 1).
+  Nessie (13 coastal towns, DS:680C), Erdbeben (12 towns, DS:6AC4) and Vulkan
+  (Palermo/Ätna and Reykjavik/Hekla, toggling, DS:69F0) use fixed cyclic lists,
+  each advanced before use. Text draws: one random(2) before the damage, two for
+  the volcano.
+
+Rebuilt in `src/obstacles.cpp`, `src/events.cpp`, `src/economy.cpp` and
+`src/game_events.cpp`: obstacle table, expiry, placement, clearing with the
+cards, rockfall cells, the six damage events and the protection cards. In the
+field graph an obstacle blocks the link that contains its cell. Simplifications:
+cards are used automatically (the original asks humans); random events can be
+switched off as a variant. Open: the professor, Nebel, the Nägel card's direction
+dialog, obstacle types 0x400/0x800.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256
@@ -592,8 +636,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 10. Dr. Drago (holder, forms, meetings, six actions), Weihnachten and Hau ab
     rebuilt.
 11. Event trigger, event tables, Eastern Europe (barriers, opening) and robbers
-    rebuilt. Next: the effects of the other events with road obstacles and the
-    passive cards, the remaining cards, card fields and computer players.
+    rebuilt.
+12. Road obstacles (rain, snow, rockfall) with Schneepflug, property damage
+    (storm, drought, flood, Nessie, earthquake, volcano) with Versicherung and
+    Nessie. Next: professor, the remaining cards, card fields and computer players.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

@@ -19,8 +19,9 @@ hotseat rally (`--play`, src/game.cpp) with the event card deck and movement
 cards plus money and status cards (src/cards.cpp) and the property economy with
 selling and credit (src/economy.cpp); Dr. Drago with his actions (src/drago.cpp,
 src/game_drago.cpp); the event trigger, event tables, Eastern Europe and robbers
-(src/events.cpp, src/game_events.cpp). No other event effects, remaining card
-effects, card fields, AI, save support,
+(src/events.cpp, src/game_events.cpp); road obstacles and property damage with
+the passive cards (src/obstacles.cpp). No professor, remaining card effects, card
+fields, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -97,7 +98,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/drago.{hpp,cpp}`: Dr. Drago state, forms, action tables, meetings (no SDL);
   `src/game_drago.cpp` applies his actions and the Weihnachten / Hau ab cards in the game.
 - `src/events.{hpp,cpp}`: event countdown and tables, East opening rule, barrier links,
-  robbery victim (no SDL); `src/game_events.cpp` runs the trigger and effects in the game.
+  robbery victim, event places and damage towns (no SDL); `src/game_events.cpp` runs
+  the trigger and effects in the game.
+- `src/obstacles.{hpp,cpp}`: road obstacle table, expiry, placement and link lookup (no SDL).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
 - `tools/check_repository.py`: tracked source/media/path distribution checks.
@@ -155,9 +158,8 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace the effects of the remaining events (road obstacles in DS:5E, property
-damage) with the passive cards, the remaining cards (Konferenz, Tschüss, Punch,
-Erdbeben, Nägel, Risiko, Flugzeug, property cards) and the card field dialog;
-then computer players.
+Trace the professor event, the remaining cards (Nägel, Konferenz, Tschüss, Punch,
+Erdbeben, Risiko, Flugzeug, property cards) and the card field dialog; then
+computer players.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

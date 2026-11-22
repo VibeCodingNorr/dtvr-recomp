@@ -36,6 +36,7 @@ int main() {
     CHECK(threw);
 
     Game game(board, towns, 2, 0, 1);
+    game.setRandomEvents(false);
     CHECK(game.origin() == 0 && game.destination() == 12 && game.currentPlayer() == 0);
     CHECK(game.phase() == Game::Phase::Roll);
     CHECK(!game.step(Direction::Right) && !game.endTurn());
@@ -72,6 +73,7 @@ int main() {
 
     // With one stage left the first arrival continues with a new destination.
     Game stages(board, towns, 1, 1, 3);
+    stages.setRandomEvents(false);
     for (int guard = 0; guard < 5000 && stages.remainingStages() == 1; ++guard) {
         if (stages.phase() == Game::Phase::Arrived) stages.endTurn();
         else if (stages.phase() == Game::Phase::Roll) stages.roll();
@@ -82,6 +84,7 @@ int main() {
 
     // Cards: a movement card from the starting hand replaces the spin.
     Game cardGame(board, towns, 1, 0, 1, 8);
+    cardGame.setRandomEvents(false);
     int moveSlot = -1, otherSlot = -1;
     for (int i = 0; i < 8; ++i) {
         const int type = cardGame.deck().typeOfSlot(cardGame.hand(0)[size_t(i)]);
@@ -107,6 +110,7 @@ int main() {
     Board yellow = board;
     for (int i = 1; i < 12; ++i) yellow.fields[size_t(i)].kind = 3;
     Game yellowGame(yellow, towns, 1, 0, 2, 1);
+    yellowGame.setRandomEvents(false);
     auto held = [&] { int n = 0; for (auto s : yellowGame.hand(0)) n += s != Deck::kTaken; return n; };
     CHECK(held() == 1);
     const int top = yellowGame.deck().peek();
@@ -121,6 +125,7 @@ int main() {
     std::vector<Town> shopTowns = towns;
     shopTowns[0].entries[0].name = "Kiosk"; shopTowns[0].entries[0].value = 1000; shopTowns[0].entries[0].words[0] = 5;
     Game shop(board, shopTowns, 1, 99, 1);
+    shop.setRandomEvents(false);
     CHECK(shop.townAt(0) == 0 && shop.townAt(5) == -1 && !shop.buyProperty(0));
     for (int guard = 0; guard < 5000; ++guard) {
         if (shop.phase() == Game::Phase::Arrived && shop.playerField(0) == 0) break;

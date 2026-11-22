@@ -166,6 +166,29 @@ void Economy::buyWithFactor(int player, PropertyRef p, double factor) {
     updateWholeOwner(p.town);
 }
 
+std::array<bool, 8> Economy::damageTown(int town, const std::array<bool, 8>& insured) {
+    std::array<bool, 8> used{};
+    TownState& t = states_[size_t(town)];
+    for (size_t p = 0; p < 8 && p < money_.size(); ++p)
+        for (size_t e = 0; e < 8; ++e) {
+            PropertyState& s = t.entries[e];
+            if (s.owner != p) continue;
+            if (insured[p]) { used[p] = true; continue; }
+            s.owner = kNoOwner;
+            s.burden = 0;
+            s.monthsLeft = 0;
+            if (s.landlord != kNoOwner) s.landlord = kNoOwner;
+        }
+    updateWholeOwner(town);
+    return used;
+}
+
+bool Economy::townHasOwner(int town) const {
+    for (const auto& e : states_[size_t(town)].entries)
+        if (e.owner != kNoOwner) return true;
+    return false;
+}
+
 int Economy::poorest(const std::vector<int>& activePlayers) {
     for (size_t p = 0; p < money_.size(); ++p) {
         money_[p].propertyValue = 0;

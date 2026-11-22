@@ -6,6 +6,7 @@
 #include "drago.hpp"
 #include "economy.hpp"
 #include "events.hpp"
+#include "obstacles.hpp"
 #include "rules.hpp"
 
 #include <string>
@@ -52,6 +53,10 @@ public:
     // A link exists and is not closed by a border barrier (for planners and the UI).
     bool linkOpen(int field, Direction d) const;
     const EventClock& eventClock() const { return events_; }
+    const ObstacleTable& obstacles() const { return obstacles_; }
+    // Random events on/off (default on). Used for scenario tests and as a game
+    // variant; the original always runs them.
+    void setRandomEvents(bool on) { randomEvents_ = on; }
 
     Phase phase() const { return phase_; }
     int currentPlayer() const { return current_; }
@@ -81,6 +86,9 @@ private:
     // game_events.cpp
     void eventTick();            // seg8:1624 after every player change
     void applyEvent(EventKind kind);
+    void placeObstacle(uint16_t type, int durationFactor);   // rain / snow (seg8:5F43)
+    void damageTown(int town, int protectionCard);          // seg8:4F1B
+    int findCard(int player, int type) const;               // seg3:0D26, slot or -1
     uint16_t routeMask() const { return eastOpen_ ? 0 : 0x4000; }
 
     const Board& board_;
@@ -93,6 +101,9 @@ private:
     const TileProperties* props_ = nullptr;
     std::vector<bool> barriers_;
     EventClock events_;
+    EventPlaces places_;
+    ObstacleTable obstacles_;
+    bool randomEvents_ = true;
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113
     int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)
