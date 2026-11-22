@@ -51,6 +51,12 @@ SBS animation playback or executable translation have been implemented.
 
 ## Build and verify
 
+- `VERSION` is the single project version (currently `0.0.1`). Installer UI,
+  installation manifest, CMake executable and AppImage filename use it.
+- Increase the numeric MAJOR.MINOR.PATCH version for each release, not each commit.
+  Release tags must be `v<VERSION>` and newer than all previous release versions.
+  See `docs/releases.md`; never bundle user media or SoundFonts in setup artifacts.
+
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j

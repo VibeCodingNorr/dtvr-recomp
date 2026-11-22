@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 cmake_minimum_required(VERSION 3.16)
-project(dtvr_recomb VERSION 0.1.0 LANGUAGES CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" DTVR_VERSION LIMIT_COUNT 1)
+project(dtvr_recomb VERSION ${DTVR_VERSION} LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -13,6 +14,7 @@ target_compile_features(dtvr-formats PUBLIC cxx_std_17)
 target_compile_options(dtvr-formats PRIVATE -Wall -Wextra -Wpedantic)
 
 add_executable(dtvr-recomb src/main.cpp)
+target_compile_definitions(dtvr-recomb PRIVATE DTVR_VERSION="${PROJECT_VERSION}")
 target_compile_options(dtvr-recomb PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(dtvr-recomb PRIVATE dtvr-formats PkgConfig::SDL2)
 

@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+set -eu
+app_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+unset PYTHONHOME PYTHONPATH
+export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1
+PATH="$app_dir/usr/python/bin:$PATH"
+export PATH
+source_dir="$app_dir/usr/src/dtvr-recomb"
+case "${1:-}" in
+    --version) exec "$app_dir/usr/python/bin/python3" -I "$source_dir/tools/project_version.py" ;;
+    --cli) shift; exec "$app_dir/usr/python/bin/python3" "$source_dir/tools/install.py" "$@" ;;
+    *) exec "$app_dir/usr/python/bin/python3" "$source_dir/tools/installer_gui.py" "$@" ;;
+esac

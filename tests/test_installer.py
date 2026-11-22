@@ -32,9 +32,8 @@ class InstallerTests(unittest.TestCase):
             root = Path(temporary)
             image = root / "invalid-game.iso"
             image.write_bytes(fixture())
-            with patch("install.subprocess.run"), patch("install.shutil.which", return_value="tool"):
-                with self.assertRaises(ValueError):
-                    install(image, root / "game", 1)
+            with self.assertRaises(ValueError):
+                install(image, root / "game", 1)
             self.assertFalse((root / "game").exists())
             self.assertEqual(sorted(p.name for p in root.iterdir()), ["invalid-game.iso"])
 

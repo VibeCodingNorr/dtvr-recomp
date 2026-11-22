@@ -151,7 +151,10 @@ static int run(int argc, char** argv) {
     View view = View::Overview;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--help") {
+        if (arg == "--version") {
+            std::cout << "DTVR Recomb " << DTVR_VERSION << '\n';
+            return 0;
+        } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
                          "            [--play [--players 1-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"

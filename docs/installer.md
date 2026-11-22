@@ -6,6 +6,27 @@ sound and generated outputs remain local and are not repository contents.
 
 ## Current implementation
 
+The versioned setup distribution is an AppImage bundling our committed source
+and Python/Tk. The current project version is `0.0.1`; see
+[release packaging](releases.md) for artifact names, prerequisites and release rules.
+
+Launch `./install.sh` for the native Tk assistant. It selects an available Python
+with a usable Tk runtime, shows our own project branding, and delegates to the
+same CLI backend used below. Choose ISO and destination, optionally select a
+SoundFont and Classic/Dry style, then click **Installieren und kompilieren**.
+The assistant automatically configures CMake, compiles, tests, installs and
+verifies the result. No manual compiler invocation is needed.
+
+The GUI uses a background process/event queue; only the main thread updates Tk.
+It shows seven stages and a bounded log. Cancel interrupts the dedicated installer
+process group; normal interruption cleans staging. Closing an active window
+offers to cancel and waits for cleanup. After success, start the native prototype
+or open its installation folder.
+
+Prerequisites must already be installed. The GUI identifies missing tools/SDL2;
+it does not install system packages, download media or ask for root. Without Tk
+or a graphical session, use the CLI:
+
 ```sh
 python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installation
 /path/to/new/installation/play
@@ -13,6 +34,8 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
 
 1. Check that the target is outside the checkout, does not exist, and required
    build tools/SDL2 are available. Default to the user's XDG data directory.
+   Verify the executable directly in the ISO, selected SoundFonts, the Vorbis
+   encoder and an estimated free-space reserve before creating installation data.
 2. Read the ISO9660 primary directory tree with bounded extents and validated names.
    Extract only `program/` into a temporary directory beside the target.
 3. Validate the original `rally.exe` by SHA-256 and check required viewer assets.
@@ -23,8 +46,8 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
 4. Configure and compile this checkout in Release mode, run CTest, and install the
    native executable into staging. No original Windows program is executed.
 5. Run overview, tile, sprite and world smoke checks against the extracted data.
-6. Write a manifest identifying the ISO, original executable and hashes of the
-   installed binary and extracted files, then add a relocatable `play` launcher.
+6. Add the relocatable `play` launcher, write a version-2 manifest hashing all
+   installed files including that launcher, and verify hashes/executable permissions.
 7. Publish the staged installation by renaming it to the requested destination.
    On ordinary failure, temporary output is cleaned up and the destination is absent.
 
@@ -84,7 +107,28 @@ and record input hashes, conversion/tool versions and generated outputs in the
 manifest. Original executable bytes are only temporary validation/analysis inputs
 and are not included in the resulting native installation.
 
-Future packaging can supply a prebuilt native runtime and a graphical ISO picker,
-progress display and dependency guidance. Updating an installation, migrating saves,
-desktop integration and uninstall behavior remain unimplemented; the initial CLI
-requires a new destination for every install.
+Future packaging can supply a prebuilt runtime. Updating an installation,
+migrating saves, desktop-menu registration and uninstall behavior remain
+unimplemented; CLI and GUI require a new destination for every install.
+
+## Read-only checks
+
+```sh
+python3 tools/install.py --iso /path/to/game.iso --output /path/to/new/installation --check
+python3 tools/installation_manifest.py /path/to/installation
+```
+
+Preflight does not extract, build or create the destination; it reports recognized
+media, required tools, selected banks and the disk-space reserve as JSON. The
+reserve is a conservative estimate, not an exact final size.
+
+Installed-file verification checks the manifest, safe local paths, required runtime
+files, hashes and executable permissions without running the game. It does not
+need the original ISO or banks. Legacy version-1 manifests omitted the launcher
+from hashes; they require a new installation for this complete verification.
+
+Tests cover synthetic media preflight failures, manifest corruption/path escapes,
+GUI command construction, stage events and subprocess cancellation. Local Xvfb
+checks exercised actual GUI import/build/start, responsive updates and cancellation
+during disc-audio conversion. Killing the installer with SIGKILL or losing power
+cannot guarantee cleanup; ordinary errors and cooperative cancellation do.

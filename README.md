@@ -3,6 +3,7 @@
 ![DTVR Recomb: an original road-and-die mark](assets/branding/logo.svg)
 
 Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
+Current project version: **0.0.1** ([release and AppImage policy](docs/releases.md)).
 The first milestone is an SDL2 viewer for the original map and graphics blocks.
 There is no playable game logic or executable recompilation yet.
 
@@ -16,6 +17,7 @@ no overall completion percentage is claimed.
 | --- | --- | --- | --- |
 | Source-only distribution | ✅ Implemented | User supplies the ISO; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
 | ISO installer and Linux build | ✅ Implemented | Graphical ISO/destination selection, preflight, automatic compilation/tests, Ogg preparation, progress/cancel and start button. Updates remain planned. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
+| Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
 | Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation sequencing, timing and palette selection still open. | [SBS parser](src/sbs.cpp) |
@@ -63,6 +65,11 @@ all original content comes from the user's ISO.
 ## Install from your original ISO
 
 Start the native graphical assistant:
+
+The planned release artifact is `DTVR-Recomb-Setup-0.0.1-x86_64.AppImage`.
+It bundles Python/Tk and our source; users still supply their ISO. The installer
+automatically compiles the game using checked host build dependencies. No release
+download is published yet. For a source checkout, run:
 
 ```sh
 ./install.sh
