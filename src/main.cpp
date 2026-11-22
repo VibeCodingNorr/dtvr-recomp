@@ -160,6 +160,7 @@ static int run(int argc, char** argv) {
                          "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
                          "W: Wuerfeln (Automat, 1 Walze) | Rechtsklick: Startfeld waehlen\n"
                          "--play: W wuerfeln, 1-8 Handkarte spielen, Pfeiltasten ein Feld fahren, Enter Zug beenden\n"
+                         "        in einer Stadt nach der Ankunft: 1-9, 0 Grundstueck kaufen\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -270,8 +271,21 @@ static int run(int argc, char** argv) {
         const std::string status = "DTVR Recomb | Spieler " + std::to_string(p + 1) + " | Monat "
             + std::to_string(game->calendar().month % 12 + 1) + " | Schritte " + std::to_string(game->stepsTaken())
             + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
-            + " | Etappen " + std::to_string(game->remainingStages()) + " | " + phases[int(game->phase())];
+            + " | Etappen " + std::to_string(game->remainingStages()) + " | Geld "
+            + std::to_string(int64_t(game->cash(p))) + " | " + phases[int(game->phase())];
         SDL_SetWindowTitle(window.get(), status.c_str());
+        const int town = game->townAt(game->playerField(p));
+        if (game->phase() == dtvr::Game::Phase::Arrived && town >= 0) {
+            // Town dialog subset: entries with price and owner (keys 1-9, 0 buy).
+            for (int e = 0; e < 10; ++e) {
+                if (!game->economy().entryExists(town, e)) continue;
+                const auto owner = game->economy().town(town).entries[size_t(e)].owner;
+                std::cout << "  [" << (e + 1) % 10 << "] " << dtvr::oemToUtf8(towns[size_t(town)].entries[size_t(e)].name)
+                          << " " << int64_t(game->economy().price(town, e, dtvr::BuyMode::Normal)) << " "
+                          << (owner == dtvr::kNoOwner ? std::string("frei") : "Spieler " + std::to_string(owner + 1))
+                          << "\n";
+            }
+        }
         if (game->phase() == dtvr::Game::Phase::Roll) {
             std::cout << "Hand Spieler " << p + 1 << ":";
             for (int i = 0; i < 8; ++i)
@@ -309,9 +323,14 @@ static int run(int argc, char** argv) {
                     else if (view == View::World && !board.fields.empty()) rollDie();
                     break;
                 case SDLK_RETURN: if (game) { game->endTurn(); report(); } break;
-                case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
-                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8:
-                    if (game) { game->playCard(int(event.key.keysym.sym - SDLK_1)); report(); }
+                case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4: case SDLK_5:
+                case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: case SDLK_0:
+                    if (game) {
+                        const int digit = event.key.keysym.sym == SDLK_0 ? 9 : int(event.key.keysym.sym - SDLK_1);
+                        if (game->phase() == dtvr::Game::Phase::Arrived) game->buyProperty(digit);
+                        else game->playCard(digit);
+                        report();
+                    }
                     break;
                 case SDLK_UP: if (game) { game->step(dtvr::Direction::Up); report(); } break;
                 case SDLK_DOWN: if (game) { game->step(dtvr::Direction::Down); report(); } break;

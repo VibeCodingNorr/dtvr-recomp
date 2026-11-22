@@ -340,7 +340,55 @@ start (shuffle, deal, destination).
 
 Open: the effects of the other 30 cards (money, property, blocking, sit-out
 flags), card categories and values, the card field (kind 5) dialog, discarding,
-the town dialog and property economics, opening capital, computer players.
+computer players.
+
+### Properties and money (round 8)
+
+- **Starting cash**: seg2:033A copies 30,000 (DS:85BE) into every player's
+  cash double at +0x42 during a new game (seg2:0178).
+- **Town entries** (europe_<lang>.tow, 0x22 bytes each; town record = 11 such
+  blocks, addressed as `(town · 11 + entry) · 0x22`): +0x00 name (non-empty =
+  entry exists, seg1:7D2D), +0x18 uint32 value, +0x1C uint16 income factor
+  (`fimul`, seg1:8726), +0x1E uint16 category (indexes a table at DS:3F80;
+  value 3 is tested separately at seg1:43C3; meaning open), +0x20 uint16 open.
+  The game never writes these records.
+- **Town state** DS:5A (allocated `towns · 0x6F`): byte +0 owner of the whole
+  town (seg1:7CF6 sets it when one player owns every existing entry, else 0xFF),
+  then 10 × 11 bytes per entry: +0 owner (0xFF free), +1..+8 double burden,
+  +9 landlord while rented, +10 rent months left.
+- **Purchase** seg1:7DC5(player, town, entry, factor*): with a factor pointer the
+  price is value × factor. Otherwise DS:3FC6 selects the mode, set to card type +
+  1 by the handlers of cards 1–8 (seg3:1361–1495, then seg5:71B3(0xB)):
+
+  | Mode | Card | Rule in seg1:7DC5 |
+  | --- | --- | --- |
+  | none (0xFF) | — | free entry; cash (+0x42) ≥ value; pay value |
+  | 2 | Verkaufen | not handled here (open) |
+  | 3, 4, 5 | Kaufen, Gold, Platin | free entry; price value × 0.75 / 0.5 / 0.1 (DS:86A6/AE/B6) |
+  | 6 | Mieten | another player's entry: landlord = owner, months = 12, owner = player |
+  | 7 | Nimm | another player's entry: owner = player |
+  | 8 | Abkaufen | another player's entry; cash ≥ value; owner receives value, buyer pays |
+  | 9 | Kredit | free entry; no cash check; value added to player +0x51A |
+
+  Prices are not multiplied by inflation. After each purchase the whole-town
+  owner is recomputed.
+- **Monthly settlement** seg1:85F9, called once per month advance from
+  nextPlayer (seg2:0795, seg2:07DC): for each active player (outer loop) and
+  town (inner loop): reset +0x52 (income) and +0x5A (property value) first;
+  factor = 2.0 (DS:86C6) if the player owns the whole town, else 1.0; for every
+  entry the player owns: income = value × 0.001 (DS:86BE) × income factor ×
+  factor; the property value goes to the landlord if rented, else to the owner;
+  a non-zero burden is reduced by the income first (a surplus is paid out and
+  the burden cleared), otherwise the income is paid and added to +0x52; a rented
+  entry counts down its months and returns to the landlord at 0.
+
+Rebuilt in `src/economy.cpp` and wired into the game: starting cash, purchases
+in all modes above (the game exposes the normal purchase after stopping in a
+town), whole-town bonus, monthly settlement, rent expiry.
+
+Open: how a burden arises, the use of player +0x4A, Kredit repayment at the
+year end, selling (card Verkaufen), the entry category and +0x20 word, whether
+visitors pay anything to owners, and the rest of the town dialog.
 
 ### SBS: remaining hypotheses
 
@@ -381,7 +429,9 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 6. Player change, months, start, destinations and stages recovered; a playable
    hotseat game (`--play`) assembles all rules so far.
 7. Event card deck, shuffle, hands, yellow field and movement cards rebuilt.
-   Next: remaining card effects, card fields, town dialog and property economy.
+8. Property economy: starting cash, town state, purchases in eight modes, whole-
+   town bonus and monthly income rebuilt. Next: selling, credit repayment,
+   remaining card effects, card fields and computer players.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

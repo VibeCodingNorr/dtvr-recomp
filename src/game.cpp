@@ -18,10 +18,9 @@ std::string money(double v) {
 
 Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
            int defaultCards)
-    : board_(board), towns_(towns), rng_(seed) {
+    : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots) {
     if (humans < 1 || humans > kPlayerSlots) throw std::invalid_argument("1 bis 8 Spieler");
     players_.resize(kPlayerSlots);
-    money_.assign(kPlayerSlots, 0.0);
     origin_ = startField(board_, towns_);
     if (origin_ < 0) throw std::runtime_error("Startstadt LONDON nicht gefunden");
     for (int i = 0; i < humans; ++i) {
@@ -48,6 +47,28 @@ std::string Game::townName(int field) const {
     for (const Town& t : towns_)
         if (t.x == f.x && t.y == f.y) return oemToUtf8(t.name);
     return "Feld " + std::to_string(field);
+}
+
+int Game::townAt(int field) const {
+    if (field < 0 || size_t(field) >= board_.fields.size()) return -1;
+    const Field& f = board_.fields[size_t(field)];
+    for (size_t i = 0; i < towns_.size(); ++i)          // seg2:276B matches coordinates
+        if (towns_[i].x == f.x && towns_[i].y == f.y) return int(i);
+    return -1;
+}
+
+bool Game::buyProperty(int entry) {
+    messages_.clear();
+    if (phase_ != Phase::Arrived) return false;
+    const int field = players_[size_t(current_)].field;
+    const int kind = board_.fields[size_t(field)].kind;
+    const int town = townAt(field);
+    if ((kind != 4 && kind != 6) || town < 0) return false;
+    if (!economy_.buy(current_, town, entry, BuyMode::Normal)) return false;
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " kauft "
+                        + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name) + " in "
+                        + townName(field) + " fuer " + money(-economy_.price(town, entry, BuyMode::Normal)));
+    return true;
 }
 
 std::string Game::cardName(int deckSlot) const {
@@ -110,7 +131,7 @@ void Game::arrive() {
     case 1:
     case 2: {
         const auto e = moneyField(f.kind, calendar_.month, calendar_.inflation, rng_);
-        money_[size_t(current_)] += e.amount;
+        economy_.addMoney(current_, e.amount);
         messages_.push_back(who + (f.kind == 1 ? " erhaelt " : " bezahlt ") + money(e.amount)
                             + " (Text " + std::to_string(e.textId) + ")");
         break;
@@ -133,7 +154,7 @@ void Game::arrive() {
     case 6:
         if (field == destination_) {
             const auto r = reachDestination(remaining_, calendar_.inflation);
-            money_[size_t(current_)] += r.reward;
+            economy_.addMoney(current_, r.reward);
             messages_.push_back(who + " erreicht das Ziel " + townName(field) + ": " + money(r.reward));
             if (r.gameOver) {
                 phase_ = Phase::GameOver;
@@ -146,7 +167,7 @@ void Game::arrive() {
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
                                 + ", Ziel " + townName(destination_));
         } else {
-            messages_.push_back(who + " in " + townName(field) + " (Stadtdialog noch nicht nachgebaut)");
+            messages_.push_back(who + " in " + townName(field) + ": Grundstuecke kaufen moeglich");
         }
         break;
     default: break;
@@ -157,6 +178,8 @@ bool Game::endTurn() {
     messages_.clear();
     if (phase_ != Phase::Arrived) return false;
     const auto change = nextPlayer(players_, current_, calendar_, rng_);
+    // seg1:85F9 runs once per month advance (seg2:0795 / 07DC).
+    for (int m = 0; m < change.monthsAdvanced; ++m) economy_.settleMonth();
     for (int p : change.satOut) messages_.push_back("Spieler " + std::to_string(p + 1) + " setzt aus");
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
     if (change.player < 0) { phase_ = Phase::GameOver; return true; }

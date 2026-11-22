@@ -3,6 +3,7 @@
 
 #include "board.hpp"
 #include "cards.hpp"
+#include "economy.hpp"
 #include "rules.hpp"
 
 #include <string>
@@ -13,8 +14,8 @@ namespace dtvr {
 // SDL-independent hotseat game assembled from the rules recovered from rally.exe.
 // Simplification: vehicles move field to field along the graph instead of the
 // original pixel driving (each graph link is a drivable road, see docs/formats.md).
-// Card fields, the town dialog, non-movement card effects and the opening
-// capital are not reconstructed yet; money is tracked as the change since the start.
+// Card fields, non-movement card effects and the town dialog's other functions
+// are not reconstructed yet. Players start with 30,000 (seg2:033A).
 // Assumptions (not yet traced): cards are played before spinning, and the start
 // order of random calls is shuffle, deal, destination.
 class Game {
@@ -33,11 +34,16 @@ public:
     const Hand& hand(int player) const { return hands_[size_t(player)]; }
     const Deck& deck() const { return deck_; }
     std::string cardName(int deckSlot) const;
+    // Town dialog subset: buy a free entry of the town the player stopped in
+    // (seg1:7DC5, normal mode: price = entry value, cash must cover it).
+    bool buyProperty(int entry);
+    int townAt(int field) const;                 // index into the town list, -1 if none
+    const Economy& economy() const { return economy_; }
 
     Phase phase() const { return phase_; }
     int currentPlayer() const { return current_; }
     int playerField(int player) const { return players_[size_t(player)].field; }
-    double moneyChange(int player) const { return money_[size_t(player)]; }
+    double cash(int player) const { return economy_.money(player).cash; }
     const std::vector<PlayerSlot>& players() const { return players_; }
     int origin() const { return origin_; }
     int destination() const { return destination_; }
@@ -56,7 +62,7 @@ private:
     const std::vector<Town>& towns_;
     MsRandom rng_;
     std::vector<PlayerSlot> players_;
-    std::vector<double> money_;
+    Economy economy_;
     Deck deck_;
     std::vector<Hand> hands_;
     Calendar calendar_;

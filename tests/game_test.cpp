@@ -51,7 +51,7 @@ int main() {
         for (int i = 0; i < rolled; ++i) CHECK(game.step(Direction::Right));
     }
     CHECK(game.phase() == Game::Phase::Arrived && game.playerField(0) == rolled);
-    CHECK(game.moneyChange(0) > 0);                              // blue field
+    CHECK(game.cash(0) > kStartingCash);                         // blue field
     CHECK(!game.step(Direction::Right));
 
     CHECK(game.endTurn() && game.currentPlayer() == 1 && game.phase() == Game::Phase::Roll);
@@ -68,7 +68,7 @@ int main() {
         else CHECK(game.step(Direction::Right));
     }
     CHECK(game.phase() == Game::Phase::GameOver);
-    CHECK(game.moneyChange(game.currentPlayer()) >= 300000.0);
+    CHECK(game.cash(game.currentPlayer()) >= kStartingCash + 300000.0);
 
     // With one stage left the first arrival continues with a new destination.
     Game stages(board, towns, 1, 1, 3);
@@ -116,6 +116,25 @@ int main() {
     bool hasTop = false;
     for (auto s : yellowGame.hand(0)) hasTop |= s == top;
     CHECK(hasTop);
+
+    // Town purchase: only after arriving in a town, entry must exist and be free.
+    std::vector<Town> shopTowns = towns;
+    shopTowns[0].entries[0].name = "Kiosk"; shopTowns[0].entries[0].value = 1000; shopTowns[0].entries[0].words[0] = 5;
+    Game shop(board, shopTowns, 1, 99, 1);
+    CHECK(shop.townAt(0) == 0 && shop.townAt(5) == -1 && !shop.buyProperty(0));
+    for (int guard = 0; guard < 5000; ++guard) {
+        if (shop.phase() == Game::Phase::Arrived && shop.playerField(0) == 0) break;
+        if (shop.phase() == Game::Phase::Arrived) shop.endTurn();
+        else if (shop.phase() == Game::Phase::Roll) shop.roll();
+        else shop.step(Direction::Right);
+    }
+    CHECK(shop.phase() == Game::Phase::Arrived && shop.playerField(0) == 0);
+    {
+        const double before = shop.cash(0);
+        CHECK(!shop.buyProperty(1) && shop.buyProperty(0) && shop.cash(0) == before - 1000);
+        CHECK(!shop.buyProperty(0));
+        CHECK(shop.economy().town(0).entries[0].owner == 0);
+    }
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");
