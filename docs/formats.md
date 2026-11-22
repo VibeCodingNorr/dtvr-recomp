@@ -862,6 +862,17 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   in `src/risiko_view.cpp`; **assumptions:** the window centred with the frame
   inside a black 8-pixel border, the pressed button shown for 150 ms, click
   coordinates relative to the frame.
+  *Round 64 (texts and sounds):* a press plays sound 0x17 on channel 2 in the
+  dark and 0x18 while lit (seg7:6A46); stop shows text 41001 (seg7:69DE), a press
+  in the dark 41002 (seg7:6AE3) and the win after level 4 text 41003 (seg7:6B52),
+  each with the driver name (`%Fs`, player record + 1) in the message window
+  seg6:51EA. Rebuilt in `src/game_risiko.cpp` (notices and sound cues).
+- **Obstacle question (found in round 64, not rebuilt):** seg2:2404 clears an
+  obstacle with card 0x25 or 0x27 (seg3:0D26 finds it). Computers (seg2:5C02)
+  use it at once; for humans the message window opens in mode 4 with text 600
+  ("Willst Du diese Karte wirklich einsetzen ?") and the card picture
+  `%s\%d\%c\%dcard_%.2d.bmp` (DS:1A6C), and only the answer 6 (Yes) uses the
+  card (seg3:0E11, seg8:697C). The rebuild uses the card without asking.
 - **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
   in the string resources, but no code adds the base 5181 (all other events add
   their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the

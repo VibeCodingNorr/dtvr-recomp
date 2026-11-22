@@ -52,16 +52,19 @@ bool Game::risikoPress() {
     if (phase_ != Phase::Risiko || (computerControls() && !aiActing_)) return false;
     messages_.clear();
     const int light = risiko_.light;
+    sound(2, light ? 24 : 23); // seg7:6A46: 0x18 while lit, 0x17 in the dark
     // seg7:6ABE: seg2:7F14(light * steps / (light - 1)); a dark light gives 0.
     risiko_.steps = light ? light * risiko_.steps / (light - 1) : 0;
     if (!light) {
         messages_.push_back("Risiko: im Dunkeln gedrueckt - alle Felder verloren (Text 41002)");
+        notice(41002, {playerArg(current_)}); // seg7:6AE3
         finishRisiko();
         return true;
     }
     messages_.push_back("Risiko: " + std::to_string(risiko_.steps) + " Felder");
     if (risiko_.level >= 4) {                                   // seg7:6B3D: level 5 reached
         messages_.push_back("Risiko: alles gewonnen, viermal so viel (Text 41003)");
+        notice(41003, {playerArg(current_)}); // seg7:6B52
         finishRisiko();
         return true;
     }
@@ -73,6 +76,7 @@ bool Game::risikoStop() {
     if (phase_ != Phase::Risiko || (computerControls() && !aiActing_)) return false;
     messages_.clear();
     messages_.push_back("Risiko: aufgehoert mit " + std::to_string(risiko_.steps) + " Feldern (Text 41001)");
+    notice(41001, {playerArg(current_)}); // seg7:69DE
     finishRisiko();
     return true;
 }

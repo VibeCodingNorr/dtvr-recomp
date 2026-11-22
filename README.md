@@ -132,7 +132,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 61. SBBUTTON input: focus frame, pressed offset, release-to-play, arrow keys and sounds.
 62. Shared SBBUTTON group for the card window, SELPLAYER, OPTION and PLAYER (focus, press, keys, sounds).
 63. Window / fullscreen with pixel scaling (F11, Alt+Enter, `--fullscreen`, `[Display]`).
-64. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
+64. Risiko texts 41001-41003 and press sounds as in seg7:69DE ff.
+65. *Next:* the obstacle question (seg2:2404, text 600 with the card picture, mode 4 of the message window).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -190,7 +190,13 @@ int main() {
         CHECK(g->risikoTickMs() == 320);
         CHECK(g->risikoPress() && g->risiko().steps == 2 * steps && g->risiko().level == 3);
         CHECK(g->risikoTick() && g->risiko().light == 0);
+        g->takeNotices();
+        g->takeSounds();
         CHECK(g->risikoPress() && g->phase() == Game::Phase::Roll && g->currentPlayer() == 1); // lost
+        bool dark = false, darkSound = false; // text 41002, sound 0x17 on channel 2 (seg7:6A4F)
+        for (const Notice& n : g->takeNotices()) dark |= n.text == 41002;
+        for (const SoundCue& c : g->takeSounds()) darkSound |= c.channel == 2 && c.sound == 23;
+        CHECK(dark && darkSound);
     } else CHECK(false);
     if (auto g = gameWithCard(board, towns, 2, 0, 26, slot)) {
         CHECK(g->playCard(slot));
@@ -198,6 +204,8 @@ int main() {
         CHECK(g->risikoPress() && g->risikoTick() && g->risikoTick());          // level 3, lit again
         CHECK(g->risiko().light == 3 && g->risikoPress() && g->risiko().steps == 3 * steps);
         CHECK(g->risikoStop() && g->phase() == Game::Phase::Move && g->allowance() == 3 * steps);
+        const auto notices = g->takeNotices();
+        CHECK(!notices.empty() && notices.back().text == 41001);
     } else CHECK(false);
     if (auto g = gameWithCard(board, towns, 2, 0, 26, slot)) {
         CHECK(g->playCard(slot));
