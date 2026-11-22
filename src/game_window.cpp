@@ -166,7 +166,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
-            if (cards.open(play.game())) cardWindowState = turnState(); // seg3:0887(2)
+            if (cards.open(play.game(), 2)) cardWindowState = turnState(); // seg3:0887(2)
             break;
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
@@ -207,7 +207,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     }
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
-    if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
+    if (options.openCards && cards.open(play.game(), 2)) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
     SDL_Keycode heldArrow = options.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
@@ -251,7 +251,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         // seg3:1057: after text 403 the card window opens in discard mode (seg3:0887(0)) and
         // stays until a card is dropped.
         if (!screen.title() && !moving && play.game().yellowCardPending() && !screen.messages().open() && !cards.isOpen()
-            && !play.game().isComputer(play.game().currentPlayer()) && cards.open(play.game()))
+            && !play.game().isComputer(play.game().currentPlayer()) && cards.open(play.game(), -1))
             cardWindowState = turnState();
         // The town dialog belongs to a human player's stop in a town (seg2:141A -> seg1:4BDD).
         EstatesView& estates = screen.estates();
@@ -594,7 +594,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     sound.play(2, 2); // seg1:5436 / 546D: Plopp02
                 } else if (action.kind == Kind::Cards) { // the card window for property cards
                     sound.play(2, 2); // seg1:54B2
-                    if (g.openCardWindow() && cards.open(g)) cardWindowState = turnState();
+                    if (g.openCardWindow() && cards.open(g, 1)) cardWindowState = turnState();
                 } else if (action.kind == Kind::Close && estates.statistics()) {
                     estates.close();
                 } else if (action.kind == Kind::Close) { // leaving the town ends the turn

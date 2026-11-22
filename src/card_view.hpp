@@ -20,10 +20,13 @@ class CardView {
 public:
     CardView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
     // The current player's hand; false (nothing opens) when it is empty (seg3:0922).
-    bool open(const Game& game);
+    // `mask` is DS:18 of seg3:0887(mask): a card is enabled when (category & mask) ==
+    // category (seg3:0701, otherwise message 0x7ED(1) to its SBBUTTON); a negative
+    // mask enables every card (the discard choice of seg3:1057).
+    bool open(const Game& game, int mask);
     void close() { buttons_.clear(); }
     bool isOpen() const { return !buttons_.empty(); }
-    // The hand slot of a clicked card, -1 otherwise.
+    // The hand slot of a clicked enabled card, -1 otherwise.
     int slotAt(int x, int y) const;
     void draw();
 
@@ -34,6 +37,7 @@ private:
     std::filesystem::path root_;
     ScreenLayout layout_;
     std::vector<std::pair<CardButton, int>> buttons_; // button, card type
+    int mask_ = -1;
     std::map<int, Texture> pictures_;
 };
 

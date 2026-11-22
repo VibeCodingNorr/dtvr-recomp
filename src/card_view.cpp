@@ -10,8 +10,9 @@ namespace dtvr {
 CardView::CardView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout)
     : renderer_(renderer), root_(root), layout_(layout) {}
 
-bool CardView::open(const Game& game) {
+bool CardView::open(const Game& game, int mask) {
     buttons_.clear();
+    mask_ = mask;
     const int p = game.currentPlayer();
     if (p < 0) return false;
     std::array<bool, 8> occupied{};
@@ -45,7 +46,12 @@ SDL_Texture* CardView::picture(int type) {
 int CardView::slotAt(int x, int y) const {
     for (const auto& [b, type] : buttons_) {
         const ScreenRect& r = b.rect;
-        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return b.slot;
+        if (x < r.x || x >= r.x + r.w || y < r.y || y >= r.y + r.h) continue;
+        if (mask_ >= 0 && type >= 0) { // seg3:0701: a disabled button does not react
+            const int category = cardTypes()[size_t(type)].category;
+            if ((category & mask_) != category) return -1;
+        }
+        return b.slot;
     }
     return -1;
 }

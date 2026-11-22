@@ -1206,7 +1206,13 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   which matches the card sizes. The handle is kept per card type (DS:9EDA, 7
   bytes per type, +5). The focus goes to the buttons in slot order 0…7.
 - **Unknown:** the button behaviour of SBBUTTON (focus look, keys, how the window
-  closes without playing). Rebuilt (`src/layout.cpp` cardWindowLayout,
+  closes without playing). *Round 59:* seg3:0701 sends 0x7ED with wParam 0 to
+  the button of a card whose category matches DS:18 and wParam 1 otherwise. The
+  class is registered neither by sbtimer.dll, wavemix.dll nor the WinG DLLs (no
+  SBBUTTON string there) and its window procedure is not found in rally.exe yet,
+  so the look of a disabled button is unknown. Rebuilt: disabled cards ignore
+  clicks (masks 2 from the menu, 1 from the town dialog, all for the discard
+  choice); they are drawn unchanged. Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
   the digit keys (target `T`, nail direction by arrow key); Escape or the right
   button close the window (assumption); a played card closes it.
