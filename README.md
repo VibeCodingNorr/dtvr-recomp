@@ -125,7 +125,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 54. Flugzeug booking window with the original towns and the fog over Brussels.
 55. Nägel direction window: the four arrows of the original as click areas.
 56. Investment offer window (professor / football club) with Ja / Nein and the amount.
-57. *Next:* the yellow field discard with a full hand and the remaining keyboard-only actions.
+57. Yellow field with a full hand: the card window opens in discard mode after text 403.
+58. *Next:* compare the remaining dialogs and messages with rally.exe (Risiko, Steuerlos, property cards).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

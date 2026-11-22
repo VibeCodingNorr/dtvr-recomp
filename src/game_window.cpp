@@ -248,6 +248,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
+        // seg3:1057: after text 403 the card window opens in discard mode (seg3:0887(0)) and
+        // stays until a card is dropped.
+        if (!screen.title() && !moving && play.game().yellowCardPending() && !screen.messages().open() && !cards.isOpen()
+            && !play.game().isComputer(play.game().currentPlayer()) && cards.open(play.game()))
+            cardWindowState = turnState();
         // The town dialog belongs to a human player's stop in a town (seg2:141A -> seg1:4BDD).
         EstatesView& estates = screen.estates();
         {
@@ -506,6 +511,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     // seg2:51EA: a card with a target asks for the player when more than one is
                     // possible (excluded: the player; Tschüss excludes nobody, argument 0xFF).
                     const Game& g = play.game();
+                    if (g.yellowCardPending()) { // seg3:1057: discard mode, the clicked card is dropped
+                        if (play.game().discardForCard(slot)) report();
+                        cards.close();
+                        continue;
+                    }
                     const CardKind kind = cardKind(g.deck().typeOfSlot(g.hand(g.currentPlayer())[size_t(slot)]));
                     if (cardNeedsTarget(kind) || kind == CardKind::Tschuess) {
                         std::vector<int> candidates;
@@ -536,8 +546,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     if (play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
                     continue;
                 }
-                if (click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
-                if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
+                const bool mustDiscard = play.game().yellowCardPending(); // no cancel in discard mode
+                if (!mustDiscard && click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
+                if (!mustDiscard && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
             }
             if (screen.cardShop().isOpen()) { // seg3:4640
                 const auto action = screen.cardShop().handle(event, play.game());

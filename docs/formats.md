@@ -817,7 +817,11 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
 - **Yellow field with a full hand** seg3:1057: text 403, the card window in
   discard mode; humans click a card, computers drop seg5:7CD2's choice through
   seg3:4161; then the card is drawn as usual (seg2:1127). Correction to round 7:
-  the card is not skipped.
+  the card is not skipped. *Round 57:* seg3:1057 loads text 403 (0x193),
+  formats it with the player name, shows it (seg6:51EA) and calls seg3:0887(0);
+  the game window opens the card window after the message and drops the clicked
+  card (`Game::discardForCard`). **Assumption:** the window cannot be closed
+  without dropping a card (the cancel path of mode 0 is not traced).
 - **Card field** state 12: seg5:7D85 sells every hand card without a worth
   (adding half its value), seg5:7E4F takes spare money (seg5:9A34) plus the
   sales, collects affordable offers with a worth, scores them worth +
