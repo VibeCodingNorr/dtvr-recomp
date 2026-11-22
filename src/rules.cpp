@@ -89,6 +89,50 @@ std::vector<int> fieldRoute(const Board& board, int from, int to) {
     return route;
 }
 
+bool arrivalTriggers(int field, int x, int y, int taken, int allowance, bool dialogOpen) {
+    if (field < 0 || dialogOpen) return false;
+    if (((x | y) & 0xF) != 0) return false;
+    return taken == allowance || allowance == -1;
+}
+
+namespace {
+// {minimum, maximum} per month 0..11 as stored on the stack at seg2:0BD7.
+constexpr int kBlue[12][2] = {{1800, 2400}, {3600, 4800}, {7200, 9600}, {9000, 12000},
+    {12600, 16800}, {14400, 19200}, {18000, 24000}, {16200, 21600}, {14400, 19200},
+    {10800, 14400}, {7200, 9600}, {5400, 7200}};
+constexpr int kRed[12][2] = {{19600, 27000}, {15200, 24300}, {12600, 18900}, {10500, 16200},
+    {8800, 13500}, {7300, 10800}, {3300, 5400}, {5300, 8100}, {9200, 13500},
+    {12400, 18900}, {14300, 21600}, {16500, 24300}};
+} // namespace
+
+MoneyEvent moneyRange(int kind, int month) {
+    if (kind != 1 && kind != 2) throw std::invalid_argument("moneyRange: Feldtyp 1 oder 2 erwartet");
+    const unsigned m = unsigned(month) % 12; // unsigned division as at seg2:0D8D
+    const auto& row = kind == 1 ? kBlue[m] : kRed[m];
+    const double factor = kind == 1 ? 0.5 : 0.75;
+    MoneyEvent e;
+    e.minimum = int(row[0] * factor); // _ftol truncates
+    e.maximum = int(row[1] * factor);
+    return e;
+}
+
+MoneyEvent moneyField(int kind, int month, double inflation, MsRandom& rng) {
+    MoneyEvent e = moneyRange(kind, month);
+    const int steps = int(unsigned(e.maximum - e.minimum) / 100u);
+    e.base = e.minimum + rng.random(steps) * 100;
+    e.amount = (kind == 1 ? 1.0 : -1.0) * e.base * inflation;
+    e.textId = kind == 1 ? 4001 + rng.random(14) : 4101 + rng.random(13);
+    return e;
+}
+
+double inflateYear(double factor, MsRandom& rng) {
+    return (rng.random(5) * 0.01 + 1.01) * factor;
+}
+
+double destinationReward(bool alternative, double inflation) {
+    return (alternative ? 100000.0 : 300000.0) * inflation;
+}
+
 std::vector<int> fieldsAfterSteps(const Board& board, int start, int steps) {
     const int n = int(board.fields.size());
     if (start < 0 || start >= n || steps < 0) return {};

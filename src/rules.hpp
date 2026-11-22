@@ -76,6 +76,32 @@ std::vector<int> fieldDistances(const Board& board, int start, uint16_t blockMas
 // ends; empty if unreachable.
 std::vector<int> fieldRoute(const Board& board, int from, int to);
 
+// Arrival (seg2:0D38): the field action runs when the vehicle is on a field,
+// grid-aligned ((x | y) & 15 == 0, seg2:2C0F), the steps taken equal the
+// allowance or the allowance is unlimited, and no dialog is open (DS:9EDE == 0).
+bool arrivalTriggers(int field, int x, int y, int taken, int allowance, bool dialogOpen);
+
+// Money outcome of a blue (kind 1, gain) or red (kind 2, loss) field, seg2:0D85 /
+// seg2:0F15. Month tables from seg2:0BD7..0C4A, factors DS:85DE (0.5) and DS:85E6
+// (0.75). Random calls in the original order: amount, then message.
+struct MoneyEvent {
+    double amount = 0;   // positive for kind 1, negative for kind 2; inflation applied
+    int base = 0;        // amount before inflation
+    int minimum = 0, maximum = 0; // range for this month before inflation
+    int textId = 0;      // string resource 4001+0..14 (blue) or 4101+0..13 (red)
+};
+MoneyEvent moneyField(int kind, int month, double inflation, MsRandom& rng);
+// The range only, without consuming random numbers.
+MoneyEvent moneyRange(int kind, int month);
+
+// Yearly inflation step (seg2:079E): factor *= 1.01 + 0.01 * random(5), i.e. +1..6 %.
+// The game starts with 1.0 (seg4:0DFD copies DS:8586).
+double inflateYear(double factor, MsRandom& rng);
+
+// Destination town reward (seg2:11A6): 300,000 (DS:85EE) or, when DS:A104 != 0,
+// 100,000 (DS:85F6), times inflation.
+double destinationReward(bool alternative, double inflation);
+
 // Fields where a walk of exactly `steps` field steps can end when every step is
 // counted by MoveCounter (reversals undo, so only non-reversing walks count).
 std::vector<int> fieldsAfterSteps(const Board& board, int start, int steps);

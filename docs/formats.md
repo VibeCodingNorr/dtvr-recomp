@@ -207,8 +207,52 @@ Confirmed from code unless marked otherwise.
   with a smaller distance, recording each field via seg2:4D3F into a 1,000-entry
   ring buffer at DS:2C. seg1:A4E4 draws such a route with GDI `MoveTo`/`LineTo`.
 
-Open: how a human chooses directions (input path to DS:A77A), whether a turn
-may end before the allowance is used, and what each field kind does on arrival.
+### Turn and field actions (round 5)
+
+- **Direction input** (main window procedure, seg4:0001): key-down of VK_UP,
+  VK_RIGHT, VK_DOWN, VK_LEFT sets DS:A77A to 1, 2, 3, 4 (seg4:01F2–020A); a
+  second message releases them to 0 (jump table seg4:00FC). The vehicle
+  therefore drives while an arrow key is held. Other keys: Space centres the
+  view on the player (seg2:3216 → seg6:3064, then redraw seg2:05A8), Enter →
+  seg2:0BC3, Backspace/Escape → a dialog via seg5:5214, `1`–`4` → seg6:0DA0,
+  Insert/Delete → seg6:2E54(3).
+- **Cells with pit bit 0x20**: entering one calls seg2:2404(x, y); a zero result
+  stops the vehicle (seg2:21D0). Meaning open.
+- **Arrival** (seg2:0D38): the field action runs when the player is on a field
+  (DS:9592 ≠ −1), steps taken = allowance or allowance = −1, the vehicle is
+  aligned to the cell grid (seg2:2C0F: `(x | y) & 0xF == 0`) and DS:9EDE = 0. A
+  move therefore only triggers a field when the full allowance is used.
+- **Dispatch** on `whatisit − 1`, jump table seg2:160C:
+
+  | Kind | Marker | Handler | Action |
+  | --- | --- | --- | --- |
+  | 1 | blue | seg2:0D85 | money gain, see below; text 4001 + random(14) |
+  | 2 | red | seg2:0F15 | money loss, see below; text 4101 + random(13) |
+  | 3 | yellow | seg2:10A5 | next event card: seg3:032D cycles through the deck array DS:9572 (index DS:94FA, size DS:9C8C); picture `%s\%d\%c\%dcard_%.2d.bmp` (DS:1A2E) |
+  | 4, 6 | white, striped | seg2:11A6 | town: if the field is the destination DS:A10D, reward 300,000 (DS:85EE) × inflation, or 100,000 (DS:85F6) when DS:A104 ≠ 0, then WM_COMMAND 0x424; otherwise the town dialog seg1:4BDD |
+  | 5 | violet | seg2:15AE | seg3:4437(0) (card dialog, not yet analysed) |
+
+- **Money fields**: monthly ranges (month = DS:A100 mod 12) built on the stack
+  at seg2:0BD7–0C4A. Blue uses factor 0.5 (DS:85DE), red 0.75 (DS:85E6), both
+  truncated by `_ftol` (seg10:368A). Amount = minimum + random((max − min) / 100)
+  × 100, multiplied by the inflation factor DS:A11B; seg2:59E6 adds it to the
+  player's doubles at +0x42 and +0x4A, seg2:5A47 subtracts it.
+
+  | Month | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | blue raw min | 1800 | 3600 | 7200 | 9000 | 12600 | 14400 | 18000 | 16200 | 14400 | 10800 | 7200 | 5400 |
+  | blue raw max | 2400 | 4800 | 9600 | 12000 | 16800 | 19200 | 24000 | 21600 | 19200 | 14400 | 9600 | 7200 |
+  | red raw min | 19600 | 15200 | 12600 | 10500 | 8800 | 7300 | 3300 | 5300 | 9200 | 12400 | 14300 | 16500 |
+  | red raw max | 27000 | 24300 | 18900 | 16200 | 13500 | 10800 | 5400 | 8100 | 13500 | 18900 | 21600 | 24300 |
+
+- **Inflation**: a new game copies 1.0 (DS:8586) to DS:A11B and sets the route
+  mask DS:A10F = 0x4000 (seg4:0DFD–0E0B). At seg2:0773, when month mod 12 = 11
+  and the player returned by seg2:1A41 is the current one, the year counter
+  DS:A102 is incremented and DS:A11B *= 1.01 + 0.01 · random(5) (+1 % to +6 %).
+
+Open: how the turn passes to the next player and how the month advances, the
+destination selection (DS:A10D) and WM_COMMAND 0x424, event card shuffling and
+effects, the card field dialog, town dialog and property economics.
 
 ### SBS: remaining hypotheses
 
@@ -243,8 +287,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 3. ~~Decode cities and the road graph.~~ Field graph and town records decoded and
    validated against the composed map.
 4. Movement: step counting, slot machine, random generator, tile properties and
-   routes recovered (see "Movement"). Next: direction input, end of a move and
-   field effects on arrival, then one complete human turn.
+   routes recovered (see "Movement").
+5. Turn: direction input, arrival condition and the field dispatch recovered;
+   money fields, inflation and destination reward rebuilt. Next: player change,
+   month counter, destination selection, event cards and town dialog.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

@@ -99,6 +99,37 @@ int main() {
     CHECK(fieldsAfterSteps(chain, 99, 1).size() == 1 && fieldsAfterSteps(chain, 99, 2).size() == 1);
     CHECK(fieldsAfterSteps(chain, -1, 2).empty());
 
+    // Arrival condition.
+    CHECK(arrivalTriggers(5, 32, 48, 3, 3, false));
+    CHECK(arrivalTriggers(5, 32, 48, 0, -1, false));
+    CHECK(!arrivalTriggers(-1, 32, 48, 3, 3, false));
+    CHECK(!arrivalTriggers(5, 33, 48, 3, 3, false));
+    CHECK(!arrivalTriggers(5, 32, 48, 2, 3, false));
+    CHECK(!arrivalTriggers(5, 32, 48, 3, 3, true));
+
+    // Money fields: ranges, granularity, sign and the random call order.
+    auto blueJan = moneyRange(1, 0);
+    CHECK(blueJan.minimum == 900 && blueJan.maximum == 1200);
+    auto redJan = moneyRange(2, 12);                     // month wraps
+    CHECK(redJan.minimum == 14700 && redJan.maximum == 20250);
+    CHECK(moneyRange(1, 6).maximum == 12000 && moneyRange(2, 6).minimum == 2475);
+    MsRandom ra(1), rb(1);
+    auto blue = moneyField(1, 0, 1.0, ra);
+    const int r1 = rb.random(3), r2 = rb.random(14);       // (1200 - 900) / 100 = 3 steps
+    CHECK(blue.base == 900 + r1 * 100 && blue.amount == blue.base && blue.textId == 4001 + r2);
+    auto red = moneyField(2, 0, 2.0, ra);
+    CHECK(red.amount < 0 && red.base >= 14700 && red.base <= 20250 && (red.base - 14700) % 100 == 0);
+    CHECK(red.amount == -2.0 * red.base && red.textId >= 4101 && red.textId <= 4114);
+    threw = false;
+    try { moneyRange(3, 0); } catch (const std::invalid_argument&) { threw = true; }
+    CHECK(threw);
+
+    // Inflation and destination reward.
+    MsRandom c(1), dRng(1);
+    const double f = inflateYear(1.0, c);
+    CHECK(f == dRng.random(5) * 0.01 + 1.01 && f >= 1.01 && f <= 1.0600001);
+    CHECK(destinationReward(false, 1.0) == 300000.0 && destinationReward(true, 2.0) == 200000.0);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("rules_test: OK");
     return failures != 0;

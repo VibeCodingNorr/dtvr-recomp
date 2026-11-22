@@ -25,7 +25,7 @@ no overall completion percentage is claimed.
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | ⬜ Not implemented | Field effects on arrival, then one complete human turn before broadening mechanics. | [Format research](docs/formats.md) |
+| Turn logic and original rules | 🟡 Partial | Arrow-key driving, arrival condition (full allowance), field dispatch, blue/red money by month, inflation and destination reward recovered and tested. Player change, month counter, event cards, card fields and town dialog still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#turn-and-field-actions-round-5) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -38,8 +38,10 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 2. World map composed with the original loader and draw rules; transparency confirmed.
 3. Board decoded: field graph from `europe.str`, towns, field lists.
 4. Movement: slot machine, step counter, `europe.pit` tile flags, rand(), routes.
-5. *In progress:* direction input, end of a move and field effects — the first
-   complete human turn.
+5. Turn: arrow-key input, arrival only after the full allowance, field kinds
+   (blue money, red cost, yellow event card, towns, card field), inflation.
+6. *Next:* player change and month counter, destinations, event cards and town
+   dialog — then a playable human turn in the native viewer.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -114,7 +116,7 @@ ISO after installation; subsequent launches use the installed local data.
 | V | World view: toggle tile 0x33 (`[Setup] Views`) |
 | G | World view: show board fields (coloured by kind), links and towns |
 | W | World view: spin the slot machine (1 reel, 1–6) and mark fields a move of exactly that many steps can end on |
-| Right click | World view: choose the start field |
+| Right click | World view: choose the start field and print its field action |
 | Escape | Exit |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.

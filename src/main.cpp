@@ -290,8 +290,22 @@ static int run(int argc, char** argv) {
                     if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; startField = int(i); }
                 }
                 targets = roll > 0 ? dtvr::fieldsAfterSteps(board, startField, roll) : std::vector<int>{};
-                std::cout << "Startfeld " << startField << " (" << int(board.fields[size_t(startField)].x) << ","
-                          << int(board.fields[size_t(startField)].y) << ")\n";
+                const auto& sf = board.fields[size_t(startField)];
+                std::cout << "Startfeld " << startField << " (" << int(sf.x) << "," << int(sf.y) << "), Typ "
+                          << sf.kind << ": ";
+                // Field actions dispatched at seg2:15FC (see docs/formats.md).
+                if (sf.kind == 1 || sf.kind == 2) {
+                    const auto range = dtvr::moneyRange(sf.kind, month);
+                    std::cout << (sf.kind == 1 ? "Geld erhalten " : "Geld bezahlen ") << range.minimum << "-"
+                              << range.maximum << " x Inflation (Monat " << month % 12 << ")";
+                } else if (sf.kind == 3) std::cout << "naechste Ereigniskarte";
+                else if (sf.kind == 4 || sf.kind == 6) {
+                    std::cout << "Stadt";
+                    for (const auto& t : towns)
+                        if (t.x == sf.x && t.y == sf.y) std::cout << " " << dtvr::oemToUtf8(t.name);
+                    std::cout << " (als Ziel: 300000 x Inflation)";
+                } else if (sf.kind == 5) std::cout << "Kartenfeld";
+                std::cout << "\n";
             }
             if (event.type == SDL_MOUSEWHEEL) {
                 int mx, my; SDL_GetMouseState(&mx, &my);

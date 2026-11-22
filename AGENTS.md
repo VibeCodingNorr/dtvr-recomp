@@ -12,8 +12,9 @@ switching and SBB file navigation are implemented. SBS frames are decoded and
 the full world map is composed from europe.map with rules recovered from
 rally.exe. The board (700 fields, links, 115 towns) is decoded and shown as an
 overlay. Movement counting, the slot machine and the original random generator
-are reconstructed as tested rules; a move preview exists in the world view. No
-complete turn, field effects, AI, save support,
+are reconstructed as tested rules; a move preview exists in the world view. The
+arrival condition and the money, inflation and destination rules of field kinds
+are rebuilt. No complete turn, event cards, town economy, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -116,7 +117,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace direction input, the end of a move and what each field kind does on
-arrival, then palette selection and the map viewport.
+Trace the player change, month counter, destination selection, event cards and
+the town dialog, then assemble one playable human turn.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.
