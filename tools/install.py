@@ -16,13 +16,15 @@ from soundtrack import render_pack
 from installer_checks import KNOWN_EXE, REPO, default_output, validate_output, digest, preflight
 from installation_manifest import write_manifest, verify_installation
 from project_version import read_version
+from installer_update import update_info, preserve_files, publish
 
 
 def install(iso, output, jobs, soundfonts=None, music_style="classic",
-            music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont"):
+            music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False):
     print("DTVR_STAGE:1:Checking original media and build dependencies", flush=True)
-    report = preflight(iso, output, jobs, soundfonts, music_style, music_pack_id, music_pack_name)
+    report = preflight(iso, output, jobs, soundfonts, music_style, music_pack_id, music_pack_name, update)
     iso, output = Path(report["iso"]), Path(report["output"])
+    previous = update_info(output) if update else None
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".dtvr-install-", dir=output.parent) as temporary:
         stage = Path(temporary) / "installation"
@@ -67,27 +69,34 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         print("DTVR_STAGE:5:Testing and installing the native build", flush=True)
         subprocess.run(["ctest", "--test-dir", str(build), "--output-on-failure"], check=True)
         subprocess.run(["cmake", "--install", str(build), "--prefix", str(stage)], check=True)
-        env = dict(os.environ, SDL_VIDEODRIVER="dummy")
+        # Smoke tests must not read or change the user's settings/saves.
+        env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy",
+                   XDG_DATA_HOME=str(Path(temporary) / "test-data"),
+                   XDG_CONFIG_HOME=str(Path(temporary) / "test-config"))
         binary = stage / "bin/dtvr-recomb"
         print("DTVR_STAGE:6:Checking the installed runtime", flush=True)
-        for view in ([], ["--tiles"], ["--sprites"], ["--world"]):
+        for view in ([], ["--tiles"], ["--sprites"], ["--world"], ["--game"]):
             subprocess.run([str(binary), "--data", str(data), "--smoke-test", *view],
                            env=env, check=True)
         launcher = stage / "play"
         launcher.write_text('#!/bin/sh\nset -eu\n'
                             'install_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
+                            'if [ "$#" -eq 0 ]; then set -- --game; fi\n'
                             'exec "$install_dir/bin/dtvr-recomb" --data "$install_dir/data" "$@"\n')
         launcher.chmod(0o755)
         print("DTVR_STAGE:7:Verifying files and completing installation", flush=True)
+        excluded = []
+        if previous:
+            packs, excluded = preserve_files(output, stage, previous, packs)
         write_manifest(stage, {"capability": "native-linux-prototype",
                               "project_version": read_version(),
                               "iso_sha256": iso_hash, "iso_sector_size": sector_size,
                               "cd_audio": audio, "soundtrack_packs": packs,
-                              "executable_sha256": KNOWN_EXE})
+                              "executable_sha256": KNOWN_EXE}, excluded)
         verify_installation(stage)
-        if output.exists() or output.is_symlink():
-            raise ValueError(f"Target appeared during installation: {output}")
-        stage.rename(output)
+        backup = publish(stage, output, previous)
+        if backup:
+            print(f"Previous installation preserved at: {backup}", flush=True)
     print(f"Installed native build. Start with: {output / 'play'}", flush=True)
 
 
@@ -104,6 +113,7 @@ def main():
     parser.add_argument("--music-pack-id", default="rendered-gm")
     parser.add_argument("--music-pack-name", default="Rendered SoundFont")
     parser.add_argument("--check", action="store_true", help="Check ISO, dependencies and destination without writing files")
+    parser.add_argument("--update", action="store_true", help="Update a verified installation and retain a complete backup; close the game first")
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")
@@ -113,10 +123,10 @@ def main():
     try:
         if args.check:
             print(json.dumps(preflight(args.iso, args.output, args.jobs, args.soundfont,
-                                       args.music_style, args.music_pack_id, args.music_pack_name), indent=2))
+                                       args.music_style, args.music_pack_id, args.music_pack_name, args.update), indent=2))
         else:
             install(args.iso, args.output, args.jobs, args.soundfont, args.music_style,
-                    args.music_pack_id, args.music_pack_name)
+                    args.music_pack_id, args.music_pack_name, args.update)
     except KeyboardInterrupt:
         parser.exit(130, "Installation cancelled; temporary staging was cleaned up.\n")
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:

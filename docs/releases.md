@@ -14,9 +14,11 @@ relocatable Python/Tk runtime with its third-party license files. No ISO, origin
 assets, rendered Ogg music or SoundFont is bundled. Installer sources come from
 Git HEAD, excluding ignored media, build directories and uncommitted changes.
 
-Users launch the setup, select their own ISO and a new installation destination,
+Users launch the setup, select their own ISO and an installation destination,
 and click **Installieren und kompilieren**. Compilation and verification happen
-automatically. Python/Tk is included; CMake, a C++17 compiler, pkg-config and SDL2
+automatically. Explicit local updates retain user files and a complete previous
+installation; see [updates](installer.md#updating-a-local-installation).
+Python/Tk is included; CMake, a C++17 compiler, pkg-config, SDL2 and SDL2_ttf
 development files must be available on the host. Audio conversion also needs
 FFmpeg/ffprobe; SoundFont rendering needs FluidSynth. Preflight identifies missing
 dependencies. The package does not install system packages or require root.
@@ -71,4 +73,4 @@ glibc versions need validation before claiming support.
    release publication is explicitly requested.
 
 The CI validates `VERSION` and checks new version tags against existing tags.
-Automatic updates, save migration and release publication automation remain future work.
+Network updates, save migration and release publication automation remain future work.

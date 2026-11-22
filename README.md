@@ -16,7 +16,7 @@ no overall completion percentage is claimed.
 | Component | Status | Implemented / next step | Source or details |
 | --- | --- | --- | --- |
 | Source-only distribution | ✅ Implemented | User supplies the ISO; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
-| ISO installer and Linux build | ✅ Implemented | Graphical ISO/destination selection, preflight, automatic compilation/tests, Ogg preparation, progress/cancel and start button. Updates remain planned. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
+| ISO installer and Linux build | ✅ Implemented | GUI selection, preflight, automatic compilation/tests, Ogg preparation, progress/cancel and game-window launch. Explicit local updates preserve user files and a complete backup. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
@@ -123,18 +123,19 @@ download is published yet. For a source checkout, run:
 ./install.sh
 ```
 
-Select your ISO, a new external installation folder and optionally a SoundFont.
+Select your ISO, an external installation folder and optionally a SoundFont.
 Click **Installieren und kompilieren**: import, CMake configuration, compilation,
 tests and final verification run automatically. The window shows progress and a
-log, remains responsive, and enables **Spielprototyp starten** when finished.
+log, remains responsive, and enables **Spiel starten** when finished. The start
+button and the installed launcher without arguments open the game window (`--game`).
 No manual CMake commands are needed. The starter selects an installed Python
 with working Tk support; CLI use does not require Tk.
 
 The repository provides the native source and installer. You supply your own
 original CD image; neither the ISO nor original game data is distributed here.
-Requires Python 3, CMake, a C++17 compiler, pkg-config and SDL2 development files.
-Optional: SDL2_ttf and the font Arial or Liberation Sans (metrically compatible)
-for text in the game window; without SDL2_ttf the window has no text.
+Requires Python 3, CMake, a C++17 compiler, pkg-config, SDL2 and SDL2_ttf development files.
+Install a complete Arial or Liberation Sans font family for text in the game
+window. The installer checks all four faces and SDL2_ttf before building.
 
 The assistant checks prerequisites before importing data and reports missing
 packages/tools; it does not modify system packages or ask for root access.
@@ -155,11 +156,11 @@ No root access or Windows installer is needed.
 Use `--output /path/to/new/directory` to choose another destination and `--jobs N`
 to limit build parallelism. The default is `$XDG_DATA_HOME/dtvr-recomb`, falling
 back to `~/.local/share/dtvr-recomb`. Destinations inside the source checkout are
-rejected. Existing destinations are never updated or overwritten. Original Windows
+rejected. Existing destinations require explicit update mode. Original Windows
 executables and runtime DLLs are not part of the resulting native installation.
-The ISO can be disconnected after installation. The installed application is
-currently the data viewer; extracting the ISO does not yet translate its executable
-or produce a playable reconstruction. See [installer details](docs/installer.md).
+The ISO can be disconnected after installation. The launcher opens the native
+game interface; this remains an incomplete reconstruction. Original instruction
+translation is not implemented. See [installer details and updates](docs/installer.md).
 
 For the known mixed-mode image, installation also converts six recovered audio
 regions to Ogg Vorbis in `data/music/` (requires FFmpeg/libvorbis and ffprobe).
@@ -175,6 +176,10 @@ python3 tools/installation_manifest.py /path/to/installation
 ```
 
 ## How to play
+
+Run the installed `play` launcher without arguments (or use **Spiel starten** in
+the installer) for the game window with its title menu. `play --game` also opens
+it explicitly. The older `--play` mode below remains useful for debugging.
 
 The current build is an **inspection viewer with a first playable hotseat rally**.
 Start it with `play --play --players 2` (humans, `--computers N` adds computer

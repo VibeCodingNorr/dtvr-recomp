@@ -40,15 +40,35 @@ def digest(path):
     return h.hexdigest()
 
 
+def interface_font(directories=None):
+    # Match src/text.cpp: a complete regular/bold/italic/bold-italic family.
+    directories = directories if directories is not None else [
+        Path("/usr/share/fonts"), Path("/usr/local/share/fonts"), Path.home() / ".local/share/fonts"]
+    names = set()
+    for directory in directories:
+        for parent, _, files in os.walk(directory):
+            names.update(name.lower() for name in files if (Path(parent) / name).is_file())
+    families = {"Arial": {"arial.ttf", "arialbd.ttf", "ariali.ttf", "arialbi.ttf"},
+                "Liberation Sans": {f"liberationsans-{face}.ttf" for face in
+                                    ("regular", "bold", "italic", "bolditalic")}}
+    return next((family for family, files in families.items() if files <= names), None)
+
+
 def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
-              music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont"):
+              music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False):
     if type(jobs) is not int or not 1 <= jobs <= 256:
         raise ValueError("Build jobs must be between 1 and 256")
     iso = iso.expanduser().resolve(strict=True)
     if not iso.is_file():
         raise ValueError("Choose a readable original ISO file")
     output = validate_output(output)
-    if output.exists():
+    previous = None
+    if update:
+        from installer_update import update_info
+        if not output.is_dir():
+            raise ValueError("Choose an existing installation for --update")
+        previous = update_info(output)
+    elif output.exists():
         raise ValueError(f"Target already exists; choose a new directory: {output}")
     with IsoImage(iso) as image:
         files = [entry for entry in image.files() if entry[0].parts[0] == "program"]
@@ -76,6 +96,12 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     sdl = subprocess.run(["pkg-config", "--atleast-version=2.0.10", "sdl2"], capture_output=True)
     if sdl.returncode:
         raise ValueError("SDL2 development files >= 2.0.10 are required (pkg-config sdl2)")
+    ttf = subprocess.run(["pkg-config", "--exists", "SDL2_ttf"], capture_output=True)
+    if ttf.returncode:
+        raise ValueError("SDL2_ttf development files are required for text in the game interface (pkg-config SDL2_ttf)")
+    font = interface_font()
+    if not font:
+        raise ValueError("Install a complete Arial or Liberation Sans font family (regular, bold, italic, bold italic) for readable game text")
     if has_cd or soundfonts:
         codecs = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"],
                                 capture_output=True, text=True, timeout=30)
@@ -86,7 +112,8 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
         parent = parent.parent
     if not parent.is_dir() or not os.access(parent, os.W_OK | os.X_OK):
         raise ValueError("Installation destination is not writable")
-    reserve = 512 * 1024 * 1024 + 2 * sum(entry[2] for entry in files)
+    retained_bytes = sum(path.stat().st_size for path in output.rglob("*") if path.is_file()) if update else 0
+    reserve = 512 * 1024 * 1024 + 2 * sum(entry[2] for entry in files) + retained_bytes
     free = shutil.disk_usage(parent).free
     if free < reserve:
         raise ValueError(f"Not enough free disk space: reserve {reserve // 2**20} MiB for import/build")
@@ -94,4 +121,6 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
             "iso_sector_size": sector_size, "original_executable_sha256": KNOWN_EXE,
             "program_files": len(files), "cd_audio_supported": has_cd,
             "soundfonts": banks, "dependencies": requirements,
+            "update": update, "previous_version": previous.get("project_version") if previous else None,
+            "interface_font": font,
             "free_bytes": free, "estimated_reserve_bytes": reserve}

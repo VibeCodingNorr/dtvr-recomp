@@ -133,6 +133,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/obstacles.{hpp,cpp}`: road obstacle table, expiry, placement and link lookup (no SDL).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/installer_update.py`: explicit verified updates, preserved local files/Ogg
+  packs and retained rollback installation. Never hash mutable saves as managed
+  assets or modify XDG settings; run smoke checks with isolated XDG directories.
 - `tools/check_repository.py`: tracked source/media/path distribution checks.
 - `docs/distribution.md`: source-only boundaries and external installation policy.
 - `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.

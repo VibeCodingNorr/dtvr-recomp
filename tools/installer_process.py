@@ -15,7 +15,7 @@ import threading
 REPO = Path(__file__).resolve().parents[1]
 
 
-def installer_command(iso, output, soundfont="", style="classic", check=False):
+def installer_command(iso, output, soundfont="", style="classic", check=False, update=False):
     if not str(iso).strip() or not str(output).strip():
         raise ValueError("Bitte Original-ISO und Zielordner auswählen.")
     command = [sys.executable, "-u", str(REPO / "tools/install.py"),
@@ -25,6 +25,8 @@ def installer_command(iso, output, soundfont="", style="classic", check=False):
                     "--music-pack-id", "rendered-gm", "--music-pack-name", "SoundFont Ogg"]
     if check:
         command.append("--check")
+    if update:
+        command.append("--update")
     return command
 
 

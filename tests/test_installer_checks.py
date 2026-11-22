@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from installer_checks import preflight, validate_output
+from installer_checks import preflight, validate_output, interface_font
 
 
 class PreflightTests(unittest.TestCase):
@@ -31,6 +31,7 @@ class PreflightTests(unittest.TestCase):
         for target, replacement in [
                 ("installer_checks.IsoImage", MagicMock(return_value=image)),
                 ("installer_checks.KNOWN_EXE", hashlib.sha256(b"test").hexdigest()),
+                ("installer_checks.interface_font", MagicMock(return_value="Liberation Sans")),
                 ("installer_checks.shutil.which", MagicMock(return_value="tool")),
                 ("installer_checks.subprocess.run", MagicMock(return_value=subprocess.CompletedProcess([], 0))),
                 ("installer_checks.shutil.disk_usage", MagicMock(return_value=SimpleNamespace(free=2**32)))]:
@@ -67,6 +68,29 @@ class PreflightTests(unittest.TestCase):
         link.symlink_to(self.output)
         with self.assertRaises(ValueError):
             validate_output(link)
+
+    def test_ttf_and_explicit_update_selection(self):
+        with patch("installer_checks.subprocess.run", side_effect=[
+                subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 1)]):
+            with self.assertRaisesRegex(ValueError, "SDL2_ttf"):
+                preflight(self.iso, self.output)
+        self.output.mkdir(parents=True)
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            preflight(self.iso, self.output)
+        with self.assertRaises(OSError):
+            preflight(self.iso, self.output, update=True)
+
+    def test_font_family_requires_all_faces(self):
+        fonts = self.root / "fonts"
+        fonts.mkdir()
+        for face in ("Regular", "Bold", "Italic"):
+            (fonts / f"LiberationSans-{face}.ttf").touch()
+        self.assertIsNone(interface_font([fonts]))
+        (fonts / "LiberationSans-BoldItalic.ttf").touch()
+        self.assertEqual(interface_font([fonts]), "Liberation Sans")
+        with patch("installer_checks.interface_font", return_value=None):
+            with self.assertRaisesRegex(ValueError, "font family"):
+                preflight(self.iso, self.output)
 
 
 if __name__ == "__main__":

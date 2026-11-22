@@ -23,7 +23,8 @@ process group; normal interruption cleans staging. Closing an active window
 offers to cancel and waits for cleanup. After success, start the native prototype
 or open its installation folder.
 
-Prerequisites must already be installed. The GUI identifies missing tools/SDL2;
+Prerequisites must already be installed. The GUI identifies missing tools/SDL2/SDL2_ttf
+and a complete Arial or Liberation Sans font family for game text;
 it does not install system packages, download media or ask for root. Without Tk
 or a graphical session, use the CLI:
 
@@ -32,7 +33,7 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
 /path/to/new/installation/play
 ```
 
-1. Check that the target is outside the checkout, does not exist, and required
+1. Check that the target is outside the checkout, is new or explicitly selected for update, and required
    build tools/SDL2 are available. Default to the user's XDG data directory.
    Verify the executable directly in the ISO, selected SoundFonts, the Vorbis
    encoder and an estimated free-space reserve before creating installation data.
@@ -45,9 +46,11 @@ python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installat
    Ogg Vorbis files using FFmpeg and validate them with ffprobe.
 4. Configure and compile this checkout in Release mode, run CTest, and install the
    native executable into staging. No original Windows program is executed.
-5. Run overview, tile, sprite and world smoke checks against the extracted data.
+5. Run overview, tile, sprite, world and game-window smoke checks against the extracted data,
+   with isolated XDG save/settings directories and dummy video/audio drivers.
 6. Add the relocatable `play` launcher, write a version-2 manifest hashing all
-   installed files including that launcher, and verify hashes/executable permissions.
+   managed files including that launcher, and verify hashes/executable permissions.
+   Without arguments the launcher opens `--game`; explicit viewer flags remain available.
 7. Publish the staged installation by renaming it to the requested destination.
    On ordinary failure, temporary output is cleaned up and the destination is absent.
 
@@ -93,7 +96,7 @@ record what was actually installed.
 extraction, case/version normalization, overwrite rejection, invalid paths,
 truncation, out-of-volume extents and directory cycles. CTest runs these tests if
 Python is available. The installer itself requires Python and also runs the SBS
-parser tests and all four viewer smoke checks before publishing its output.
+parser tests, four viewer checks and the game-window smoke check before publishing its output.
 
 The initial real-image run extracted 962 files. Four Windows runtime files are
 omitted from the final installation. Compare per-file hashes when changing the importer.
@@ -107,9 +110,43 @@ and record input hashes, conversion/tool versions and generated outputs in the
 manifest. Original executable bytes are only temporary validation/analysis inputs
 and are not included in the resulting native installation.
 
-Future packaging can supply a prebuilt runtime. Updating an installation,
-migrating saves, desktop-menu registration and uninstall behavior remain
-unimplemented; CLI and GUI require a new destination for every install.
+Future packaging can supply a prebuilt game runtime. Save-format migration,
+desktop-menu registration and uninstall behavior remain unimplemented.
+
+## Updating a local installation
+
+Close the game first. Select **Vorhandene Installation aktualisieren (mit Sicherung)**
+in the GUI and choose the existing installation itself. The checkbox is initially
+enabled when a manifest exists at the default destination. The equivalent CLI is:
+
+```sh
+python3 tools/install.py --iso /path/to/game.iso --output /path/to/installation --update --check
+python3 tools/install.py --iso /path/to/game.iso --output /path/to/installation --update
+```
+
+The ISO is still required. Update mode accepts verified version-2 installations
+with a project version and refuses downgrades. Rebuilding the same version is
+allowed during development. Build/test failures leave the old installation in place.
+After successful tests, copy local files and existing Ogg packs into staging.
+A newly rendered pack replaces an old pack with the same ID. Symlinks, special
+files and collisions between user files and new managed files are rejected.
+
+Game saves under the installation's `saves/` directory, including the default XDG
+location, are preserved as mutable user files. Settings normally live separately
+at `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (or `~/.config/dtvr-recomb/settings.ini`)
+and are never modified by the installer. Unmanaged local files are copied and
+excluded from managed-file hashes; saves are always excluded. The game must remain
+closed throughout the update because the installer cannot lock a running game.
+Preserving bytes does not migrate incompatible save formats; the game validates them.
+
+Publication uses a per-destination lock and short, cancellation-protected renames.
+The old directory moves to a unique sibling `dtvr-recomb.backup-*/installation`,
+then staging takes its place. The complete backup is retained and its path printed
+in the GUI log/CLI. If the second rename fails, restore the old directory immediately.
+SIGKILL or power loss between renames may require manually restoring that backup.
+For manual rollback, close the game, move the current installation aside and move
+the backup's `installation` directory to the original destination. No backup is
+automatically deleted. Updates are local and explicit; there is no network updater.
 
 ## Read-only checks
 

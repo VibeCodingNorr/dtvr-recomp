@@ -27,6 +27,7 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("/path/to/new installation", command)
         self.assertIn("--check", command)
         self.assertIn("dry", command)
+        self.assertIn("--update", installer_command(iso, "/path/to/install", update=True))
         with self.assertRaises(ValueError):
             installer_command("", "target")
 

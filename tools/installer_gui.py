@@ -36,6 +36,7 @@ class InstallerWindow:
         self.active_output = None
         self.iso = tk.StringVar()
         self.output = tk.StringVar(value=str(default_output()))
+        self.update = tk.BooleanVar(value=(default_output() / "manifest.json").is_file())
         self.audio = tk.StringVar(value="Nur CD-Aufnahmen vorbereiten")
         self.bank = tk.StringVar()
         self.style = tk.StringVar(value="Classic — Hall und Chorus")
@@ -70,9 +71,10 @@ class InstallerWindow:
         self.style_choice = ttk.Combobox(body, textvariable=self.style, state="readonly",
                                         values=("Classic — Hall und Chorus", "Dry — ohne Effekte"))
         self.style_choice.grid(row=4, column=1, columnspan=2, sticky="ew", pady=8)
-        ttk.Label(body, text="Eigene Original-ISO erforderlich. Die Installation wird lokal erstellt.",
-                  wraplength=820).grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 4))
-        ttk.Label(body, text="Klangsets werden vorbereitet; die Musikwiedergabe im Spiel folgt noch.",
+        self.update_choice = ttk.Checkbutton(body, text="Vorhandene Installation aktualisieren (mit Sicherung)", variable=self.update)
+        self.update_choice.grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 4))
+        self.controls.append(self.update_choice)
+        ttk.Label(body, text="Eigene ISO erforderlich. Spiel vor Updates schließen; Spielstände und Einstellungen bleiben erhalten.",
                   wraplength=820).grid(row=6, column=0, columnspan=3, sticky="w", pady=(0, 14))
         actions = ttk.Frame(body)
         actions.grid(row=7, column=0, columnspan=3, sticky="ew")
@@ -93,7 +95,7 @@ class InstallerWindow:
         body.rowconfigure(10, weight=1)
         footer = ttk.Frame(body)
         footer.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(12, 0))
-        self.launch_button = ttk.Button(footer, text="Spielprototyp starten", command=self._launch, state="disabled")
+        self.launch_button = ttk.Button(footer, text="Spiel starten", command=self._launch, state="disabled")
         self.launch_button.pack(side="left")
         self.folder_button = ttk.Button(footer, text="Installationsordner öffnen", command=self._open_folder, state="disabled")
         self.folder_button.pack(side="left", padx=10)
@@ -146,9 +148,9 @@ class InstallerWindow:
             self.iso.set(path)
 
     def _choose_output(self):
-        parent = filedialog.askdirectory(title="Übergeordneten Zielordner auswählen")
+        parent = filedialog.askdirectory(title="Vorhandene Installation auswählen" if self.update.get() else "Übergeordneten Zielordner auswählen")
         if parent:
-            self.output.set(str(Path(parent) / "dtvr-recomb"))
+            self.output.set(str(Path(parent) if self.update.get() else Path(parent) / "dtvr-recomb"))
 
     def _choose_bank(self):
         path = filedialog.askopenfilename(title="Eigenen Soundfont auswählen", filetypes=(("SoundFont", "*.sf2 *.sf3"), ("Alle Dateien", "*")))
@@ -179,7 +181,7 @@ class InstallerWindow:
             if self.audio.get().startswith("Vollständiges") and not bank:
                 raise ValueError("Für ein vollständiges Ogg-Set bitte einen Soundfont auswählen.")
             command = installer_command(self.iso.get().strip(), self.output.get().strip(), bank,
-                                        "dry" if self.style.get().startswith("Dry") else "classic", check)
+                                        "dry" if self.style.get().startswith("Dry") else "classic", check, self.update.get())
             self.active_output = Path(self.output.get().strip()).expanduser().resolve()
             self.progress.configure(value=0)
             self.status.set("Voraussetzungen werden geprüft …" if check else "Installation wird vorbereitet …")
@@ -212,6 +214,8 @@ class InstallerWindow:
                         report = data["report"]
                         self.status.set("Prüfung erfolgreich. Bereit zum Installieren und Kompilieren.")
                         self._append(f"ISO erkannt: {report['program_files']} Dateien. Build-Werkzeuge und Zielordner geprüft.\n")
+                        if report.get("update"):
+                            self._append(f"Update von {report['previous_version']}; bisherige Installation wird als Sicherung behalten.\n")
                         self._append("CD-Audioprofil erkannt.\n" if report["cd_audio_supported"] else "Kein bekanntes CD-Audioprofil; ein Soundfont kann das vollständige Ogg-Set liefern.\n")
                     elif data["ok"]:
                         self.installed = self.active_output
@@ -241,7 +245,7 @@ class InstallerWindow:
     def _launch(self):
         if self.installed:
             try:
-                subprocess.Popen([str(self.installed / "play"), "--play"], start_new_session=True)
+                subprocess.Popen([str(self.installed / "play"), "--game"], start_new_session=True)
             except OSError as error:
                 messagebox.showerror("Start fehlgeschlagen", str(error), parent=self.root)
 

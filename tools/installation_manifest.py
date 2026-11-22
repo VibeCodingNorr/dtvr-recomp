@@ -9,12 +9,14 @@ import re
 from installer_checks import digest
 
 
-def write_manifest(root, metadata):
+def write_manifest(root, metadata, excluded=()):
     files = {}
     for path in sorted(root.rglob("*")):
         if path.is_symlink():
             raise ValueError("Installation must not contain symbolic links")
-        if path.is_file() and path != root / "manifest.json":
+        relative = path.relative_to(root)
+        if (path.is_file() and path != root / "manifest.json"
+                and relative.parts[0] != "saves" and relative.as_posix() not in excluded):
             files[path.relative_to(root).as_posix()] = digest(path)
     manifest = {**metadata, "schema_version": 2, "format": "dtvr-recomb-installation", "files": files}
     (root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
