@@ -153,8 +153,62 @@ offset in the instruction is the real target.
   the marker colours are open.
 - `europe.ind`, `.edt`, `.eit`, `.oit`, `.c88`, `.cvc` and `.001` are not named
   anywhere in `rally.exe` (no format string or literal); they may be editor
-  files. `europe.pit` (→ DS:46) and `europe.car` (→ DS:4A) are loaded but not
-  yet analysed.
+  files. `europe.car` (→ DS:4A) is loaded but not yet analysed.
+
+### Movement (round 4)
+
+Confirmed from code unless marked otherwise.
+
+- **europe.pit** (16,384 bytes → DS:46) is a tile property table: seg2:3260(x, y)
+  returns `pit[0x1000 + tile(layer 0)] | pit[0x1000 + tile(layer 1)]` (uint16).
+  Entries 0–0xFFF are zero in this copy. Bit usage in the code: 0x01 and 0x10
+  at the vehicle's cell (seg2:1DE2, seg2:1E00), 0x02 in the step direction
+  (seg2:1E53), 0x02|0x04 together switch a vehicle mode (seg2:1EB5 → seg2:2AF6
+  argument 0 or 1). Data correlation: 0x01 is set on exactly the 700 field
+  cells, 0x02 on roads (6,014 cells), 0x04 on sea routes (always together with
+  0x02), 0x08 on water including rivers and lakes (29,939), 0x10 on the 40
+  cells with tile 0x33 (info points shown with `[Setup] Views`), 0x20 on 15
+  road cells (meaning open). Every graph link starts on a road cell and every
+  cell between linked fields has 0x02.
+- **Players**: records of 0x522 bytes at DS:56, current player index DS:94E2.
+  +0x16/+0x18 = pixel position (cell = value >> 4), +0x3C/+0x3E = field index
+  set from the cell via seg2:4C7D (linear search over the field table, −1 if
+  none).
+- **Driving** (seg2:1CB0): per tick, cell flags are probed at the vehicle and at
+  the four neighbours (offset tables in that order: centre, up, right, down,
+  left). Directions: 1 up, 2 right, 3 down, 4 left; velocity tables DS:19EA (dx
+  = 0, 0, 2, 0, −2) and DS:19F4 (dy = 0, −2, 0, 2, 0), shifted left by DS:34
+  (initial 1). Direction decisions are only taken on cells with flag 0x01 (or
+  0x10 with Views on); the requested direction DS:A77A needs flag 0x02 in the
+  neighbouring cell.
+- **Step counter** seg2:3620(dir, commit): DS:A778 = allowance (0 → no move,
+  −1 → unlimited), DS:9D40 = steps taken, direction history at DS:A790. The
+  first step is allowed; a step opposite to the last recorded one (table DS:19E4
+  = 0, 3, 4, 1, 2) is allowed and, when committed, removes it; otherwise the
+  step is refused once steps = allowance. Steps are therefore counted in
+  fields, and turning back undoes steps.
+- **Allowance from the slot machine**: seg2:6426(reels, maximum, flag) sets
+  DS:948A = reels and DS:A6D6 = maximum; seg2:776A sets each reel to
+  `random(maximum) + 1`; seg2:7EC2 sums the reels into DS:A778 via seg2:7F14,
+  which also resets the step count. The message WM_USER+6 (0x406, seg4:0907)
+  uses 1 reel, maximum 5, i.e. 1–6. Command IDs 0x2710–0x2714 use 1–5 reels with
+  maximum 5 and 0x2715 one reel with maximum 1 (1–2); matching them to the cards
+  "2–5 Walzen" and "1 oder 2" is an interpretation.
+- **Random numbers**: seg10:1DDE is the Microsoft C `rand()`
+  (`seed = seed · 0x343FD + 0x269EC3`, result `(seed >> 16) & 0x7FFF`), seg10:1DC6
+  `srand()` (16-bit seed, high word cleared), seeded once at seg1:02A9 with the
+  result of seg10:19AA(0) (probably `time`). seg6:1343 is `random(n)` =
+  `n ≤ 0 ? 0 : rand() % (n + 1)`.
+- **Field distances** seg2:43A8(unused, start): breadth-first search over the
+  field links up to 80 levels into a word array at DS:22; a field with
+  `flagset & DS:A10F` ≠ 0 is not expanded (seg4:0E0B sets the mask to 0x4000).
+  **Route** seg2:9996(from, to) clears the mask, computes distances from `to`
+  and from `from` repeatedly takes the first neighbour (up, right, down, left)
+  with a smaller distance, recording each field via seg2:4D3F into a 1,000-entry
+  ring buffer at DS:2C. seg1:A4E4 draws such a route with GDI `MoveTo`/`LineTo`.
+
+Open: how a human chooses directions (input path to DS:A77A), whether a turn
+may end before the allowance is used, and what each field kind does on arrival.
 
 ### SBS: remaining hypotheses
 
@@ -170,7 +224,7 @@ offset in the instruction is the real target.
 
 ## Open questions
 
-The contents of `.pit`, `.car`, the field-list values, town entry fields and
+The contents of `.car`, the field-list values, town entry fields and
 `flagset` bits need to be derived from their consumers. File sizes
 alone do not establish record layouts. Palette selection, colour cycling, bit 12
 of map cells and the viewport (which map area is shown at which position) are
@@ -187,9 +241,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 2. ~~Locate original map-loader routines and derive tile mapping.~~ Done.
    Palette selection and colour cycling are still open.
 3. ~~Decode cities and the road graph.~~ Field graph and town records decoded and
-   validated against the composed map. Movement rules, field effects and the
-   meaning of marker colours are next.
-4. Reconstruct one human player's complete turn before implementing more rules.
+   validated against the composed map.
+4. Movement: step counting, slot machine, random generator, tile properties and
+   routes recovered (see "Movement"). Next: direction input, end of a move and
+   field effects on arrival, then one complete human turn.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

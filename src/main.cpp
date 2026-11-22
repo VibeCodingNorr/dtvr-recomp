@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
+#include "rules.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
 
@@ -142,17 +143,19 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
-    bool smoke = false, views = true, graph = false;
-    int month = 2;
+    bool smoke = false, views = true, graph = false, rollAtStart = false;
+    int month = 2, roll = 0;
+    unsigned seed = 1;
     View view = View::Overview;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--help") {
-            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph]]\n"
+            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
                          "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
+                         "W: Wuerfeln (Automat, 1 Walze) | Rechtsklick: Startfeld waehlen\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -163,6 +166,8 @@ static int run(int argc, char** argv) {
         else if (arg == "--world") view = View::World;
         else if (arg == "--no-views") views = false;
         else if (arg == "--graph") graph = true;
+        else if (arg == "--roll") rollAtStart = true;
+        else if (arg == "--seed" && i + 1 < argc) seed = unsigned(std::stoul(argv[++i]));
         else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
     }
@@ -176,12 +181,17 @@ static int run(int argc, char** argv) {
     // Board data for the world-view overlay (loader seg5:14C0); optional elsewhere.
     dtvr::Board board;
     std::vector<dtvr::Town> towns;
+    int startField = 0;
+    std::vector<int> targets;
     if (view == View::World || fs::is_regular_file(root / "map/europe.inf")) {
         const auto info = dtvr::parseBoardInfo(readFile(root / "map/europe.inf"));
         board = dtvr::parseBoard(readFile(root / "map/europe.str"), info.fields);
         fs::path townFile;
         for (const auto& candidate : findFiles(root / "map", ".tow")) townFile = candidate;
         if (!townFile.empty()) towns = dtvr::parseTowns(readFile(townFile), info.towns);
+        if (!towns.empty())
+            for (size_t i = 0; i < board.fields.size(); ++i)
+                if (board.fields[i].x == towns[0].x && board.fields[i].y == towns[0].y) startField = int(i);
         std::cout << "Spielbrett: " << board.fields.size() << " Felder, " << board.lists.size()
                   << " Feldlisten, " << towns.size() << " Staedte\n";
     }
@@ -232,6 +242,17 @@ static int run(int argc, char** argv) {
         index = (index + files.size() + delta) % files.size();
         load();
     };
+    dtvr::MsRandom rng{uint16_t(seed)};
+    auto rollDie = [&] {
+        // WM_USER+6 path: 1 reel, maximum 5 (seg4:0919 -> seg2:6426, seg2:776A).
+        const auto reels = dtvr::spinReels(rng, 1, 5);
+        roll = 0;
+        for (int v : reels) roll += v;
+        targets = dtvr::fieldsAfterSteps(board, startField, roll);
+        std::cout << "Wurf " << roll << " ab Feld " << startField << ": " << targets.size()
+                  << " moegliche Zielfelder\n";
+    };
+    if (rollAtStart && view == View::World && !board.fields.empty()) rollDie();
     load();
     bool running = true;
     while (running) {
@@ -249,6 +270,7 @@ static int run(int argc, char** argv) {
                     load(); break;
                 case SDLK_v: if (view == View::World) { views = !views; load(); } break;
                 case SDLK_g: graph = !graph; break;
+                case SDLK_w: if (view == View::World && !board.fields.empty()) rollDie(); break;
                 case SDLK_RIGHT: step(1); break;
                 case SDLK_LEFT: step(-1); break;
                 default: break;
@@ -256,6 +278,20 @@ static int run(int argc, char** argv) {
             }
             if (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)) {
                 x += event.motion.xrel; y += event.motion.yrel;
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT
+                && view == View::World && !board.fields.empty()) {
+                // Nearest field to the clicked map cell becomes the start field.
+                const float cell = dtvr::WorldMap::kTile * zoom;
+                const float mx = (event.button.x - x) / cell, my = (event.button.y - y) / cell;
+                float best = 1e9f;
+                for (size_t i = 0; i < board.fields.size(); ++i) {
+                    const float dx = board.fields[i].x + 0.5f - mx, dy = board.fields[i].y + 0.5f - my;
+                    if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; startField = int(i); }
+                }
+                targets = roll > 0 ? dtvr::fieldsAfterSteps(board, startField, roll) : std::vector<int>{};
+                std::cout << "Startfeld " << startField << " (" << int(board.fields[size_t(startField)].x) << ","
+                          << int(board.fields[size_t(startField)].y) << ")\n";
             }
             if (event.type == SDL_MOUSEWHEEL) {
                 int mx, my; SDL_GetMouseState(&mx, &my);
@@ -298,6 +334,22 @@ static int run(int argc, char** argv) {
                 const SDL_FRect box{cx(t.x) - 2 * r, cy(t.y) - 2 * r, 4 * r, 4 * r};
                 SDL_RenderDrawRectF(renderer.get(), &box);
             }
+        }
+        if (view == View::World && !board.fields.empty()) {
+            // Start field and the fields a move of exactly `roll` steps can end on.
+            const float cell = dtvr::WorldMap::kTile * zoom;
+            const float r = std::max(4.f, cell * 0.6f);
+            auto mark = [&](int index, SDL_Color c, float size) {
+                const auto& f = board.fields[size_t(index)];
+                SDL_SetRenderDrawColor(renderer.get(), c.r, c.g, c.b, 255);
+                for (int t = 0; t < 2; ++t) {
+                    const SDL_FRect box{x + (f.x + 0.5f) * cell - size - t, y + (f.y + 0.5f) * cell - size - t,
+                                        2 * (size + t), 2 * (size + t)};
+                    SDL_RenderDrawRectF(renderer.get(), &box);
+                }
+            };
+            for (int t : targets) mark(t, {0, 255, 0, 255}, r);
+            if (roll > 0 || graph) mark(startField, {255, 255, 255, 255}, r * 1.5f);
         }
         if (!screenshot.empty()) {
             int w, h; SDL_GetRendererOutputSize(renderer.get(), &w, &h);

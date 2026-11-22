@@ -100,6 +100,8 @@ ISO after installation; subsequent launches use the installed local data.
 | Left / Right | Previous / next SBB or SBS file; month in world view |
 | V | World view: toggle tile 0x33 (`[Setup] Views`) |
 | G | World view: show board fields (coloured by kind), links and towns |
+| W | World view: spin the slot machine (1 reel, 1–6) and mark fields a move of exactly that many steps can end on |
+| Right click | World view: choose the start field |
 | Escape | Exit |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
@@ -122,7 +124,7 @@ original files; game assets and executables are not included in this repository.
 The viewer only reads these files.
 
 Start directly in block view with `--tiles`, in sprite view with `--sprites` or
-in world view with `--world [--month 0-11] [--no-views] [--graph]`. The world view composes
+in world view with `--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]`. The world view composes
 `map/europe.map` from the season's SBB tiles using the rules recovered from
 `rally.exe` (two layers, mirroring, three draw passes, colour key 0); see
 docs/formats.md.
