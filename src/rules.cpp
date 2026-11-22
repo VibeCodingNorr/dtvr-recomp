@@ -105,21 +105,36 @@ constexpr int kRed[12][2] = {{19600, 27000}, {15200, 24300}, {12600, 18900}, {10
     {12400, 18900}, {14300, 21600}, {16500, 24300}};
 } // namespace
 
-MoneyEvent moneyRange(int kind, int month) {
-    if (kind != 1 && kind != 2) throw std::invalid_argument("moneyRange: Feldtyp 1 oder 2 erwartet");
-    const unsigned m = unsigned(month) % 12; // unsigned division as at seg2:0D8D
-    const auto& row = kind == 1 ? kBlue[m] : kRed[m];
-    const double factor = kind == 1 ? 0.5 : 0.75;
+namespace {
+MoneyEvent scaledRange(const int (&row)[2], double factor) {
     MoneyEvent e;
     e.minimum = int(row[0] * factor); // _ftol truncates
     e.maximum = int(row[1] * factor);
     return e;
 }
 
+int drawAmount(const MoneyEvent& range, MsRandom& rng) {
+    const int steps = int(unsigned(range.maximum - range.minimum) / 100u);
+    return range.minimum + rng.random(steps) * 100;
+}
+} // namespace
+
+MoneyEvent moneyRange(int kind, int month) {
+    if (kind != 1 && kind != 2) throw std::invalid_argument("moneyRange: Feldtyp 1 oder 2 erwartet");
+    const unsigned m = unsigned(month) % 12; // unsigned division as at seg2:0D8D
+    return scaledRange(kind == 1 ? kBlue[m] : kRed[m], kind == 1 ? 0.5 : 0.75);
+}
+
+double dragoAmount(int month, int form, double inflation, MsRandom& rng) {
+    // seg2:B793: the blue-field table scaled by 0.5 / 1.0 / 2.0 (DS:865E..866E).
+    static constexpr double factors[3] = {0.5, 1.0, 2.0};
+    if (form < 0 || form > 2) throw std::invalid_argument("dragoAmount: Form 0 bis 2");
+    return drawAmount(scaledRange(kBlue[unsigned(month) % 12], factors[form]), rng) * inflation;
+}
+
 MoneyEvent moneyField(int kind, int month, double inflation, MsRandom& rng) {
     MoneyEvent e = moneyRange(kind, month);
-    const int steps = int(unsigned(e.maximum - e.minimum) / 100u);
-    e.base = e.minimum + rng.random(steps) * 100;
+    e.base = drawAmount(e, rng);
     e.amount = (kind == 1 ? 1.0 : -1.0) * e.base * inflation;
     e.textId = kind == 1 ? 4001 + rng.random(14) : 4101 + rng.random(13);
     return e;
@@ -159,7 +174,9 @@ int resolveTarget(const std::vector<PlayerSlot>& players, int current, int reque
     return requested;
 }
 
-TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng) {
+TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
+                      const TurnHooks& hooks) {
+    auto call = [](const std::function<void()>& f) { if (f) f(); };
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
     int player = current;
@@ -170,16 +187,37 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         while (!players[size_t(player)].status);
         if (player == firstActivePlayer(players)) {
             if (unsigned(calendar.month) % 12 == 11) {
+                call(hooks.chargeCredits);
+                call(hooks.settleMonth);
                 ++calendar.year;
                 calendar.inflation = inflateYear(calendar.inflation, rng);
+                call(hooks.clearCredits);
                 ++change.yearsEnded;
+            } else {
+                call(hooks.settleMonth);
             }
             ++calendar.month;
             ++change.monthsAdvanced;
         }
         PlayerSlot& p = players[size_t(player)];
-        if (p.flags & 0x2) { p.flags &= 0xFFFD; change.satOut.push_back(player); continue; }
-        if (p.flags & 0x4) { p.flags &= 0xFFFB; change.satOut.push_back(player); continue; }
+        if (p.flags & 0x1) { // seg2:08C2: checked first; ends the flag checks either way
+            p.flags &= 0xFFFE;
+            if (hooks.dragoHolder == player) {
+                rng.random(4); // text 3251 + random(4) via seg2:B74D
+                change.satOut.push_back(player);
+                continue;
+            }
+            change.player = player;
+            return change;
+        }
+        const uint16_t sitOut = (p.flags & 0x2) ? 0x2 : (p.flags & 0x4) ? 0x4 : 0;
+        if (sitOut) {
+            p.flags &= uint16_t(~sitOut);
+            rng.random(2); // texts 1000+ / 1010+ (seg2:0915, seg2:09B3)
+            change.satOut.push_back(player);
+            if (hooks.afterSitOut) hooks.afterSitOut(player);
+            continue;
+        }
         change.player = player;
         return change;
     }

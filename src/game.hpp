@@ -3,6 +3,7 @@
 
 #include "board.hpp"
 #include "cards.hpp"
+#include "drago.hpp"
 #include "economy.hpp"
 #include "rules.hpp"
 
@@ -43,6 +44,7 @@ public:
     bool buyProperty(int entry);
     int townAt(int field) const;                 // index into the town list, -1 if none
     const Economy& economy() const { return economy_; }
+    const DragoState& drago() const { return drago_; }
 
     Phase phase() const { return phase_; }
     int currentPlayer() const { return current_; }
@@ -63,12 +65,19 @@ private:
     void arrive();
     void advanceTurn();          // nextPlayer plus month/year bookkeeping
     std::vector<int> activePlayers() const;
+    int handCount(int player) const;
+    // game_drago.cpp
+    void dragoAct(int player);   // seg2:B58C after field actions and sit-outs
+    void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
+    bool playWeihnachten();      // seg3:1156
+    void playHauAb();            // seg3:3EFB
 
     const Board& board_;
     const std::vector<Town>& towns_;
     MsRandom rng_;
     std::vector<PlayerSlot> players_;
     Economy economy_;
+    DragoState drago_;
     Deck deck_;
     std::vector<Hand> hands_;
     Calendar calendar_;

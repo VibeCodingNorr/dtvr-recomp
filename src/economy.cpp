@@ -138,6 +138,50 @@ bool Economy::passDebt(int player, int target) {
     return true;
 }
 
+Economy::PropertyRef Economy::pickProperty(uint8_t owner, double limit, MsRandom& rng) const {
+    auto eligible = [&](size_t t, int e) {
+        const double v = towns_[t].entries[size_t(e)].value;
+        return v != 0 && v <= limit && states_[t].entries[size_t(e)].owner == owner;
+    };
+    int count = 0;
+    for (size_t t = 0; t < states_.size(); ++t)
+        for (int e = 0; e < 10; ++e) count += eligible(t, e);
+    if (count == 0) return {};
+    int k = rng.random(count - 1);
+    for (size_t t = 0; t < states_.size(); ++t)
+        for (int e = 0; e < 10; ++e)
+            if (eligible(t, e) && k-- == 0) return {int(t), e};
+    return {};
+}
+
+void Economy::sellWithFactor(int player, PropertyRef p, double factor) {
+    states_[size_t(p.town)].entries[size_t(p.entry)].owner = kNoOwner;
+    money_[size_t(player)].cash += value(p.town, p.entry) * factor;
+    updateWholeOwner(p.town);
+}
+
+void Economy::buyWithFactor(int player, PropertyRef p, double factor) {
+    states_[size_t(p.town)].entries[size_t(p.entry)].owner = uint8_t(player);
+    money_[size_t(player)].cash -= value(p.town, p.entry) * factor;
+    updateWholeOwner(p.town);
+}
+
+int Economy::poorest(const std::vector<int>& activePlayers) {
+    for (size_t p = 0; p < money_.size(); ++p) {
+        money_[p].propertyValue = 0;
+        for (size_t t = 0; t < states_.size(); ++t)
+            for (int e = 0; e < 10; ++e)
+                if (states_[t].entries[size_t(e)].owner == p) money_[p].propertyValue += value(int(t), e);
+    }
+    int result = -1;
+    double lowest = 0;
+    for (int p : activePlayers) { // last of a stable descending order = lowest, later index on ties
+        const double worth = money_[size_t(p)].cash + money_[size_t(p)].propertyValue;
+        if (result < 0 || worth <= lowest) { result = p; lowest = worth; }
+    }
+    return result;
+}
+
 void Economy::updateWholeOwner(int town) {
     TownState& t = states_[size_t(town)];
     t.wholeOwner = kNoOwner;

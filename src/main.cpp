@@ -274,7 +274,9 @@ static int run(int argc, char** argv) {
             + std::to_string(game->calendar().month % 12 + 1) + " | Schritte " + std::to_string(game->stepsTaken())
             + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
             + " | Etappen " + std::to_string(game->remainingStages()) + " | Geld "
-            + std::to_string(int64_t(game->cash(p))) + (cardTarget >= 0 ? " | Ziel-Spieler "
+            + std::to_string(int64_t(game->cash(p)))
+            + (game->drago().holder >= 0 ? " | Dr. Drago bei " + std::to_string(game->drago().holder + 1) : "")
+            + (cardTarget >= 0 ? " | Ziel-Spieler "
             + std::to_string(cardTarget + 1) : "") + " | " + phases[int(game->phase())];
         SDL_SetWindowTitle(window.get(), status.c_str());
         const int town = game->townAt(game->playerField(p));
@@ -453,6 +455,8 @@ static int run(int argc, char** argv) {
                 static const SDL_Color colours[8] = {{255, 60, 60, 255}, {60, 160, 255, 255}, {60, 220, 60, 255},
                     {255, 160, 0, 255}, {200, 60, 255, 255}, {0, 230, 230, 255}, {255, 255, 255, 255}, {120, 120, 120, 255}};
                 mark(game->origin(), {255, 255, 255, 255}, r * 1.6f);
+                if (game->drago().holder >= 0)
+                    mark(game->playerField(game->drago().holder), {200, 0, 255, 255}, r * 2.4f);
                 if (game->destination() >= 0) mark(game->destination(), {255, 230, 0, 255}, r * 2.0f);
                 for (int p = 0; p < dtvr::kPlayerSlots; ++p) {
                     if (!game->players()[size_t(p)].status) continue;

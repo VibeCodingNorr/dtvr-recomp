@@ -2,6 +2,7 @@
 #pragma once
 
 #include "board.hpp"
+#include "rules.hpp"
 
 #include <array>
 #include <cstdint>
@@ -70,6 +71,18 @@ public:
     double balanceAccounts(const std::vector<int>& activePlayers); // 15B0 Konto: average
     void zero(int player);                           // 18EA: cash = 0
     bool passDebt(int player, int target);           // 1790 Schulden: only if cash < 0
+
+    // Used by Dr. Drago (round 10).
+    struct PropertyRef { int town = -1; int entry = -1; };
+    // seg2:B943: entries of `owner` (kNoOwner = free entries) with 0 < value <= limit;
+    // the k-th of them in town/entry order with k = random(count - 1).
+    PropertyRef pickProperty(uint8_t owner, double limit, MsRandom& rng) const;
+    // seg1:832A / 7DC5 with a factor pointer: no ownership or cash checks.
+    void sellWithFactor(int player, PropertyRef p, double factor);
+    void buyWithFactor(int player, PropertyRef p, double factor);
+    // seg2:5FF7 + seg1:8EE1: property values from owned entries, then the active
+    // player with the lowest cash + property value (last of a descending sort).
+    int poorest(const std::vector<int>& activePlayers);
 
 private:
     void updateWholeOwner(int town); // seg1:7CF6

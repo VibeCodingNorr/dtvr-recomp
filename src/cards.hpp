@@ -42,6 +42,7 @@ CardMove cardMove(int type);
 enum class CardKind {
     Movement, Fiskus, Konto, Schulden, Zero, // movement and money cards
     Zucker, Blockieren, Schlafen,            // status cards
+    Weihnachten, HauAb,                      // Dr. Drago / gift cards (round 10)
     Unsupported,
 };
 CardKind cardKind(int type);

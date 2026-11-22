@@ -53,6 +53,8 @@ CardKind cardKind(int type) {
     case 14: return CardKind::Zucker;     // seg3:19E5, flag 0x02
     case 15: return CardKind::Blockieren; // seg3:1AB9, flag 0x08
     case 16: return CardKind::Schlafen;   // seg3:1B0A, flag 0x04
+    case 0: return CardKind::Weihnachten; // seg3:1156
+    case 35: return CardKind::HauAb;      // seg3:3EFB
     default: return CardKind::Unsupported;
     }
 }

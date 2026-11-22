@@ -15,7 +15,7 @@ no overall completion percentage is claimed.
 | Component | Status | Implemented / next step | Source or details |
 | --- | --- | --- | --- |
 | Source-only distribution | ✅ Implemented | User supplies the ISO; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
-| ISO installer and Linux build | ✅ Implemented | Read standard/raw Mode 1 ISO, validate supported input, build/test/install and create a launcher. GUI and updates remain planned. | [Installer](tools/install.py), [pipeline](docs/installer.md) |
+| ISO installer and Linux build | ✅ Implemented | Graphical ISO/destination selection, preflight, automatic compilation/tests, Ogg preparation, progress/cancel and start button. Updates remain planned. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
 | Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation sequencing, timing and palette selection still open. | [SBS parser](src/sbs.cpp) |
@@ -26,7 +26,7 @@ no overall completion percentage is claimed.
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 18 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren); properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end). The other 23 card effects, card fields and computer players are still open. | [Game](src/game.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#selling-credit-and-card-effects-round-9) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 20 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab); Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end). The event system with the passive cards, 17 further cards, card fields and computer players are still open. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#dr-drago-and-further-cards-round-10) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -48,7 +48,10 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
    credit), whole-town bonus and monthly income; starting cash 30,000.
 9. Selling, credit at the year end, card targets, money and status cards
    (Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren).
-10. *Next:* remaining card effects, card fields and computer players.
+10. Dr. Drago: placement at each stage, form changes, passing on meetings, six
+    actions; cards Weihnachten and Hau ab.
+11. *Next:* the event system (snow, Nessie, earthquake …) with the passive cards,
+    the remaining cards, card fields and computer players.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -59,9 +62,27 @@ all original content comes from the user's ISO.
 
 ## Install from your original ISO
 
+Start the native graphical assistant:
+
+```sh
+./install.sh
+```
+
+Select your ISO, a new external installation folder and optionally a SoundFont.
+Click **Installieren und kompilieren**: import, CMake configuration, compilation,
+tests and final verification run automatically. The window shows progress and a
+log, remains responsive, and enables **Spielprototyp starten** when finished.
+No manual CMake commands are needed. The starter selects an installed Python
+with working Tk support; CLI use does not require Tk.
+
 The repository provides the native source and installer. You supply your own
 original CD image; neither the ISO nor original game data is distributed here.
 Requires Python 3, CMake, a C++17 compiler, pkg-config and SDL2 development files.
+
+The assistant checks prerequisites before importing data and reports missing
+packages/tools; it does not modify system packages or ask for root access.
+FFmpeg/ffprobe are needed for known CD audio; SoundFont rendering also needs
+FluidSynth. The equivalent CLI installation is:
 
 ```sh
 python3 tools/install.py --iso /path/to/game.iso
@@ -89,6 +110,13 @@ Original track IDs and playback triggers still need reconstruction; the viewer
 does not yet play music. The intended native game plays local Ogg assets in place
 of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
 
+Read-only preflight and later installation verification are available separately:
+
+```sh
+python3 tools/install.py --iso /path/to/game.iso --output /path/to/new/installation --check
+python3 tools/installation_manifest.py /path/to/installation
+```
+
 ## How to play
 
 The current build is an **inspection viewer with a first playable hotseat rally**.
@@ -96,7 +124,7 @@ Start it with `play --play --players 2` (1–8 players, `--rounds N` stages,
 `--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
-hand slot (18 of 41 card types are rebuilt; with three or more players **T**
+hand slot (20 of 41 card types are rebuilt; with three or more players **T**
 chooses the target). After stopping in a town the terminal lists its
 properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it. Status
 (including cash) is shown in the window title, the log and your hand in the

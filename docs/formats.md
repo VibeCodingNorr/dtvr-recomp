@@ -278,9 +278,10 @@ Confirmed from code unless marked otherwise.
   seg8:0A6A; new game default 99 at seg4:0E23), DS:A106 = total. Reaching the
   destination with A104 ≠ 0 pays 100,000 × inflation, decrements A104 (at 0:
   "last stage" message seg7:372F(3)), sets the origin to the reached field and
-  draws a new destination; the stage is then started by the active player with
-  the largest value in the distance array DS:22 (first active on a tie or with
-  one player). With A104 = 0 the reward is 300,000 × inflation and WM_COMMAND
+  draws a new destination; then seg2:9C97 gives **Dr. Drago** to the active
+  player with the largest value in the distance array DS:22 (first active on a
+  tie or with one player). *Correction (round 10): this was first read as the
+  player who starts the stage; seg2:9C97 places Dr. Drago (DS:9CFC).* With A104 = 0 the reward is 300,000 × inflation and WM_COMMAND
   0x424 ends the game (seg4:075B tears down the game windows).
 - The opening capital was not found; money is only changed through seg2:59E6
   (add) and seg2:5A47 (subtract).
@@ -428,6 +429,71 @@ and Blockieren. Open: the remaining 23 card types, Steuerlos (needs the
 computer player), the year-end window's random calls, what happens with a
 negative balance.
 
+### Dr. Drago and further cards (round 10)
+
+- **Card names**: texts 12000 + type in `rally_d.dat` name every card type and
+  confirm the mapping from the card pictures (e.g. 12016 Schlafen, 12039 Nessie).
+- **Dr. Drago** rides with the player in DS:9CFC (0xFF = none; a new game sets
+  0xFF at seg2:0324). Texts 3000–3255 describe his deeds. Placement seg2:9C97:
+  at every stage change (seg2:146D/14A6/1535) and by the card Konferenz
+  (seg3:30A9); it restarts the form countdown DS:3DB4 = random(3) + 4 (seg2:B48D).
+- **Forms** DS:9CFD (data-segment initial value 0; texts F1/F2/F3 at DS:3DE2):
+  at the start of the holder's turn (seg2:049F → seg2:B3A4) the countdown
+  decreases; at zero it restarts and the form changes 0 or 2 → 1, 1 → 2 if
+  year > 5 and random(2) ≠ 0, else 0. The change itself is animated through
+  seg2:9804 (route of Dr. Drago's own vehicle; the vehicle pictures are not
+  matched to the forms yet).
+- **Meetings** seg2:B290 (called while a vehicle stops, seg2:1F67/1F92/1FA0/2057):
+  with more than one active player, the holder passes Dr. Drago to the first
+  other active player on the same field (+0x3C); a player stopping on the
+  holder's field takes him.
+- **Actions** seg2:B58C after field actions of kinds 1, 2, 3, 5, non-destination
+  towns and sit-out turns (seg2:0977/0A15): form 0 → spend; form 1 / 2 →
+  16-entry tables indexed by random(15):
+
+  | Form | Spend | Give money | Tear card | Give property | Buy dearly | Block |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 1 | 4 | 6 | 2 | 2 | 2 | 0 |
+  | 2 | 1 | 3 | 2 | 4 (incl. seg2:BDA8) | 3 | 3 |
+
+  - Amount (seg2:B793): blue-field month table × 0.5 / 1.0 / 2.0 by form
+    (DS:865E/6666/866E), drawn in 100 steps, × inflation.
+  - Spend (seg2:BA92): text random(19), amount, holder pays, random(1).
+  - Give money (seg2:BEA4): text random(4), amount; recipient = last of the
+    net-worth ranking (seg2:5FF7 recomputes property values, seg1:8EE1 sorts by
+    cash + property, descending) or, if that is the holder, a random other
+    player (seg2:5F03: random(n − 1) over the others).
+  - Tear card (seg2:BDCA): no cards → give property; else slot random(count − 1);
+    an occupied slot is discarded (seg2:3C62), text random(7).
+  - Give property (seg2:BCAF): seg2:B943 picks among the holder's entries with
+    0 < value ≤ 30,000 × inflation (DS:8676) the k-th with k = random(n − 1);
+    sold with factor 0 (DS:867E); none → buy dearly.
+  - Buy dearly (seg2:BB95): the same pick among free entries; bought for value
+    × 1.5 (DS:8686) without a cash check.
+  - Block (seg2:BFB0): holder flag bit 0; seg2:089D checks bit 0 before bits 1/2,
+    clears it and lets the player sit out only while still holding Dr. Drago
+    (seg2:C00C, text 3251 + random(4)).
+- **Weihnachten** (seg3:1156): outside December a message and the turn ends; in
+  December with fewer than 4 hand cards and a card left the top card is given
+  (seg2:4327), otherwise (random(10) + 10) × 1,000 (DS:862E) × inflation. The
+  turn ends (seg2:06FC).
+- **Hau ab** (seg3:3EFB): always draws a random other player (seg2:5F03); if the
+  player holds Dr. Drago he moves there (seg2:B4E3); the turn ends.
+- **Passive cards**: Schneepflug, Versicherung, Nägel weg and Nessie (category 4)
+  have empty handlers — they are used by the event system (`schnee.sbs`,
+  `nessie.sbs`, …), which is not analysed yet.
+- **Sit-out texts** consume random(2) (seg2:0915/09B3); the yellow field text
+  random(13) (seg2:1127).
+
+Rebuilt: Dr. Drago state, placement, form countdown and changes, meetings, all
+six actions, Weihnachten, Hau ab, the block flag in nextPlayer and these text
+draws; nextPlayer now runs the credit charge, settlement and credit clearing
+at the original points through hooks. Assumptions: Dr. Drago changes hands
+when a move ends (the original checks while the vehicle stops on fields), and
+the stage placement uses distances to the new destination. Open: Konferenz,
+the event system with the passive cards, Tschüss, Punch, Erdbeben, Nägel,
+Risiko, Flugzeug, Steuerlos, the card field, property cards in the town dialog.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256
@@ -470,8 +536,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 8. Property economy: starting cash, town state, purchases in eight modes, whole-
    town bonus and monthly income rebuilt.
 9. Selling, credit at the year end, card targets and 7 more card effects (money
-   and status cards) rebuilt. Next: remaining card effects, card fields and
-   computer players.
+   and status cards) rebuilt.
+10. Dr. Drago (holder, forms, meetings, six actions), Weihnachten and Hau ab
+    rebuilt. Next: the event system and passive cards, the remaining cards,
+    card fields and computer players.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

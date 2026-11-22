@@ -5,6 +5,7 @@
 #include "worldmap.hpp"
 
 #include <array>
+#include <functional>
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -95,6 +96,10 @@ MoneyEvent moneyField(int kind, int month, double inflation, MsRandom& rng);
 // The range only, without consuming random numbers.
 MoneyEvent moneyRange(int kind, int month);
 
+// Dr. Drago's money amount (seg2:B793): blue-field month table x form factor
+// (0.5, 1.0, 2.0 for forms 0, 1, 2), drawn like a money field, times inflation.
+double dragoAmount(int month, int form, double inflation, MsRandom& rng);
+
 // Yearly inflation step (seg2:079E): factor *= 1.01 + 0.01 * random(5), i.e. +1..6 %.
 // The game starts with 1.0 (seg4:0DFD copies DS:8586).
 double inflateYear(double factor, MsRandom& rng);
@@ -128,11 +133,24 @@ struct TurnChange {
     int yearsEnded = 0;
     std::vector<int> satOut;       // players that consumed a sit-out flag
 };
+// Callbacks so the economy runs at the original points of seg2:0784-07EB.
+struct TurnHooks {
+    std::function<void()> chargeCredits;    // year end, before the settlement (seg1:8AA7)
+    std::function<void()> settleMonth;      // every month advance (seg1:85F9)
+    std::function<void()> clearCredits;     // year end, after inflation (seg1:8B41)
+    std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
+    int dragoHolder = -1;                   // DS:9CFC for flag bit 0
+};
+
 // nextPlayer of seg2:06FC: cyclic order over 8 slots skipping inactive ones. When
 // the order reaches the first active slot the month advances; at month % 12 == 11
-// the year ends first (inflation step). Players with flag bit 1 or 2 sit out once
-// (seg2:089D) and the search continues. Flag bit 0 (seg2:C00C) is not modelled.
-TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng);
+// the year ends first (credits, settlement, year + 1, inflation, clear credits).
+// seg2:089D then checks the new player's flags: bit 0 (Dr. Drago's block) is
+// cleared and the player sits out only while holding Dr. Drago (seg2:C00C, text
+// random(4)); otherwise bit 1 or bit 2 make the player sit out once (text random(2),
+// then the sit-out hook). The search continues after a sit-out.
+TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
+                      const TurnHooks& hooks = {});
 
 // Target player of a card (seg2:51EA): with one active player the first active
 // slot, with two the other active player, otherwise the requested active
