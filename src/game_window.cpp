@@ -660,7 +660,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 continue;
             }
-            if (cards.isOpen()) { // the card buttons; Escape or the right button closes the window
+            if (cards.isOpen()) { // the card buttons; Escape / Backspace cancel (WM_COMMAND 0xFFFF)
                 // SBBUTTON (seg1:0E78): a card plays when the button is released over it,
                 // or by space / Return on the focused card; arrows move the focus.
                 CardView::Input input;
@@ -671,7 +671,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 else if (event.type == SDL_KEYDOWN)
                     input = cards.key(event.key.keysym.sym, event.key.keysym.mod);
                 if (input.sound >= 0) sound.play(2, input.sound);
-                if (input.cancel && !play.game().yellowCardPending()) { cards.close(); continue; } // no cancel in discard mode
+                if (input.cancel) { // seg4:0B0A: mask 1 back to the town dialog, 2 back to the turn menu
+                    if (play.game().yellowCardPending()) sound.play(2, 7); // mask 0: refused with sound 7
+                    else cards.close();
+                    continue;
+                }
                 if (input.id >= 0) {
                     const int slot = input.id;
                     // seg2:51EA: a card with a target asks for the player when more than one is
@@ -716,8 +720,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     if (play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
                     continue;
                 }
-                const bool mustDiscard = play.game().yellowCardPending(); // no cancel in discard mode
-                if (!mustDiscard && click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
+                // A right click does nothing: the canvas passes it to RALLY (seg8:018C), which
+                // opens RIGHTBTN only with DS:96A0, cleared while the card window is up (seg3:092D).
                 if (event.type == SDL_KEYDOWN || click) continue; // the window keeps the keyboard
             }
             if (screen.cardShop().isOpen()) { // seg3:4640

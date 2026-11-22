@@ -1326,8 +1326,15 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   **Assumptions:** the setup star counts as a disabled SBBUTTON without
   players (sound 7 on a click); Return still accepts OPTION / starts PLAYER. Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
-  the digit keys (target `T`, nail direction by arrow key); Escape or the right
-  button close the window (assumption); a played card closes it.
+  the digit keys (target `T`, nail direction by arrow key); a played card closes
+  it. **Cancel** (round 93): Escape / Backspace on a card post WM_COMMAND 0xFFFF
+  to the canvas (seg1:0F77), which passes 0x1388–0x1390 and 0xFFFF to RALLY
+  (seg8:00B9); seg4:0B0A closes the window and returns to the town dialog (mask
+  bit 1) or the turn menu (seg2:068F); with mask 0 (discard) it only plays sound
+  7 on channel 2. The right button does nothing while the window is up: the
+  canvas sends WM_RBUTTONDOWN to RALLY (seg8:018C), whose handler (seg4:0417)
+  opens the menu RIGHTBTN through VK_BACK only with DS:96A0, which the card window
+  clears (seg3:092D).
 
 ### Town dialog ESTATES (round 30)
 
