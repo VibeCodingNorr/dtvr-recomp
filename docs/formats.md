@@ -1848,7 +1848,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Escape / Backspace (and the right button, seg3:4688) return silently from buy /
   sell to the header, from the header play Plopp02 and close; clicks outside the
   dialog do nothing. After selling the last card the view returns to the header
-  (seg3:49E0 ff.). **Assumption:** the window centred.
+  (seg3:49E0 ff.). The header previews its choice: Left / Right rebuild the list
+  with seg3:5813(choice) (seg3:4A79 / 4AEF) — Kaufen the offers, Verkaufen the
+  hand, Beenden none (seg3:5997, count 0); opening builds it with 0 (seg3:452F),
+  returning from buy / sell keeps the list (seg3:46E0). **Assumption:** the window
+  centred.
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:

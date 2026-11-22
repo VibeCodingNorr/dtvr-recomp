@@ -48,7 +48,10 @@ SDL_Rect CardShopView::box() const {
 
 std::vector<CardShopView::Item> CardShopView::items(const Game& game) const {
     std::vector<Item> list;
-    if (mode_ == 2) { // seg3:5813(1): the own hand slots
+    // seg3:5813(choice): the header previews its choice (seg3:4A79 / 4AEF): Kaufen
+    // the offers, Verkaufen the hand, Beenden nothing (seg3:5997).
+    if (mode_ == 0 && choice_ == 2) return list;
+    if (mode_ == 2 || (mode_ == 0 && choice_ == 1)) { // seg3:5813(1): the own hand slots
         const int p = game.currentPlayer();
         for (int s = 0; s < 8; ++s) {
             const int type = game.deck().typeOfSlot(game.hand(p)[size_t(s)]);
