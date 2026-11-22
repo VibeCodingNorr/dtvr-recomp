@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ctime>
 #include <cctype>
 #include <iostream>
 #include <stdexcept>
@@ -42,7 +43,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                    return t ? t : sprite(name);
                }),
       slots_(defaultSaveDirectory()),
-      save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }) {
+      save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
+      setup_(renderer, root, layout, text_) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -267,6 +269,10 @@ void GameScreen::drawPlayerInfo() {
 }
 
 void GameScreen::draw() {
+    if (title_ && setup_.isOpen()) { // PLAYER replaces the title (seg4:0DA9)
+        setup_.draw();
+        return;
+    }
     if (title_) {
         if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp"))
             SDL_RenderCopy(renderer_, t, nullptr, nullptr);
@@ -359,6 +365,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         return g.phase() == Game::Phase::Roll && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer());
     };
     bool running = true;
+    int autosaved = -1; // turn serial of the last autosave
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
         openMenu("MAIN");
@@ -371,6 +378,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
     };
     auto startGame = [&] {
+        autosaved = -1; // the first turn of a started or loaded game is saved too
         screen.setTitle(false);
         screen.loadDriverSprites();
         report();
@@ -378,7 +386,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
-        case 1020: startGame(); break;                           // Neues Spiel (player choice not built)
+        case 1020: {                                             // Neues Spiel: seg4:0DA9(0) -> PLAYER
+            std::array<uint8_t, kPlayerSlots> status{};
+            std::array<std::string, kPlayerSlots> names;
+            for (int p = 0; p < kPlayerSlots; ++p) {
+                status[size_t(p)] = play.game().players()[size_t(p)].status;
+                names[size_t(p)] = play.game().playerName(p);
+            }
+            screen.setup().open(status, names);
+            break;
+        }
         case 1021: screen.saveDialog().open(false); break;       // Spiel laden: seg8:B157(0)
         case 1022: {                                             // Spiel fortsetzen: seg8:A8DF(0), as.dat
             std::string error;
@@ -403,13 +420,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
     };
     if (options.title) openTitle();
+    if (options.openSetup) { screen.setTitle(true); menu.close(); command(1020); }
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
-    int autosaved = -1; // turn serial of the last autosave
     SDL_Keycode heldArrow = options.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
     auto isArrow = [](SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT; };
     for (int frame = 1; running; ++frame) {
@@ -437,7 +454,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
-            if (!menu.isOpen() && !saveDialog.isOpen()) openTitle();
+            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen()) openTitle();
         } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
                    && !play.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
             std::string error;
@@ -463,6 +480,22 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (menu.isOpen()) {
                 if (const int id = menu.handle(event)) command(id);
+                continue;
+            }
+            if (screen.setup().isOpen()) { // seg1:0A60
+                const SetupView::Result r = screen.setup().handle(event);
+                if (r == SetupView::Result::Start) {
+                    std::string error;
+                    const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
+                    const auto status = screen.setup().status();
+                    const auto names = screen.setup().names();
+                    screen.setup().close();
+                    if (play.newGame(status, names, seed, error)) startGame();
+                    else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
+                } else if (r == SetupView::Result::Cancel) {
+                    screen.setup().close();
+                    openTitle();
+                }
                 continue;
             }
             if (saveDialog.isOpen()) { // seg8:B2F0: modal until Ok or Nein

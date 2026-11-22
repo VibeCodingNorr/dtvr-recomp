@@ -20,6 +20,10 @@ public:
              uint16_t seed);
 
     Game& game() { return *game_; }
+    // A new game with these slots (status 0 / 1 human / 2 computer) and names, handed
+    // over into the existing Game object (save codec), so references stay valid.
+    bool newGame(const std::array<uint8_t, kPlayerSlots>& slots, const std::array<std::string, kPlayerSlots>& names,
+                 uint16_t seed, std::string& error);
     std::string title() const;
     // Messages of the last command, the town's properties after arriving and the hand.
     void printLog(std::ostream& out) const;
@@ -39,6 +43,7 @@ private:
     std::unique_ptr<WorldMap> map_;           // kept alive for the game (barriers, robbers)
     std::unique_ptr<TileProperties> props_;
     std::unique_ptr<Game> game_;
+    int rounds_ = 0;
     int cardTarget_ = -1;                     // T: target player with three or more players
     int pendingNails_ = -1;                   // hand slot waiting for a direction key
     int offerCursor_ = 0;                     // card field: selected offer (PgUp / PgDn)

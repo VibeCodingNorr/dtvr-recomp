@@ -32,4 +32,13 @@ ScreenLayout layoutForCanvas(int canvasWidth); // 640, 800 or 1024
 struct CardButton { int slot = 0; ScreenRect rect; };
 std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::array<bool, 8>& occupied);
 
+// Player setup window PLAYER (round 36): rectangles for a canvas width (DS:1BD4: per resolution ten
+// rectangles, slot 7 first, then star and stop; DS:1CC4: eight name fields).
+struct SetupGeometry {
+    std::array<ScreenRect, 8> driver{};
+    std::array<ScreenRect, 8> name{};
+    ScreenRect start, stop;
+};
+SetupGeometry setupGeometry(int canvasWidth);
+
 } // namespace dtvr

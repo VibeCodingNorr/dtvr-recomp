@@ -1208,6 +1208,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Player setup (round 36)
+
+- **Neues Spiel** seg4:0DA9(0): seg8:0747 (an intro window TEMP, only without the
+  demo flag), seg2:0000 and the window PLAYER (seg1:02BD, procedure seg1:0A60)
+  over the canvas: background `%s\%d\pl_menu\menu.bmp` (640 × 480 at 640);
+  buttons (class SBBUTTON) with ids 0x1392 + slot showing
+  `%s\%d\pl_menu\%c%d.bmp` (driver letter of seg2:2D43, status 0 free / 1 human /
+  2 computer), star.bmp (id 0x139A, start) and stop.bmp (id 0x139B, cancel), and
+  input fields (class SBINPUT) for the names.
+- **Geometry** DS:1BD4: (x, y, w, h), ten per resolution (1024, 800, 640):
+  slots 7 down to 0 (seg1:0696 counts the slot down while the table index rises),
+  then star and stop; at 640 slot 0 is at (61, 73), slot 7 at (334, 317), star
+  (491, 420), stop (26, 420). DS:1CC4: the name fields, eight per resolution in
+  the same order (640: slot 0 at (148, 73, 160, 26)).
+- **Input** seg1:0A6E: a driver button steps its status 0 → 1 → 2 → 0 and
+  changes the picture; afterwards the star is enabled only when a slot is in
+  play (seg2:0368). Star: the names are read with GetWindowText(…, 0x13), i.e.
+  up to 18 characters, and the window closes; stop or 0xFFFF closes it (cancel,
+  back to the title); Enter acts as star when a slot is in play (seg1:0C3B).
+- **Rebuilt** (`src/setup_view.cpp`, geometry in `src/layout.cpp`): the window
+  with these pictures and positions; the start creates a new game with the
+  chosen slots and names and a time-based seed (the original seeds once at
+  seg1:02A9 with the time) and hands it over into the running Game object
+  through the save codec. **Assumptions:** the look of SBINPUT (drawn by its
+  DLL): Arial weight 600 at two thirds of the field height in colour 0x45 with a
+  bar as caret; a disabled star is drawn unchanged; Escape cancels. The intro
+  window seg8:0747 and the profile values [Player] P0–P7 are not rebuilt.
+
 ### Title menu and autosave (round 35)
 
 - **Title** seg8:03AB: window TITEL (DS:17EF) over the whole canvas with the
@@ -1227,7 +1255,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `AS` = 1 (seg5:22FC).
 - **Rebuilt** (`src/game_screen.cpp`, `src/save_slots.cpp`): `--game` starts with
   the title (`--no-title` skips it); Neues Spiel starts the game set up on the
-  command line (the setup dialogs SELPLAYER / NICKNAME are not rebuilt yet);
+  command line (round 36: through the player setup PLAYER);
   Spiel laden uses the save dialog with text 801; the autosave is `as.sav` in
   the save directory, written at each turn start (turn counter
   `Game::turnSerial`, not saved), and its presence enables Spiel fortsetzen.

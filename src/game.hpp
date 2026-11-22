@@ -81,6 +81,10 @@ public:
     int spinSerial() const { return spinSerial_; }
     // Messages for the presentation, in the order the original shows them; taking
     // them clears the queue (not part of the saved state).
+    // Moves the notices of another game (a new game handed over through the save codec).
+    void adoptNotices(Game& other) {
+        for (Notice& n : other.takeNotices()) notices_.push_back(std::move(n));
+    }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }

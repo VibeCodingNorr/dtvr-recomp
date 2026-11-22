@@ -10,6 +10,7 @@
 #include "card_view.hpp"
 #include "estates_view.hpp"
 #include "save_view.hpp"
+#include "setup_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
@@ -38,6 +39,7 @@ public:
     CardView& cards() { return cards_; }
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
+    SetupView& setup() { return setup_; }
     const SaveSlots& saveSlots() const { return slots_; }
     const std::map<int, std::string>& texts() const { return texts_; }
     std::vector<EstateRow> estateRows() const;
@@ -80,6 +82,7 @@ private:
     EstatesView estates_;
     SaveSlots slots_;
     SaveView save_;
+    SetupView setup_;
     int seenSpin_ = 0;
     bool title_ = false;
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
@@ -98,6 +101,7 @@ struct GameWindowOptions {
     bool holdRight = false;       // tests: the right arrow key is held from the start
     bool openSave = false;
     bool openStatistics = false;  // tests: open Statistik at the start
+    bool openSetup = false;       // tests: open the player setup at the start
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

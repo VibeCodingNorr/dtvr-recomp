@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "play_view.hpp"
 
+#include "save.hpp"
+
 #include <algorithm>
 
 namespace dtvr {
@@ -9,7 +11,21 @@ PlayView::PlayView(const Board& board, const std::vector<Town>& towns, std::uniq
                    std::unique_ptr<TileProperties> props, const std::array<uint8_t, kPlayerSlots>& slots,
                    int rounds, uint16_t seed)
     : board_(board), towns_(towns), map_(std::move(map)), props_(std::move(props)),
-      game_(std::make_unique<Game>(board, towns, slots, rounds, seed, 1, map_.get(), props_.get())) {}
+      game_(std::make_unique<Game>(board, towns, slots, rounds, seed, 1, map_.get(), props_.get())), rounds_(rounds) {}
+
+bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
+                       const std::array<std::string, kPlayerSlots>& names, uint16_t seed, std::string& error) {
+    Game fresh(board_, towns_, slots, rounds_, seed, 1, map_.get(), props_.get());
+    fresh.setPlayerNames(names);
+    if (!SaveCodec::decode(*game_, SaveCodec::encode(fresh), error)) return false;
+    game_->setPlayerNames(names);
+    game_->takeNotices(); // nothing of the old game is announced any more
+    game_->adoptNotices(fresh);
+    cardTarget_ = pendingNails_ = -1;
+    offerCursor_ = 0;
+    nextTick_ = 0;
+    return true;
+}
 
 std::string PlayView::title() const {
     static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende",

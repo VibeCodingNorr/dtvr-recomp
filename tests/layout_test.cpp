@@ -35,6 +35,11 @@ int main() {
     // width 3 * 92 - 10 = 266 -> left 187 -> 186 (even); height 2 * 127 - 10 = 244 -> top 118
     CHECK(same(cards[0].rect, 186, 118, 82, 117) && cards[2].rect.x == 186 + 2 * 92 - 0 && cards[3].rect.y == 244); // 245 rounded down to even
     CHECK(cardWindowLayout(l640, std::array<bool, 8>{}).empty());
+    // Player setup: slot 0 top left, slot 7 bottom right, star right, stop left (640).
+    const SetupGeometry setup = setupGeometry(640);
+    CHECK(same(setup.driver[0], 61, 73, 73, 73) && same(setup.driver[7], 334, 317, 73, 73));
+    CHECK(same(setup.name[0], 148, 73, 160, 26) && same(setup.start, 491, 420, 66, 50) && setup.stop.x == 26);
+    CHECK(setupGeometry(1024).driver[3].y == 507 && setupGeometry(800).name[4].x == 521);
     bool threw = false;
     try { layoutForCanvas(900); } catch (const std::invalid_argument&) { threw = true; }
     CHECK(threw);
