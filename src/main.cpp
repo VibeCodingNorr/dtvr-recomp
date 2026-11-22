@@ -22,8 +22,8 @@ using Surface = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>;
 using Texture = std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>;
 
 static fs::path programDirectory(fs::path root) {
-    if (fs::is_regular_file(root / "program/rally.exe")) root /= "program";
-    if (!fs::is_regular_file(root / "rally.exe"))
+    if (fs::is_regular_file(root / "program/butt/1/map.bmp")) root /= "program";
+    if (!fs::is_regular_file(root / "butt/1/map.bmp"))
         throw std::runtime_error("Kein Spielverzeichnis: " + root.string());
     return root;
 }

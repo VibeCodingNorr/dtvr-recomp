@@ -5,3 +5,16 @@ __pycache__/
 *.pyc
 *.iso
 *.ISO
+*.bin
+*.cue
+*.toc
+*.exe
+*.dll
+*.wav
+*.ogg
+*.flac
+*.bmp
+*.sbs
+*.sbb
+*.flc
+*.asm

@@ -13,7 +13,7 @@ to create `data/music/segment-01.ogg` through `segment-06.ogg`, plus `audio.json
 Install into a new directory, for example:
 
 ```sh
-python3 tools/install.py --iso /media/steam1/Games/Dtvr/dtvr.iso --output local/dtvr-audio
+python3 tools/install.py --iso /path/to/game.iso --output /path/to/new/installation
 ```
 
 Requires FFmpeg with the `libvorbis` encoder and `ffprobe`, in addition to the
@@ -29,7 +29,7 @@ of the staged installation. Existing music directories are not overwritten.
 
 ## Evidence and unresolved track boundaries
 
-The known image has SHA-256
+The supported image has SHA-256
 `a94cb115097c22b539563dac1954e965a5ee5f812070d70beeb39906a4197fee`.
 It is 114,479 raw sectors long; the ISO9660 volume declares 38,003 sectors.
 Mode 1 sector headers continue through sector 38,154. Audio-like PCM follows,

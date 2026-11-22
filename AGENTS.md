@@ -14,38 +14,44 @@ rally.exe. The board (700 fields, links, 115 towns) is decoded and shown as an
 overlay. No game rules, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
-## Local original data
+## Source-only distribution and user input
 
-- Original ISO: `/media/steam1/Games/Dtvr/dtvr.iso` (raw Mode 1, 2352-byte sectors).
+- Users supply an original ISO explicitly through `--iso`. All examples use
+  generic placeholders; never commit machine-specific paths or rely on a local
+  installation, mounted disc, download URL or symlink to original game content.
 - Distribution model: ship our installer/toolchain; users supply their original ISO.
   Use `python3 tools/install.py --iso /path/to/dtvr.iso` to build a local installation.
   This currently produces the native viewer, not a playable translated executable.
-- CD root: `/media/steam1/Games/Dtvr/ISOINHALT`
-- Program directory: `/media/steam1/Games/Dtvr/ISOINHALT/program`
 - Treat original files as read-only. Accept paths through `--data`; do not hardcode
   this machine's path into the runtime.
 - Keep original executables, assets, extracted game content, screenshots containing
-  game art and generated analysis output out of Git. Use ignored `build/` or `local/`
-  for local artifacts. The repository contains our source and format observations.
+  game art and generated analysis output out of the source checkout. Installation
+  defaults to the user's XDG data directory and rejects targets inside the checkout.
+  Keep developer media and disassembly in an external private directory too.
+  The repository contains our source and technical format observations only.
+  Run `python3 tools/check_repository.py` before committing; CI enforces this policy.
+- Keep the README's project-status table current after verified milestones. Separate
+  implemented, partial and planned systems, with concrete gaps and links to modules.
+  Do not present decoded data or a native viewer as a playable recompilation.
 
 ## Build and verify
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
-./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --smoke-test --screenshot build/overview.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT/program --tiles --smoke-test --screenshot build/tiles.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --sprites --smoke-test --screenshot build/sprites.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --world --smoke-test --screenshot build/world.bmp
+./build/dtvr-recomb --data /path/to/extracted
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --smoke-test --screenshot /path/to/artifacts/overview.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted/program --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
 ctest --test-dir build --output-on-failure
-python3 tools/ne_disasm.py /media/steam1/Games/Dtvr/ISOINHALT/program/rally.exe local/disasm --use32 9 --dll-dir /media/steam1/Games/Dtvr/ISOINHALT/program --dll-dir /media/steam1/Games/Dtvr/ISOINHALT/wing --dll-dir /usr/lib/wine/i386-windows
-python3 tools/inspect_game.py /media/steam1/Games/Dtvr/ISOINHALT > build/game-analysis.json
+python3 tools/ne_disasm.py /path/to/extracted/program/rally.exe /path/to/private-analysis --use32 9 --dll-dir /path/to/extracted/program --dll-dir /path/to/extracted/wing --dll-dir /path/to/optional-system-dlls
+python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analysis.json
 ```
 
 Requires CMake, pkg-config, a C++17 compiler, SDL2 >= 2.0.10 development files and
 Python 3. The analysis script uses only the Python standard library.
-Inspect screenshots when changing rendering. Some image viewers require conversion
+Inspect externally stored screenshots when changing rendering. Some image viewers require conversion
 from BMP to PNG; Pillow is available on the current machine, but is not a build dependency.
 The dummy driver verifies rendering and file loading, not interactive desktop input.
 
@@ -61,6 +67,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `tools/ne.py`, `tools/ne_disasm.py`: NE parser and annotated objdump disassembly.
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/check_repository.py`: tracked source/media/path distribution checks.
+- `docs/distribution.md`: source-only boundaries and external installation policy.
 - `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.
 - `tests/test_cd_audio.py`: generated-tone conversion and audio layout validation.
 - `docs/cd-audio.md`: provisional boundaries, provenance and native playback requirements.

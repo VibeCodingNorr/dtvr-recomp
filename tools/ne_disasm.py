@@ -7,7 +7,7 @@ Writes OUTDIR/segNN.asm per code segment, OUTDIR/data.bin (automatic data
 segment) and OUTDIR/strings.txt (DS offsets of C strings). Import ordinals are
 named from export tables of DLLs found in --dll-dir (e.g. the game's own
 DLLs and Wine's *.dll16 / *.exe16 builtins). Output contains disassembled
-game code: keep it out of Git (use build/ or local/).
+game code: keep it outside the source checkout in a private analysis directory.
 """
 
 import argparse
@@ -48,6 +48,10 @@ def main():
                     help="disassemble segment SEG as 32-bit code (e.g. after a DPMI "
                          "descriptor switch, as seen in rally.exe segment 9)")
     args = ap.parse_args()
+    repository = Path(__file__).resolve().parents[1]
+    output = args.out.resolve()
+    if output == repository or repository in output.parents:
+        ap.error("Disassembly output must be outside the source checkout")
     ne = NE(args.exe.read_bytes())
     exports = load_exports(args.dll_dir)
     args.out.mkdir(parents=True, exist_ok=True)

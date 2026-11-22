@@ -18,6 +18,22 @@ KNOWN_EXE = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83"
 REPO = Path(__file__).resolve().parent.parent
 
 
+def default_output():
+    data_home = Path(os.environ.get("XDG_DATA_HOME", ""))
+    if not data_home.is_absolute():
+        data_home = Path.home() / ".local/share"
+    return data_home / "dtvr-recomb"
+
+
+def validate_output(output):
+    output = output.expanduser().resolve()
+    try:
+        output.relative_to(REPO)
+    except ValueError:
+        return output
+    raise ValueError("Installation output must be outside the source checkout")
+
+
 def digest(path):
     h = hashlib.sha256()
     with path.open("rb") as stream:
@@ -28,7 +44,7 @@ def digest(path):
 
 def install(iso, output, jobs):
     iso = iso.resolve(strict=True)
-    output = output.absolute()
+    output = validate_output(output)
     if output.exists() or output.is_symlink():
         raise ValueError(f"Target already exists; choose a new directory: {output}")
     for command in ("cmake", "c++", "pkg-config"):
@@ -50,6 +66,11 @@ def install(iso, output, jobs):
         for required in ("butt/1/map.bmp", "map/0/part0000.sbb", "sbs/d.sbs"):
             if not (data / "program" / required).is_file():
                 raise ValueError(f"Required original data missing: {required}")
+        # Original Windows binaries are validation inputs, not native runtime dependencies.
+        for name in ("rally.exe", "sbtimer.dll", "wavemix.dll", "wavemix.ini"):
+            path = data / "program" / name
+            if path.is_file():
+                path.unlink()
         print(f"Validated original executable; extracted {count} files.", flush=True)
         iso_hash = digest(iso)
         layout = audio_layout(iso_hash, iso.stat().st_size)
@@ -66,7 +87,7 @@ def install(iso, output, jobs):
         subprocess.run(["cmake", "--install", str(build), "--prefix", str(stage)], check=True)
         env = dict(os.environ, SDL_VIDEODRIVER="dummy")
         binary = stage / "bin/dtvr-recomb"
-        for view in ([], ["--tiles"], ["--sprites"]):
+        for view in ([], ["--tiles"], ["--sprites"], ["--world"]):
             subprocess.run([str(binary), "--data", str(data), "--smoke-test", *view],
                            env=env, check=True)
         manifest = {"schema_version": 1, "capability": "native-data-viewer",
@@ -90,7 +111,8 @@ def install(iso, output, jobs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iso", type=Path, required=True)
-    parser.add_argument("--output", type=Path, default=REPO / "local/dtvr")
+    parser.add_argument("--output", type=Path, default=default_output(),
+                        help="New installation directory outside the checkout (default: XDG data directory)")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 8))
     args = parser.parse_args()
     if args.jobs < 1:

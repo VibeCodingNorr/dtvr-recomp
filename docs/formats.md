@@ -1,7 +1,7 @@
 # Original data: observed structure
 
-These observations come from the local German CD at
-`/media/steam1/Games/Dtvr/ISOINHALT`. They describe this copy, not every release.
+These observations describe the supported German CD version identified by its
+executable hash below. They do not describe every release.
 Use `tools/inspect_game.py` to identify a different installation.
 
 ## Confirmed
@@ -45,8 +45,8 @@ Addresses are `segN:offset` in NE segment numbering; DS offsets refer to the
 automatic data segment 11. Reproduce with:
 
 ```sh
-python3 tools/ne_disasm.py PROGRAM/rally.exe local/disasm --use32 9 \
-    --dll-dir PROGRAM --dll-dir CDROOT/wing --dll-dir /usr/lib/wine/i386-windows
+python3 tools/ne_disasm.py PROGRAM/rally.exe /path/to/private-analysis --use32 9 \
+    --dll-dir PROGRAM --dll-dir CDROOT/wing --dll-dir /path/to/optional-system-dlls
 ```
 
 Import ordinals are named from the export tables of the game's DLLs and Wine's
