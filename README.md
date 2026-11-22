@@ -155,7 +155,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 84. Sprite list offset found (seg2:3EB0: -16, -16): vehicles and event animations at their original places.
 85. Planes: vehicles take off on sea routes and land three cells before a land field; Nägel fall into the water on sea fields (rules revision 34).
 86. Main menu in the game: Mitspieler hands drivers to the computer or back, Neues Spiel returns to the title.
-87. *Next:* remaining presentation details (subtitles, compare windows with rally.exe).
+87. Sights: with the option Views the vehicle stops at the 40 view points, Enter shows picture and text.
+88. *Next:* remaining presentation details (subtitles, compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

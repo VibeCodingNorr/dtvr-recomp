@@ -292,6 +292,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         // drawn car still drives there.
         for (const SoundCue& c : play.game().takeSounds())
             if (!screen.title()) pendingSounds.push_back(c);
+        screen.setArrowHeld(heldArrow != SDLK_UNKNOWN); // DS:A77A for the view point stop
         // Card films (seg7:62AA): one after the other, modal, sound on channel 7.
         for (const FilmCue& f : play.game().takeFilms())
             if (!screen.title()) pendingFilms.push_back(f);
@@ -401,7 +402,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.victory().active() || screen.balance().active()
                            || screen.announcement().active() || screen.cardShop().isOpen()
                            || screen.selectPlayer().isOpen() || screen.flight().isOpen()
-                           || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active();
+                           || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
+                           || screen.sight().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -436,6 +438,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (screen.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
                 continue; // the FLIC window runs modally (seg6:0FB4)
+            if (screen.sight().isOpen()) { screen.sight().handle(event); continue; } // seg6:4DCB, modal
+            if (screen.viewStopped() && event.type == SDL_KEYDOWN
+                && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER)) {
+                // Enter at a view point: seg2:0BC3 -> seg2:16AA -> seg6:4DCB(x, y).
+                const SDL_Point c = screen.viewStopCell();
+                screen.sight().open(c.x, c.y);
+                continue;
+            }
             if (screen.mouseControl().isOpen()) { // MCTRL (seg4:103B): the cursor stays in the cross
                 bool closed = false;
                 const SDL_Keycode key = screen.mouseControl().handle(event, closed);

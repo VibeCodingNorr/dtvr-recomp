@@ -10,6 +10,7 @@
 #include "mouse_control_view.hpp"
 #include "film_view.hpp"
 #include "vehicle_air.hpp"
+#include "sight_view.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
@@ -61,6 +62,12 @@ public:
     MenuView& menu() { return menu_; }
     MouseControlView& mouseControl() { return mouseControl_; }
     FilmView& film() { return film_; }
+    SightView& sight() { return sight_; }
+    // seg2:1DE2: with [Setup] Views the human's vehicle stops at a view point cell
+    // while no direction key is held (DS:A77A = 0); a held key drives on.
+    void setArrowHeld(bool held) { arrowHeld_ = held; }
+    bool viewStopped() const { return viewStop_; }
+    SDL_Point viewStopCell() const { return viewCell_; }
     const std::filesystem::path& root() const { return root_; }
     const ScreenLayout& layout() const { return layout_; }
     CardView& cards() { return cards_; }
@@ -154,6 +161,9 @@ private:
     MenuView menu_;
     MouseControlView mouseControl_;
     FilmView film_;
+    SightView sight_;
+    bool arrowHeld_ = false, viewStop_ = false;
+    SDL_Point viewCell_{-1, -1}, viewPassed_{-1, -1};
     CardView cards_;
     CardShopView cardShop_;
     SelectPlayerView selectPlayer_;

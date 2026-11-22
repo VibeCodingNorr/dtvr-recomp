@@ -35,7 +35,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root),
+      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root), sight_(renderer, root, text_),
       cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
@@ -203,6 +203,7 @@ void GameScreen::advanceVehicles(Uint32 now) {
                 if (p == game_.currentPlayer()) centreOnPlayer(); // Tschüss / Flugzeug: seg3:29E7 / 3314
             } else {
                 stepPending_[size_t(p)] = true; // consumed by the next movement tick
+                if (p == game_.currentPlayer()) viewPassed_ = SDL_Point{-1, -1};
             }
             from = field;
         }
@@ -211,7 +212,13 @@ void GameScreen::advanceVehicles(Uint32 now) {
             airSet_[size_t(p)] = true;
         }
         auto sign = [](int v) { return v > 0 ? 1 : v < 0 ? -1 : 0; };
+        const bool viewsOn = settings_.value[Settings::Views] != 0;
+        if (viewStop_ && p == game_.currentPlayer() && arrowHeld_) { // a direction key drives on
+            viewStop_ = false;
+            viewPassed_ = viewCell_;
+        }
         for (int t = 0; t < ticks; ++t) {
+            if (viewStop_ && p == game_.currentPlayer()) break; // waiting at the view point
             const SDL_Point before = at;
             const int dx = sign(target.x - at.x), dy = sign(target.y - at.y);
             int budget = kPixelsPerTick;
@@ -234,10 +241,26 @@ void GameScreen::advanceVehicles(Uint32 now) {
             // inside the view (seg2:29EB); only a vehicle that moves is checked.
             if (p == game_.currentPlayer() && originSet_ && moved)
                 edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
+            // seg2:1DE2 / 1E35: a view point cell (bit 0x10) stops a human's vehicle with
+            // [Setup] Views like a field while no direction is held; computers drive on.
+            const SDL_Point cell{at.x / WorldMap::kTile, at.y / WorldMap::kTile};
+            if (moved && viewsOn && p == game_.currentPlayer() && !game_.isComputer(p) && at.x % WorldMap::kTile == 0
+                && at.y % WorldMap::kTile == 0 && (at.x != target.x || at.y != target.y)
+                && (game_.cellProperties(cell.x, cell.y) & TileProperties::kViewPoint)
+                && (cell.x != viewPassed_.x || cell.y != viewPassed_.y)) {
+                if (arrowHeld_) {
+                    viewPassed_ = cell;
+                } else {
+                    viewStop_ = true;
+                    viewCell_ = cell;
+                    break;
+                }
+            }
         }
     }
     // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
     if (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_) {
+        if (game_.turnSerial() != seenTurn_) viewStop_ = false, viewPassed_ = SDL_Point{-1, -1};
         seenTurn_ = game_.turnSerial();
         seenCentreSpin_ = game_.spinSerial();
         centreOnPlayer();
@@ -573,6 +596,7 @@ void GameScreen::draw() {
     save_.draw(slots_);
     mouseControl_.draw(game_.phase() == Game::Phase::Arrived); // M1 once the move is done (seg4:12FC)
     film_.draw();
+    sight_.draw();
     menu_.draw();
     if (!eventSceneActive(SDL_GetTicks())) messages_.draw(game_); // seg8:6EF2 after the animation
 }

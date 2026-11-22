@@ -16,7 +16,7 @@ target_include_directories(dtvr-formats PUBLIC src)
 target_compile_features(dtvr-formats PUBLIC cxx_std_17)
 target_compile_options(dtvr-formats PRIVATE -Wall -Wextra -Wpedantic)
 
-add_executable(dtvr-recomb src/main.cpp src/play_view.cpp src/sdl_assets.cpp src/game_screen.cpp src/game_window.cpp src/slot_view.cpp src/message_view.cpp src/menu_view.cpp src/card_view.cpp src/estates_view.cpp src/save_view.cpp src/setup_view.cpp src/overview_view.cpp src/options_view.cpp src/sound.cpp src/scene.cpp src/finish_view.cpp src/victory_view.cpp src/balance_view.cpp src/stage_view.cpp src/card_shop_view.cpp src/select_player_view.cpp src/flight_view.cpp src/nails_view.cpp src/invest_view.cpp src/risiko_view.cpp src/sb_button.cpp src/map_scroll.cpp src/event_scenes.cpp src/mouse_control_view.cpp src/controller.cpp src/film_view.cpp src/text.cpp)
+add_executable(dtvr-recomb src/main.cpp src/play_view.cpp src/sdl_assets.cpp src/game_screen.cpp src/game_window.cpp src/slot_view.cpp src/message_view.cpp src/menu_view.cpp src/card_view.cpp src/estates_view.cpp src/save_view.cpp src/setup_view.cpp src/overview_view.cpp src/options_view.cpp src/sound.cpp src/scene.cpp src/finish_view.cpp src/victory_view.cpp src/balance_view.cpp src/stage_view.cpp src/card_shop_view.cpp src/select_player_view.cpp src/flight_view.cpp src/nails_view.cpp src/invest_view.cpp src/risiko_view.cpp src/sb_button.cpp src/map_scroll.cpp src/event_scenes.cpp src/mouse_control_view.cpp src/controller.cpp src/film_view.cpp src/sight_view.cpp src/text.cpp)
 target_compile_definitions(dtvr-recomb PRIVATE DTVR_VERSION="${PROJECT_VERSION}")
 target_compile_options(dtvr-recomb PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(dtvr-recomb PRIVATE dtvr-formats PkgConfig::SDL2)

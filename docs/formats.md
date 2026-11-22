@@ -1952,6 +1952,28 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
 
+### Sights (round 87)
+
+- **Stop:** seg2:1DE2 sets a stop flag when the vehicle's cell has europe.pit bit
+  0x10 (the 40 view point cells, tile 0x33) and `[Setup] Views` (DS:B5D8) is on;
+  seg2:1E35 then halts like at a field unless a direction is held (DS:A77A). No
+  view point lies on a field cell (field cells carry 0x01, 0x03 or 0x09 only).
+- **Opening:** Enter on the stopped vehicle runs seg2:0BC3, which at seg2:1677 tests
+  bit 0x10 again and calls seg6:4DCB(cell x, cell y). That loads
+  `butt\views\%d_%d.bmp` (DS:18A1 / 18AB, 40 files of 180 × 180) and
+  `butt\<lang>\views\%d_%d.txt` (DS:18B7 / 18C1) and creates the window class
+  `Tourism` (DS:18D0) as a child of the canvas DS:40 at (0, 0), 0x200 × 0xE8.
+- **Painting** (seg6:4F5E): `butt\unipaper.bmp` (DS:18E0) at (0, 0), the picture at
+  (10, 10), the text with DrawText 0x110 (DT_WORDBREAK | DT_NOCLIP) in the client
+  rectangle with left + 200 inflated by (−10, −5), font seg6:04F9(15, 600), colour
+  0x45. The texts are code page 1252 (as shown by the umlauts).
+- **Second window:** seg6:47BE opens a `Tourism` window from command 1003 of the
+  menu TOWNINFO (Vorherige Seite 1000, Nächste Seite 1001, Text ausblenden 1002,
+  Beenden 1003) with the TOWNINFO menu; its caller and pages are not traced.
+- Rebuilt in `src/sight_view.cpp`; the stop is presentation in
+  `GameScreen::advanceVehicles`. **Assumptions:** any key or click closes the
+  window (its input handling is not traced); a held arrow key passes the point.
+
 ### Player setup (round 36)
 
 - **Neues Spiel** seg4:0DA9(0): seg8:0747 (an intro window TEMP, only without the
