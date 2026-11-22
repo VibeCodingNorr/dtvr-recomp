@@ -1383,8 +1383,27 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Schnee / Steinschlag the obstacle cell (seg8:44E9 / 55FA / 5DA1), Räuber the
   victim (seg8:2238 → seg2:3216). Rebuilt: `Notice::focusX / focusY` from
   `src/game_events.cpp`; while such a message is open `GameScreen::eventFocus`
-  zooms in and centres, then restores. **Not rebuilt:** the event animations
-  and their sounds; Nessie's second centring during its animation (seg8:33B5).
+  zooms in and centres, then restores. **Not rebuilt:** Nessie's second
+  centring during its animation (seg8:33B5).
+- **Event animations** (round 69): a handler fills an animation definition on
+  its stack (u16 delay, u8 0, u8 frame count, frame names), loads its SBS set,
+  allocates a record with seg2:6D1B(1) (+0 definition, +4 follow-up 0, +8
+  countdown 0, +0xA repetitions, +0xC frame 0, +0x14 / +0x16 position, +0x1A
+  the DIB DS:9490) and runs seg8:6E0F: per pass seg2:6DCB advances the record,
+  the frame is drawn into the map DIB (seg2:3D9C), then seg6:0CDF(20) waits; the
+  loop ends when the record is freed after its repetitions. Only then is the
+  message text drawn (e.g. Sturm 5041 + random(2) at seg8:1DF5) and shown
+  (seg8:6EF2). Sounds: seg1:2A30 starts the MIDI cue (`e1` …, already in the
+  music catalogue) and seg1:2D40(7, `%s\snd\E1`) opens a WAV that this disc does
+  not contain (snd holds only fx and midi), so nothing plays.
+  **Sturm** (seg8:1C01): `sbs\sturm.sbs` (DS:5F3A), frames ST1–ST6 (DS:5F0E ff.),
+  delay 6, repetitions 4, position town · 16 + (8, −0x1D) (seg8:1D47 / 1D4C):
+  144 passes, about 2.9 s. Rebuilt in `src/event_scenes.cpp` (table, timing) and
+  `GameScreen::startEventScene`; the message waits for the scene. The other
+  events follow.
+- **Correction (round 69):** the edge scroll of round 67 also ran for a standing
+  vehicle; it now only follows a vehicle that moved in that tick, as in the
+  movement tick seg2:239F.
 
 ### Stage end (round 43)
 

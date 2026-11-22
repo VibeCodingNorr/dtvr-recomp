@@ -23,7 +23,9 @@ public:
                 const std::map<int, std::string>& texts, TextRenderer& text);
     void push(Notice notice) { queue_.push_back(std::move(notice)); }
     bool open() const { return !queue_.empty(); }
-    void dismiss() { if (!queue_.empty()) queue_.pop_front(); choice_ = 6; } // a click or a key closes it
+    void dismiss() { if (!queue_.empty()) queue_.pop_front(); choice_ = 6; ++serial_; } // a click or a key closes it
+    // Changes whenever the front message changes (a played event scene belongs to one).
+    int frontSerial() const { return serial_; }
     // The front message asks Yes / No (buttons 4, MB_YESNO).
     bool question() const { return !queue_.empty() && queue_.front().buttons == 4; }
     int frontText() const { return queue_.empty() ? 0 : queue_.front().text; }
@@ -49,6 +51,7 @@ private:
     std::map<std::string, Texture> cache_;
     std::deque<Notice> queue_;
     int choice_ = 6; // DS:8C38, Yes after WM_CREATE (seg6:5834)
+    int serial_ = 0;
 };
 
 } // namespace dtvr

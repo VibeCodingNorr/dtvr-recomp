@@ -6,6 +6,7 @@
 
 #include "layout.hpp"
 #include "map_scroll.hpp"
+#include "event_scenes.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
@@ -95,6 +96,9 @@ public:
     // Event places (seg8 handlers): zoom in (seg6:2E54(2)), centre on the cell and
     // restore zoom and origin afterwards (seg8:1E17 ff.). `focus` < 0 ends it.
     void eventFocus(int cellX, int cellY);
+    // Plays an event animation at a map cell (seg8:6E0F); the message waits for it.
+    void startEventScene(const EventScene& scene, int cellX, int cellY, Uint32 now);
+    bool eventSceneActive(Uint32 now) const;
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,
@@ -171,6 +175,10 @@ private:
     int seenTurn_ = -1, seenCentreSpin_ = -1;
     struct EventFocus { bool active = false, zoomed = false; TilePoint saved{}; bool savedSet = false; int x = -1, y = -1; };
     EventFocus focus_;
+    const EventScene* scene_ = nullptr;
+    int sceneX_ = 0, sceneY_ = 0;
+    Uint32 sceneStart_ = 0;
+    std::map<std::string, std::map<std::string, Texture>> sceneFrames_; // per SBS file
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick
 };
 

@@ -140,6 +140,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     // seg4:0EDF: text 700 with Yes / No (buttons 4); Yes ends the program (DS:88 = 1,
     // WM_CLOSE). From MAIN1 (1064) a No opens MAIN1 again.
     bool quitReopensMain = false;
+    int sceneSerial = -1; // message serial whose event scene has been started
     auto askQuit = [&](bool reopenMain) {
         Notice q{700, {}};
         q.buttons = 4;
@@ -258,8 +259,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
         { // event places: the view zooms in on the place while its message is open
             const Notice* front = screen.messages().front();
-            if (front && front->focusX >= 0) screen.eventFocus(front->focusX, front->focusY);
-            else screen.eventFocus(-1, -1);
+            if (front && front->focusX >= 0) {
+                screen.eventFocus(front->focusX, front->focusY);
+                // seg8 handlers: the animation plays before the message (once per message).
+                if (screen.messages().frontSerial() != sceneSerial) {
+                    sceneSerial = screen.messages().frontSerial();
+                    if (const EventScene* scene = eventSceneForNotice(front->text))
+                        screen.startEventScene(*scene, front->focusX, front->focusY, SDL_GetTicks());
+                }
+            } else {
+                screen.eventFocus(-1, -1);
+            }
         }
         // The original plays a field's sounds when the vehicle is on it: cues wait while the
         // drawn car still drives there.
@@ -405,6 +415,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
+            if (screen.messages().open() && screen.eventSceneActive(SDL_GetTicks())) continue; // animation first
             if (screen.messages().question()) { // seg2:2404: obstacle question (text 600)
                 if (const int answer = screen.messages().handle(event); answer) {
                     const int text = screen.messages().frontText();

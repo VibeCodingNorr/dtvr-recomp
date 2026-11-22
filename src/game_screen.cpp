@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "game_screen.hpp"
 
+#include "scene.hpp"
+
 #include "panel.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
@@ -150,6 +152,18 @@ void GameScreen::eventFocus(int cellX, int cellY) {
     originSet_ = true;
 }
 
+void GameScreen::startEventScene(const EventScene& scene, int cellX, int cellY, Uint32 now) {
+    if (!sceneFrames_.count(scene.file)) loadSprites(fs::path("sbs") / scene.file, sceneFrames_[scene.file]);
+    scene_ = &scene;
+    sceneX_ = cellX * WorldMap::kTile + scene.dx;
+    sceneY_ = cellY * WorldMap::kTile + scene.dy;
+    sceneStart_ = now;
+}
+
+bool GameScreen::eventSceneActive(Uint32 now) const {
+    return scene_ && int((now - sceneStart_) / kSceneStepMs) < eventScenePasses(*scene_);
+}
+
 void GameScreen::advanceVehicles(Uint32 now) {
     constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
     const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
@@ -182,11 +196,13 @@ void GameScreen::advanceVehicles(Uint32 now) {
             v += d;
             budget -= std::abs(d);
         };
+        const SDL_Point before = at;
         approach(at.x, target.x);
         approach(at.y, target.y);
         // seg2:239F: every movement tick of the current vehicle keeps it 32 pixels inside
-        // the view (seg2:29EB); a step that leaves it scrolls by seg6:30F8.
-        if (p == game_.currentPlayer() && originSet_ && ticks > 0)
+        // the view (seg2:29EB); a step that leaves it scrolls by seg6:30F8. Only a
+        // vehicle that moves is checked.
+        if (p == game_.currentPlayer() && originSet_ && (at.x != before.x || at.y != before.y))
             edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
     }
     // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
@@ -353,6 +369,16 @@ void GameScreen::drawMap() {
         const SDL_Rect box{target.x + (at.x - origin.x - 16) * z, target.y + (at.y - origin.y - 8) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
+    if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
+        const int pass = int((SDL_GetTicks() - sceneStart_) / kSceneStepMs);
+        const auto& frames = sceneFrames_[scene_->file];
+        if (const auto it = frames.find(eventSceneFrame(*scene_, pass)); it != frames.end() && it->second) {
+            int w = 0, h = 0;
+            SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
+            const SDL_Rect box{target.x + (sceneX_ - origin.x) * z, target.y + (sceneY_ - origin.y) * z, w * z, h * z};
+            SDL_RenderCopy(renderer_, it->second.get(), nullptr, &box);
+        }
+    }
     SDL_RenderSetClipRect(renderer_, nullptr);
 }
 
@@ -479,7 +505,7 @@ void GameScreen::draw() {
     invest_.draw();
     save_.draw(slots_);
     menu_.draw();
-    messages_.draw(game_);
+    if (!eventSceneActive(SDL_GetTicks())) messages_.draw(game_); // seg8:6EF2 after the animation
 }
 
 std::vector<EstateRow> GameScreen::estateRows() const {
