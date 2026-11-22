@@ -126,7 +126,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 55. Nägel direction window: the four arrows of the original as click areas.
 56. Investment offer window (professor / football club) with Ja / Nein and the amount.
 57. Yellow field with a full hand: the card window opens in discard mode after text 403.
-58. *Next:* compare the remaining dialogs and messages with rally.exe (Risiko, Steuerlos, property cards).
+58. Risiko window: the light frames and pressed buttons of risiko.sbs, CHANCE / STOP by mouse.
+59. *Next:* compare the remaining dialogs and messages with rally.exe (Steuerlos, property cards).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

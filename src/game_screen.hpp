@@ -13,6 +13,7 @@
 #include "flight_view.hpp"
 #include "nails_view.hpp"
 #include "invest_view.hpp"
+#include "risiko_view.hpp"
 #include "estates_view.hpp"
 #include "finish_view.hpp"
 #include "victory_view.hpp"
@@ -59,6 +60,7 @@ public:
     FlightView& flight() { return flight_; }
     NailsView& nails() { return nails_; }
     InvestView& invest() { return invest_; }
+    RisikoView& risiko() { return risiko_; }
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
@@ -134,6 +136,7 @@ private:
     FlightView flight_;
     NailsView nails_;
     InvestView invest_;
+    RisikoView risiko_;
     EstatesView estates_;
     SaveSlots slots_;
     SaveView save_;

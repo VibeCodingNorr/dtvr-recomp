@@ -464,6 +464,21 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (r != SaveView::Result::None) saveDialog.close();
                 continue;
             }
+            // Risiko (seg7:6BF0): any key but Escape or the CHANCE area presses, Escape or
+            // the STOP area stops; computers press inside the tick.
+            if (play.game().phase() == Game::Phase::Risiko && !play.game().isComputer(play.game().currentPlayer())
+                && !screen.messages().open() && !menu.isOpen() && !saveDialog.isOpen()) {
+                int button = 0;
+                if (click && event.button.button == SDL_BUTTON_LEFT)
+                    button = screen.risiko().buttonAt(event.button.x, event.button.y);
+                else if (event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym != SDLK_F8)
+                    button = event.key.keysym.sym == SDLK_ESCAPE ? 2 : 1;
+                if (button) {
+                    screen.risiko().press(button, SDL_GetTicks());
+                    if (button == 1 ? play.game().risikoPress() : play.game().risikoStop()) report();
+                }
+                if (button || event.type == SDL_KEYDOWN || click) continue;
+            }
             if (screen.invest().isOpen() && !screen.messages().open()) { // seg8:7098
                 const InvestView::Result r = screen.invest().handle(event);
                 if (r.sound >= 0) sound.play(0, r.sound);

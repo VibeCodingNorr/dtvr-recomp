@@ -33,7 +33,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_),
+      cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
                    SDL_Texture* t = find(buySprites_, name);
@@ -410,6 +410,8 @@ void GameScreen::draw() {
         for (size_t i = 0; i < 8; ++i) letters[i] = kPortraitLetters[i]; // seg2:2D43
         estates_.draw(estateRows(), letters);
     }
+    // seg7:674D: the window follows the one-reel spin (seg2:6426).
+    if (game_.phase() == Game::Phase::Risiko && slot_.stopped(now)) risiko_.draw(game_.risiko().light, now);
     overview_.draw(game_);
     finish_.draw(SDL_GetTicks());
     victory_.draw(SDL_GetTicks());

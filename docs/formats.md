@@ -851,6 +851,17 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   counter exceeds 7: when rand() % 100 < 25 (even in the dark) or while lit
   (seg7:6927); they never stop. The card choice gives Risiko only its random
   start value, so computers do not pick it.
+  *Round 58 (window):* CreateWindow seg7:67E7 (class / title RISIKO, style
+  0x54000000, 0xF6 × 0x9E); frames of `%s\risiko.sbs` (DS:54C2, sbs directory,
+  each 230 × 142): R-NORMAL, R-LIGHT0, R-LIGHT2, R-LIGHT3, R-LIGHT4, R-BUTTON.
+  The paint (seg7:6DD3) picks the frame by DS:9C92 (0 → light0, 2/3/4 → light2/3/4,
+  otherwise normal) and copies the pressed buttons from R-BUTTON: x < 0x64 from
+  y 0x50 while DS:A29E (CHANCE), x ≥ 0x64 from y 0x50 while DS:A0EE (STOP).
+  Click areas (seg7:6C83): y 0x50–0x8C, x 4–0x50 press, x 0x98–0xE2 stop. The
+  strings hutman-1 / hutman-2 follow, but risiko.sbs has no such frames. Rebuilt
+  in `src/risiko_view.cpp`; **assumptions:** the window centred with the frame
+  inside a black 8-pixel border, the pressed button shown for 150 ms, click
+  coordinates relative to the frame.
 - **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
   in the string resources, but no code adds the base 5181 (all other events add
   their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the
