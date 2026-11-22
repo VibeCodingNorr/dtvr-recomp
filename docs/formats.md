@@ -1952,6 +1952,40 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
 
+### Subtitles (round 88)
+
+- **sync.dat** (`dat\<lang>\sync.dat`, 29,120 bytes = 140 records of 0xD0, read to
+  DS:9694): +0x00 WAV name (NUL-terminated within 0x14 bytes), +0x14 length in
+  bytes (uint32), +0x18..0x67 not used by the subtitle code (unknown), +0x68 ten
+  entries {uint16 string id, uint32 start, uint32 end}. The voices are 11,025 Hz
+  8-bit mono (fmt of `zielsuch\part01a.wav`), so positions are bytes = samples.
+  172 ids (40000–42306) are all present in rally_d.dat. Records cover the voice
+  folders zielsuch (68), bilanz (58), intro (9) and sieg (1).
+- **Position** seg1:3F46 for the current record DS:3E46: with voice output the
+  waveOutGetPosition bytes (TIME_BYTES) minus the start DS:A12A; otherwise
+  (TOOLHELP TimerCount − start DS:3E48) × 11, 0 once beyond the record's length.
+- **Lookup** seg1:41EF: 0 without a record or at position 0; else the first of the
+  ten entries with start ≤ position ≤ end (both inclusive), else 0.
+- **Window** SUBTITLE (DS:3AE0): seg6:64A5(rect, font size) creates it only with
+  `[Setup] Subtitle` (DS:B5DF) as a child of DS:42 at the rectangle; seg6:6596(hwnd,
+  id) loads the string (LoadString, 0x200 bytes) or clears it for id 0; seg6:6554
+  destroys it. Painting seg6:661F: `butt\unipaper.bmp` stretched over the window
+  (seg2:913A), font seg6:04F9(14, weight 600), DrawText 0x110 in the client
+  rectangle inflated by (−6, −6), PALETTEINDEX(0) without shadow.
+- **Callers:** INTRO (seg7:04CA, window DS:9502), ZIEL (seg7:3B2B, DS:A04E), Sieg
+  (seg7:7434, DS:A7B6) and BILANZ (seg8:8C3E, DS:A132), each with the owner's
+  GetWindowRect: top = bottom − 0x10, bottom = top + 0x3C, size 14. Every pass of
+  their loops (seg7:04F2) remembers the last two ids: a new non-zero id different
+  from the last one set is shown; the window is cleared when the id has been 0
+  for two passes after a non-zero one; the last id set stays remembered.
+- **Forced on:** without a wave device (seg1:2BFA after WaveMixGetInfo, seg1:2C57
+  after WaveMixConfigureInit fails) and for language letter E / e (seg5:21BA,
+  which also turns the voice off).
+- Rebuilt in `src/voice_sync.cpp` (no SDL, tested) and `src/subtitle_view.cpp`
+  for ZIEL, BILANZ and Sieg (the intro is not rebuilt); forced on when the game
+  runs without audio. **Assumption:** the position uses the elapsed time (the
+  TimerCount path) also with voice output.
+
 ### Sights (round 87)
 
 - **Stop:** seg2:1DE2 sets a stop flag when the vehicle's cell has europe.pit bit
@@ -1969,7 +2003,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   0x45. The texts are code page 1252 (as shown by the umlauts).
 - **Second window:** seg6:47BE opens a `Tourism` window from command 1003 of the
   menu TOWNINFO (Vorherige Seite 1000, Nächste Seite 1001, Text ausblenden 1002,
-  Beenden 1003) with the TOWNINFO menu; its caller and pages are not traced.
+  Beenden 1003) and toggles it (DS:94EA); 1000 / 1001 step the page DS:9524
+  (seg6:4951, seg6:48A6). *Round 88:* nothing sends 1003 — no `push 0x3EB`, the
+  only accelerator of rally.exe maps Escape to 101, and the TOWNINFO menu exists
+  only while the window is open — so this window is unreachable in this build
+  and is not rebuilt.
 - Rebuilt in `src/sight_view.cpp`; the stop is presentation in
   `GameScreen::advanceVehicles`. **Assumptions:** any key or click closes the
   window (its input handling is not traced); a held arrow key passes the point.

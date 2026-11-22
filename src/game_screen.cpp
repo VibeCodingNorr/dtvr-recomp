@@ -49,7 +49,9 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
       finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
       balance_(renderer, root, layout.width, layout.height),
-      stage_(renderer, root, layout.width, layout.height, board, towns) {
+      stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_) {
+    stage_.setSubtitles(&subtitles_);
+    balance_.setSubtitles(&subtitles_);
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -293,16 +295,27 @@ bool GameScreen::startFinish(int field, int player, Uint32 now) {
     return true;
 }
 
+void GameScreen::prepareSubtitles() {
+    // [Setup] Subtitle (DS:B5DF); seg1:2BFA / 2C57 force it on without a wave device.
+    subtitles_.setEnabled(settings_.subtitle != 0 || sound_ == nullptr);
+    subtitles_.close();
+}
+
 bool GameScreen::startAnnouncement(int mode, int variant, Uint32 now) {
+    prepareSubtitles();
     return stage_.start(mode, variant, game_.destination(), sound_, now);
 }
 
 bool GameScreen::startBalance(Uint32 now) {
+    prepareSubtitles();
     return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.humansLeft(), sound_, now);
 }
 
 bool GameScreen::startVictory(Uint32 now) {
     if (!victory_.start(game_.ranking(), now)) return false;
+    prepareSubtitles();
+    constexpr int w = 0x1F0, h = 0x178; // seg7:738D
+    subtitles_.voice("sieg.wav", SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2, w, h}, now);
     // seg7:7BAB: "%s\%c\VOICE\SIEG\SIEG.WAV" (seg1:3579)
     if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
     return true;
@@ -587,6 +600,12 @@ void GameScreen::draw() {
     victory_.draw(SDL_GetTicks());
     balance_.draw(SDL_GetTicks());
     stage_.draw(SDL_GetTicks());
+    if (victory_.active() || balance_.active() || stage_.active()) { // seg6:6554 with the window
+        subtitles_.update(SDL_GetTicks());
+        subtitles_.draw();
+    } else {
+        subtitles_.close();
+    }
     cardShop_.draw(game_);
     cards_.draw(sprite("dis_d")); // "dis_%c" with the language letter DS:A0F0 (seg1:190D)
     selectPlayer_.draw();

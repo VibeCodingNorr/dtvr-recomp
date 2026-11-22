@@ -9,6 +9,7 @@
 #include "board.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
+#include "subtitle_view.hpp"
 
 #include <SDL.h>
 
@@ -26,6 +27,7 @@ public:
     // mode 2 game start, 1 new stage, 3 last stage; variant 0-4 of Part01-04.
     bool start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now);
     bool active() const { return active_; }
+    void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     void stop() { active_ = false; }
     void update(Uint32 now);
     void draw(Uint32 now);
@@ -47,6 +49,7 @@ private:
     std::map<std::string, Texture> frames_;
     std::vector<int> candidates_; // kind-6 fields (seg5:1D70)
     SoundPlayer* sound_ = nullptr;
+    SubtitleView* subtitles_ = nullptr;
     int mode_ = 1, variant_ = 0, destination_ = -1;
     int light_ = -1;               // field under the light
     int jumps_ = 0, wait_ = 0;     // DS [bp-6] / [bp-8] of seg7:3D35

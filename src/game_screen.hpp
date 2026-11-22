@@ -25,6 +25,7 @@
 #include "victory_view.hpp"
 #include "balance_view.hpp"
 #include "stage_view.hpp"
+#include "subtitle_view.hpp"
 #include "save_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
@@ -182,6 +183,8 @@ private:
     VictoryView victory_;
     BalanceView balance_;
     StageView stage_;
+    SubtitleView subtitles_; // after texts_ and text_
+    void prepareSubtitles();
     int seenSpin_ = 0;
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;

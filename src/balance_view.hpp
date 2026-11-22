@@ -9,6 +9,7 @@
 #include "game.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
+#include "subtitle_view.hpp"
 
 #include <SDL.h>
 
@@ -23,6 +24,7 @@ public:
     BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, bool humans, SoundPlayer* sound, Uint32 now);
     bool active() const { return active_; }
+    void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     void stop() { active_ = false; }
     // A click (seg8:8D5C) lets the show master go on to the next player.
     void click() { clicked_ = true; }
@@ -42,6 +44,7 @@ private:
     std::map<std::string, Texture> frames_;
     std::vector<Game::BalanceEntry> entries_;
     SoundPlayer* sound_ = nullptr;
+    SubtitleView* subtitles_ = nullptr;
     int intro_ = 0;
     size_t index_ = 0;
     bool humans_ = true, clicked_ = false, active_ = false;
