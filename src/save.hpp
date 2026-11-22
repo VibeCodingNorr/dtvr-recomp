@@ -12,7 +12,7 @@ namespace dtvr {
 
 constexpr int kSaveFormat = 5;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
                                    // 4: no extensions record)
-constexpr int kRulesRevision = 36; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 37; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
                                    // year balance's draws, seg8:88DF / 8C49 / 8C57; 29: one more
@@ -23,7 +23,8 @@ constexpr int kRulesRevision = 36; // rule reconstruction round the state belong
                                    // player's move is shortened or ends, seg2:61B7; 34: Nägel fall
                                    // into the water on sea fields, the plane state +0x2D = 2;
                                    // 35: the closing draw of the year balance, seg8:9605;
-                                   // 36: Nägel only towards an available direction, seg3:225A)
+                                   // 36: Nägel only towards an available direction, seg3:225A;
+                                   // 37: the TimeOut fines after "n Felder" cards, seg2:3B0E)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

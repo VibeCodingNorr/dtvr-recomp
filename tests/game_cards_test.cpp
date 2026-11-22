@@ -100,6 +100,38 @@ int main() {
         }
     }
 
+    // [Setup] TimeOut (round 102, seg2:3ABD / 3B0E): "2 Felder" gives (2 + 2) * 5 = 20
+    // seconds, then 500 per second for ten seconds, then 750; the turn end stops it.
+    {
+        std::unique_ptr<Game> g;
+        int slot = -1;
+        for (uint16_t seed = 1; seed < 20000 && !g; ++seed) {
+            auto c = std::make_unique<Game>(board, towns, 1, 3, seed, 8, nullptr, nullptr, false);
+            c->setRandomEvents(false);
+            for (int k = 0; k < 8 && slot < 0; ++k)
+                if (c->deck().typeOfSlot(c->hand(0)[size_t(k)]) == 30) slot = k;
+            if (slot >= 0) g = std::move(c);
+        }
+        CHECK(g != nullptr);
+        if (g) {
+            g->setTimeLimit(true);
+            CHECK(g->playCard(slot, -1) && g->timeLimitRunning());
+            int up = -1;
+            for (int i = 0; i < 20; ++i) up = g->timeLimitSecond();
+            CHECK(up == 0x22);
+            const double cash = g->cash(0);
+            for (int i = 0; i < 10; ++i) CHECK(g->timeLimitSecond() == 0x15);
+            CHECK(g->cash(0) == cash - 5000);
+            g->timeLimitSecond();
+            CHECK(g->cash(0) == cash - 5750);
+            for (int guard = 0; guard < 50 && g->currentPlayer() == 0; ++guard) {
+                if (g->phase() == Game::Phase::Move) g->step(Direction::Right);
+                else g->endTurn();
+            }
+            CHECK(!g->timeLimitRunning() && g->timeLimitSecond() == -1);
+        }
+    }
+
     // Obstacle question (round 65, seg2:2404): a human with the clearing card is asked
     // (text 600, Yes / No, card picture); No keeps card and obstacle, Yes drives on.
     {

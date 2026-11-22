@@ -148,7 +148,7 @@ void IntroView::apply(const IntroEvent& e, Uint32 now) {
     switch (e.kind) {
     case IntroEvent::Voice: {
         const fs::path wav = findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "intro" / (e.name + ".wav"));
-        if (sound_) sound_->playFile(kVoiceChannel, wav);
+        if (sound_) sound_->playVoice(kVoiceChannel, wav);
         if (subtitles_ && effect_ == Effect::None) subtitles_->voice(e.name + ".wav", window(), now);
         break;
     }

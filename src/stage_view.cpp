@@ -59,7 +59,7 @@ bool StageView::start(int mode, int variant, int destination, SoundPlayer* sound
 }
 
 void StageView::voice(const std::string& name) {
-    if (sound_) sound_->playFile(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "zielsuch" / (name + ".wav")));
+    if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "zielsuch" / (name + ".wav")));
     if (subtitles_) // seg6:64A5 below this window (0x1F0 x 0x178, centred)
         subtitles_->voice(name + ".wav", SDL_Rect{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2, kWindowW, kWindowH},
                           SDL_GetTicks());

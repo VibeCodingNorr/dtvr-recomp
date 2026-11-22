@@ -1902,8 +1902,27 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (seg1:B629): F1–F8 send 0x1392 + n, F10 sends 0x139A. There is no mouse handler
   of its own (the switches are SBBUTTONs). Rebuilt in `src/options_view.cpp`; the
   former assumptions (Return accepts, stop / Escape discard) are removed.
-  Not applied yet: the sound
-  settings, TimeOut, Animations, Colorcycle (waves and seasons) and Joystick.
+  Applied by now (round 102): Wave, Midi, Views, Colorcycle (round 83), Joystick
+  (round 79), Voice and TimeOut (below). Not applied yet: Animations — seg8:83A0
+  returns at once without it (seg8:83B4); it ticks the object list DS:A05E inside
+  four event scenes (seg8:26DF, 4628, 4CD6, 5739) and draws random numbers there
+  (seg8:8465, 8590), which the simulation does not model yet.
+- **Voice** (round 102): seg1:3579 always selects the sync.dat record but loads and
+  plays the WAV only with a wave device (DS:9552) and [Setup] Voice (DS:B5D4),
+  independent of Sound-F/X (seg1:3661); otherwise seg1:3E64's TimerCount path
+  keeps the scene waiting for the voice's length. Rebuilt as
+  `SoundPlayer::playVoice` (busy for the WAV's length when not played).
+- **TimeOut** (round 102): the "n Felder" cards (types 29–34, seg3:3AB1 … 3ED0)
+  call seg2:3ABD: with DS:B5D6 set, DS:9470 = (steps + 2) × 5, DS:12 = 1 and a
+  1000 ms timer (seg8:030B, callback seg2:3B0E). The callback runs while the game
+  is running (DS:94C4), the application is active (DS:94E6, WM_ACTIVATEAPP at
+  seg4:02C9) and DS:12 is set: it counts DS:9470 down and at 0 plays sound 0x22 on
+  channel 6; afterwards every second it subtracts 500 (DS:85FE) for the first ten
+  seconds, 750 (DS:8606) for the next ten, then 1000 (DS:860E) from the driver's
+  cash (seg2:5A47), plays sound 0x15 on channel 6 and calls seg5:607B(1) (not
+  rebuilt). nextPlayer clears DS:12 (seg2:0716 → 3A8E). Rebuilt as
+  `Game::timeLimitSecond`, driven by the game window while it has the input focus;
+  the timer is not saved.
 
 ### Übersicht and Umfeld (round 37)
 

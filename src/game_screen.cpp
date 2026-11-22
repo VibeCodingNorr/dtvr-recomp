@@ -19,6 +19,12 @@ namespace {
 
 // seg2:2D43: portrait letter per slot.
 constexpr char kPortraitLetters[8] = {'D', 'F', 'E', 'M', 'U', 'J', 'I', 'V'};
+// seg2:1C87-1C90 synchronizes the driving loop with seg6:0CDF(20), independently
+// of the 50 ms palette timer. Vehicle definitions have delay 4; seg2:1941-1971
+// advances only when the old countdown is negative: six passes per frame.
+constexpr Uint32 kVehicleTickMs = 20;
+constexpr int kVehiclePixelsPerTick = 2 << 1;
+constexpr Uint32 kVehicleFramePasses = 6;
 
 SDL_Rect toSdl(const ScreenRect& r) { return {r.x, r.y, r.w, r.h}; }
 
@@ -180,12 +186,11 @@ void GameScreen::advanceVehicles(Uint32 now) {
                 origin_ = centredOrigin(c.x, c.y, viewSize());
             }
     }
-    constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
     const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
     lastAdvance_ = now;
     carry_ += elapsed;
-    const int ticks = int(carry_ / kTickMs);
-    carry_ %= kTickMs;
+    const int ticks = int(carry_ / kVehicleTickMs);
+    carry_ %= kVehicleTickMs;
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
         const int field = game_.playerField(p);
@@ -224,7 +229,7 @@ void GameScreen::advanceVehicles(Uint32 now) {
             if (viewStop_ && p == game_.currentPlayer()) break; // waiting at the view point
             const SDL_Point before = at;
             const int dx = sign(target.x - at.x), dy = sign(target.y - at.y);
-            int budget = kPixelsPerTick;
+            int budget = kVehiclePixelsPerTick;
             auto approach = [&](int& v, int goal) {
                 const int d = std::clamp(goal - v, -budget, budget);
                 v += d;
@@ -326,7 +331,7 @@ bool GameScreen::startVictory(Uint32 now) {
     constexpr int w = 0x1F0, h = 0x178; // seg7:738D
     subtitles_.voice("sieg.wav", SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2, w, h}, now);
     // seg7:7BAB: "%s\%c\VOICE\SIEG\SIEG.WAV" (seg1:3579)
-    if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
+    if (sound_) sound_->playVoice(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
     return true;
 }
 
@@ -465,12 +470,12 @@ void GameScreen::drawMap() {
     SDL_UpdateTexture(viewTexture_.get(), nullptr, viewRgb_->pixels, viewRgb_->pitch);
     SDL_RenderCopy(renderer_, viewTexture_.get(), nullptr, &target);
     // Vehicles (seg2:1846): frame of the facing's animation (table DS:1994, mode 1:
-    // <letter>UP / R / DOWN / L 1-4, delay 4 ticks), entered into the sprite list at
+    // <letter>UP / R / DOWN / L 1-4, six passes per frame), entered into the sprite list at
     // (+0x16, +0x18 - +0x2E + 2) (+0x2E: the boat counter, 0 on land); seg2:3EB0
     // moves every sprite by (-16, -16) before seg2:1A91 draws it minus the origin.
     constexpr int kSpriteShift = 16; // seg2:3F21 ff.
     static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
-    const Uint32 tick = SDL_GetTicks() / SlotView::kTickMs;
+    const Uint32 tick = SDL_GetTicks() / kVehicleTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
@@ -478,7 +483,7 @@ void GameScreen::drawMap() {
         SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
         if (shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
         const bool driving = vehicleMoving(p) || (p == game_.currentPlayer() && game_.phase() == Game::Phase::Move);
-        const int frameNo = driving ? int(tick / 4 % 4) + 1 : 1;
+        const int frameNo = driving ? int(tick / kVehicleFramePasses % 4) + 1 : 1;
         const VehicleAir& air = air_[size_t(p)]; // seg2:2318: plane frames ?f… unless on the ground
         const std::string name = std::string(1, kPortraitLetters[p]) + (air.plane() ? "F" : "")
                                  + kFacing[std::clamp(game_.facing(p), 1, 4)] + std::to_string(frameNo);
@@ -569,7 +574,10 @@ void GameScreen::drawPlayerInfo() {
 }
 
 void GameScreen::draw() {
-    if (sound_) sound_->setEnabled(settings_.value[Settings::Wave] != 0);
+    if (sound_) {
+        sound_->setEnabled(settings_.value[Settings::Wave] != 0);
+        sound_->setVoiceEnabled(settings_.value[Settings::Voice] != 0); // DS:B5D4
+    }
     if (intro_.active()) { // INTRO over the empty canvas (seg7:0000 runs before the title)
         SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
         SDL_RenderClear(renderer_);

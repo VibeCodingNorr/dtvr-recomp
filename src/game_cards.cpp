@@ -48,6 +48,22 @@ std::array<bool, 4> Game::nailsDirections() const {
     return available;
 }
 
+int Game::timeLimitSecond() {
+    if (!timeLimitActive_ || current_ < 0 || phase_ == Phase::GameOver) return -1; // seg2:3B22 ff.
+    if (timeLimitLeft_ > 0) {
+        if (--timeLimitLeft_ == 0) { // seg2:3B49: the time is up
+            timeLimitOver_ = 0;
+            return 0x22;
+        }
+        return -1;
+    }
+    // seg2:3B6D: 500 (DS:85FE) for ten seconds, 750 (DS:8606) for ten, then 1000 (DS:860E).
+    const double fine = timeLimitOver_ < 10 ? 500.0 : timeLimitOver_ < 20 ? 750.0 : 1000.0;
+    economy_.addMoney(current_, -fine); // seg2:5A47
+    ++timeLimitOver_;
+    return 0x15; // seg2:3BDF; seg5:607B(1) is not rebuilt
+}
+
 bool Game::playCard(int handSlot, int target) {
     messages_.clear();
     // The card window allows category 2 before spinning (seg4:0951) and category 1
@@ -113,6 +129,11 @@ bool Game::playCard(int handSlot, int target) {
         if (type >= 29 && type <= 34) notice(11001 + type, {playerArg(current_)}); // "n Felder": 11030-11035
         messages_.push_back(std::to_string(allowance) + " Felder");
         startMove(allowance); // seg3:3A2B ff. / seg2:66B9 -> seg2:61B7
+        if (type >= 29 && type <= 34 && timeLimitOn_) { // seg3:3AB1 ff. -> seg2:3ABD
+            timeLimitLeft_ = (allowance + 2) * 5;
+            timeLimitOver_ = 0;
+            timeLimitActive_ = true;
+        }
         return true;
     }
     case CardKind::Fiskus: { // card texts are 11001 + type (DS:9C71, seg3:1524)

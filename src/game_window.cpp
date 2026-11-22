@@ -135,6 +135,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int flightCardSlot = -1; // hand slot of the Flugzeug card being booked
     int nailsCardSlot = -1;  // hand slot of the Nägel card waiting for a direction
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
+    Uint32 timeLimitTick = 0; // the last second of the time limit timer
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
         openMenu("MAIN");
@@ -426,6 +427,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
                            || screen.sight().isOpen() || screen.intro().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
+        // [Setup] TimeOut: the 1000 ms timer of seg2:3ABD runs while the window is active.
+        play.game().setTimeLimit(screen.settings().value[Settings::TimeOut] != 0);
+        if (play.game().timeLimitRunning() && !screen.title()
+            && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS || options.smokeTest)) {
+            if (int(SDL_GetTicks() - timeLimitTick) >= 1000) {
+                timeLimitTick += 1000;
+                if (int(SDL_GetTicks() - timeLimitTick) >= 1000) timeLimitTick = SDL_GetTicks();
+                if (const int fx = play.game().timeLimitSecond(); fx >= 0) sound.play(6, fx);
+            }
+        } else {
+            timeLimitTick = SDL_GetTicks();
+        }
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
         if (!modal && !moving && heldArrow != SDLK_UNKNOWN && play.game().phase() == Game::Phase::Move

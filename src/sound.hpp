@@ -31,6 +31,12 @@ public:
     void play(int channel, int sound, int loops = 0);
     // seg1:3579: a WAV file by path (finish, voices); same channel rules.
     void playFile(int channel, const std::filesystem::path& file);
+    // seg1:3579 / 3661: a voice plays with a wave device (DS:9552) and [Setup] Voice
+    // (DS:B5D4), regardless of Sound-F/X; otherwise nothing sounds, but the channel
+    // counts as busy for the voice's length (the TimerCount path of seg1:3E64), so
+    // scenes wait as they would with sound.
+    void playVoice(int channel, const std::filesystem::path& file);
+    void setVoiceEnabled(bool enabled) { voiceEnabled_ = enabled; }
     void stop(int channel);
     // Whether a sound still plays on the channel (seg1:3E64 waits for voices).
     bool busy(int channel);
@@ -50,6 +56,8 @@ private:
     SDL_AudioDeviceID device_ = 0;
     SDL_AudioSpec spec_{};
     bool enabled_ = true;
+    bool voiceEnabled_ = true;
+    std::array<Uint32, 8> silentUntil_{}; // a voice that is not played (SDL_GetTicks)
     std::array<std::vector<int16_t>, kSoundCount> cache_;
     std::array<bool, kSoundCount> loaded_{};
     std::array<Voice, 8> voices_{};

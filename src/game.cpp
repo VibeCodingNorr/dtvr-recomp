@@ -447,6 +447,7 @@ void Game::advanceTurn() {
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
+    timeLimitActive_ = false; // seg2:0716 -> seg2:3A8E: DS:12 = 0, the timer stops
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
     for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
     for (const auto& [text, p] : change.texts) {

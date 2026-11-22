@@ -161,7 +161,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 90. Input audit (rounds 90–97): sights, intro, victory, destination search, finish, year balance (with its closing part), card window, town dialog, options, credits, save dialog, Nägel window and the setup focus follow the traced window procedures.
 91. Extension `ComputerExtraCards` (off by default, `[Extensions]` in settings.ini or `--computer-cards`): computers may also play the cards rally.exe never picks — Nägel, Steuerlos, Risiko, Flugzeug, Verkaufen and Kredit.
 92. Audited input taken over for the Flugzeug booking, the card shop and the overview (zoom and 3 × 3 panning), with their view tests.
-93. *Next:* remaining presentation details (compare windows with rally.exe).
+93. Options Sprachausgabe (voices off, scenes still wait) and Zeitlimit (fines after the "n Felder" cards) applied.
+94. *Next:* the Animations option (ambient objects in the event scenes and their random draws).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

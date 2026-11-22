@@ -92,8 +92,31 @@ void SoundPlayer::play(int channel, int sound, int loops) {
     SDL_UnlockAudioDevice(device_);
 }
 
+void SoundPlayer::playVoice(int channel, const fs::path& file) {
+    if (channel < 0 || channel > 7 || file.empty()) return;
+    silentUntil_[size_t(channel)] = 0;
+    if (device_ && voiceEnabled_) {
+        const bool fx = enabled_;
+        enabled_ = true; // voices do not depend on Sound-F/X (seg1:3661)
+        playFile(channel, file);
+        enabled_ = fx;
+        return;
+    }
+    stop(channel);
+    SDL_AudioSpec spec{};
+    Uint8* data = nullptr;
+    Uint32 length = 0;
+    if (!SDL_LoadWAV(file.string().c_str(), &spec, &data, &length)) return;
+    const Uint32 frame = Uint32(SDL_AUDIO_BITSIZE(spec.format) / 8) * spec.channels;
+    const Uint32 ms = spec.freq > 0 && frame > 0 ? Uint32(uint64_t(length / frame) * 1000 / Uint32(spec.freq)) : 0;
+    SDL_FreeWAV(data);
+    silentUntil_[size_t(channel)] = SDL_GetTicks() + ms;
+}
+
 bool SoundPlayer::busy(int channel) {
-    if (!device_ || channel < 0 || channel > 7) return false;
+    if (channel < 0 || channel > 7) return false;
+    if (silentUntil_[size_t(channel)] && int(silentUntil_[size_t(channel)] - SDL_GetTicks()) > 0) return true;
+    if (!device_) return false;
     SDL_LockAudioDevice(device_);
     const bool playing = voices_[size_t(channel)].samples != nullptr;
     SDL_UnlockAudioDevice(device_);
@@ -101,6 +124,7 @@ bool SoundPlayer::busy(int channel) {
 }
 
 void SoundPlayer::stop(int channel) {
+    if (channel >= 0 && channel <= 7) silentUntil_[size_t(channel)] = 0;
     if (!device_ || channel < 0 || channel > 7) return;
     SDL_LockAudioDevice(device_);
     voices_[size_t(channel)] = {};

@@ -106,6 +106,15 @@ public:
     // The towns of the Flugzeug rows (texts 5602 + i, matched by name like seg3:32CE),
     // for the extension's computers; installation data, not game state.
     void setAirports(const std::array<int, 8>& towns) { airports_ = towns; }
+    // [Setup] TimeOut (DS:B5D6, from the settings): after an "n Felder" card
+    // seg2:3ABD gives (n + 2) * 5 seconds; seg2:3B0E then fines the driver every
+    // second (500 for 10 s, 750 for 10 s, then 1000) until the turn ends.
+    void setTimeLimit(bool on) { timeLimitOn_ = on; }
+    // One second of the timer (seg2:3B0E); the presentation calls it every 1000 ms
+    // while the game window is active (DS:94E6). Returns the sound for channel 6 to
+    // play at once (0x22 time up, 0x15 a fine), -1 none.
+    int timeLimitSecond();
+    bool timeLimitRunning() const { return timeLimitActive_; }
     bool computerExtraCards() const { return computerExtraCards_; }
     // europe.pit properties of a map cell (seg2:3260), 0 without map data.
     uint16_t cellProperties(int x, int y) const;
@@ -316,6 +325,10 @@ private:
     bool demoEnd_ = false;                  // DS:16
     bool computerExtraCards_ = false;       // recomb extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
+    bool timeLimitOn_ = false;    // DS:B5D6
+    bool timeLimitActive_ = false; // DS:12 (not saved: a turn-local timer)
+    int timeLimitLeft_ = 0;       // DS:9470: seconds
+    int timeLimitOver_ = 0;       // DS:8C02: seconds fined so far
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
