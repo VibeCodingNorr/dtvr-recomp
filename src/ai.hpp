@@ -98,6 +98,7 @@ struct AiState {
     std::vector<uint16_t> fieldDist; // DS:22: last field distances (from the destination)
     bool extraCards = false;              // recomb extension: also the never-winning cards
     std::array<bool, 4> nailsDirections{}; // the current player's (Game::nailsDirections)
+    std::array<int, 8> airports{-1, -1, -1, -1, -1, -1, -1, -1}; // Flugzeug rows 5602 + i as towns
     int cardCount(int player, int type) const;   // seg3:3FFC (type 0-based here)
     int cardSlot(int player, int type) const;    // seg3:0D26, -1 if none
     int handCount(int player) const;

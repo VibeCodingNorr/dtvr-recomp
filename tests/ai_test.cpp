@@ -154,6 +154,45 @@ int main() {
             players[3].field = keepField;
             players[3].status = uint8_t(keepStatus);
         }
+        // Recomb extension (round 99) on a 20-field row, destination 19, the computer at
+        // field 2 (17 away): Risiko (type 26) far from the goal, Flugzeug (27) to the
+        // airport two fields before the goal, Steuerlos (13) on a leader 7 away.
+        {
+            Board longRow = row(20);
+            longRow.fields[19].kind = 6;
+            std::vector<Town> airportTowns(1);
+            airportTowns[0].x = longRow.fields[17].x;
+            airportTowns[0].y = longRow.fields[17].y;
+            AiState xs = cs;
+            xs.board = &longRow;
+            xs.towns = &airportTowns;
+            xs.destination = 19;
+            xs.airports[0] = 0;
+            for (auto& h : xs.handTypes) h.fill(-1);
+            const auto ld = aiDistances(buildAiGraph(longRow, 0, none), 19);
+            xs.fieldDist.assign(ld.begin(), ld.end());
+            const int keepField = players[0].field, keep3 = players[3].field, keepStatus = players[3].status;
+            players[0].field = 2;
+            players[3].status = 0;
+            xs.handTypes[0][0] = 26;
+            CHECK(aiChooseCard(xs, 0, clear, cr).slot == -1); // original: never
+            xs.extraCards = true;
+            CHECK(aiChooseCard(xs, 0, clear, cr).slot == 0);
+            xs.handTypes[0][0] = 27;
+            c = aiChooseCard(xs, 0, clear, cr);
+            CHECK(c.slot == 0 && c.target == 0);
+            xs.airports[0] = -1;                          // no airport: no flight
+            CHECK(aiChooseCard(xs, 0, clear, cr).slot == -1);
+            xs.handTypes[0][0] = 13;
+            CHECK(aiChooseCard(xs, 0, clear, cr).slot == -1); // nobody ahead
+            players[3].status = 1;
+            players[3].field = 12;                        // 7 from the goal
+            c = aiChooseCard(xs, 0, clear, cr);
+            CHECK(c.slot == 0 && c.target == 3);
+            players[0].field = keepField;
+            players[3].field = keep3;
+            players[3].status = uint8_t(keepStatus);
+        }
         // Targets: Fiskus goes to the only other player; two candidates follow the odds.
         players[3].status = 1;
         CHECK(aiChooseTarget(cs, 0, 1, cr) == 3);

@@ -103,6 +103,9 @@ public:
     // computers also play the cards whose original score never wins. Part of the
     // game state (saved), off by default.
     void setComputerExtraCards(bool on) { computerExtraCards_ = on; }
+    // The towns of the Flugzeug rows (texts 5602 + i, matched by name like seg3:32CE),
+    // for the extension's computers; installation data, not game state.
+    void setAirports(const std::array<int, 8>& towns) { airports_ = towns; }
     bool computerExtraCards() const { return computerExtraCards_; }
     // europe.pit properties of a map cell (seg2:3260), 0 without map data.
     uint16_t cellProperties(int x, int y) const;
@@ -312,6 +315,7 @@ private:
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
     bool computerExtraCards_ = false;       // recomb extension: computers also play the cards rally.exe never picks
+    std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;

@@ -823,8 +823,16 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   fields (flag-1 distances to the destination), the nails go into the available
   direction (Game::nailsDirections) whose neighbour lies farthest from the
   destination; the score is W+0 + 1, so original cards with a higher score still
-  win; no extra random draws. Steuerlos, Risiko, Flugzeug and the property cards
-  follow.
+  win; no extra random draws. Round 99, same score: Steuerlos on the other active
+  player (not sitting out, not already steerless) nearest to the destination when
+  he is at most 10 fields away and nearer than the computer; Risiko when the
+  computer is at least 10 fields away (the Risiko phase then presses as in
+  seg7:6927); Flugzeug to the bookable airport (rows 5602 + i matched to towns by
+  name at start, `Game::setAirports`; Moskau only with the east open, Brüssel not
+  on the last stage) nearest to the destination when it saves more than six
+  fields. *Correction:* the property cards are category 1 and never enter this
+  loop; the town plan (seg5) already uses Kaufen, Gold, Platin, Mieten, Nimm and
+  Abkaufen, so only Verkaufen and Kredit stay unused by computers.
 - **Targets** seg5:9B0B(player, mode): other active players not sitting out
   (bits 1, 2); mode 0 value 100 − distance + W+0x84[slot] + random(W+0x94[slot]),
   mode 1 cash + property value. One candidate is taken; otherwise sorted

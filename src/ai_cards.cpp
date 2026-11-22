@@ -275,7 +275,47 @@ AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obs
             }
             break;
         }
-        default: break; // property cards, Steuerlos, Risiko, Flugzeug: the random value only
+        case 14: {                                       // Steuerlos: recomb extension only
+            if (!s.extraCards) break;
+            // The leader steers like a computer with random routes for one turn: the
+            // other player nearest to the destination, at most 10 fields away and
+            // nearer than this computer.
+            int leader = -1;
+            uint16_t near = d0;
+            for (int p = 0; p < int(s.players->size()); ++p) {
+                if (!activeOther(s, p, player) || ((*s.players)[size_t(p)].flags & (0x6 | kFlagSteerless))) continue;
+                const uint16_t dp = dist[size_t((*s.players)[size_t(p)].field)];
+                if (dp != kUnreached && dp <= 10 && dp < near) { near = dp; leader = p; }
+            }
+            if (leader >= 0) { score = uint16_t(w.at(0) + 1); target = leader; }
+            break;
+        }
+        case 27:                                         // Risiko: recomb extension only
+            // Far from the destination the gamble for up to four times the spin pays.
+            if (s.extraCards && d0 != kUnreached && d0 >= 10) score = uint16_t(w.at(0) + 1);
+            break;
+        case 28: {                                       // Flugzeug: recomb extension only
+            if (!s.extraCards) break;
+            // The bookable airport nearest to the destination when it saves more than
+            // six fields (rows: Moskau only with the east open, Brüssel not on the last
+            // stage, seg3:33F2 / 3633).
+            const int rows = s.routeMask == 0 ? 8 : 7;
+            uint16_t bestDist = d0;
+            for (int row = 0; row < rows; ++row) {
+                const int town = s.airports[size_t(row)];
+                if (town < 0 || (row == 1 && s.remainingStages == 0)) continue;
+                const auto& t = (*s.towns)[size_t(town)];
+                int field = -1;
+                for (size_t f = 0; f < s.board->fields.size(); ++f)
+                    if (s.board->fields[f].x == t.x && s.board->fields[f].y == t.y) { field = int(f); break; }
+                if (field < 0) continue;
+                const uint16_t df = dist[size_t(field)];
+                if (df != kUnreached && df + 6 < bestDist) { bestDist = df; target = town; }
+            }
+            if (target >= 0) score = uint16_t(w.at(0) + 1);
+            break;
+        }
+        default: break; // the property cards Verkaufen / Kredit: the random value only
         }
         if (score > best) {
             best = score;

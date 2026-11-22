@@ -66,6 +66,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
     }
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
+    // The Flugzeug rows 5602 + i as towns (seg3:32CE: _fstricmp on the names), for the
+    // extension's computers; the same mapping as the booking below.
+    {
+        std::array<int, 8> airports{-1, -1, -1, -1, -1, -1, -1, -1};
+        for (size_t row = 0; row < airports.size(); ++row) {
+            const auto it = screen.texts().find(5602 + int(row));
+            if (it == screen.texts().end()) continue;
+            for (size_t t = 0; t < towns.size() && airports[row] < 0; ++t)
+                if (sameName(oemToUtf8(towns[t].name), it->second)) airports[row] = int(t);
+        }
+        play.game().setAirports(airports);
+    }
     // The command-line game (not a loaded one) takes the extension from the settings.
     if (options.loadSlot < 0)
         play.game().setComputerExtraCards(screen.settings().computerExtraCards || options.computerExtraCards);
