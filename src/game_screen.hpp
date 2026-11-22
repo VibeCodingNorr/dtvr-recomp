@@ -97,7 +97,7 @@ public:
     // restore zoom and origin afterwards (seg8:1E17 ff.). `focus` < 0 ends it.
     void eventFocus(int cellX, int cellY);
     // Plays an event animation at a map cell (seg8:6E0F); the message waits for it.
-    void startEventScene(const EventScene& scene, int cellX, int cellY, Uint32 now);
+    void startEventScene(const EventScene& scene, int cellX, int cellY, int corner, Uint32 now);
     bool eventSceneActive(Uint32 now) const;
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
@@ -177,6 +177,7 @@ private:
     EventFocus focus_;
     const EventScene* scene_ = nullptr;
     std::vector<ScenePoint> scenePoints_;
+    std::vector<SceneStep> sceneSteps_;
     Uint32 sceneStart_ = 0;
     std::map<std::string, std::map<std::string, Texture>> sceneFrames_; // per SBS file
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick

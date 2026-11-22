@@ -1434,14 +1434,23 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   later random number differed after such an event. Storm, drought and flood
   leave at once without animation, text or draw when seg8:6C77 finds no town
   (seg8:1C60 / 2553 / 4B3C); rebuilt as well.
-- **Rain scene** seg8:42B0 (found, not drawn yet): the cloud R00 (1 frame, delay
-  6, repetitions 1000) moves from the start corner to the obstacle cell · 16 −
-  (0, 0x11) with seg8:5243 (eight directions, 2 pixels per pass, angle from
-  seg2:AE77 / AE18) until it arrives, then R01–R08 (delay 4, repetitions 0) and
-  R09–R20 (32 frames, delay 4, repetitions 1) play there with seg8:6E0F.
-- **Still open:** the multi-record scenes Regen (regen.sbs: R00, R01–R08,
-  R09–R20), Schnee (schnee.sbs SN01–SN46), Hochwasser (flood.sbs RG00–RG26),
-  Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
+- **Flights** (round 73): seg8:5243(&x, &y, tx, ty, step) returns 1 when both
+  axes are within `step` of the target; otherwise each axis further away moves
+  by `step` in the direction of seg2:AE18(seg2:AE77(x, y, tx, ty)) — the eight
+  directions from the signs of the differences, 1 = up, clockwise — and an axis
+  within `step` snaps to the target. The flight loop advances the record, draws
+  it at the current position, waits 20 ms and then moves (step 2 for rain, snow
+  and flood, start margin 0x28 = 40 for seg8:517B, after the zoom).
+- **Rain** seg8:42B0: regen.sbs (DS:6C36); R00 (delay 6, repetitions 1000) flies
+  to the obstacle · 16 − (0, 0x11), then R01–R08 (delay 4, repetitions 0) and
+  R09–R20 (32 frames, delay 4, repetitions 1) with seg8:6E0F; the text 0x1401 +
+  random(2) follows, then the obstacle is entered (seg8:67F8). **Snow** seg8:535E:
+  schnee.sbs (DS:7017); SN01 flies to the obstacle · 16 + (5, −0x19), then
+  SN01–SN30 (delay 4) and SN31–SN46 (delay 4, repetitions 2). **Flood** seg8:4964:
+  flood.sbs (DS:6E1D); RG00 flies to the town · 16 − (0, 0x11), then 46 frames
+  RG01–RG26 (delay 8). Rebuilt in `src/event_scenes.cpp` (phases and the flight
+  as a precomputed timeline, `Notice::variant` carries the random(3) corner).
+- **Still open:** Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
   four definitions, three WAVs E12 / E12a / E12b). Definitions extracted with the
   private helper `animdef.py`.
 - **Correction (round 69):** the edge scroll of round 67 also ran for a standing

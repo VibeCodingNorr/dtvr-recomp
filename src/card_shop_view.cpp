@@ -157,7 +157,7 @@ void CardShopView::draw(const Game& game) {
     const auto list = items(game);
     for (int i = 0; i < int(list.size()); ++i) { // seg3:4E71: 1card_<type + 1>
         const int x = b.x + kGridX + (i % kColumns) * kStepX, y = b.y + kGridY + (i / kColumns) * kStepY;
-        char name[16];
+        char name[24];
         std::snprintf(name, sizeof name, "1card_%02d", list[size_t(i)].type + 1);
         drawSceneFrame(renderer_, frames_, name, x, y);
         if (i == selected_ && mode_ != 0) { // red PS_INSIDEFRAME pen, width 2

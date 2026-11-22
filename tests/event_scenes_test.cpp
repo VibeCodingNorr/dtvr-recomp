@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Tests for the event animation table and the record step of seg2:6DCB.
+// Tests for the event animation table, the record step of seg2:6DCB and flights.
 #include "event_scenes.hpp"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 using namespace dtvr;
@@ -12,22 +13,20 @@ static int failures = 0;
 
 int main() {
     const EventScene* storm = eventSceneForNotice(5042);
-    CHECK(storm && std::strcmp(storm->file, "sturm.sbs") == 0 && storm->frames.size() == 6);
+    CHECK(storm && std::strcmp(storm->file, "sturm.sbs") == 0 && storm->phases.size() == 1);
     if (storm) {
-        // Countdown 0 at the start: the first pass already moves to frame 1, which
-        // then stays delay + 1 = 7 passes.
-        CHECK(std::strcmp(eventSceneFrame(*storm, 0), "ST2") == 0);
-        CHECK(std::strcmp(eventSceneFrame(*storm, 6), "ST2") == 0);
-        CHECK(std::strcmp(eventSceneFrame(*storm, 7), "ST3") == 0);
-        CHECK(std::strcmp(eventSceneFrame(*storm, 35), "ST1") == 0); // wrapped to frame 0
-        // Five frames in the first cycle, four more full cycles of six (repetitions 4).
-        CHECK(eventScenePasses(*storm) == 1 + 7 * 5 + 4 * 7 * 6 - 1);
-        CHECK(eventSceneFrame(*storm, eventScenePasses(*storm))[0] == '\0');
+        const auto t = eventSceneTimeline(*storm, 0, 208, 208);
+        // Countdown 0 at the start: the first pass already shows frame 1, each frame
+        // stays delay + 1 = 7 passes; five frames, then four more cycles of six.
+        CHECK(t.size() == size_t(7 * 5 + 4 * 7 * 6));
+        CHECK(!t.empty() && std::strcmp(t[0].frame, "ST2") == 0 && std::strcmp(t[6].frame, "ST2") == 0);
+        CHECK(t.size() > 35 && std::strcmp(t[7].frame, "ST3") == 0 && std::strcmp(t[35].frame, "ST1") == 0);
+        CHECK(eventScenePositions(*storm, 2, 3).size() == 1 && eventScenePositions(*storm, 2, 3)[0].x == 2 * 16 + 8);
     }
     const EventScene* rock = eventSceneForNotice(5082);
-    CHECK(rock && std::strcmp(rock->file, "stein.sbs") == 0 && rock->frames.size() == 33 && rock->delay == 3);
-    if (rock) CHECK(eventScenePasses(*rock) == 1 + 4 * 32 - 1); // one cycle, frames 1..32
-    CHECK(eventSceneForNotice(5021) && eventSceneForNotice(5301) && eventSceneForNotice(5283));
+    CHECK(rock && rock->phases.size() == 1 && rock->phases[0].frames.size() == 33);
+    if (rock) CHECK(eventSceneTimeline(*rock, 0, 208, 208).size() == size_t(4 * 32)); // frames 1..32 once
+
     const EventScene* quake = eventSceneForNotice(5202);
     CHECK(quake && quake->quakeCracks && quake->waitBefore == 2000 && quake->waitAfter == 500);
     if (quake) {
@@ -36,8 +35,23 @@ int main() {
         CHECK(two.size() == 2 && two[1].x == 0x9D * 16 && two[1].y == 0xCB * 16);
         CHECK(eventScenePositions(*quake, 1, 1).empty());
     }
-    CHECK(eventScenePositions(*storm, 2, 3).size() == 1 && eventScenePositions(*storm, 2, 3)[0].x == 2 * 16 + 8);
-    CHECK(eventSceneForNotice(600) == nullptr && eventSceneForNotice(5121) == nullptr);
+
+    // Rain: the cloud starts at (c, e) for corner 2 (c = e = 104 + 40) and moves 2
+    // pixels per pass and axis until both are within 2; then the two plays.
+    const EventScene* rain = eventSceneForNotice(5122);
+    CHECK(rain && rain->flight && rain->phases.size() == 3 && rain->dy == -0x11);
+    if (rain) {
+        const auto t = eventSceneTimeline(*rain, 2, 208, 208);
+        CHECK(!t.empty() && t[0].offset.x == 144 && t[0].offset.y == 144 && std::strcmp(t[0].frame, "R00") == 0);
+        CHECK(t.size() > 72 && t[1].offset.x == 142 && t[71].offset.x == 2 && t[72].offset.x == 0);
+        CHECK(t.size() > 73 && std::strcmp(t[72].frame, "R02") == 0); // phase 2 starts at frame 1
+        const auto left = eventSceneTimeline(*rain, 0, 208, 100);
+        CHECK(!left.empty() && left[0].offset.x == -144 && left[0].offset.y == -90);
+        // y reaches its axis first and snaps; x keeps moving.
+        CHECK(left.size() > 45 && left[45].offset.y == 0 && left[45].offset.x == -54);
+    }
+    CHECK(eventSceneForNotice(5481) && eventSceneForNotice(5243) && eventSceneForNotice(5021));
+    CHECK(eventSceneForNotice(600) == nullptr && eventSceneForNotice(5141) == nullptr);
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("event_scenes_test: OK");
     return failures != 0;

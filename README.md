@@ -141,7 +141,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 70. Exact animation record step (seg2:6DCB); robbers, volcano and rockfall animations.
 71. Earthquake animation: two cracks per place from the original tables, waits before and after.
 72. Rule correction: the random(3) scene start of rain, snow and flood (seg8:517B), no storm / drought / flood without a town.
-73. *Next:* the moving scenes: rain, snow and flood (cloud flight seg8:5243), then drought and Nessie.
+73. Rain, snow and flood animations: the cloud flies in from the drawn corner, then plays at the place.
+74. *Next:* the drought (sonne.sbs) and Nessie (nessie.sbs) scenes.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

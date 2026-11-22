@@ -41,6 +41,7 @@ struct Notice {
     // Event place (map cell) the view zooms in on and centres while the message is
     // open (seg6:2E54(2), seg6:3064); -1: none. Cosmetic only.
     int focusX = -1, focusY = -1;
+    int variant = 0; // the scene start corner random(3) of seg8:517B (rain, snow, flood)
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
@@ -233,10 +234,11 @@ private:
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
     // A notice whose message centres the zoomed view on a map cell (event places).
-    void eventNotice(int text, std::vector<NoticeArg> args, int cellX, int cellY) {
+    void eventNotice(int text, std::vector<NoticeArg> args, int cellX, int cellY, int variant = 0) {
         Notice n{text, std::move(args)};
         n.focusX = cellX;
         n.focusY = cellY;
+        n.variant = variant;
         notices_.push_back(std::move(n));
     }
     double propertyPrice(const Economy::PropertyRef& p) const;

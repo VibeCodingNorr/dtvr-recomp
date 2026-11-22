@@ -265,7 +265,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (screen.messages().frontSerial() != sceneSerial) {
                     sceneSerial = screen.messages().frontSerial();
                     if (const EventScene* scene = eventSceneForNotice(front->text))
-                        screen.startEventScene(*scene, front->focusX, front->focusY, SDL_GetTicks());
+                        screen.startEventScene(*scene, front->focusX, front->focusY, front->variant, SDL_GetTicks());
                 }
             } else {
                 screen.eventFocus(-1, -1);

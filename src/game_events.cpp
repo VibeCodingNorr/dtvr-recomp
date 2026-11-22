@@ -92,11 +92,11 @@ void Game::applyEvent(EventKind kind) {
         const int category = kind == EventKind::Storm ? 4 : kind == EventKind::Drought ? 3 : 1;
         const int town = pickDamageTown(towns_, owned, category, rng_);  // seg8:6C77
         if (town < 0) return; // seg8:1C60 / 2553 / 4B3C: no town, no animation, no text
-        if (kind == EventKind::Flood) rng_.random(3); // seg8:4BF5 -> seg8:517B: start of the scene
+        const int corner = kind == EventKind::Flood ? rng_.random(3) : 0; // seg8:4BF5 -> seg8:517B: scene start
         // seg8:1CED / 25A4 / 4BC3: the town's cell.
         const int tx = town >= 0 ? towns_[size_t(town)].x : -1, ty = town >= 0 ? towns_[size_t(town)].y : -1;
         eventNotice((kind == EventKind::Storm ? 5041 : kind == EventKind::Drought ? 5141 : 5241) + rng_.random(2),
-                    {townArg(town)}, tx, ty);
+                    {townArg(town)}, tx, ty, corner);
         if (town >= 0) damageTown(town, 37); // Versicherung
         return;
     }
@@ -133,8 +133,8 @@ void Game::placeObstacle(uint16_t type, int durationFactor) {
         const ObstacleSpot spot = pickObstacleSpot(board_, players_, eventPlayer_, destination_, routeMask(), rng_,
                                                    map_, props_);
         if (spot.field < 0) continue;
-        rng_.random(3); // seg8:451B / 562C -> seg8:517B: corner the cloud starts from
-        eventNotice((type == kRain ? 5121 : 5481) + rng_.random(2), {}, spot.x, spot.y); // seg8:44E9 / 55FA
+        const int corner = rng_.random(3); // seg8:451B / 562C -> seg8:517B: corner the cloud starts from
+        eventNotice((type == kRain ? 5121 : 5481) + rng_.random(2), {}, spot.x, spot.y, corner); // seg8:44E9 / 55FA
         obstacles_.add({type, durationFactor * activePlayerCount(players_), spot.x, spot.y, spot.field, spot.dir});
         messages_.push_back("Ereignis " + std::string(type == kRain ? "Regen" : "Schnee") + ": Strasse bei ("
                             + std::to_string(spot.x) + "," + std::to_string(spot.y) + ") gesperrt");
