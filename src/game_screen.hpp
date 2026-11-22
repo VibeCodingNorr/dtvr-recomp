@@ -27,7 +27,8 @@ public:
 
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
-    SDL_Texture* sprite(const std::string& name);            // SBS frame of sbs/<n>_assort.sbs
+    SDL_Texture* sprite(const std::string& name);            // SBS frame by name (any loaded file)
+    void loadSprites(const std::filesystem::path& relative);
     void drawMap();
     void drawPortrait();
     void drawPlayerInfo();

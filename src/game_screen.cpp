@@ -35,10 +35,18 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       texts_(std::move(texts)), slot_(renderer, root) {
     seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
-    // SBS frames of the panel (seg6:406D looks them up by name in the loaded files).
-    const fs::path file = findCaseInsensitive(root_, fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
+    // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
+    // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
+    loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
+    for (int p = 0; p < kPlayerSlots; ++p)
+        if (game_.players()[size_t(p)].status)
+            loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
+}
+
+void GameScreen::loadSprites(const fs::path& relative) {
+    const fs::path file = findCaseInsensitive(root_, relative);
     const fs::path paletteFile = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / "info.bmp");
-    if (file.empty() || paletteFile.empty()) return;
+    if (file.empty() || paletteFile.empty()) { std::cerr << "SBS fehlt: " << relative.string() << "\n"; return; }
     const auto palette = loadBmp(paletteFile); // the game palette (identical in all bitmaps checked)
     for (const SbsFrame& frame : parseSbs(readFile(file)).frames) {
         Surface surface(SDL_CreateRGBSurfaceWithFormat(0, frame.width, frame.height, 8, SDL_PIXELFORMAT_INDEX8),
@@ -103,17 +111,29 @@ void GameScreen::drawMap() {
     const SDL_Rect source{origin.x, origin.y, layout_.viewport.w, layout_.viewport.h};
     const SDL_Rect target{map.x + layout_.viewport.x, map.y + layout_.viewport.y, source.w, source.h};
     SDL_RenderCopy(renderer_, world_.get(), &source, &target);
-    // Provisional markers until the vehicle sprites (SBS) are placed as in the original.
-    static const SDL_Color colours[8] = {{255, 60, 60, 255}, {60, 160, 255, 255}, {60, 220, 60, 255},
-        {255, 160, 0, 255}, {200, 60, 255, 255}, {0, 230, 230, 255}, {255, 255, 255, 255}, {120, 120, 120, 255}};
+    // Vehicles (seg2:1846): frame of the facing's animation (table DS:1994, mode 1:
+    // <letter>UP / R / DOWN / L 1-4, delay 4 ticks). The code read so far puts the
+    // frame's top-left corner at (field * 16, field * 16 + 2 - height) minus the map
+    // origin (seg2:1A91), which leaves the car one cell right of and half a cell
+    // below the road; the frames are therefore centred on the field cell here
+    // (-16, -8) until the missing offset is traced (docs/formats.md, round 24).
+    static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
+    const Uint32 tick = SDL_GetTicks() / SlotView::kTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
         const Field& f = board_.fields[size_t(game_.playerField(p))];
-        const SDL_Rect box{target.x + f.x * WorldMap::kTile - origin.x + 3 + p % 3,
-                           target.y + f.y * WorldMap::kTile - origin.y + 3 + p / 3, 10, 10};
-        SDL_SetRenderDrawColor(renderer_, colours[p].r, colours[p].g, colours[p].b, 255);
-        SDL_RenderFillRect(renderer_, &box);
+        const bool driving = p == game_.currentPlayer() && game_.phase() == Game::Phase::Move;
+        const int frameNo = driving ? int(tick / 4 % 4) + 1 : 1;
+        const std::string name = std::string(1, kPortraitLetters[p]) + kFacing[std::clamp(game_.facing(p), 1, 4)]
+                                 + std::to_string(frameNo);
+        SDL_Texture* vehicle = sprite(name);
+        if (!vehicle) continue;
+        int w = 0, h = 0;
+        SDL_QueryTexture(vehicle, nullptr, nullptr, &w, &h);
+        const SDL_Rect box{target.x + f.x * WorldMap::kTile - origin.x - 16,
+                           target.y + f.y * WorldMap::kTile - origin.y - 8, w, h};
+        SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     SDL_RenderSetClipRect(renderer_, nullptr);
 }

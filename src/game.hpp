@@ -63,6 +63,8 @@ public:
     // changes with every spin (not part of the saved state).
     const std::vector<int>& lastReels() const { return lastReels_; }
     int spinSerial() const { return spinSerial_; }
+    // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
+    int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
     // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
     // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),

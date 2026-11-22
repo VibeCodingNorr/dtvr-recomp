@@ -997,6 +997,31 @@ one animation tick is the 50 ms game timer; the window stays one second after th
 last reel. Not yet: the lever animation (`SLTHAD*`), the gear animations of 3–5
 reels and pulling the lever with the mouse.
 
+### Vehicles on the map (round 24)
+
+- **Animations by facing** table DS:1994 [facing · 4 + mode] (seg2:2AF6): far
+  pointers to definitions whose second byte is the facing (1 up, 2 right, 3 down,
+  4 left) with four frames at a delay of 4 ticks. `?` in the names is replaced by
+  the driver letter of seg2:2D43: mode 1 and 2 use `?up1–4`, `?r1–4`, `?down1–4`,
+  `?l1–4`, mode 0 `?fup…`, `?fr…`, `?fdown…`, `?fl…` (its trigger is not traced).
+  Frames are 48 × 32 in `sbs/<letter>.sbs`.
+- **Position** seg2:04AD(player, field): +0x16 = field x · 16, +0x18 = field
+  y · 16, +0x3C / +0x3E = field; all other writers keep multiples of 16 at rest and
+  drive decisions happen when (x & 15) = 0. seg2:1846 enters the vehicle into the
+  sprite list (45 entries of 0x1A bytes, seg2:3D9C: +4 x, +6 y) at x = +0x16,
+  y = +0x18 − height (+0x2E) + 2; seg2:1A91 draws a frame with its top-left corner
+  at that point minus the map origin (DS:956A / 9568 · 16), and the map tiles use
+  the same mapping (seg6:2857, seg6:2C0A). **Open:** taken literally, a car stands
+  one cell right of and half a cell below its field (vertical frames are opaque in
+  columns 16–31, horizontal ones in rows 7–25), although europe.pit marks the road
+  and the field (bit 0x01) on the field's own cell (e.g. London (86, 96)). A
+  further offset in the path from the sprite list to the window has not been found.
+
+Rebuilt in `src/game_screen.cpp`: the vehicles of all drivers in play with the
+facing of their last step; the current driver's car animates while driving.
+Assumption until the offset is traced: frames are centred on the field cell
+(−16, −8), which puts the cars on the road in all four facings.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

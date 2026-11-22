@@ -182,7 +182,7 @@ cosmetic effects local and optional; preserve the alignment of roads and fields.
 
 Next: continue the game window as in the original (agreed with the user: it must
 look like rally.exe; `--game`, src/game_screen.cpp): messages, menu, dialogs and
-vehicles, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
+smooth vehicle movement, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
 state changes. The viewer is a debugging aid only; put effort into the simulation.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.
