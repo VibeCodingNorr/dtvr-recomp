@@ -60,8 +60,15 @@ contains CD-DA. Supporting another disc needs its own validated layout.
 
 ## Native playback integration: next work
 
-1. Locate original CD playback calls and track IDs, including whether a cue uses
-   CD audio, MIDI or sampled effects. Track uses and music titles are unverified.
+See [music control research and Ogg mapping](music-research.md) for the traced
+sequencer routines, provisional recording matches and the plan for install-time
+sound-set rendering without runtime MIDI. Native start/Escape menu ideas are in
+[pause-menu.md](pause-menu.md).
+
+1. Extend the first-pass music analysis: normal background/cue playback uses the
+   sequencer; the separate CD helper has no found caller. Five background recordings
+   and an intro excerpt have candidate matches. Exact disc track IDs, full cue
+   meanings and music titles remain unverified; see the linked research.
 2. Verify audio identity, boundary timing, PCM byte order and original track IDs
    against original playback or reliable disc metadata. Keep the extraction
    profile versioned so corrected boundaries can regenerate the outputs.

@@ -1,0 +1,74 @@
+# Native start and Escape menus
+
+Status: proposed interface scope, not implemented. The current viewer's Escape
+key exits the program. Introduce these menus when a native game interface exists;
+do not change the shared input/renderer files as part of audio research.
+
+## Before a game
+
+The start screen uses our own project logo and offers New game, Continue/Load,
+Multiplayer, Settings, Help and Quit. Show New game, save or multiplayer entries
+as unavailable with a short explanation until those systems are implemented.
+Explain missing imported data and provide a path to installer guidance; do not
+execute the original Windows installer or download game assets.
+
+Settings share the same layout before and during a game. Show imported content
+and installed sound sets through a readable status page, not private filesystem
+details in the main player flow. A diagnostic view may offer technical details.
+
+## During a game
+
+Escape first dismisses the current modal dialog or cancels a pending UI selection
+where that is allowed. Otherwise it opens the pause overlay; pressing Escape
+again returns to the game. Do not let the held key immediately close and reopen it.
+Controller Back/Menu should reach the same interface once supported.
+
+| Entry | Purpose / behavior |
+| --- | --- |
+| Resume | Close the overlay and restore the previous UI focus. |
+| Audio | Music, speech and effects volume, mute and installed Ogg sound-set selection. |
+| Graphics | Window/fullscreen, scaling, interface scale and optional installed effects. |
+| Controls | Keyboard/controller bindings, reset defaults and visible focus navigation. |
+| Accessibility | Reduced motion, color-independent field markers and readable text options. |
+| Help | Controls, contextual rules explanations and the financial/event history. |
+| Save / Load | Only when supported and allowed by the current simulation phase; loading replaces a session and needs explicit intent. |
+| Multiplayer | Connection state and a pause request/resume action when networking exists. |
+| Return to menu/lobby | Show the impact on the current session and protect unsaved progress. |
+| Quit | Clear exit action; warn about unsaved progress when there is any. |
+
+Keep renderer APIs, source addresses, decoder settings and developer tools out of
+the normal menu. Put a developer overlay behind a separate explicit switch.
+
+## Pause and network behavior
+
+In single-player, an agreed simulation pause stops rule deadlines and AI progress.
+The player can navigate settings and choose a separate audio pause policy without
+the music clock driving game rules. Reproduce original activation behavior where
+appropriate, while allowing an explicit local "music while paused" preference.
+
+In multiplayer, opening a client's settings must not pause every player or
+silently suspend the authoritative turn deadline. Offer a separate pause request
+whose approval and state are handled by the host according to the agreed session
+policy. Show clearly whether only the local menu is open or the session is paused.
+Changing local volume, sound set, scaling or effects is not a shared rule change.
+Rule settings and loading a saved game belong to an authoritative session flow.
+
+## Music-pack choice
+
+Offer an "Audio / Soundtrack" choice for installed complete packs: CD recordings
+with documented rendered gaps, a GM rendering, or another compatible supplied
+sound set. See [music research](music-research.md). A menu label must describe the
+actual rendering; do not label a generic bank as authentic Roland hardware.
+
+The game consumes local Ogg files for all packs. Missing cues, a partial extracted
+intro or an absent render bank must be visible as incomplete; do not silently
+enable a pack that leaves original music events without assets. Changing packs
+should happen at a cue boundary until timeline mappings have been verified.
+
+## Verification targets when implemented
+
+- Open/close with keyboard and controller; preserve focus and pending selections.
+- Verify single-player pause and multiplayer local-menu behavior separately.
+- Distinguish successful cue completion from stop, pause and pack changes.
+- Persist local preferences without changing rule state or network ownership.
+- Keep unavailable entries understandable and confirm actions that discard progress.
