@@ -19,6 +19,7 @@ struct TextStyle {
     bool bold = true;       // weight 600 (seg6:04F9 callers)
     bool italic = false;
     bool center = false;    // DT_CENTER
+    bool right = false;     // DT_RIGHT (format 0x102)
     int shadow = 0;         // seg2:314A: first in palette colour 0, moved up-left by this
     SDL_Color color{255, 255, 255, 255};
 };

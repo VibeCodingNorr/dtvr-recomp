@@ -86,7 +86,7 @@ void MenuView::draw() {
         if (item.flags & (kGrayed | kDisabled)) color = {123, 95, 27, 255}; // 0x43
         else if (focused) color = {255, 239, 239, 255};                  // 0xA4
         const int shift = focused ? 2 : 0;
-        const TextStyle style{16, true, false, false, 0, color};
+        const TextStyle style{16, true, false, false, false, 0, color};
         text_.draw(renderer_, ansiToUtf8(item.text), ScreenRect{b.x + 18 + shift, y + 7 + shift, b.w, h}, style);
         y += h;
     }

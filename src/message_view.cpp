@@ -56,7 +56,7 @@ void MessageView::draw(const Game& game) {
     const std::string message = it == texts_.end() ? "Text " + std::to_string(n.text) : formatNotice(it->second, n, game);
     const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
     static constexpr int kSize[3] = {18, 16, 14};
-    TextStyle style{kSize[res], true, false, false, 0, SDL_Color{67, 27, 0, 255}};
+    TextStyle style{kSize[res], true, false, false, false, 0, SDL_Color{67, 27, 0, 255}};
     const ScreenRect textRect{box.x + 10 + sw, box.y + 10, w - 20 - sw, h - 20};
     text_.drawWrapped(renderer_, message, textRect, style);
 }

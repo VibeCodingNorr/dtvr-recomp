@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Game-level tests for the cards added in round 13 and the investment offer.
+#include "estates.hpp"
 #include "game.hpp"
 
 #include <cstdio>
@@ -212,6 +213,25 @@ int main() {
         const int serial = g.spinSerial();
         CHECK(g.roll() && g.spinSerial() == serial + 1 && g.lastReels().size() == 1);
         CHECK(g.lastReels()[0] == g.allowance() && g.allowance() >= 1 && g.allowance() <= 6);
+    }
+
+    // Town dialog rows (round 30): price, income = value * 0.001 * rate, yield = rate * 1.2;
+    // in the Kaufen tab only affordable free entries are enabled.
+    {
+        std::vector<Town> t2 = towns;
+        t2[2].entries[0].words[0] = 4;
+        t2[2].entries[1].name = "Schloss";
+        t2[2].entries[1].value = 900000; // more than the starting cash
+        Game g(board, t2, 1, 0, 1, 1, nullptr, nullptr, false);
+        auto rows = estateRows(g, 2, EstatesTab::None);
+        CHECK(rows.size() == 2 && rows[0].name == "Haus" && rows[0].price == 10000 && rows[0].owner == -1);
+        CHECK(rows[0].income == 10000 * 0.001 * 4 && rows[0].yieldPercent > 4.79 && rows[0].yieldPercent < 4.81);
+        CHECK(!rows[0].disabled && !rows[1].disabled);
+        rows = estateRows(g, 2, EstatesTab::Buy);
+        CHECK(!rows[0].disabled && rows[1].disabled);
+        rows = estateRows(g, 2, EstatesTab::Sell); // nothing owned
+        CHECK(rows[0].disabled && rows[1].disabled);
+        CHECK(estateRows(g, 99, EstatesTab::None).empty());
     }
 
     // Investments need an offer.

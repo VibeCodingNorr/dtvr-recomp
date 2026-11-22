@@ -8,6 +8,7 @@
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
+#include "estates_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
@@ -28,6 +29,8 @@ public:
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
     CardView& cards() { return cards_; }
+    EstatesView& estates() { return estates_; }
+    std::vector<EstateRow> estateRows() const;
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
 
@@ -55,6 +58,7 @@ private:
     MessageView messages_;
     MenuView menu_;
     CardView cards_;
+    EstatesView estates_;
     int seenSpin_ = 0;
 };
 
@@ -65,6 +69,7 @@ struct GameWindowOptions {
     bool rollAtStart = false;     // spin at once (tests of the slot machine)
     std::string openMenu;         // tests: open this menu resource at the start (e.g. RIGHTBTN)
     bool openCards = false;       // tests: open the card window at the start
+    int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame
 };
 

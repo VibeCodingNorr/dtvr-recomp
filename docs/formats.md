@@ -1151,6 +1151,44 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   the digit keys (target `T`, nail direction by arrow key); Escape or the right
   button close the window (assumption); a played card closes it.
 
+### Town dialog ESTATES (round 30)
+
+- The menu ONTOWN (1050–1053) exists in the language file, but rally.exe never
+  loads it; its commands are empty jumps (seg4:0A0F–0A15). The town dialog is
+  the window class `ESTATES`.
+- **Window** seg1:4BDD (town stop) and seg1:4E39: WinG bitmap 0x230 × 0x1CE,
+  sprites `<dir>\buy.sbs` (DS:3FCC), CreateWindow child of the canvas, 0x22E ×
+  0x1A4 (558 × 420); the x/y arguments are uninitialised locals ([bp-0x90],
+  [bp-0x92]); the window is assumed to be placed centred on the canvas.
+  Start state seg1:4CF1: scroll DS:8C4C = 0, active tab DS:3FBC = 0xFF, pressed
+  tab DS:3FB8 = 0xFF, selected row DS:3FBE = 0xFF, card mode DS:3FC6 = 0xFF,
+  tab mode DS:3FC2 = 0 (bit 0x10: the statistics variant with ZW_Z rows).
+  DS:948C = seg1:7CDE(town): one player owns every entry.
+- **Header** seg1:7275: frame KO_Z (558 × 42) at (0, 0); texts 321 Kaufen, 322
+  Verkaufen, 323 Karte (LoadString) in Arial 20 weight 400 at x = 18, 160, 336,
+  y = 10; colour 0x2C (255, 247, 0) for the active tab, 0x45 otherwise (pressed:
+  0xFF / 0x43).
+- **Rows** seg1:65A7: row i at y = (i − scroll + 1) · 42, frame GR_Z or GR_ZI for
+  the selected row; owner icon (seg1:6163) at x = 0: `0n` free, otherwise
+  `%c_n` with the owner's portrait letter (seg2:2D43), `%c_m` when DS:948C is
+  set. Texts in Arial 18 weight 400 at y + 10: name (entry +0x00, OemToAnsi) from
+  x = 0x54 + 10 = 94; price (seg6:137F) right-aligned in [294, 378]; income
+  value · 0.001 (DS:86BE) · rate (entry +0x1C) · 2 if DS:948C (DS:86C6) in [374,
+  468]; yield rate · 1.2 (DS:86CE) as `%.1f%%` (DS:4027) in [464, 548].
+  Price column: × 1.5 (DS:869E) in the Verkaufen tab with the Verkaufen card,
+  × 0.75 / 0.5 / 0.1 (DS:86A6 / AE / B6) in the Kaufen tab with Kaufen / Gold /
+  Platin. Colour 0x43 for rows the tab's action does not apply to (seg1:6854:
+  Kaufen without a card: free and cash ≥ price; Verkaufen: own entry, not
+  rented; Mieten / Nimm: another player's entry), 0xFF selected, 0x45 otherwise.
+- Rebuilt (`src/estates.cpp` contents, `src/estates_view.cpp` drawing; flow in
+  `src/game_screen.cpp`): the dialog opens when a human player stops in a town.
+  A click on a tab selects Kaufen / Verkaufen, Karte opens the card window, a
+  click (or Enter) on an enabled row buys / sells it. **Assumptions:** Escape or
+  the right button close the dialog and end the turn; the arrow keys and the
+  mouse wheel move the selection / scroll (the PFEIL1 / PFEIL2 arrows, the
+  pressed-tab colours, the category icons and the statistics variant are not
+  drawn yet); the card modes Abkaufen / Kredit use the checks of the economy.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

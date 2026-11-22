@@ -132,6 +132,7 @@ public:
     bool buyProperty(int entry);
     int townAt(int field) const;                 // index into the town list, -1 if none
     const Economy& economy() const { return economy_; }
+    const std::vector<Town>& towns() const { return towns_; }
     const DragoState& drago() const { return drago_; }
     bool eastOpen() const { return eastOpen_; }
     // A link exists and is not closed by a border barrier (for planners and the UI).

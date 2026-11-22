@@ -35,13 +35,15 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      cards_(renderer, root, layout) {
+      cards_(renderer, root, layout),
+      estates_(renderer, layout, texts_, text_, [this](const std::string& name) { return sprite(name); }) {
     seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
     // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
     loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
     loadSprites(fs::path("sbs") / "assorted.sbs"); // MENUN / MENUG of the menu window
+    loadSprites(fs::path("sbs") / "buy.sbs");      // town dialog (DS:3FCC, seg1:4C45)
     for (int p = 0; p < kPlayerSlots; ++p)
         if (game_.players()[size_t(p)].status)
             loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
@@ -176,8 +178,8 @@ void GameScreen::drawPlayerInfo() {
         return r;
     };
     const SDL_Color white{255, 255, 255, 255}, brown{67, 27, 0, 255}; // palette 0xFF and 0x45
-    TextStyle headline{kItalic[res], true, true, true, 2, white};      // slots 0, 1 (0x121, shadow 2)
-    TextStyle line{kRegular[res], true, false, false, 0, brown};       // slots 2, 4, 6
+    TextStyle headline{kItalic[res], true, true, true, false, 2, white};      // slots 0, 1 (0x121, shadow 2)
+    TextStyle line{kRegular[res], true, false, false, false, 0, brown};       // slots 2, 4, 6
     text_.draw(renderer_, pi.monthLine, slot(0), headline);
     text_.draw(renderer_, pi.money, slot(1), headline);
     text_.draw(renderer_, pi.destination, slot(2), line);
@@ -214,9 +216,18 @@ void GameScreen::draw() {
         slot_.start(game_.lastReels(), now);
     }
     slot_.draw(layout_.map, now);
+    if (estates_.isOpen()) {
+        std::array<char, 8> letters{};
+        for (size_t i = 0; i < 8; ++i) letters[i] = kPortraitLetters[i]; // seg2:2D43
+        estates_.draw(estateRows(), letters);
+    }
     cards_.draw();
     menu_.draw();
     messages_.draw(game_);
+}
+
+std::vector<EstateRow> GameScreen::estateRows() const {
+    return estates_.isOpen() ? dtvr::estateRows(game_, estates_.town(), estates_.tab()) : std::vector<EstateRow>{};
 }
 
 int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
@@ -289,6 +300,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
+        // The town dialog belongs to a human player's stop in a town (seg2:141A -> seg1:4BDD).
+        EstatesView& estates = screen.estates();
+        {
+            const Game& g = play.game();
+            const int p = g.currentPlayer();
+            const int town = p >= 0 && g.phase() == Game::Phase::Arrived && !g.isComputer(p)
+                ? g.townAt(g.playerField(p)) : -1;
+            if (options.openEstates >= 0) {
+                if (!estates.isOpen()) estates.open(options.openEstates);
+            } else if (town < 0) estates.close();
+            else if (!estates.isOpen() || estates.town() != town) estates.open(town);
+        }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen();
         if (!modal && play.update(SDL_GetTicks())) report();
         if (!modal && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
@@ -312,6 +335,25 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 if (click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
                 if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
+            }
+            if (estates.isOpen() && !cards.isOpen()) {
+                const auto action = estates.handle(event, screen.estateRows());
+                using Kind = EstatesView::Action::Kind;
+                Game& g = play.game();
+                if (action.kind == Kind::Row) {
+                    const bool done = estates.tab() == EstatesTab::Sell ? g.sellProperty(action.entry)
+                                                                        : g.buyProperty(action.entry);
+                    if (done) report();
+                } else if (action.kind == Kind::Cards) { // the card window for property cards
+                    if (g.openCardWindow() && cards.open(g)) cardWindowState = turnState();
+                } else if (action.kind == Kind::Close) { // leaving the town ends the turn
+                    estates.close();
+                    g.endTurn();
+                    report();
+                }
+                if (event.type != SDL_KEYDOWN || action.kind != Kind::None) continue;
+                const SDL_Keycode k = event.key.keysym.sym;
+                if (k == SDLK_UP || k == SDLK_DOWN || k == SDLK_RETURN || k == SDLK_KP_ENTER) continue;
             }
             if (event.type != SDL_KEYDOWN) continue;
             const SDL_Keycode key = event.key.keysym.sym;

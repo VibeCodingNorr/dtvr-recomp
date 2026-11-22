@@ -94,7 +94,8 @@ void TextRenderer::draw(SDL_Renderer* renderer, const std::string& text, const S
         SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text.c_str(), colour);
         if (!surface) return;
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-        const int x = style.center ? rect.x + (rect.w - surface->w) / 2 : rect.x;
+        const int x = style.center ? rect.x + (rect.w - surface->w) / 2
+                      : style.right ? rect.x + rect.w - surface->w : rect.x;
         const SDL_Rect target{x + dx, rect.y + dy, surface->w, surface->h};
         SDL_RenderCopy(renderer, texture, nullptr, &target);
         SDL_DestroyTexture(texture);
