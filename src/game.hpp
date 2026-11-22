@@ -35,6 +35,9 @@ struct Notice {
     int text = 0;
     std::vector<NoticeArg> args;
 };
+// A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
+// snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
+struct SoundCue { int channel = 0; int sound = 0; int loops = 0; };
 
 class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
@@ -85,6 +88,7 @@ public:
     void adoptNotices(Game& other) {
         for (Notice& n : other.takeNotices()) notices_.push_back(std::move(n));
     }
+    std::vector<SoundCue> takeSounds() { std::vector<SoundCue> s; s.swap(sounds_); return s; }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
@@ -185,6 +189,7 @@ private:
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
     int spin(int reels, int maximum);       // seg2:6426 / 776A: sum of the reels
     void notice(int text, std::vector<NoticeArg> args = {}) { notices_.push_back({text, std::move(args)}); }
+    void sound(int channel, int index, int loops = 0) { sounds_.push_back({channel, index, loops}); }
     static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
@@ -230,6 +235,7 @@ private:
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
+    std::vector<SoundCue> sounds_;
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0

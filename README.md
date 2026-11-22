@@ -98,7 +98,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 38. Zoom (Zoom entries, Insert / Delete): half the world area at twice the size.
 39. Options window with the original switches; settings stored in the user's
     configuration (Views applied to the map).
-40. *Next:* sounds and music, Demo and Credits.
+40. Sound effects from snd/fx through SDL audio (menus, slot machine, money fields,
+    sit-outs, blocked cards).
+41. *Next:* the remaining sound call sites, music, Demo and Credits.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

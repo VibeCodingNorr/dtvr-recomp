@@ -1221,6 +1221,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   twice as large (world and vehicles); Umfeld uses the halved viewport. The zoom
   flag is not part of the save file yet.
 
+### Sounds (round 40)
+
+- **Table** seg1:2E90 ff. (locals [bp−0x12E] − 4 · n): sound n opens
+  `%s\fx\%s` (DS:3917) with WaveMixOpenWave into DS:9D3C[n]: 0 Plopp01,
+  1 Fate03, 2 Plopp02, 3 Lachen01, 4 Hebel01, 5 Walze10, 6 Zaehler1, 7 Zaehler2,
+  8 Taster01, 9 Carb01, 10–13 Hupe01/02/03/05, 14 moneywin, 15 Sfx08, 16 Elefant,
+  17 Fate01, 18 Platsch, 19 Hebel05, 20 Schlaf01, 21–24 Gamble01–04, 25 Woelfe1,
+  26 NHorn1, 27 Huhn1, 28 Kuehe1a, 29 Lachen02, 30 Schweine, 31 Baer1, 32 pf1,
+  33 pf2, 34 w, 35–38 MEMO01–04 (the files are 8-bit mono 11,025 Hz PCM).
+- **Play** seg1:2C9B(channel, sound, loops): only with a WaveMix session
+  (DS:A0F4), Wave on (DS:B5D0) and DS:954E; sound < 0x27, channel ≤ 7;
+  WaveMixPlay with flags 5 (channel 7: 0) and the loop count (0xFFFF endless).
+  seg1:317D flushes a channel (WaveMixFlushChannel).
+- **Call sites** (about 100): menus (seg5:5486 / 5534 Plopp02 on a choice,
+  5523 Zaehler2 on a grayed item, 5561 / 55D3 Taster01 on moving), dialogs in
+  seg1 / seg3 / seg8 (Plopp02, Zaehler2, Taster01), the slot machine (seg2:78B1
+  Walze10 endless on channel 3; seg2:7C83 Zaehler1 on channel 4 when the count
+  starts; seg2:7E74 flushes channel 3), money fields (seg2:0EF1 moneywin /
+  seg2:1081 Fate03, channel 3), Zucker / Schlafen sit-outs (seg2:095B Sfx08,
+  09F9 Schlaf01, channel 5), blocked cards (seg2:0B8D Sfx08), keys 1–4
+  (seg6:0DA0: MEMO sounds), driving (seg2:1F75 Plopp01, 2082 / 21EB Carb01),
+  Dr. Drago (seg2:BB73 / BB84 Lachen01 / 02), Risiko (seg7 Gamble01–04),
+  animals in seg8:848C.
+- **Rebuilt** (`src/sound.cpp`, cues in the simulation as `Game::takeSounds`):
+  eight channels mixed with SDL audio (a new sound replaces the channel's),
+  played only with Wave on; wired so far: menu sounds, the slot machine, money
+  fields, the two sit-outs and blocked cards. Music (snd/midi) is not played.
+
 ### Options (round 39)
 
 - **Settings** seg5:1FA0 reads the profile section `Setup` (GetPrivateProfileInt
@@ -1240,7 +1268,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/settings.cpp`, `src/options_view.cpp`): the window, the
   switches (joy with three states) and the settings in
   `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (`[Setup]`, the original keys).
-  Applied so far: Views (tile 0x33 on the map). **Assumptions:** a click toggles a
+  Applied so far: Views (tile 0x33 on the map) and Wave (round 40). **Assumptions:** a click toggles a
   switch, star / Enter keep, stop / Escape discard. Not applied yet: the sound
   settings, TimeOut, Animations, Colorcycle (waves and seasons) and Joystick.
 

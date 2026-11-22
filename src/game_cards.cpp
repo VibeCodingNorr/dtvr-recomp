@@ -18,6 +18,7 @@ std::string amountText(double v) {
 bool Game::openCardWindow() {
     if (current_ < 0 || !(players_[size_t(current_)].flags & kFlagCardsBlocked)) return true;
     notice(1020 + rng_.random(2), {playerArg(current_)});
+    sound(5, 15); // Sfx08 (seg2:0B8D)
     messages_.push_back(playerName(current_) + ": Karten blockiert (Text 1020)");
     return false;
 }

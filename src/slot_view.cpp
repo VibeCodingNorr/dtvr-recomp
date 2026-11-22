@@ -79,6 +79,11 @@ void SlotView::start(const std::vector<int>& reels, Uint32 now) {
     started_ = now;
 }
 
+bool SlotView::stopped(Uint32 now) const {
+    if (reels_.empty()) return true;
+    return now >= started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs;
+}
+
 bool SlotView::active(Uint32 now) const {
     if (reels_.empty()) return false;
     const int last = stopTick(int(reels_.size()) - 1);

@@ -336,6 +336,7 @@ void GameScreen::drawPlayerInfo() {
 }
 
 void GameScreen::draw() {
+    if (sound_) sound_->setEnabled(settings_.value[Settings::Wave] != 0);
     if (options_.isOpen()) { // OPTION covers the canvas
         options_.draw();
         return;
@@ -361,6 +362,15 @@ void GameScreen::draw() {
     if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
         seenSpin_ = game_.spinSerial();
         slot_.start(game_.lastReels(), now);
+        if (sound_) sound_->play(3, 5, 0xFFFF); // Walze10 endless while the reels turn (seg2:78B1)
+        reelsSounding_ = true;
+    }
+    if (reelsSounding_ && slot_.stopped(now)) { // count-up: Zaehler1 (seg2:7C83), channel 3 flushed (7E74)
+        reelsSounding_ = false;
+        if (sound_) {
+            sound_->stop(3);
+            sound_->play(4, 6);
+        }
     }
     slot_.draw(layout_.map, now);
     if (estates_.isOpen()) {
@@ -408,6 +418,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
     }
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
+    SoundPlayer sound(root); // WaveMix (seg1:2C9B)
+    screen.setSound(&sound);
     auto report = [&] {
         play.printLog(std::cout);
         SDL_SetWindowTitle(window.get(), play.title().c_str());
@@ -514,6 +526,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         if (!screen.title())
             for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
+        for (const SoundCue& c : play.game().takeSounds())
+            if (!screen.title()) sound.play(c.channel, c.sound, c.loops);
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
@@ -561,7 +575,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (menu.isOpen()) {
-                if (const int id = menu.handle(event)) command(id);
+                const int id = menu.handle(event);
+                if (const int s = menu.takeSound(); s >= 0) sound.play(2, s);
+                if (id) command(id);
                 continue;
             }
             if (screen.options().isOpen()) {

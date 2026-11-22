@@ -27,7 +27,8 @@ SDL_Rect MenuView::box() const {
 int MenuView::choose(int index) const {
     if (index < 0 || size_t(index) >= items_.size()) return 0;
     const NeMenuItem& item = items_[size_t(index)];
-    if (item.flags & (kGrayed | kDisabled)) return 0; // seg5:550D: only a sound
+    if (item.flags & (kGrayed | kDisabled)) { sound_ = 7; return 0; } // seg5:550D: only a sound
+    sound_ = 2;
     return item.id;
 }
 
@@ -56,10 +57,10 @@ int MenuView::handle(const SDL_Event& event) {
     switch (event.key.keysym.sym) { // seg5:5657
     case SDLK_ESCAPE: case SDLK_BACKSPACE: // seg5:543D: the checked item, if any
         for (int i = 0; i < count; ++i)
-            if (items_[size_t(i)].flags & kChecked) return items_[size_t(i)].id;
+            if (items_[size_t(i)].flags & kChecked) { sound_ = 2; return items_[size_t(i)].id; }
         return 0;
-    case SDLK_TAB: case SDLK_DOWN: focus_ = focus_ >= count - 1 ? 0 : focus_ + 1; return 0; // seg5:555B
-    case SDLK_UP: focus_ = focus_ == 0 ? count - 1 : focus_ - 1; return 0;                    // seg5:55CD
+    case SDLK_TAB: case SDLK_DOWN: focus_ = focus_ >= count - 1 ? 0 : focus_ + 1; sound_ = 8; return 0; // seg5:555B
+    case SDLK_UP: focus_ = focus_ == 0 ? count - 1 : focus_ - 1; sound_ = 8; return 0;                   // seg5:55CD
     case SDLK_RETURN: case SDLK_KP_ENTER: return choose(focus_);                              // seg5:54C8
     default: return 0;
     }

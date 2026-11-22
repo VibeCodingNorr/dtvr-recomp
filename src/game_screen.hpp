@@ -16,6 +16,7 @@
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
+#include "sound.hpp"
 #include "text.hpp"
 
 #include <filesystem>
@@ -47,6 +48,8 @@ public:
     const Settings& settings() const { return settings_; }
     // Stores the options (seg1:ACE7 star) and applies them (Views: tile 0x33 on the map).
     void applySettings(const Settings& settings);
+    // Sounds (round 40): the screen plays the slot machine's; may be null.
+    void setSound(SoundPlayer* sound) { sound_ = sound; }
     const SaveSlots& saveSlots() const { return slots_; }
     const std::map<int, std::string>& texts() const { return texts_; }
     std::vector<EstateRow> estateRows() const;
@@ -104,6 +107,8 @@ private:
     Settings settings_;
     OptionsView options_;
     int seenSpin_ = 0;
+    SoundPlayer* sound_ = nullptr;
+    bool reelsSounding_ = false;
     bool title_ = false;
     bool surroundings_ = false;
     std::array<bool, kPlayerSlots> zoom_{};         // player +0x15 (not saved)

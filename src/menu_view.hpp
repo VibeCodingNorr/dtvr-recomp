@@ -32,6 +32,9 @@ public:
     // chosen item (WM_COMMAND to the main window), 0 when nothing was chosen.
     int handle(const SDL_Event& event);
     void draw();
+    // The sound of the last handled event (seg5:5486 ff.: 2 Plopp02 chosen, 8 Taster01
+    // moved, 7 Zaehler2 grayed), -1 for none; reading clears it.
+    int takeSound() { const int s = sound_; sound_ = -1; return s; }
     // Client rectangle: 192 x (items + 1) * 32 (seg5:5733), centred (seg6:0000).
     SDL_Rect box() const;
 
@@ -46,6 +49,7 @@ private:
     std::string name_;
     std::vector<NeMenuItem> items_;
     int focus_ = 0;
+    mutable int sound_ = -1;
 };
 
 } // namespace dtvr

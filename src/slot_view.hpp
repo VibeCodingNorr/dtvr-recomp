@@ -21,6 +21,8 @@ public:
     // Starts the animation for a new spin (reel values 1..6, one to five reels).
     void start(const std::vector<int>& reels, Uint32 now);
     bool active(Uint32 now) const;
+    // All reels show their final face (the count-up starts, seg2:7C83).
+    bool stopped(Uint32 now) const;
     // Draws the window centred at the bottom of the map window (seg2:6528).
     void draw(const ScreenRect& map, Uint32 now);
 

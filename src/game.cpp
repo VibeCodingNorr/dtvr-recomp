@@ -201,6 +201,7 @@ void Game::arrive() {
     case 2: {
         const auto e = moneyField(f.kind, calendar_.month, calendar_.inflation, rng_);
         economy_.addMoney(current_, e.amount);
+        sound(3, f.kind == 1 ? 14 : 1); // moneywin (seg2:0EF1) / Fate03 (seg2:1081)
         messages_.push_back(who + (f.kind == 1 ? " erhaelt " : " bezahlt ") + money(e.amount)
                             + " (Text " + std::to_string(e.textId) + ")");
         dragoAct(current_);
@@ -321,7 +322,11 @@ void Game::advanceTurn() {
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
     for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
-    for (const auto& [text, p] : change.texts) notice(text, {playerArg(p)});
+    for (const auto& [text, p] : change.texts) {
+        notice(text, {playerArg(p)});
+        if (text >= 1000 && text < 1010) sound(5, 15);      // Zucker: Sfx08 (seg2:095B)
+        else if (text >= 1010 && text < 1020) sound(5, 20); // Schlafen: Schlaf01 (seg2:09F9)
+    }
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
     if (change.player < 0) { phase_ = Phase::GameOver; return; }
     if (demoEnd_ && !humansLeft()) { // seg2:0869: no human and DS:16 == 1
