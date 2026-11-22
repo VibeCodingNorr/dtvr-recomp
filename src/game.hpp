@@ -5,6 +5,7 @@
 #include "cards.hpp"
 #include "drago.hpp"
 #include "economy.hpp"
+#include "events.hpp"
 #include "rules.hpp"
 
 #include <string>
@@ -23,8 +24,10 @@ class Game {
 public:
     enum class Phase { Roll, Move, Arrived, GameOver };
 
+    // `map` and `props` are optional; without them border barriers and the sea
+    // route test of the robbers are not applied.
     Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
-         int defaultCards = 1);
+         int defaultCards = 1, const WorldMap* map = nullptr, const TileProperties* props = nullptr);
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
@@ -45,6 +48,10 @@ public:
     int townAt(int field) const;                 // index into the town list, -1 if none
     const Economy& economy() const { return economy_; }
     const DragoState& drago() const { return drago_; }
+    bool eastOpen() const { return eastOpen_; }
+    // A link exists and is not closed by a border barrier (for planners and the UI).
+    bool linkOpen(int field, Direction d) const;
+    const EventClock& eventClock() const { return events_; }
 
     Phase phase() const { return phase_; }
     int currentPlayer() const { return current_; }
@@ -71,6 +78,10 @@ private:
     void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
     bool playWeihnachten();      // seg3:1156
     void playHauAb();            // seg3:3EFB
+    // game_events.cpp
+    void eventTick();            // seg8:1624 after every player change
+    void applyEvent(EventKind kind);
+    uint16_t routeMask() const { return eastOpen_ ? 0 : 0x4000; }
 
     const Board& board_;
     const std::vector<Town>& towns_;
@@ -78,6 +89,13 @@ private:
     std::vector<PlayerSlot> players_;
     Economy economy_;
     DragoState drago_;
+    const WorldMap* map_ = nullptr;
+    const TileProperties* props_ = nullptr;
+    std::vector<bool> barriers_;
+    EventClock events_;
+    bool eastOpen_ = false;        // DS:A10F == 0
+    double westValue_ = 0;         // DS:A113
+    int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)
     Deck deck_;
     std::vector<Hand> hands_;
     Calendar calendar_;

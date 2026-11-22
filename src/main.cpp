@@ -266,6 +266,8 @@ static int run(int argc, char** argv) {
     };
     if (rollAtStart && !play && view == View::World && !board.fields.empty()) rollDie();
     // Hotseat game from the recovered rules (src/game.cpp).
+    std::unique_ptr<dtvr::WorldMap> playMap;          // kept alive for the game (barriers, robbers)
+    std::unique_ptr<dtvr::TileProperties> playProps;
     std::unique_ptr<dtvr::Game> game;
     int cardTarget = -1; // chosen with T when three or more players take part
     auto report = [&] {
@@ -278,6 +280,7 @@ static int run(int argc, char** argv) {
             + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
             + " | Etappen " + std::to_string(game->remainingStages()) + " | Geld "
             + std::to_string(int64_t(game->cash(p)))
+            + (game->eastOpen() ? " | Osten offen" : "")
             + (game->drago().holder >= 0 ? " | Dr. Drago bei " + std::to_string(game->drago().holder + 1) : "")
             + (cardTarget >= 0 ? " | Ziel-Spieler "
             + std::to_string(cardTarget + 1) : "") + " | " + phases[int(game->phase())];
@@ -304,7 +307,10 @@ static int run(int argc, char** argv) {
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
-        game = std::make_unique<dtvr::Game>(board, towns, humans, rounds, uint16_t(seed));
+        playMap = std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map"));
+        playProps = std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit"));
+        game = std::make_unique<dtvr::Game>(board, towns, humans, rounds, uint16_t(seed), 1,
+                                            playMap.get(), playProps.get());
         graph = true;
     }
     load();

@@ -494,6 +494,58 @@ the stage placement uses distances to the new destination. Open: Konferenz,
 the event system with the passive cards, Tschüss, Punch, Erdbeben, Nägel,
 Risiko, Flugzeug, Steuerlos, the card field, property cards in the town dialog.
 
+### Events and Eastern Europe (round 11)
+
+- **Trigger** seg8:1624, called inside nextPlayer after the month bookkeeping
+  and before the new player's flag checks (seg2:07EF/07FC): DS:A0FE + 1 (player
+  changes), DS:A111 counts down; seg5:186A reloads the season's tiles and, if the
+  season changed, runs the screen wipe seg8:0E20 and **no event happens**
+  (the wipe draws `rand()` % 20 pairs until a free cell of a 20 × 20 grid is hit,
+  so its number of random calls is not fixed; not modelled). Otherwise DS:A108
+  counts down; at 0 seg8:1B91 restarts it with `n · (10 − year / 32) + random(n)`
+  (n = active players).
+- **Eastern Europe**: the 176 fields with flagset 0x4000 are Eastern Europe. A new
+  game sets DS:A10F = 0x4000 (destinations and routes skip them) and seg1:A15B
+  stores in DS:A113 the total value of all entries of western towns (kind 4/6
+  fields without 0x4000). While DS:A10F ≠ 0 the trigger compares the sum of all
+  players' property values (+0x5A) with `factor[n] · 0.01 · A113`, factor =
+  0, 10, 12, …, 24 (DS:870E ff., i.e. (8 + 2n) %); if it is exceeded or the year is
+  above 40, seg8:69F0 opens the East (texts 5001–5003): it replaces the barrier
+  tiles (e.g. 0x743 → 0x720/0x722) and sets DS:A10F = 0 (seg8:6C46).
+- **Barriers**: the 15 cells with tile flag 0x20 (tiles 0x750/0x770) lie on
+  exactly the 15 links between western and eastern fields (data check). When a
+  vehicle would enter such a cell, seg2:2404 looks up the road-obstacle table
+  DS:5E (30 × 0x17 bytes: +0 type, +6/+8 cell; seg8:68FF): without an entry or
+  without hand cards it returns 0 and the vehicle stops. Obstacle types 4, 8, 16
+  can be cleared with card 37 (Schneepflug), type 0x900 with card 39 (Nägel weg)
+  (seg3:0D26 finds the card, seg3:0E11 discards it, seg8:697C removes the
+  obstacle; humans confirm with IDYES).
+- **Event tables** seg8:180B (16 entries each, random(15)), chosen by progress:
+  turns < 120 / n → table 1; month < 500 / n → table 2; month < 900 / n →
+  table 3; otherwise table 4:
+
+  | Table | Rain | Storm | Snow | Rockfall | Robbers | Flood | Quake | Drought | Nessie | Volcano | Professor (1/0) |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 1 | 4 | 4 | 4 | 2 | – | – | – | – | – | – | 2 / 0 |
+  | 2 | 2 | – | 2 | 2 | 3 | 2 | 2 | – | – | – | 2 / 1 |
+  | 3 | 2 | 2 | 2 | 2 | 2 | 2 | 1 | 2 | 1 | – | – |
+  | 4 | 1 | 1 | 1 | 1 | 3 | 2 | 2 | 1 | 2 | 1 | 1 / 0 |
+
+  Handlers: Regen seg8:42B0, Sturm 1C01 (via 5F1E), Schnee 535E, Steinschlag 5A76,
+  Räuber 1E70, Hochwasser 4964, Erdbeben 3C0B, Dürre 2386, Nessie 2A32,
+  Vulkan 36FD, Professor 6FBF(1) / 6FBF(0) via 6F71 / 6F98.
+- **Robbers** (seg8:1E70): victim = first active player in slot order with cash
+  > 500,000 × inflation (DS:875E) standing on a field with a right-hand link and
+  no sea route two cells to the right (animation space); the victim loses 25 %
+  of the cash (DS:8766), text 5021 + random(2). Nobody qualifies → no effect.
+
+Rebuilt: trigger, countdown, season-change skip, table selection, the East
+(western value, opening threshold, barrier links, destination mask) and the
+robbers; the other events are chosen and announced. Open: the effects of rain,
+storm, snow, rockfall, flood, earthquake, drought, Nessie, volcano and the
+professor (road obstacles in DS:5E, property damage, the passive cards Versicherung
+and Nessie), Nebel (text 5180, not in the tables).
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256
@@ -538,8 +590,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 9. Selling, credit at the year end, card targets and 7 more card effects (money
    and status cards) rebuilt.
 10. Dr. Drago (holder, forms, meetings, six actions), Weihnachten and Hau ab
-    rebuilt. Next: the event system and passive cards, the remaining cards,
-    card fields and computer players.
+    rebuilt.
+11. Event trigger, event tables, Eastern Europe (barriers, opening) and robbers
+    rebuilt. Next: the effects of the other events with road obstacles and the
+    passive cards, the remaining cards, card fields and computer players.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

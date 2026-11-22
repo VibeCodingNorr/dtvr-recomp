@@ -17,8 +17,11 @@ std::string money(double v) {
 } // namespace
 
 Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
-           int defaultCards)
-    : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots) {
+           int defaultCards, const WorldMap* map, const TileProperties* props)
+    : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots), map_(map), props_(props) {
+    if (map_ && props_) barriers_ = barrierLinks(board_, *map_, *props_);
+    westValue_ = westPropertyValue(board_, towns_, 0x4000); // seg4:0E0B mask, then seg1:A15B
+    loadedSeason_ = seasonForMonth(0);
     if (humans < 1 || humans > kPlayerSlots) throw std::invalid_argument("1 bis 8 Spieler");
     players_.resize(kPlayerSlots);
     origin_ = startField(board_, towns_);
@@ -37,7 +40,7 @@ Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int r
         if (players_[size_t(p)].status)
             for (int c = 0; c < deal; ++c) addToHand(hands_[size_t(p)], deck_.take());
     // New game: route mask 0x4000 (seg4:0E0B); first destination drawn from the start.
-    destination_ = chooseDestination(board_, players_, origin_, origin_, 0x4000, rng_);
+    destination_ = chooseDestination(board_, players_, origin_, origin_, routeMask(), rng_);
     messages_.push_back("Start in " + townName(origin_) + ", Ziel " + townName(destination_));
 }
 
@@ -47,6 +50,12 @@ std::string Game::townName(int field) const {
     for (const Town& t : towns_)
         if (t.x == f.x && t.y == f.y) return oemToUtf8(t.name);
     return "Feld " + std::to_string(field);
+}
+
+bool Game::linkOpen(int field, Direction d) const {
+    if (field < 0 || size_t(field) >= board_.fields.size() || d == Direction::None) return false;
+    if (board_.fields[size_t(field)].next[size_t(d) - 1] == Field::kNone) return false;
+    return eastOpen_ || barriers_.empty() || !barriers_[size_t(field) * 4 + size_t(d) - 1];
 }
 
 int Game::townAt(int field) const {
@@ -178,6 +187,10 @@ bool Game::step(Direction d) {
     PlayerSlot& p = players_[size_t(current_)];
     const int16_t next = board_.fields[size_t(p.field)].next[size_t(d) - 1];
     if (next == Field::kNone) return false;
+    if (!linkOpen(p.field, d)) {
+        messages_.push_back("Schlagbaum: Osteuropa ist noch geschlossen"); // seg2:2404
+        return false;
+    }
     if (!counter_.step(d, true)) return false;
     p.field = next;
     // seg2:B290 when the vehicle stops on a field: Dr. Drago changes hands.
@@ -239,7 +252,7 @@ void Game::arrive() {
             }
             remaining_ = r.remaining;
             origin_ = field;
-            destination_ = chooseDestination(board_, players_, origin_, destination_, 0x4000, rng_);
+            destination_ = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
                                 + ", Ziel " + townName(destination_));
             placeDragoForStage();
@@ -266,6 +279,7 @@ void Game::advanceTurn() {
     hooks.clearCredits = [this] { economy_.clearCredits(); };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
+    hooks.afterPlayerChange = [this](int) { eventTick(); };
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
     for (int p : change.satOut) messages_.push_back("Spieler " + std::to_string(p + 1) + " setzt aus");
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));

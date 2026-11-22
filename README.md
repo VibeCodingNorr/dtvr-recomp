@@ -28,7 +28,7 @@ no overall completion percentage is claimed.
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 20 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab); Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end). The event system with the passive cards, 17 further cards, card fields and computer players are still open. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#dr-drago-and-further-cards-round-10) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 20 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab); Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned (robbers rebuilt). The effects of the other events, the passive cards, 17 further cards, card fields and computer players are still open. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#events-and-eastern-europe-round-11) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -52,8 +52,11 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
    (Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren).
 10. Dr. Drago: placement at each stage, form changes, passing on meetings, six
     actions; cards Weihnachten and Hau ab.
-11. *Next:* the event system (snow, Nessie, earthquake …) with the passive cards,
-    the remaining cards, card fields and computer players.
+11. Events: trigger and countdown, four progress-dependent event tables, Eastern
+    Europe behind 15 border barriers until the players own enough property;
+    robbers.
+12. *Next:* the effects of the other events (road obstacles, property damage)
+    with the passive cards, the remaining cards, card fields and computer players.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

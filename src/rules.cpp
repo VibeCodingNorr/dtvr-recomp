@@ -199,6 +199,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
             ++calendar.month;
             ++change.monthsAdvanced;
         }
+        if (hooks.afterPlayerChange) hooks.afterPlayerChange(player);
         PlayerSlot& p = players[size_t(player)];
         if (p.flags & 0x1) { // seg2:08C2: checked first; ends the flag checks either way
             p.flags &= 0xFFFE;
