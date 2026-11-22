@@ -55,6 +55,10 @@ public:
     // edge strip or an arrow key moves it by a third of the view; a left click,
     // Enter, Escape or Space ends it. Returns true when the event belonged to it.
     void startSurroundings();
+    // Zoom (seg6:2E54(3), round 38): DS:9C70 toggles between 0 and 1 and is kept per
+    // player (player +0x15); at 1 the viewport shows half the world area, twice as large.
+    void toggleZoom();
+    int zoomFactor() const;
     bool surroundings() const { return surroundings_; }
     bool handleSurroundings(const SDL_Event& event);
 
@@ -95,6 +99,7 @@ private:
     int seenSpin_ = 0;
     bool title_ = false;
     bool surroundings_ = false;
+    std::array<bool, kPlayerSlots> zoom_{};         // player +0x15 (not saved)
     SDL_Point surroundOrigin_{};                    // DS:956A / 9568 in tiles while in Umfeld
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
@@ -115,6 +120,7 @@ struct GameWindowOptions {
     bool openSetup = false;       // tests: open the player setup at the start
     bool openOverview = false;    // tests: open Übersicht at the start
     bool openSurroundings = false; // tests: start Umfeld
+    bool zoom = false;            // tests: zoom in for the current player
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

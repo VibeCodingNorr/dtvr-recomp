@@ -151,6 +151,16 @@ bool GameScreen::vehicleMoving(int player) const {
     return at.x != f.x * WorldMap::kTile || at.y != f.y * WorldMap::kTile;
 }
 
+void GameScreen::toggleZoom() {
+    const int p = game_.currentPlayer();
+    if (p >= 0) zoom_[size_t(p)] = !zoom_[size_t(p)];
+}
+
+int GameScreen::zoomFactor() const {
+    const int p = game_.currentPlayer();
+    return p >= 0 && zoom_[size_t(p)] ? 2 : 1; // DS:9C70 + 1
+}
+
 void GameScreen::startSurroundings() {
     const SDL_Point o = viewOrigin(); // seg6:3CC5: from the current origin
     surroundOrigin_ = {o.x / WorldMap::kTile, o.y / WorldMap::kTile};
@@ -159,10 +169,12 @@ void GameScreen::startSurroundings() {
 
 bool GameScreen::handleSurroundings(const SDL_Event& event) {
     if (!surroundings_) return false;
-    const int third = layout_.viewport.w / 3 / WorldMap::kTile; // (w / ±3) / 16, truncated (seg6:17F4)
+    // seg6:2EE9: with zoom the viewport DS:94DE / 94E0 is halved.
+    const int viewW = layout_.viewport.w / zoomFactor(), viewH = layout_.viewport.h / zoomFactor();
+    const int third = viewW / 3 / WorldMap::kTile; // (w / ±3) / 16, truncated (seg6:17F4)
     constexpr int side = WorldMap::kSize * WorldMap::kTile;
     auto move = [&](int dx, int dy) { // seg6:2B19 keeps the view inside the world
-        const int maxX = (side - layout_.viewport.w) / WorldMap::kTile, maxY = (side - layout_.viewport.h) / WorldMap::kTile;
+        const int maxX = (side - viewW) / WorldMap::kTile, maxY = (side - viewH) / WorldMap::kTile;
         surroundOrigin_.x = std::clamp(surroundOrigin_.x + dx * third, 0, maxX);
         surroundOrigin_.y = std::clamp(surroundOrigin_.y + dy * third, 0, maxY);
     };
@@ -205,7 +217,7 @@ SDL_Point GameScreen::viewOrigin() const {
     SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
     if (p >= 0 && shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
     const int cx = at.x + WorldMap::kTile / 2, cy = at.y + WorldMap::kTile / 2;
-    const int w = layout_.viewport.w, h = layout_.viewport.h;
+    const int w = layout_.viewport.w / zoomFactor(), h = layout_.viewport.h / zoomFactor();
     return {std::clamp(cx - w / 2, 0, side - w) / WorldMap::kTile * WorldMap::kTile,
             std::clamp(cy - h / 2, 0, side - h) / WorldMap::kTile * WorldMap::kTile};
 }
@@ -224,8 +236,9 @@ void GameScreen::drawMap() {
     }
     if (!world_) return;
     const SDL_Point origin = viewOrigin();
-    const SDL_Rect source{origin.x, origin.y, layout_.viewport.w, layout_.viewport.h};
-    const SDL_Rect target{map.x + layout_.viewport.x, map.y + layout_.viewport.y, source.w, source.h};
+    const int z = zoomFactor(); // the world area of the viewport is shown z times as large
+    const SDL_Rect source{origin.x, origin.y, layout_.viewport.w / z, layout_.viewport.h / z};
+    const SDL_Rect target{map.x + layout_.viewport.x, map.y + layout_.viewport.y, source.w * z, source.h * z};
     SDL_RenderCopy(renderer_, world_.get(), &source, &target);
     // Vehicles (seg2:1846): frame of the facing's animation (table DS:1994, mode 1:
     // <letter>UP / R / DOWN / L 1-4, delay 4 ticks). The code read so far puts the
@@ -249,7 +262,7 @@ void GameScreen::drawMap() {
         if (!vehicle) continue;
         int w = 0, h = 0;
         SDL_QueryTexture(vehicle, nullptr, nullptr, &w, &h);
-        const SDL_Rect box{target.x + at.x - origin.x - 16, target.y + at.y - origin.y - 8, w, h};
+        const SDL_Rect box{target.x + (at.x - origin.x - 16) * z, target.y + (at.y - origin.y - 8) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     SDL_RenderSetClipRect(renderer_, nullptr);
@@ -460,6 +473,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
         case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
+        case 1032: case 1040: screen.toggleZoom(); break;       // Zoom: seg6:2E54(3), then centred
         case 1034: case 1041: screen.overview().open(); break;  // Übersicht: seg1:A240
         case 1035: case 1043: screen.startSurroundings(); break; // Umfeld: seg6:3C94
         case 1036: case 1042:                                    // Statistik: seg1:4DE5
@@ -474,6 +488,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openSave) screen.saveDialog().open(true);
     if (options.openOverview) screen.overview().open();
     if (options.openSurroundings) screen.startSurroundings();
+    if (options.zoom) screen.toggleZoom();
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
@@ -606,6 +621,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (event.type != SDL_KEYDOWN) continue;
             const SDL_Keycode key = event.key.keysym.sym;
             if (isArrow(key) && play.game().phase() == Game::Phase::Move) { heldArrow = key; continue; }
+            if (key == SDLK_INSERT || key == SDLK_DELETE) { screen.toggleZoom(); continue; } // seg4:0212
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
             if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();

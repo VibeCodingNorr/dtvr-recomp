@@ -1208,6 +1208,24 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Zoom (round 38)
+
+- seg6:2E54(mode): mode 3 toggles DS:9C70 between 0 and 1 and stores it in the
+  current player's record (+0x15); modes 1 / 2 step it down / up within 0–1
+  (returning 0 at the limit). Then the viewport size DS:94DE / 94E0 is the map
+  window size − 16, halved with zoom 1 (seg6:2EE9); mouse coordinates in the map
+  window are divided by DS:9C70 + 1 (seg6:17A1). Callers: Zoom 1032 / 1040
+  (seg4:0883 / 0966, then the view is centred on the player, seg2:3216 / 05A8),
+  Insert / Delete (seg4:0212).
+- Rebuilt in `src/game_screen.cpp`: per player, zoom 1 shows half the world area
+  twice as large (world and vehicles); Umfeld uses the halved viewport. The zoom
+  flag is not part of the save file yet.
+- **Options** (window OPTION, seg1:ACE7, commands 1023 / 1063): background
+  `%s\%d\%c\menu.bmp`, star / stop of pl_menu, switches
+  `%s\%d\op_menu\%d%s.bmp` with the table DS:7E0A of (name, setting):
+  fx DS:7E10, midi 7E14, spra 7E18, zeit 7E1C, seh 7E20, anim 7E24, farb 7E28,
+  joy DS:7C44 (three states). Not rebuilt yet.
+
 ### Übersicht and Umfeld (round 37)
 
 - **Übersicht** seg1:A240 (commands 1034 / 1041): window OUTLINE (DS:40BC) with
