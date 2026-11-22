@@ -1425,6 +1425,20 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   runs seg2:1C37 n >> 5 times (none in a game without humans) — **assumed** n
   milliseconds. Then text 0x1451 + random(2) for the town on the centre cell
   (seg8:41E6 ff.) and the damage. No shaking. WAV `snd\E5` is not on this disc.
+- **Scene start draw** (round 72, rule correction, rules revision 31): rain,
+  snow and flood call seg8:517B(&x, &y, …) before their animation; it draws
+  random(3) (seg8:5211) to pick the corner the cloud / wave starts from: start =
+  target + {(−c, −e), (c, −e), (c, e)}[r] with c = view width / 2 + arg, e =
+  view height / 2 + arg. The draw comes after the place (seg8:5F43 / 6C77) and
+  before the text draw base + random(2); the rebuild did not draw it, so every
+  later random number differed after such an event. Storm, drought and flood
+  leave at once without animation, text or draw when seg8:6C77 finds no town
+  (seg8:1C60 / 2553 / 4B3C); rebuilt as well.
+- **Rain scene** seg8:42B0 (found, not drawn yet): the cloud R00 (1 frame, delay
+  6, repetitions 1000) moves from the start corner to the obstacle cell · 16 −
+  (0, 0x11) with seg8:5243 (eight directions, 2 pixels per pass, angle from
+  seg2:AE77 / AE18) until it arrives, then R01–R08 (delay 4, repetitions 0) and
+  R09–R20 (32 frames, delay 4, repetitions 1) play there with seg8:6E0F.
 - **Still open:** the multi-record scenes Regen (regen.sbs: R00, R01–R08,
   R09–R20), Schnee (schnee.sbs SN01–SN46), Hochwasser (flood.sbs RG00–RG26),
   Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
