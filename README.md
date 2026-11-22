@@ -117,7 +117,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 49. Destination announcement ("Zielsuche") with the light searching the map and the
     original voices; the next destination is chosen as in the original (rules revision 30).
 50. Sounds of the town and save dialogs.
-51. *Next:* subtitles of the voices and the card window's sounds.
+51. Weihnachten card gift sound; the card shop window decoded for the next round.
+52. *Next:* the card shop window (violet card fields) in the game window.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -1398,6 +1398,15 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   it succeeds, Zaehler2 when it is refused (seg1:5598 / 55D0, 5633 / 566B), so a
   grayed row now only sounds. The save dialog: Fate01 on channel 6 when saving
   fails (seg8:B4DC), Zaehler2 when loading fails (seg8:B3F9).
+- **Round 51:** seg3 sounds: Weihnachten's card gift Hebel05 (seg3:1257);
+  Nägel into water Platsch (seg3:1C99, case not modelled); the Flugzeug choice
+  (seg3:3384) and the card shop (seg3:4643) Plopp02 / Zaehler2.
+- **Card shop window** (for the next round): seg3:4437 creates TEMP (558 × 462)
+  with `%s\%c\bcards.sbs` (butt/<lang>: strips K1 / K2 558 × 42, card pictures
+  1CARD_01–41 of 44 × 63); paint seg3:4D0E: strip rows at y = i · 42, the cards
+  in a grid from (15, 51) with a red PS_INSIDEFRAME pen of width 2 around the
+  chosen one; header (seg3:5234) with KO_ZI / KO_Z and texts; clicks in the
+  header ranges x 0–0x6E, 0xB4–0x140 and 0x1CC–0x22E (seg3:5051 ff.) post Enter.
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:

@@ -111,6 +111,7 @@ bool Game::playWeihnachten() {
         notice(13006 + pickText(rng_, 3), {playerArg(current_)}); // seg3:1223
         const int slot = deck_.take(); // seg2:4327
         addToHand(hands_[size_t(current_)], slot);
+        sound(2, 19); // Hebel05 (seg3:1257)
         messages_.push_back(who + " bekommt zu Weihnachten die Karte " + cardName(slot));
     } else {
         const int text = 13011 + pickText(rng_, 3); // seg3:1292
