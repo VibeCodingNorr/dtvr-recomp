@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "estates.hpp"
 
+#include <cctype>
+
 #include "board.hpp"
 
 #include <algorithm>
@@ -52,6 +54,30 @@ std::vector<EstateRow> estateRows(const Game& game, int town, EstatesTab tab) {
     return rows;
 }
 
+namespace {
+
+// seg1:4886 passes the town names (record +6) to lstrcmp as they are stored, in
+// the OEM code page. Windows 3.x lstrcmp (Microsoft KB Q100366 / Q96748): primary
+// weights first — non-alphanumeric characters in ANSI order before digits before
+// letters, letters without case — then the case only on a tie. In ANSI the OEM
+// umlauts are no letters (0x81 undefined, 0x94 a quotation mark), so they sort
+// before every letter; 0xE1 (ß, ANSI a-acute) gives the same order for this data
+// whether a language driver treats it as a letter or not.
+std::vector<int> collationKey(const std::string& oem) {
+    std::vector<int> key;
+    for (const char ch : oem) {
+        const int c = static_cast<unsigned char>(ch);
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) key.push_back(0x200 + std::toupper(c));
+        else if (c >= '0' && c <= '9') key.push_back(0x100 + c);
+        else key.push_back(c);
+    }
+    key.push_back(-1); // then the case and the length (seg1: delayed comparison)
+    for (const char ch : oem) key.push_back(static_cast<unsigned char>(ch));
+    return key;
+}
+
+} // namespace
+
 std::vector<EstateRow> statisticsRows(const Game& game, int player, int category, int sort, bool withRented) {
     std::vector<EstateRow> rows;
     const Economy& economy = game.economy();
@@ -77,13 +103,18 @@ std::vector<EstateRow> statisticsRows(const Game& game, int player, int category
             rows.push_back(row);
         }
     }
-    // Sort order: assumption (the sort code after seg1:4735 is not traced): value and
-    // yield descending, towns in file order.
+    // seg1:4735: an insertion sort that swaps neighbours only when they are out of
+    // order (stable): 0 value ascending (entry +0x18), 1 rate descending (+0x1C),
+    // 2 town names by lstrcmp (seg1:4886).
     if (sort == 0)
-        std::stable_sort(rows.begin(), rows.end(), [](const EstateRow& a, const EstateRow& b) { return a.price > b.price; });
+        std::stable_sort(rows.begin(), rows.end(), [](const EstateRow& a, const EstateRow& b) { return a.price < b.price; });
     else if (sort == 1)
         std::stable_sort(rows.begin(), rows.end(),
                          [](const EstateRow& a, const EstateRow& b) { return a.yieldPercent > b.yieldPercent; });
+    else if (sort == 2)
+        std::stable_sort(rows.begin(), rows.end(), [&game](const EstateRow& a, const EstateRow& b) {
+            return collationKey(game.towns()[size_t(a.town)].name) < collationKey(game.towns()[size_t(b.town)].name);
+        });
     return rows;
 }
 

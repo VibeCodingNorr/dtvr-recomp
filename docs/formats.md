@@ -2310,8 +2310,17 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   DS:8C4A = argument + 1, scroll 0, list seg1:4504.
 - **List** seg1:4504(category, player, with rented): all towns × ten entries with
   a name, owner = player, landlord free unless the third argument is set, and,
-  for a category ≠ 0, entry +0x1E = category. The sort code after seg1:4735 is
-  not traced.
+  for a category ≠ 0, entry +0x1E = category. *Round 107:* the sort at seg1:4735
+  walks the list and swaps two neighbours only when they are out of order, then
+  steps back (a stable insertion sort): DS:8C4A 0 by value (entry +0x18)
+  ascending, 1 by rate (+0x1C) descending, 2 by town name with lstrcmp
+  (seg1:4886) ascending. The names go to lstrcmp in the OEM code page (town record
+  +6, no OemToAnsi). Windows 3.x lstrcmp (Microsoft KB Q100366, Q96748) compares
+  primary weights first — non-alphanumeric characters in ANSI order, then digits,
+  then letters without case — and the case only on a tie. The OEM umlauts are no
+  letters in ANSI (ö 0x94 a quotation mark, ü 0x81 undefined), so Köln sorts
+  before Kattowitz and Mülheim, München before Madrid; ß (0xE1, ANSI a-acute) gives the same order for all 115 towns
+  whether a language driver treats it as a letter or not.
 - **Header** seg1:7506: text 375 (Ansehen; 360 Verkaufen when DS:3FC2 = 0x10) at
   x = 28; PFEIL1 (pressed PFEIL2) at (x − 15, 8) before the category text
   361 + DS:8C48 (Alle, Industrie, Handel, Agrar, Risiko, Luxus, Sonstige) at
@@ -2354,8 +2363,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `src/estates_view.cpp` (rules revision 38).
 - **Rebuilt** (`statisticsRows` in `src/estates.cpp`, `src/estates_view.cpp`):
   the list of the current player with rented entries, header, rows and input as
-  above. **Assumptions:** sort order (value and yield descending, towns in file
-  order); the pfeil1 / pfeil2 choice of the header arrows.
+  above. **Assumption:** the pfeil1 / pfeil2 choice of the header arrows.
 - **Loading:** the original loads from the title menu MAIN (1021, round 35);
   `--game --load <slot>` loads a slot directly.
 
