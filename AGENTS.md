@@ -127,7 +127,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/stage_view.{hpp,cpp}`: the destination announcement; `src/card_shop_view.{hpp,cpp}`: the card shop;
   `src/select_player_view.{hpp,cpp}`: the target choice; `src/flight_view.{hpp,cpp}`: the Flugzeug booking;
   `src/nails_view.{hpp,cpp}`: the Nägel direction; `src/invest_view.{hpp,cpp}`: the investment offer;
-  `src/risiko_view.{hpp,cpp}`: the Risiko window;
+  `src/risiko_view.{hpp,cpp}`: the Risiko window; `src/sb_button.{hpp,cpp}`: the SBBUTTON
+  button group (focus, press, disabled, keys) of the button windows;
   `src/scene.{hpp,cpp}`: their animation records.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.

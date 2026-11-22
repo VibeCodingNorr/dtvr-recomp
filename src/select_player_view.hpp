@@ -5,6 +5,7 @@
 #pragma once
 
 #include "layout.hpp"
+#include "sb_button.hpp"
 #include "sdl_assets.hpp"
 
 #include <SDL.h>
@@ -24,8 +25,9 @@ public:
     void open(const std::vector<int>& candidates, const std::array<uint8_t, 8>& status);
     void close() { candidates_.clear(); }
     bool isOpen() const { return !candidates_.empty(); }
-    // The chosen slot, -2 when cancelled (Escape / right button), -1 otherwise.
-    int handle(const SDL_Event& event);
+    // SBBUTTON input (seg1:0E78): `id` is the chosen slot; `cancel` on Escape /
+    // Backspace / right button; `sound` for channel 2.
+    SbButtonGroup::Input handle(const SDL_Event& event);
     void draw();
 
 private:
@@ -38,6 +40,7 @@ private:
     ScreenLayout layout_;
     std::map<std::string, Texture> cache_;
     std::vector<int> candidates_;
+    SbButtonGroup buttons_; // id = slot
     std::array<uint8_t, 8> status_{};
 };
 

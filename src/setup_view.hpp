@@ -8,6 +8,7 @@
 
 #include "game.hpp"
 #include "layout.hpp"
+#include "sb_button.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
 
@@ -33,6 +34,8 @@ public:
 
     enum class Result { None, Start, Cancel };
     Result handle(const SDL_Event& event);
+    // The SBBUTTON sound of the last handled event for channel 2, -1 none.
+    int takeSound() { const int s = sound_; sound_ = -1; return s; }
     void draw();
 
 private:
@@ -49,6 +52,9 @@ private:
     std::array<uint8_t, kPlayerSlots> status_{};
     std::array<std::string, kPlayerSlots> names_{};
     int editing_ = -1; // name field with the keyboard focus
+    SbButtonGroup buttons_; // ids: slot, kStar, kStop
+    int sound_ = -1;
+    void stopEditing();
 };
 
 } // namespace dtvr

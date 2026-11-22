@@ -12,6 +12,8 @@ constexpr char kLetters[kPlayerSlots] = {'d', 'f', 'e', 'm', 'u', 'j', 'i', 'v'}
 constexpr size_t kNameMax = 0x13 - 1; // GetWindowText(..., 0x13) (seg1:0BB7)
 
 bool inside(const ScreenRect& r, int x, int y) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h; }
+SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
+constexpr int kStar = 100, kStop = 101;
 
 size_t utf8Length(const std::string& s) {
     size_t n = 0;
@@ -29,6 +31,17 @@ void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std:
     names_ = names;
     editing_ = -1;
     open_ = true;
+    std::vector<SbButton> buttons;
+    for (int p = 0; p < kPlayerSlots; ++p) buttons.push_back({p, rect(geometry_.driver[size_t(p)]), true});
+    buttons.push_back({kStar, rect(geometry_.start), anyPlayer()}); // disabled without players
+    buttons.push_back({kStop, rect(geometry_.stop), true});
+    buttons_.reset(std::move(buttons), -1); // seg1:0409: SetFocus(DS:A6E8), no button
+    sound_ = -1;
+}
+
+void SetupView::stopEditing() {
+    if (editing_ >= 0) SDL_StopTextInput();
+    editing_ = -1;
 }
 
 void SetupView::close() {
@@ -59,26 +72,21 @@ SDL_Texture* SetupView::bitmap(const std::string& file) {
 
 SetupView::Result SetupView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
+    SbButtonGroup::Input in;
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const int x = event.button.x, y = event.button.y;
-        for (int p = 0; p < kPlayerSlots; ++p) {
-            if (inside(geometry_.driver[size_t(p)], x, y)) { // seg1:0A79: 0 -> 1 -> 2 -> 0
-                status_[size_t(p)] = uint8_t(status_[size_t(p)] >= 2 ? 0 : status_[size_t(p)] + 1);
-                return Result::None;
-            }
-            if (inside(geometry_.name[size_t(p)], x, y)) {
+        for (int p = 0; p < kPlayerSlots; ++p)
+            if (inside(geometry_.name[size_t(p)], x, y)) { // the SBINPUT field takes the focus
                 if (editing_ < 0) SDL_StartTextInput();
                 editing_ = p;
+                buttons_.setFocus(-1);
                 return Result::None;
             }
-        }
-        if (inside(geometry_.start, x, y) && anyPlayer()) return Result::Start; // disabled without players
-        if (inside(geometry_.stop, x, y)) return Result::Cancel;
-        if (editing_ >= 0) SDL_StopTextInput();
-        editing_ = -1;
-        return Result::None;
-    }
-    if (event.type == SDL_TEXTINPUT && editing_ >= 0) {
+        stopEditing();
+        in = buttons_.mouseDown(x, y);
+    } else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+        in = buttons_.mouseUp(event.button.x, event.button.y);
+    } else if (event.type == SDL_TEXTINPUT && editing_ >= 0) {
         std::string& name = names_[size_t(editing_)];
         for (const char* c = event.text.text; *c; ++c) {
             const bool lead = (static_cast<unsigned char>(*c) & 0xC0) != 0x80;
@@ -86,31 +94,46 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
             name += *c;
         }
         return Result::None;
+    } else if (event.type == SDL_KEYDOWN) {
+        const SDL_Keycode key = event.key.keysym.sym;
+        if (editing_ >= 0 && key == SDLK_BACKSPACE) {
+            std::string& name = names_[size_t(editing_)];
+            while (!name.empty() && (static_cast<unsigned char>(name.back()) & 0xC0) == 0x80) name.pop_back();
+            if (!name.empty()) name.pop_back();
+            return Result::None;
+        }
+        if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return anyPlayer() ? Result::Start : Result::None; // seg1:0C3B
+        if (key == SDLK_ESCAPE) return Result::Cancel;
+        if (editing_ >= 0) return Result::None; // other keys belong to the name field
+        in = buttons_.key(key, event.key.keysym.mod, false);
     }
-    if (event.type != SDL_KEYDOWN) return Result::None;
-    const SDL_Keycode key = event.key.keysym.sym;
-    if (editing_ >= 0 && key == SDLK_BACKSPACE) {
-        std::string& name = names_[size_t(editing_)];
-        while (!name.empty() && (static_cast<unsigned char>(name.back()) & 0xC0) == 0x80) name.pop_back();
-        if (!name.empty()) name.pop_back();
-        return Result::None;
+    sound_ = in.sound;
+    if (in.cancel) return Result::Cancel;
+    if (in.id == kStar) return Result::Start;
+    if (in.id == kStop) return Result::Cancel;
+    if (in.id >= 0 && in.id < kPlayerSlots) { // seg1:0A79: 0 -> 1 -> 2 -> 0
+        uint8_t& s = status_[size_t(in.id)];
+        s = uint8_t(s >= 2 ? 0 : s + 1);
+        buttons_.setEnabled(kStar, anyPlayer());
     }
-    if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return anyPlayer() ? Result::Start : Result::None; // seg1:0C3B
-    if (key == SDLK_ESCAPE) return Result::Cancel;
     return Result::None;
 }
 
 void SetupView::draw() {
     if (!open_) return;
     if (SDL_Texture* back = bitmap("menu.bmp")) SDL_RenderCopy(renderer_, back, nullptr, nullptr);
-    auto blit = [&](const std::string& file, const ScreenRect& r) {
+    for (const SbButton& b : buttons_.buttons()) {
+        const std::string file = b.id == kStar ? "star.bmp" : b.id == kStop ? "stop.bmp"
+                               : std::string(1, kLetters[b.id]) + std::to_string(status_[size_t(b.id)]) + ".bmp";
         if (SDL_Texture* t = bitmap(file)) {
-            const SDL_Rect dst{r.x, r.y, r.w, r.h};
-            SDL_RenderCopy(renderer_, t, nullptr, &dst);
+            const SDL_Rect pic = buttons_.pictureRect(b);
+            SDL_RenderSetClipRect(renderer_, &b.rect);
+            SDL_RenderCopy(renderer_, t, nullptr, &pic);
+            SDL_RenderSetClipRect(renderer_, nullptr);
         }
-    };
+    }
+    buttons_.drawFocus(renderer_);
     for (int p = 0; p < kPlayerSlots; ++p) {
-        blit(std::string(1, kLetters[p]) + std::to_string(status_[size_t(p)]) + ".bmp", geometry_.driver[size_t(p)]);
         // SBINPUT draws its text itself (outside rally.exe); assumed: Arial weight 600
         // at two thirds of the field height, palette colour 0x45, a bar at the caret.
         const ScreenRect& r = geometry_.name[size_t(p)];
@@ -118,8 +141,6 @@ void SetupView::draw() {
         text_.draw(renderer_, shown, ScreenRect{r.x + 4, r.y + r.h / 6, r.w - 8, r.h},
                    TextStyle{r.h * 2 / 3, true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
     }
-    blit("star.bmp", geometry_.start);
-    blit("stop.bmp", geometry_.stop);
 }
 
 } // namespace dtvr

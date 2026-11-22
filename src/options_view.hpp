@@ -5,6 +5,7 @@
 #pragma once
 
 #include "layout.hpp"
+#include "sb_button.hpp"
 #include "sdl_assets.hpp"
 #include "settings.hpp"
 
@@ -20,13 +21,15 @@ class OptionsView {
 public:
     OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
     // seg1:ADEE keeps a copy of the values (DS:9478) for stop.
-    void open(const Settings& settings) { settings_ = settings; open_ = true; }
+    void open(const Settings& settings);
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     const Settings& settings() const { return settings_; }
 
     enum class Result { None, Accept, Cancel };
     Result handle(const SDL_Event& event);
+    // The SBBUTTON sound of the last handled event for channel 2, -1 none.
+    int takeSound() { const int s = sound_; sound_ = -1; return s; }
     void draw();
 
 private:
@@ -39,6 +42,8 @@ private:
     std::map<std::string, Texture> cache_;
     Settings settings_;
     bool open_ = false;
+    SbButtonGroup buttons_; // ids: switch index, kStar, kStop
+    int sound_ = -1;
 };
 
 } // namespace dtvr

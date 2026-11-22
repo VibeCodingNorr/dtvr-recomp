@@ -1240,7 +1240,20 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   button with an id in 0x1388–0x1770 gets the focus and sound 8 on channel 2.
   Rebuilt in `src/card_view.cpp`; **approximation:** the neighbours are chosen
   by position (nearest in the row / column) instead of the sibling z-order;
-  Return activates the focused card. Rebuilt (`src/layout.cpp` cardWindowLayout,
+  Return activates the focused card.
+- **SBBUTTON users** (round 62): CreateWindow with class SBBUTTON occurs at
+  seg1:057C, 063A, 07E3 (player setup PLAYER: drivers, star, stop), seg1:AE7F,
+  B043 (OPTION: star / stop and the op_menu switches), seg2:549E (SELPLAYER, ids
+  0x1392 + slot) and seg3:0677 (card window). Initial focus: SELPLAYER calls
+  SetFocus on each button right after creating it (seg2:5505), so the last
+  candidate (the leftmost) keeps it; with a computer choosing, seg5:7190's
+  slot gets the focus (seg2:5555) before the 1.5 s pause. PLAYER and OPTION call
+  SetFocus(DS:A6E8) (seg1:0409, AD49), a word no code writes, so no button has
+  the focus until one is clicked. The shared state lives in `src/sb_button.cpp`
+  (SbButtonGroup) and is used by the card window, SELPLAYER, OPTION and PLAYER;
+  switches and drivers now change on release as SBBUTTON commands do.
+  **Assumptions:** the setup star counts as a disabled SBBUTTON without
+  players (sound 7 on a click); Return still accepts OPTION / starts PLAYER. Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
   the digit keys (target `T`, nail direction by arrow key); Escape or the right
   button close the window (assumption); a played card closes it.

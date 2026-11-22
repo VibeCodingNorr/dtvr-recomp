@@ -6,13 +6,13 @@
 
 #include "game.hpp"
 #include "layout.hpp"
+#include "sb_button.hpp"
 #include "sdl_assets.hpp"
 
 #include <SDL.h>
 
 #include <filesystem>
 #include <map>
-#include <vector>
 
 namespace dtvr {
 
@@ -24,35 +24,25 @@ public:
     // category (seg3:0701, otherwise message 0x7ED(1) to its SBBUTTON); a negative
     // mask enables every card (the discard choice of seg3:1057).
     bool open(const Game& game, int mask);
-    void close() { buttons_.clear(); pressed_ = -1; }
-    bool isOpen() const { return !buttons_.empty(); }
-    // SBBUTTON input (seg1:0E78). `sound` is the effect for channel 2 (-1 none).
-    struct Input { int slot = -1; bool cancel = false; int sound = -1; };
-    // Left button down (seg1:1311): focus; a disabled card sounds 7, else it is pressed.
-    Input mouseDown(int x, int y);
-    // Left button up (seg1:1398): a card released over itself is activated (Plopp02).
-    Input mouseUp(int x, int y);
-    // Keys (seg1:10B4): arrows move the focus (sound 8), Tab / Shift+Tab right / left,
-    // space or Return activate the focused card, Escape / Backspace cancel.
-    Input key(SDL_Keycode key, Uint16 mod);
+    void close() { buttons_.clear(); types_.clear(); }
+    bool isOpen() const { return !buttons_.buttons().empty(); }
+    // SBBUTTON input (seg1:0E78); the id of an activated button is the hand slot.
+    using Input = SbButtonGroup::Input;
+    Input mouseDown(int x, int y) { return buttons_.mouseDown(x, y); }
+    Input mouseUp(int x, int y) { return buttons_.mouseUp(x, y); }
+    Input key(SDL_Keycode key, Uint16 mod) { return buttons_.key(key, mod, true); }
     // `disabled` is the frame dis_<language> of <n>_assort.sbs laid over a disabled
     // card (SBBUTTON paint seg1:1902, state bit 0x10).
     void draw(SDL_Texture* disabled);
 
 private:
     SDL_Texture* picture(int type);
-    bool enabled(int type) const;
-    int indexOfSlot(int slot) const;
-    Input activate(int index);
-    bool moveFocus(int dx, int dy);
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     ScreenLayout layout_;
-    std::vector<std::pair<CardButton, int>> buttons_; // button, card type
-    int mask_ = -1;
-    int focus_ = -1;   // hand slot with state bit 4 (red frame)
-    int pressed_ = -1; // hand slot with state bit 1 (picture at (1, 1))
+    SbButtonGroup buttons_;      // id = hand slot
+    std::map<int, int> types_;   // hand slot -> card type
     std::map<int, Texture> pictures_;
 };
 

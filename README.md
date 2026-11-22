@@ -130,7 +130,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 59. Card window masks: only the cards of the current category react (seg3:0701).
 60. SBBUTTON decoded (seg1:0E78): disabled cards show the original GESPERRT overlay.
 61. SBBUTTON input: focus frame, pressed offset, release-to-play, arrow keys and sounds.
-62. *Next:* check which other windows create SBBUTTON controls and give them the same states.
+62. Shared SBBUTTON group for the card window, SELPLAYER, OPTION and PLAYER (focus, press, keys, sounds).
+63. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

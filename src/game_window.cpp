@@ -412,6 +412,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (screen.options().isOpen()) {
                 const OptionsView::Result r = screen.options().handle(event);
+                if (const int fx = screen.options().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r == OptionsView::Result::Accept) screen.applySettings(screen.options().settings());
                 if (r != OptionsView::Result::None) {
                     screen.options().close();
@@ -423,6 +424,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (screen.handleSurroundings(event)) continue;
             if (screen.setup().isOpen()) { // seg1:0A60
                 const SetupView::Result r = screen.setup().handle(event);
+                if (const int fx = screen.setup().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r == SetupView::Result::Start) {
                     std::string error;
                     const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
@@ -510,11 +512,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (screen.selectPlayer().isOpen()) { // SELPLAYER (seg2:5386)
-                const int chosen = screen.selectPlayer().handle(event);
-                if (chosen >= 0) {
+                const SbButtonGroup::Input input = screen.selectPlayer().handle(event);
+                if (input.sound >= 0) sound.play(2, input.sound);
+                if (input.id >= 0) {
                     screen.selectPlayer().close();
-                    if (play.game().playCard(targetCardSlot, chosen)) report();
-                } else if (chosen == -2) {
+                    if (play.game().playCard(targetCardSlot, input.id)) report();
+                } else if (input.cancel) {
                     screen.selectPlayer().close();
                 }
                 continue;
@@ -531,8 +534,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     input = cards.key(event.key.keysym.sym, event.key.keysym.mod);
                 if (input.sound >= 0) sound.play(2, input.sound);
                 if (input.cancel && !play.game().yellowCardPending()) { cards.close(); continue; } // no cancel in discard mode
-                if (input.slot >= 0) {
-                    const int slot = input.slot;
+                if (input.id >= 0) {
+                    const int slot = input.id;
                     // seg2:51EA: a card with a target asks for the player when more than one is
                     // possible (excluded: the player; Tschüss excludes nobody, argument 0xFF).
                     const Game& g = play.game();

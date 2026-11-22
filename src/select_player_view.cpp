@@ -22,6 +22,10 @@ SelectPlayerView::SelectPlayerView(SDL_Renderer* renderer, const fs::path& root,
 void SelectPlayerView::open(const std::vector<int>& candidates, const std::array<uint8_t, 8>& status) {
     candidates_ = candidates;
     status_ = status;
+    std::vector<SbButton> buttons;
+    for (size_t i = 0; i < candidates_.size(); ++i) buttons.push_back({candidates_[i], button(i), true});
+    // seg2:5505: SetFocus on each button as it is created; the last candidate keeps it.
+    buttons_.reset(std::move(buttons), candidates_.empty() ? -1 : candidates_.back());
 }
 
 SDL_Rect SelectPlayerView::box() const { // seg2:5343: n * (size + 5) + 20 by extra + size + 30
@@ -50,20 +54,17 @@ SDL_Texture* SelectPlayerView::bitmap(const std::string& file) {
     return it->second.get();
 }
 
-int SelectPlayerView::handle(const SDL_Event& event) {
-    if (!isOpen()) return -1;
-    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-        const SDL_Point at{event.button.x, event.button.y};
-        for (size_t i = 0; i < candidates_.size(); ++i) {
-            const SDL_Rect r = button(i);
-            if (SDL_PointInRect(&at, &r)) return candidates_[i]; // button id 0x1392 + slot
-        }
-        return -1;
-    }
-    if ((event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT)
-        || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE))
-        return -2; // assumption: the card is not played
-    return -1;
+SbButtonGroup::Input SelectPlayerView::handle(const SDL_Event& event) {
+    SbButtonGroup::Input in;
+    if (!isOpen()) return in;
+    // Buttons with the ids 0x1392 + slot (seg2:54D6).
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)
+        return buttons_.mouseDown(event.button.x, event.button.y);
+    if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
+        return buttons_.mouseUp(event.button.x, event.button.y);
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) in.cancel = true; // assumption
+    if (event.type == SDL_KEYDOWN) return buttons_.key(event.key.keysym.sym, event.key.keysym.mod, true);
+    return in;
 }
 
 void SelectPlayerView::draw() {
@@ -86,9 +87,13 @@ void SelectPlayerView::draw() {
     for (size_t i = 0; i < candidates_.size(); ++i) { // DS:1B7A: pl_menu\%c%d.bmp
         const int slot = candidates_[i];
         const std::string file = dir + "pl_menu/" + kLetters[slot] + std::to_string(status_[size_t(slot)]) + ".bmp";
-        const SDL_Rect r = button(i);
-        if (SDL_Texture* t = bitmap(file)) SDL_RenderCopy(renderer_, t, nullptr, &r);
+        const SbButton& b = buttons_.buttons()[i];
+        const SDL_Rect pic = buttons_.pictureRect(b);
+        SDL_RenderSetClipRect(renderer_, &b.rect);
+        if (SDL_Texture* t = bitmap(file)) SDL_RenderCopy(renderer_, t, nullptr, &pic);
+        SDL_RenderSetClipRect(renderer_, nullptr);
     }
+    buttons_.drawFocus(renderer_);
 }
 
 } // namespace dtvr
