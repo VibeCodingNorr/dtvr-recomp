@@ -21,6 +21,7 @@ bool Game::playCard(int handSlot, int target) {
     // from the town dialog (seg1:54C1); seg3:0701 compares (category & DS:18).
     const bool inTown = phase_ == Phase::Arrived && townAt(players_[size_t(current_)].field) >= 0;
     if ((phase_ != Phase::Roll && !inTown) || handSlot < 0 || handSlot >= 8) return false;
+    if (computerControls() && !aiActing_) return false; // the computer plays this turn
     auto& slot = hands_[size_t(current_)][size_t(handSlot)];
     const int type = deck_.typeOfSlot(slot);
     if (type < 0) return false;

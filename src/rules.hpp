@@ -166,6 +166,7 @@ int resolveAnyTarget(const std::vector<PlayerSlot>& players, int requested);
 struct CellRect { int left = 0, top = 0, right = 0, bottom = 0; };
 int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view, MsRandom& rng);
 constexpr uint16_t kFlagCardsBlocked = 0x08; // checked at seg2:0B29, texts 1020-1022
+constexpr uint16_t kFlagSteerless = 0x20;    // card Steuerlos (seg3:1994), used at seg2:0A6F
 
 // Start field: first kind-6 field whose town name equals `name` ignoring ASCII case
 // (seg2:0000 with DS:1A00 = "LONDON", compared by _fstricmp seg10:22CA).

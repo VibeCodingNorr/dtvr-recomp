@@ -114,7 +114,7 @@ bool Game::sellProperty(int entry) {
 
 bool Game::roll() {
     messages_.clear();
-    if (phase_ != Phase::Roll) return false;
+    if (phase_ != Phase::Roll || (computerControls() && !aiActing_)) return false;
     declineInvestment();
     int sum = 0;
     for (int v : spinReels(rng_, 1, 5)) sum += v;

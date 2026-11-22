@@ -41,7 +41,7 @@ CardMove cardMove(int type);
 // WM_COMMAND 0x2710, i.e. a normal spin with one reel (seg4:0A27).
 enum class CardKind {
     Movement, Fiskus, Konto, Schulden, Zero, // movement and money cards
-    Zucker, Blockieren, Schlafen,            // status cards
+    Zucker, Blockieren, Schlafen, Steuerlos, // status cards (Steuerlos: round 16)
     Weihnachten, HauAb,                      // Dr. Drago / gift cards (round 10)
     Erdbeben, Naegel, Punch, Konferenz, Flugzeug, Verdoppeln, // round 13
     Property, Tschuess,                      // round 14 (cards 1-8 in the town dialog)

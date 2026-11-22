@@ -641,7 +641,8 @@ Risiko, card fields, Nebel, computer players.
   a card 0. Category 1 = property cards 1–8, 2 = all other playable cards,
   4 = the passive protection cards (never enabled).
 - **Property cards** (seg3:134D–1481) only set DS:3FC6 = card type + 1 and switch
-  the advisor view (seg5:71B3(0xB), DS:8CDC; humans only). The town dialog's
+  computer state machine to state 0xB (seg5:71B3, DS:8CDC; computers only, see
+  round 16 — the earlier "advisor" reading was wrong). The town dialog's
   card button works only while DS:3FC6 = 0xFF (seg1:549E), so one mode is active
   at a time. Opening a town dialog resets the mode (seg1:4CE1 / 4FB9), closing it
   too (seg1:5399 / 5508 / 5767). seg1:7DC5 resets it after a purchase in mode 6
@@ -658,8 +659,8 @@ Risiko, card fields, Nebel, computer players.
 - **Steuerlos** (card 13, seg3:1994): sets bit 0x20 of the target's +0x40 and
   spins (WM_COMMAND 10000). At the target's turn seg2:0A6F/0AB8 saves its status
   byte in DS:10, sets it to 2 (computer) and clears the bit; seg5:7509 (computer
-  driving) tests the bit. The effect is a computer-driven turn, so it needs the
-  computer players.
+  driving) tests the bit. The effect is a computer-driven turn (round 16:
+  seg5:A1CD also sets DS:8D2A = 1, so the route is scored with random(1000)).
 - **Risiko** (card 26, seg7:674D): opens its own window with a timed reaction
   game (seg10:1DDE clock, a 25-tick limit at seg7:693A, ±100 steps on DS:9C92,
   result booked through seg2:7F14). Not rebuilt.
@@ -693,6 +694,73 @@ Open: Steuerlos (computer players), Risiko (mini-game), card fields, Nebel.
 Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
 `cardShopOffers`, prices) and `src/game_cards.cpp` (`buyCard`, `sellCard`,
 `discard`). The shop stays open until the turn ends.
+
+### Computer players (round 16)
+
+- **Status byte** +0x00: 1 = human, 2 = computer. seg2:5E93 toggles a slot,
+  seg2:5C02 is true for status 2 while DS:94C4 ≠ 0, the game ends when no slot
+  has status 1 (seg2:5C5A). Steuerlos makes the target status 2 for one turn
+  (status saved in DS:10).
+- **State machine** seg5:6D20, run from the game loop (seg2:1C67) for computers;
+  state DS:8CDC (previous DS:8CDE) is set through seg5:71B3, which forces 0 for
+  humans. seg5:6BF2 starts a computer turn in state 1; seg5:6CE8 resets.
+  Jump table seg5:7102: 1 card choice (seg5:7386 → DS:8D20; 0xFF → state 2 spin
+  via command 0x406, else state 3 plays it via 0x407), 5 plan the route
+  (seg5:72C2), 6 drive it (seg5:A212 gives the direction, seg2:5BD9 steers;
+  state 15 when no link fits), 7 wait 50 ticks and end the turn (0x7EF),
+  9 play card DS:8D21 (seg3:4161), 11 follow-up per card type (table at
+  seg5:6FCB), 12 card field (seg5:7D85 / 7E4F, list executed by seg3:4266),
+  13 town (seg5:8F01 for the current field, executed by seg1:49D4).
+- **Profiles** DS:534A + slot · 0x16, far pointers: +0 driving strategy (five
+  records of 0x76 bytes at DS:4E60, 4ED6, 4F4C, 4FC2, 5038), +4 town weights
+  (DS:50AE, 5164), +8 DS:521A, +0xC word, +0xE money reserve (DS:52A2, 52D6,
+  530A; doubles 0 / 10,000 / 20,000 / 50,000 at +0x12), +0x12 DS:5344 / 533E.
+  Slots 0–7 use strategies 4ED6, 4ED6, 4E60, 5038, 4FC2, 4E60, 4E60, 4F4C and
+  town weights 5164, 50AE, 50AE, 50AE, 50AE, 5164, 50AE, 5164.
+- **Graph** seg5:8B1B(buffer, flag): 16 bytes per field (four links, nails count
+  +8, snow count +0xC). Masked fields (DS:A10F) lose all links, links to them are
+  removed. Each obstacle of type 4/8/0x10/0x900 (DS:5E) either removes its link
+  in both directions (flag 0, used by the route planner, always for rockfall) or
+  counts as clearable (flag 1, used by the card choice). Directions come from
+  seg5:A212: the index k with `next[k] == to`, else 4.
+- **Distances** seg5:8DBF: breadth-first search from the destination DS:A10D.
+- **Route** seg5:829D(player, steps = DS:A778, …): depth-first over neighbour
+  indices 0–3 without immediate reversal (cycles allowed) to exactly `steps`
+  fields; each end is scored by seg5:87A8 and a strictly higher (unsigned 16-bit)
+  score replaces the stored route (initial best 0). Dr. Drago is tracked along
+  the path: carried by the player (0) or by someone else (1); meeting the carrier
+  takes him, meeting any other active player while carrying him passes him on.
+- **Score** seg5:87A8: random(1000) if DS:8D2A ≠ 0 (Steuerlos); otherwise 1000
+  plus, by the end field's kind, the strategy values: kind 1/2 the month entry
+  (+0x00 / +0x22), divided by +0x20 / +0x42 when cash ≥ +0x18 / +0x3A ×
+  inflation; kind 3 +0x44 (+0x46 with 8 cards); kind 4/6 +0x48, then +0x4A
+  without spare money, +0x4C (+0x58 when cash ≥ +0x50 × inflation) if
+  seg5:8F01 plans a purchase in the town the player **currently stands in**,
+  else +0x4E; kind 5 +0x5A (+0x5C without spare money). Distance d to the
+  destination: 0 → +0x5E (1000); else −d · +0x60 while stages remain (DS:A104),
+  −d · +0x62 on the last stage, +0x60 back when d > 6; for 1 ≤ d ≤ 6 +0x66 if
+  the hand holds card number d + 0x1D (seg3:3FFC counts 1-based types, so this
+  is type d + 28, one below the matching "n Felder" card). Dr. Drago: +0x68[form]
+  when he is passed on, +0x6E[form] when taken over. Finally + random(+0x74).
+- **Spare money** seg5:9A34: cash − reserve[k] × inflation, at least 0; k = 0, or
+  Dr. Drago's form + 1 while the player carries him.
+- **Town plan** seg5:8F01(list, player, field): nothing unless the field is kind
+  4/6 with a town not wholly owned by the player. Entries up to the first empty
+  one are classified (free, own, another player's, rented, burdened) and scored
+  by seg5:990A (income factor +0x1C plus town weight word 1 + category, at least
+  0), then bubble-sorted, highest first. Unless cards are blocked: Nimm on the
+  first other player's entry worth more than weight +0xA4 (100,000); otherwise
+  the best discount card (Kaufen 25, Gold 50, Platin 90). With spare money every
+  free entry whose (discounted: 0.75 / 0.5 / 0.1) value is below the remaining
+  spare money is bought. Without any purchase the list is dropped; then Abkaufen
+  for one other player's entry below the spare money, else Mieten for the first
+  other player's entry. DS:8D28 counts the purchases.
+
+Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
+`src/game_ai.cpp` (`runComputerTurn`, `setComputer`, Steuerlos). Not rebuilt
+yet: the card choice before spinning (seg5:7386, the computer always spins),
+the card field (state 12), the follow-ups of state 11, answers to the
+investment offer (declined) and the card targets of computers.
 
 ### SBS: remaining hypotheses
 

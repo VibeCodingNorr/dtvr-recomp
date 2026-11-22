@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
 
+#include "ai.hpp"
 #include "board.hpp"
 #include "cards.hpp"
 #include "drago.hpp"
@@ -18,8 +19,8 @@ namespace dtvr {
 // SDL-independent hotseat game assembled from the rules recovered from rally.exe.
 // Simplification: vehicles move field to field along the graph instead of the
 // original pixel driving (each graph link is a drivable road, see docs/formats.md).
-// Card fields, non-movement card effects and the town dialog's other functions
-// are not reconstructed yet. Players start with 30,000 (seg2:033A).
+// Status of each card and of the computer players: README / docs/formats.md.
+// Players start with 30,000 (seg2:033A).
 // Assumptions (not yet traced): cards are played before spinning, and the start
 // order of random calls is shuffle, deal, destination.
 class Game {
@@ -46,6 +47,13 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    // Computer players (game_ai.cpp). Slots 0..humans-1 start as humans (status 1);
+    // setComputer switches a slot to status 2. runComputerTurn plays the current
+    // turn when it belongs to a computer or the player is under Steuerlos.
+    bool setComputer(int player, bool computer);
+    bool isComputer(int player) const;
+    bool computerControls() const;
+    bool runComputerTurn();
     // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.
     bool atCardField() const;
     int handCount(int player) const; // seg2:3C00
@@ -111,6 +119,7 @@ private:
     void damageTown(int town, int protectionCard);          // seg8:4F1B
     int findCard(int player, int type) const;               // seg3:0D26, slot or -1
     uint16_t routeMask() const { return eastOpen_ ? 0 : 0x4000; }
+    AiState aiState(bool steerless) const;
 
     const Board& board_;
     const std::vector<Town>& towns_;
@@ -129,6 +138,7 @@ private:
     int eventPlayer_ = 0;                   // DS:94E2 while the event trigger runs
     bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
     int propertyMode_ = 0xFF;               // DS:3FC6
+    bool aiActing_ = false;                 // inside runComputerTurn
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113

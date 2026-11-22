@@ -62,6 +62,7 @@ CardKind cardKind(int type) {
     case 27: return CardKind::Flugzeug;   // seg3:31D5
     case 40: return CardKind::Verdoppeln; // seg3:3FBB
     case 19: return CardKind::Tschuess;   // seg3:28ED
+    case 13: return CardKind::Steuerlos;  // seg3:1994
     case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
         return CardKind::Property;        // seg3:134D-1481: DS:3FC6 = type + 1
     default: return CardKind::Unsupported;
@@ -70,7 +71,7 @@ CardKind cardKind(int type) {
 
 bool cardNeedsTarget(CardKind kind) {
     return kind == CardKind::Fiskus || kind == CardKind::Schulden || kind == CardKind::Zucker
-        || kind == CardKind::Blockieren || kind == CardKind::Schlafen;
+        || kind == CardKind::Blockieren || kind == CardKind::Schlafen || kind == CardKind::Steuerlos;
 }
 
 uint16_t cardStatusFlag(CardKind kind) {
@@ -78,6 +79,7 @@ uint16_t cardStatusFlag(CardKind kind) {
     case CardKind::Zucker: return 0x02;
     case CardKind::Blockieren: return 0x08;
     case CardKind::Schlafen: return 0x04;
+    case CardKind::Steuerlos: return 0x20; // seg3:19C4
     default: return 0;
     }
 }
