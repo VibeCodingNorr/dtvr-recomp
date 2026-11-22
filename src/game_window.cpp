@@ -279,7 +279,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         for (const auto& cue : play.game().takeMusic()) if (!screen.title()) music.interrupt(cue);
         screen.advanceVehicles(SDL_GetTicks());
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
-        if (!screen.title())
+        // The original handles a field when the vehicle has reached it (the arrival
+        // runs after the drive), so its message waits for the drawn car like its sounds.
+        if (!screen.title() && !moving)
             for (Notice& n : play.game().takeNotices()) {
                 if (const auto cue = musicForNotice(n.text); !cue.empty()) music.interrupt(cue);
                 // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
@@ -788,7 +790,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     const bool done = estates.tab() == EstatesTab::Sell ? g.sellProperty(action.entry)
                                                                         : g.buyProperty(action.entry);
                     sound.play(2, done ? 2 : 7); // seg1:5598 / 55D0 (5633 / 566B): Plopp02 or Zaehler2
-                    if (done) report();
+                    if (done) {
+                        estates.afterAction(int(screen.estateRows().size()));
+                        report();
+                    }
                 } else if (action.kind == Kind::Tab) {
                     sound.play(2, 2); // seg1:5436 / 546D: Plopp02
                 } else if (action.kind == Kind::Cards) { // the card window for property cards

@@ -24,7 +24,7 @@ EstatesView::EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout,
 void EstatesView::openStatistics(int player) {
     open(-1);
     statistics_ = true;
-    focus_ = -1;
+    focus_ = 0; // seg1:4FC9
     player_ = player;
     category_ = 0; // seg1:4F59
     sort_ = 0;
@@ -59,6 +59,13 @@ void EstatesView::keepVisible(int count) {
     scroll_ = std::max(0, scroll_);
 }
 
+void EstatesView::afterAction(int count) {
+    // seg1:55A5 / 5646: a purchase or sale that succeeded sends VK_DOWN to the dialog.
+    if (tab_ == EstatesTab::None || count <= 0) return;
+    selected_ = ((selected_ < 0 ? 0 : selected_) + 1) % count;
+    keepVisible(count);
+}
+
 EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vector<EstateRow>& rows) {
     Action action;
     if (!isOpen()) return action;
@@ -90,38 +97,52 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
         selected_ = count > 0 ? std::min(scroll_, count - 1) : -1;
         action.kind = Action::Kind::Tab;
     };
+    auto stepList = [&](int& value, int modulo, int by) { // seg1:56CA / 5710 / 59EF / 5A40
+        value = (value + by + modulo) % modulo;
+        scroll_ = 0;
+        selected_ = -1;
+        action.kind = Action::Kind::Tab; // Plopp02
+    };
+    // Enter on the header item with the focus (seg1:5406; statistics seg1:5676).
+    auto activate = [&] {
+        if (statistics_) {
+            if (focus_ == 1) stepList(category_, 7, 1);
+            else if (focus_ == 2) stepList(sort_, 3, 1);
+            else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
+            // focus 0 (seg1:5687): the sale mode 0x12 is not rebuilt yet
+        } else if (focus_ == 0) selectTab(EstatesTab::Buy);
+        else if (focus_ == 1) selectTab(EstatesTab::Sell);
+        else if (focus_ == 2) action.kind = Action::Kind::Cards;
+        else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
+    };
     // No WM_MOUSEMOVE handler (seg1:5D4A). The wheel is a recomb addition where the
     // original has arrow buttons to page: the statistics (PFEIL1 / PFEIL2).
     if (event.type == SDL_MOUSEWHEEL && statistics_) {
         scroll_ = std::max(0, std::min(std::max(0, count - kVisibleRows), scroll_ - event.wheel.y));
     } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
         cancel();
-    } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+    } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) { // seg1:5DA2
         const SDL_Rect b = box();
         const int x = event.button.x - b.x, y = event.button.y - b.y;
-        if (statistics_ && x >= 0 && x < b.w && y >= 0 && y < kRow) {
-            // Header of the statistics (assumption: a click on the category or the sort
-            // order steps it on; the button handlers are not traced).
-            if (x >= 251) sort_ = (sort_ + 1) % 3;
-            else if (x >= 145) category_ = (category_ + 1) % 7;
-            selected_ = -1;
-            scroll_ = 0;
-            action.kind = Action::Kind::Tab;
-        } else if (x >= 0 && x < b.w && y >= 0 && y < kRow) { // header tabs
-            if (x >= kTabX[2]) action.kind = Action::Kind::Cards;
-            else selectTab(x >= kTabX[1] ? EstatesTab::Sell : EstatesTab::Buy);
+        // Header rectangles (PtInRect, right edge excluded): the dialog and the statistics.
+        static constexpr int kItems[2][4][2] = {{{0, 0x9F}, {0xA0, 0x128}, {0x129, 0x190}, {0x191, 0x22E}},
+                                                {{0, 0x81}, {0x82, 0xD1}, {0xD2, 0x1AE}, {0x1AF, 0x22E}}};
+        if (y >= 0 && y < 0x2A) {
+            if (tab_ == EstatesTab::None) // seg1:5FB3: only without an active tab
+                for (int i = 0; i < 4; ++i)
+                    if (x >= kItems[statistics_][i][0] && x < kItems[statistics_][i][1]) {
+                        focus_ = i; // seg1:5FD9, then Enter
+                        activate();
+                        break;
+                    }
         } else if (const int row = rowAt(event.button.x, event.button.y, count); row >= 0) {
-            if (!statistics_) rowAction(row);
-            else selected_ = row;
+            if (!statistics_ && tab_ != EstatesTab::None) rowAction(row); // seg1:6037: only with a tab
         }
     } else if (event.type == SDL_KEYDOWN) { // seg1:5BE5
         const SDL_Keycode k = event.key.keysym.sym;
         const bool enter = k == SDLK_RETURN || k == SDLK_KP_ENTER;
         if (k == SDLK_ESCAPE || k == SDLK_BACKSPACE) {
             cancel();
-        } else if (statistics_) { // seg1:5963 / 5AA0: bit 0x10 stops at the ends
-            if (count > 0 && k == SDLK_DOWN) { selected_ = selected_ < 0 ? 0 : std::min(count - 1, selected_ + 1); keepVisible(count); }
-            if (count > 0 && k == SDLK_UP) { selected_ = selected_ <= 0 ? 0 : selected_ - 1; keepVisible(count); }
         } else if (tab_ != EstatesTab::None) { // seg1:5942 / 5A7F: up / down wrap around
             if (count > 0 && (k == SDLK_UP || k == SDLK_DOWN)) {
                 const int from = selected_ < 0 ? 0 : selected_;
@@ -132,11 +153,15 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
         } else { // the header: left / right move the focus over four items (seg1:58EF / 591B)
             if (k == SDLK_LEFT) focus_ = focus_ > 0 ? focus_ - 1 : 3;
             if (k == SDLK_RIGHT) focus_ = focus_ >= 3 || focus_ < 0 ? 0 : focus_ + 1;
-            if (enter) { // seg1:5406
-                if (focus_ == 0) selectTab(EstatesTab::Buy);
-                else if (focus_ == 1) selectTab(EstatesTab::Sell);
-                else if (focus_ == 2) action.kind = Action::Kind::Cards;
-                else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
+            if (enter) activate();
+            if (statistics_ && (k == SDLK_UP || k == SDLK_DOWN)) { // seg1:5995 / 5AD5
+                const int dir = k == SDLK_UP ? -1 : 1;
+                if (focus_ == 0) { // a page of seven
+                    if (dir < 0) scroll_ = scroll_ > 7 ? scroll_ - 7 : 0;
+                    else if (count > 0) scroll_ = count - 8 > scroll_ ? scroll_ + 7 : std::max(0, count - kVisibleRows);
+                    action.kind = Action::Kind::Tab;
+                } else if (focus_ == 1) stepList(category_, 7, dir);
+                else if (focus_ == 2) stepList(sort_, 3, dir);
             }
         }
     }
@@ -226,12 +251,16 @@ void EstatesView::drawStatisticsHeader() {
             SDL_RenderCopy(renderer_, t, nullptr, &dst);
         }
     };
-    const TextStyle style{20, false, false, false, false, 0, kBrown};
-    text_.draw(renderer_, label(375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style);
+    // seg1:7606 ff.: the item with the focus (DS:3FB6) white, the others 0x45; the
+    // arrows' pfeil1 / pfeil2 choice by the focus (seg1:752A) is not traced in full.
+    auto style = [&](int item) {
+        return TextStyle{20, false, false, false, false, 0, item == focus_ ? kWhite : kBrown};
+    };
+    text_.draw(renderer_, label(375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style(0));
     arrow(160);
-    text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style);
+    text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style(1));
     arrow(266);
-    text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + 266, b.y + 10, 280, kRow}, style);
+    text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + 266, b.y + 10, 280, kRow}, style(2));
 }
 
 } // namespace dtvr

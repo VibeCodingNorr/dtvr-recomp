@@ -242,6 +242,9 @@ Confirmed from code unless marked otherwise.
   seg6:51EA), before Dr. Drago acts (seg2:0F0D / 109D). Rebuilt in round 93 from
   the audit `docs/original-money-field-audit.md` (test
   `tests/money_field_notice_test.cpp`); passing such a field shows nothing.
+  *Round 104:* the arrival handler runs once the vehicle has driven onto the field,
+  so the game window keeps a field's messages (like its sounds) until the drawn
+  car has arrived.
 
   | Month | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1418,8 +1421,14 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   otherwise close the dialog (seg1:5391). The stop waits for the dialog
   (seg1:4DBC, seg6:0FB4 on DS:44); afterwards Dr. Drago acts and nextPlayer ends
   the turn (seg2:15A6, 161D). The mouse wheel scrolls only the statistics (recomb
-  addition where the original has the PFEIL page buttons). **Assumptions:** the
-  meaning of DS:3FB8 = 3 and the click area of header item 3 are not traced; the
+  addition where the original has the PFEIL page buttons). *Round 104:* clicks
+  (seg1:5DA2): the header rectangles (right edge excluded) are 0–0x9F, 0xA0–0x128,
+  0x129–0x190 and 0x191–0x22E (item 3 closes), all 0x2A high; without an active tab
+  a click gives the item the focus and sends Enter (seg1:5FD9), with a tab the
+  header ignores clicks; a row click selects and acts only with a tab (seg1:6037).
+  A purchase or sale that succeeds sends VK_DOWN to the dialog (seg1:55A5 / 5646),
+  so the selection moves on. DS:3FB8 = 3 marks the forced sale (Statistik).
+  **Assumptions:** the
   pressed-tab colours, the category
   icons and the statistics variant (ZW_Z rows, PFEIL1 / PFEIL2 page buttons,
   seg1:7506, paging by seven at seg1:59C7 / 5B15) are not drawn yet; the card
@@ -2311,11 +2320,26 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (DS:868E) right-aligned in [339, 422], income in [430, 490], yield `%.1f%%`
   (DS:402E) in [496, 554]; no row is disabled. Page buttons step DS:8C48 by
   (x + 6) % 7 (seg1:59EF) or the scroll by seven (seg1:59C7 / 5B15).
+- **Input** (round 104): the header items are 0 (Ansehen, the sale mode),
+  1 (category), 2 (sort order) and 3 (close); the focus starts on 0 (seg1:4FC9) and
+  is drawn white. Left / Right move it with wrap-around; Enter or a click on
+  0–0x81, 0x82–0xD1, 0xD2–0x1AE, 0x1AF–0x22E acts: 1 / 2 step category / sort
+  forward ((x + 1) % 7, % 3; scroll 0; list rebuilt, seg1:56CA / 5710), 3 closes
+  with Plopp02 (Zaehler2 while DS:3FB8 = 3). Up / Down change the focused item:
+  0 pages by seven (seg1:59BE / 5B07: forward while count − 8 > scroll, else to the
+  end), 1 / 2 step backward / forward (seg1:59EF / 5A40). Escape, Backspace and the
+  right button close.
+- **Sale mode and forced sale** (found in round 104, not rebuilt yet): Enter on
+  item 0 switches to DS:3FC2 = 0x12 when the list is not empty (seg1:5687); there
+  Enter sells the selected entry at value × 0.7 (DS:868E) through seg1:8327, from
+  anywhere on the map (seg1:57A4). After every arrival seg1:4E39 opens the
+  statistics in this mode when the driver's cash is below 5.0 (DS:8696) and his
+  property value (seg1:4302) above it; DS:3FB8 = 3 then keeps it open until the cash
+  is no longer below 5.0 (seg1:5857).
 - **Rebuilt** (`statisticsRows` in `src/estates.cpp`, `src/estates_view.cpp`):
-  the list of the current player with rented entries, header and rows as above.
-  **Assumptions:** sort order (value and yield descending, towns in file order),
-  a header click steps the category (x 145–250) or the sort order (from x 251);
-  Escape or the right button close Statistik, and the game goes on.
+  the list of the current player with rented entries, header, rows and input as
+  above. **Assumptions:** sort order (value and yield descending, towns in file
+  order); the pfeil1 / pfeil2 choice of the header arrows.
 - **Loading:** the original loads from the title menu MAIN (1021, round 35);
   `--game --load <slot>` loads a slot directly.
 

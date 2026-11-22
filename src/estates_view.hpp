@@ -44,6 +44,8 @@ public:
     };
     // `rows` are the current contents (estateRows of this town and tab).
     Action handle(const SDL_Event& event, const std::vector<EstateRow>& rows);
+    // After a successful purchase or sale with `count` rows (seg1:55A5 / 5646: VK_DOWN).
+    void afterAction(int count);
     void draw(const std::vector<EstateRow>& rows, const std::array<char, 8>& ownerLetters);
     SDL_Rect box() const;
 
