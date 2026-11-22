@@ -36,6 +36,7 @@ private:
     const std::vector<int16_t>* load(int sound);
 
     std::filesystem::path root_;
+    bool initialized_ = false;
     SDL_AudioDeviceID device_ = 0;
     SDL_AudioSpec spec_{};
     bool enabled_ = true;

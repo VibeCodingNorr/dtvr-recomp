@@ -1257,6 +1257,13 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   MEMO01–04 for 0–3 on channel 0. seg6:0EE0(ms) waits ms × DS:858E[DS:1642] =
   1.0 / 1.5 / 2.0 / 3.0 (seg6:0E3A); the rebuild stores the value but has no
   such waits yet.
+- **Demo** (1024, seg4:05A8): seg4:0DA9(1) sets DS:14 = 1 (demo), skips the
+  intro, and seg2:01AF makes slots 0, 2, 4, 6 computers (status 2) with the zoom
+  byte +0x15 = 1, 0, 1, 0 instead of the player setup (seg1:02BA); then
+  seg6:0DA0(1, 0) selects pause 1 without a memo. Escape or a right click while
+  no human plays end it (seg1:021D, seg2:5CAD). Rebuilt with these slots and
+  zooms; **assumption:** without a human the message window closes by itself
+  after 2 s × the pause factor (the original wait is not traced).
 - **Credits** (1026, seg4:070C): seg6:0A4D(…, "Credits.bmp" DS:9A, 1) shows
   `butt/<n>/Credits.bmp` in a window PICT over the canvas and waits (seg6:0FB4);
   rebuilt with a key or click closing it (assumption).

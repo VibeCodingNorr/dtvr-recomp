@@ -71,6 +71,7 @@ public:
     // Zoom (seg6:2E54(3), round 38): DS:9C70 toggles between 0 and 1 and is kept per
     // player (player +0x15); at 1 the viewport shows half the world area, twice as large.
     void toggleZoom();
+    void setZoom(int player, bool zoom) { if (player >= 0 && player < kPlayerSlots) zoom_[size_t(player)] = zoom; }
     int zoomFactor() const;
     bool surroundings() const { return surroundings_; }
     bool handleSurroundings(const SDL_Event& event);
@@ -140,6 +141,7 @@ struct GameWindowOptions {
     bool openSurroundings = false; // tests: start Umfeld
     bool zoom = false;            // tests: zoom in for the current player
     bool openOptions = false;     // tests: open the options window
+    bool demo = false;            // tests: start the demo (title entry Demo)
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

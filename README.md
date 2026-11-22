@@ -101,7 +101,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 40. Sound effects from snd/fx through SDL audio (menus, slot machine, money fields,
     sit-outs, blocked cards).
 41. Driving sounds, Dr. Drago's laugh, pause keys 1–4 with their voice memos, Credits.
-42. *Next:* Demo, the remaining dialog sounds and music.
+42. Demo from the title: four computer drivers as in the original; Escape or a
+    right click return to the title.
+43. *Next:* the remaining dialog sounds, music and the stage results.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

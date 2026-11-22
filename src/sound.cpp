@@ -25,6 +25,7 @@ const char* soundFile(int index) {
 
 SoundPlayer::SoundPlayer(const fs::path& root) : root_(root) {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return;
+    initialized_ = true;
     SDL_AudioSpec want{};
     want.freq = 22050;
     want.format = AUDIO_S16SYS;
@@ -39,6 +40,7 @@ SoundPlayer::SoundPlayer(const fs::path& root) : root_(root) {
 
 SoundPlayer::~SoundPlayer() {
     if (device_) SDL_CloseAudioDevice(device_);
+    if (initialized_) SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 const std::vector<int16_t>* SoundPlayer::load(int sound) {

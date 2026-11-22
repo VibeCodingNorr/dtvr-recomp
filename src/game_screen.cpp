@@ -456,6 +456,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     bool running = true;
     int autosaved = -1; // turn serial of the last autosave
     std::vector<SoundCue> pendingSounds;
+    Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
         openMenu("MAIN");
@@ -496,7 +497,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1025: running = false; break;                       // Rallye beenden
         case 1023: case 1063: screen.options().open(screen.settings()); break; // Optionen: seg1:ACE7
         case 1026: screen.showPicture("Credits.bmp"); break;    // Credits: seg4:070C -> seg6:0A4D
-        case 1024: openTitle(); break;                           // Demo: not built yet
+        case 1024: {                                             // Demo: seg4:05A8 -> seg4:0DA9(1)
+            // seg2:01AF: slots 0, 2, 4, 6 are computers (zoom 1, 0, 1, 0), no setup dialog.
+            std::array<uint8_t, kPlayerSlots> status{2, 0, 2, 0, 2, 0, 2, 0};
+            std::array<std::string, kPlayerSlots> names;
+            for (int p = 0; p < kPlayerSlots; ++p) names[size_t(p)] = play.game().playerName(p);
+            std::string error;
+            const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr)));
+            if (!play.newGame(status, names, seed, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
+            for (int p = 0; p < kPlayerSlots; ++p) screen.setZoom(p, p == 0 || p == 4);
+            startGame();
+            break;
+        }
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
@@ -522,6 +534,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openSurroundings) screen.startSurroundings();
     if (options.zoom) screen.toggleZoom();
     if (options.openOptions) screen.options().open(screen.settings());
+    if (options.demo) { menu.close(); command(1024); }
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
@@ -570,6 +583,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (!screen.saveSlots().saveAuto(play.game(), error)) std::cerr << "Autosave: " << error << "\n";
             autosaved = play.game().turnSerial();
         }
+        // Without a human nobody answers the message window: it closes after a while
+        // (assumption: 2 s times the pause factor).
+        if (!screen.title() && !play.game().humansLeft() && screen.messages().open()) {
+            if (messageShown == 0) messageShown = SDL_GetTicks();
+            else if (SDL_GetTicks() - messageShown > Uint32(2000 * screen.settings().pauseFactor())) {
+                screen.messages().dismiss();
+                messageShown = 0;
+            }
+        } else {
+            messageShown = 0;
+        }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen();
@@ -592,6 +616,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 const int id = menu.handle(event);
                 if (const int s = menu.takeSound(); s >= 0) sound.play(2, s);
                 if (id) command(id);
+                continue;
+            }
+            const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+                                 || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
+            if (!screen.title() && !play.game().humansLeft() && endDemo) { // seg1:021D: a game of computers ends
+                play.game().requestDemoEnd();
+                screen.messages().clear();
+                menu.close();
+                openTitle();
                 continue;
             }
             if (screen.pictureShown()) { // a key or a click closes it (assumption)

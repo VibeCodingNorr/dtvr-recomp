@@ -24,6 +24,7 @@ public:
     void push(Notice notice) { queue_.push_back(std::move(notice)); }
     bool open() const { return !queue_.empty(); }
     void dismiss() { if (!queue_.empty()) queue_.pop_front(); } // a click or a key closes it
+    void clear() { queue_.clear(); }
     void draw(const Game& game);
 
 private:
