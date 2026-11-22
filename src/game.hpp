@@ -41,7 +41,8 @@ struct Notice {
     // Event place (map cell) the view zooms in on and centres while the message is
     // open (seg6:2E54(2), seg6:3064); -1: none. Cosmetic only.
     int focusX = -1, focusY = -1;
-    int variant = 0; // the scene start corner random(3) of seg8:517B (rain, snow, flood)
+    int variant = 0; // the scene start corner random(3) of seg8:517B (rain, snow, flood),
+                     // Nessie's place index DS:680C
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.

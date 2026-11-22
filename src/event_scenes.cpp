@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "event_scenes.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 
 namespace dtvr {
@@ -9,6 +10,7 @@ namespace {
 // Definitions built on the handler's stack (u16 delay, u8 0, u8 count, names), the
 // SBS set, record +0xA and the position added to the place's cell * 16.
 // Sturm seg8:1C01: DS:5F0E.., sbs\sturm.sbs (DS:5F3A), repetitions 4, (8, -0x1D).
+using Motion = ScenePhase::Motion;
 const EventScene kStorm{"sturm.sbs", {{{"ST1", "ST2", "ST3", "ST4", "ST5", "ST6"}, 6, 4}}, 8, -0x1D};
 // Räuber seg8:1E70: sbs\raub.sbs (DS:60E7), the victim's field * 16 + (0xC, 4).
 const EventScene kRobbers{"raub.sbs",
@@ -42,20 +44,59 @@ const EventScene kQuake{"equake.sbs",
                            "BR11", "BR12", "BR13", "BR14", "BR15", "BR15", "BR15", "BR15"},
                           5, 0}},
                         0, 0, 2000, 500, true};
+// Dürre seg8:2386: sonne.sbs (DS:6239); the sun S01/S02 (delay 7, repetitions 1000)
+// sinks from the view top - 0x14 by 2 per pass at x = town * 16 + 0x12 until it is
+// within 0x32 of the town row (seg8:27A3), then three definitions play there.
+const EventScene kDrought{"sonne.sbs",
+                          {{{"S01", "S02"}, 7, 1000, Motion::Descend},
+                           {{"S03", "S04", "S05", "S06", "S07", "S08", "S09", "S08", "S10", "S09", "S09", "S11",
+                             "S05", "S04", "S03", "S01", "S02", "S01", "S12", "S13", "S14", "S15", "S16"},
+                            6, 0},
+                           {{"S17", "S18", "S19", "S20"}, 6, 3},
+                           {{"S21", "S22", "S23", "S24", "S01", "S02", "S01", "S02", "S01", "S02"}, 6, 0}},
+                          0x12, 0};
+// Nessie seg8:2A32: nessie.sbs (DS:680E); first at Loch Ness (record at 0x4D5 / 0x248,
+// centred on 0x4D0 / 0x240, seg6:0F60(500) before and (1000) after), then centred on
+// the place + 1 cell and three definitions at the place * 16 + (0x12, 0x17)
+// (seg8:336F ff.), seg6:0F60(1000) at the end.
+const EventScene kNessie{
+    "nessie.sbs",
+    {{{"N01", "N02", "N03", "N04", "N05", "N06", "N06", "N06", "N06", "N06", "N06", "N06", "N06", "N06",
+       "N06", "N07", "N08", "N09", "N09", "N09", "N09", "N09", "N09", "N10", "N11", "N12", "N12", "N12",
+       "N12", "N12", "N12", "N12", "N12", "N12", "N12", "N11", "N10", "N09", "N09", "N09", "N09", "N09",
+       "N09", "N08", "N07", "N06", "N06", "N06", "N06", "N13", "N14", "N15", "N16", "N17", "N18", "N19",
+       "N20", "N21", "N21", "N22", "N23", "N23", "N23", "N23", "N23", "N23", "N24", "N25", "N26", "N27",
+       "N27", "N27", "N27", "N27", "N27", "N27"},
+      5, 0, Motion::None, 500, 1000, true, {0x4D5, 0x248}, true, true, {0x4D0, 0x240}},
+     {{"NH01", "NH01", "NH01", "NH01", "NH01", "NH01", "NH01", "NH01", "NH01", "NH01", "NH02", "NH03", "NH04",
+       "NH05", "NH06", "NH07", "NH02", "NH03", "NH04", "NH05", "NH06", "NH01"},
+      5, 0, Motion::None, 0, 0, false, {}, true, false, {16, 16}},
+     {{"NH08", "NH09", "NH10", "NH11", "NH12", "NH13", "NH14", "NH15", "NH14", "NH13", "NH14", "NH15", "NH14",
+       "NH13", "NH14", "NH15", "NH14", "NH16", "NH17", "NH18", "NH19", "NH20", "NH21", "NH22", "NH23", "NH24",
+       "NH25", "NH26", "NH27", "NH28", "NH29", "NH30", "NH31", "NH32", "NH33", "NH34", "NH35", "NH36", "NH37",
+       "NH38", "NH39", "NH40", "NH23", "NH41", "NH42", "NH43"},
+      5, 0},
+     {{"NH44", "NH45", "NH46", "NH46", "NH46", "NH46", "NH46", "NH46", "NH45", "NH44", "NH43", "NH42", "NH42",
+       "NH42", "NH42", "NH42", "NH42", "NH42", "NH42"},
+      5, 0, Motion::None, 0, 1000}},
+    0x12, 0x17, 0, 0, false, true};
+// The lake cells of seg8:2A32 (stack tables bp-0x2B8 / -0x2D2, index DS:680C).
+constexpr int kLakeX[13] = {18, 61, 82, 91, 78, 105, 112, 144, 146, 148, 179, 190, 133};
+constexpr int kLakeY[13] = {13, 67, 85, 93, 135, 107, 98, 83, 65, 33, 82, 82, 130};
 // Regen seg8:42B0: regen.sbs (DS:6C36); the cloud R00 (repetitions 1000) flies to
 // the obstacle * 16 - (0, 0x11), then R01-R08 and R09-R20 (repetitions 1) there.
 const EventScene kRain{"regen.sbs",
-                       {{{"R00"}, 6, 1000},
+                       {{{"R00"}, 6, 1000, Motion::Flight},
                         {{"R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08"}, 4, 0},
                         {{"R09", "R10", "R11", "R12", "R13", "R14", "R15", "R16", "R09", "R17", "R18",
                           "R19", "R20", "R14", "R15", "R16", "R09", "R17", "R18", "R19", "R20", "R14",
                           "R15", "R16", "R09", "R10", "R11", "R12", "R13", "R14", "R15", "R16"},
                          4, 1}},
-                       0, -0x11, 0, 0, false, true};
+                       0, -0x11};
 // Schnee seg8:535E: schnee.sbs (DS:7017); SN01 flies to the obstacle * 16 + (5, -0x19),
 // then SN01-SN30 and SN31-SN46 (repetitions 2).
 const EventScene kSnow{"schnee.sbs",
-                       {{{"SN01"}, 6, 1000},
+                       {{{"SN01"}, 6, 1000, Motion::Flight},
                         {{"SN01", "SN02", "SN03", "SN04", "SN05", "SN06", "SN07", "SN08", "SN09", "SN10",
                           "SN11", "SN12", "SN13", "SN14", "SN15", "SN16", "SN17", "SN18", "SN19", "SN20",
                           "SN21", "SN22", "SN23", "SN24", "SN25", "SN26", "SN27", "SN28", "SN29", "SN30"},
@@ -63,18 +104,18 @@ const EventScene kSnow{"schnee.sbs",
                         {{"SN31", "SN32", "SN33", "SN34", "SN35", "SN36", "SN37", "SN38", "SN39", "SN40",
                           "SN41", "SN42", "SN43", "SN44", "SN45", "SN46"},
                          4, 2}},
-                       5, -0x19, 0, 0, false, true};
+                       5, -0x19};
 // Hochwasser seg8:4964: flood.sbs (DS:6E1D); RG00 flies to the town * 16 - (0, 0x11),
 // then RG01-RG26 (46 frames, delay 8).
 const EventScene kFlood{"flood.sbs",
-                        {{{"RG00"}, 6, 1000},
+                        {{{"RG00"}, 6, 1000, Motion::Flight},
                          {{"RG01", "RG02", "RG03", "RG03", "RG02", "RG04", "RG05", "RG05", "RG06", "RG07",
                            "RG08", "RG08", "RG09", "RG07", "RG06", "RG10", "RG11", "RG06", "RG12", "RG13",
                            "RG14", "RG15", "RG16", "RG17", "RG14", "RG15", "RG16", "RG17", "RG14", "RG15",
                            "RG16", "RG17", "RG18", "RG19", "RG20", "RG21", "RG21", "RG22", "RG21", "RG21",
                            "RG22", "RG22", "RG23", "RG24", "RG25", "RG26"},
                           8, 0}},
-                        0, -0x11, 0, 0, false, true};
+                        0, -0x11};
 
 // Per place (centre DS stack bp-0x66 / -0x7E = the quake places): crack A at
 // (ax + 1, ay + 1) * 16, crack B at (bx + 1, by + 1) * 16 when bx != 0.
@@ -113,6 +154,8 @@ const EventScene* eventSceneForNotice(int text) {
     if (text >= 5121 && text <= 5123) return &kRain;  // 0x1401 at seg8:4870
     if (text >= 5481 && text <= 5483) return &kSnow;
     if (text >= 5241 && text <= 5243) return &kFlood;
+    if (text >= 5141 && text <= 5143) return &kDrought;
+    if (text >= 5101 && text <= 5103) return &kNessie;
     return nullptr;
 }
 
@@ -127,30 +170,68 @@ std::vector<ScenePoint> eventScenePositions(const EventScene& scene, int cellX, 
     return {};
 }
 
-std::vector<SceneStep> eventSceneTimeline(const EventScene& scene, int corner, int viewWidth, int viewHeight) {
+std::vector<SceneStep> eventSceneTimeline(const EventScene& scene, int cellX, int cellY, int variant, int viewWidth,
+                                          int viewHeight, int viewTop) {
     std::vector<SceneStep> steps;
-    for (size_t i = 0; i < scene.phases.size(); ++i) {
-        const ScenePhase& phase = scene.phases[i];
+    if (scene.nessieLake && variant >= 0 && variant < 13) { // seg8:336F: the lake, not the town
+        cellX = kLakeX[variant];
+        cellY = kLakeY[variant];
+    }
+    const int corner = variant;
+    const std::vector<ScenePoint> places = eventScenePositions(scene, cellX, cellY);
+    auto wait = [&](int ms) {
+        for (int i = 0; i < ms / 20; ++i) steps.push_back(SceneStep{});
+    };
+    auto shifted = [&](ScenePoint d) {
+        std::vector<ScenePoint> at = places;
+        for (ScenePoint& p : at) p = {p.x + d.x, p.y + d.y};
+        return at;
+    };
+    wait(scene.waitBefore);
+    ScenePoint rest{}; // offset the later phases keep (the drought's sinking height)
+    for (const ScenePhase& phase : scene.phases) {
+        wait(phase.waitBefore);
+        const size_t first = steps.size();
         RecordState r{0, phase.repetitions, 0};
-        if (i == 0 && scene.flight) {
+        auto at = [&](ScenePoint d) { return phase.fixed ? std::vector<ScenePoint>{phase.at} : shifted(d); };
+        if (phase.motion == Motion::Flight) {
             // seg8:517B: start = target + {(-c, -e), (c, -e), (c, e)}[corner] with
             // c = width / 2 + 40, e = height / 2 + 40; seg8:5243 then moves 2 pixels per
             // pass per axis (an axis within one step snaps) until both are within a step.
             const int c = viewWidth / 2 + kFlightMargin, e = viewHeight / 2 + kFlightMargin;
             static const int kSx[3] = {-1, 1, 1}, kSy[3] = {-1, -1, 1};
             const int k = corner >= 0 && corner < 3 ? corner : 0;
-            ScenePoint at{kSx[k] * c, kSy[k] * e};
+            ScenePoint d{kSx[k] * c, kSy[k] * e};
             for (int guard = 0; guard < 100000; ++guard) {
                 r.step(phase); // repetitions 1000: the cloud keeps cycling while it flies
-                steps.push_back({phase.frames[size_t(r.frame)], at});
-                if (std::abs(at.x) <= kFlightStep && std::abs(at.y) <= kFlightStep) break;
-                at.x = std::abs(at.x) > kFlightStep ? at.x + (at.x < 0 ? kFlightStep : -kFlightStep) : 0;
-                at.y = std::abs(at.y) > kFlightStep ? at.y + (at.y < 0 ? kFlightStep : -kFlightStep) : 0;
+                steps.push_back({phase.frames[size_t(r.frame)], at(d)});
+                if (std::abs(d.x) <= kFlightStep && std::abs(d.y) <= kFlightStep) break;
+                d.x = std::abs(d.x) > kFlightStep ? d.x + (d.x < 0 ? kFlightStep : -kFlightStep) : 0;
+                d.y = std::abs(d.y) > kFlightStep ? d.y + (d.y < 0 ? kFlightStep : -kFlightStep) : 0;
             }
-            continue;
+        } else if (phase.motion == Motion::Descend && !places.empty()) {
+            // seg8:25CD: y starts at the view top - 0x14; after each pass y += 2 until
+            // |town row * 16 - y| <= 0x32 (seg8:27A3 ff.).
+            ScenePoint d{0, viewTop - 0x14 - places[0].y};
+            for (int guard = 0; guard < 100000; ++guard) {
+                r.step(phase);
+                steps.push_back({phase.frames[size_t(r.frame)], at(d)});
+                d.y += 2;
+                if (std::abs(places[0].y + d.y - cellY * 16) <= 0x32) break;
+            }
+            rest = d;
+        } else {
+            while (r.step(phase)) steps.push_back({phase.frames[size_t(r.frame)], at(rest)});
         }
-        while (r.step(phase)) steps.push_back({phase.frames[size_t(r.frame)], ScenePoint{}});
+        if (phase.recentre && first < steps.size() + 1) {
+            const ScenePoint camera = phase.cameraFixed ? phase.camera
+                                                        : ScenePoint{cellX * 16 + phase.camera.x, cellY * 16 + phase.camera.y};
+            const size_t mark = first - std::min(first, size_t(phase.waitBefore / 20)); // before the phase's wait
+            if (mark < steps.size()) { steps[mark].recentre = true; steps[mark].camera = camera; }
+        }
+        wait(phase.waitAfter);
     }
+    wait(scene.waitAfter);
     return steps;
 }
 

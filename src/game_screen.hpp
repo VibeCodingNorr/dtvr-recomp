@@ -176,8 +176,8 @@ private:
     struct EventFocus { bool active = false, zoomed = false; TilePoint saved{}; bool savedSet = false; int x = -1, y = -1; };
     EventFocus focus_;
     const EventScene* scene_ = nullptr;
-    std::vector<ScenePoint> scenePoints_;
     std::vector<SceneStep> sceneSteps_;
+    size_t sceneCamera_ = 0; // steps whose recentring has been applied
     Uint32 sceneStart_ = 0;
     std::map<std::string, std::map<std::string, Texture>> sceneFrames_; // per SBS file
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick

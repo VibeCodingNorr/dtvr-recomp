@@ -155,19 +155,27 @@ void GameScreen::eventFocus(int cellX, int cellY) {
 void GameScreen::startEventScene(const EventScene& scene, int cellX, int cellY, int corner, Uint32 now) {
     if (!sceneFrames_.count(scene.file)) loadSprites(fs::path("sbs") / scene.file, sceneFrames_[scene.file]);
     scene_ = &scene;
-    scenePoints_ = eventScenePositions(scene, cellX, cellY);
-    const MapViewSize view = viewSize(); // zoomed in already (seg6:2E54(2) before seg8:517B)
-    sceneSteps_ = eventSceneTimeline(scene, corner, view.width, view.height);
+    const MapViewSize view = viewSize(); // zoomed in and centred already (seg6:2E54(2), seg6:3064)
+    sceneSteps_ = eventSceneTimeline(scene, cellX, cellY, corner, view.width, view.height, origin_.y * WorldMap::kTile);
+    sceneCamera_ = 0;
     sceneStart_ = now;
 }
 
 bool GameScreen::eventSceneActive(Uint32 now) const {
     if (!scene_) return false;
-    const Uint32 length = Uint32(scene_->waitBefore + int(sceneSteps_.size()) * int(kSceneStepMs) + scene_->waitAfter);
+    const Uint32 length = Uint32(sceneSteps_.size()) * kSceneStepMs; // waits are empty steps
     return now - sceneStart_ < length;
 }
 
 void GameScreen::advanceVehicles(Uint32 now) {
+    if (eventSceneActive(now)) { // Nessie: seg6:3064 on Loch Ness, then on the place
+        const size_t pass = std::min(size_t((now - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
+        for (; sceneCamera_ <= pass; ++sceneCamera_)
+            if (sceneSteps_[sceneCamera_].recentre) {
+                const ScenePoint c = sceneSteps_[sceneCamera_].camera;
+                origin_ = centredOrigin(c.x, c.y, viewSize());
+            }
+    }
     constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
     const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
     lastAdvance_ = now;
@@ -373,17 +381,14 @@ void GameScreen::drawMap() {
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
-        const int elapsed = int(SDL_GetTicks() - sceneStart_) - scene_->waitBefore;
-        const int pass = elapsed / int(kSceneStepMs);
+        const size_t pass = size_t((SDL_GetTicks() - sceneStart_) / kSceneStepMs);
+        const SceneStep& step = sceneSteps_[std::min(pass, sceneSteps_.size() - 1)];
         const auto& frames = sceneFrames_[scene_->file];
-        const bool drawn = elapsed >= 0 && pass < int(sceneSteps_.size());
-        const SceneStep step = drawn ? sceneSteps_[size_t(pass)] : SceneStep{"", {}};
-        const auto it = drawn ? frames.find(upperAscii(step.frame)) : frames.end();
+        const auto it = step.frame ? frames.find(upperAscii(step.frame)) : frames.end();
         if (it != frames.end() && it->second) {
             int w = 0, h = 0;
             SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
-            for (const ScenePoint& p : scenePoints_) {
-                const ScenePoint at{p.x + step.offset.x, p.y + step.offset.y};
+            for (const ScenePoint& at : step.at) {
                 const SDL_Rect box{target.x + (at.x - origin.x) * z, target.y + (at.y - origin.y) * z, w * z, h * z};
                 SDL_RenderCopy(renderer_, it->second.get(), nullptr, &box);
             }

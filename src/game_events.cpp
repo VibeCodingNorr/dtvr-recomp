@@ -103,7 +103,7 @@ void Game::applyEvent(EventKind kind) {
     case EventKind::Nessie: {
         const Cell place = nextNessiePlace(places_);
         const int town = townAtCell(towns_, place);
-        eventNotice(5101 + rng_.random(2), {townArg(town)}, place.x, place.y); // seg8:3259
+        eventNotice(5101 + rng_.random(2), {townArg(town)}, place.x, place.y, places_.nessie); // seg8:3259, DS:680C
         if (town >= 0) damageTown(town, 39); // only the Nessie card protects
         return;
     }

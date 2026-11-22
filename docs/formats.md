@@ -1450,9 +1450,22 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   flood.sbs (DS:6E1D); RG00 flies to the town · 16 − (0, 0x11), then 46 frames
   RG01–RG26 (delay 8). Rebuilt in `src/event_scenes.cpp` (phases and the flight
   as a precomputed timeline, `Notice::variant` carries the random(3) corner).
-- **Still open:** Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
-  four definitions, three WAVs E12 / E12a / E12b). Definitions extracted with the
-  private helper `animdef.py`.
+- **Drought** seg8:2386 (round 74): sonne.sbs (DS:6239); x = town · 16 + 0x12;
+  the sun S01/S02 (delay 7, repetitions 1000) starts at the view top · 16 − 0x14
+  and sinks by 2 per pass (seg8:27A3) until |town row · 16 − y| ≤ 0x32; then at
+  that height S03 … S16 (23 frames, delay 6), S17–S20 (delay 6, repetitions 3) and
+  S21 … S02 (10 frames, delay 6) with seg8:6E0F.
+- **Nessie** seg8:2A32 (round 74): nessie.sbs (DS:680E); centred on Loch Ness
+  (0x4D0, 0x240), seg6:0F60(500), N01 … N27 (76 frames, delay 5) at (0x4D5,
+  0x248), seg6:0F60(1000); then centred on (lake + 1) · 16 and NH01 … (22 frames),
+  NH08 … (46), NH44 … (19), all delay 5, at lake · 16 + (0x12, 0x17), then
+  seg6:0F60(1000). The lake cells are a second table indexed like the damage towns
+  (DS:680C): x 18, 61, 82, 91, 78, 105, 112, 144, 146, 148, 179, 190, 133; y 13,
+  67, 85, 93, 135, 107, 98, 83, 65, 33, 82, 82, 130 (stack bp−0x2B8 / −0x2D2). WAVs
+  `snd\E12`, `E12a`, `E12b` are not on this disc. Rebuilt with phases that can be
+  fixed, recentre the map (`SceneStep::recentre`) and wait; `Notice::variant`
+  carries the place index. All event scenes are now rebuilt; definitions were
+  extracted with the private helper `animdef.py`.
 - **Correction (round 69):** the edge scroll of round 67 also ran for a standing
   vehicle; it now only follows a vehicle that moved in that tick, as in the
   movement tick seg2:239F.
