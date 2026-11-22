@@ -1,0 +1,231 @@
+#include "sbs.hpp"
+
+#include <SDL.h>
+
+#include <algorithm>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
+using Surface = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>;
+using Texture = std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>;
+
+static fs::path programDirectory(fs::path root) {
+    if (fs::is_regular_file(root / "program/rally.exe")) root /= "program";
+    if (!fs::is_regular_file(root / "rally.exe"))
+        throw std::runtime_error("Kein Spielverzeichnis: " + root.string());
+    return root;
+}
+
+enum class View { Overview, Tiles, Sprites };
+
+static Surface loadBmp(const fs::path& path) {
+    Surface image(SDL_LoadBMP(path.c_str()), SDL_FreeSurface);
+    if (!image) throw std::runtime_error(path.string() + ": " + SDL_GetError());
+    return image;
+}
+
+static Surface loadTiles(const fs::path& path) {
+    auto image = loadBmp(path);
+    // SBB files are BMP strips. Present their 16x16 blocks in a grid;
+    // this is an inspection layout, not a reconstructed world map.
+    if (image->w != 16 || image->h % 16 != 0)
+        throw std::runtime_error("Unerwartete SBB-Abmessungen: " + path.string());
+    const int count = image->h / 16;
+    Surface grid(SDL_CreateRGBSurfaceWithFormat(0, 16 * 16,
+                 ((count + 15) / 16) * 16, 32, SDL_PIXELFORMAT_RGBA32), SDL_FreeSurface);
+    if (!grid) throw std::runtime_error(SDL_GetError());
+    for (int i = 0; i < count; ++i) {
+        SDL_Rect source{0, i * 16, 16, 16};
+        SDL_Rect target{(i % 16) * 16, (i / 16) * 16, 16, 16};
+        if (SDL_BlitSurface(image.get(), &source, grid.get(), &target) != 0)
+            throw std::runtime_error(SDL_GetError());
+    }
+    return grid;
+}
+
+// Lays out all SBS frames in rows. The palette comes from the overview BMP and
+// index 0 is drawn as a checkerboard; both are working hypotheses, see docs/formats.md.
+static Surface loadSprites(const fs::path& path, const SDL_Palette& palette) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) throw std::runtime_error("Nicht lesbar: " + path.string());
+    const std::vector<uint8_t> data{std::istreambuf_iterator<char>(in), {}};
+    const auto file = dtvr::parseSbs(data);
+    constexpr int gap = 4, maxRow = 640;
+    int width = gap, height = gap, rowW = gap, rowH = 0;
+    std::vector<SDL_Point> at;
+    for (const auto& f : file.frames) {
+        if (rowW > gap && rowW + f.width + gap > maxRow) { height += rowH + gap; rowW = gap; rowH = 0; }
+        at.push_back({rowW, height});
+        rowW += f.width + gap; rowH = std::max(rowH, int(f.height));
+        width = std::max(width, rowW);
+    }
+    height += rowH + gap;
+    Surface sheet(SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);
+    if (!sheet) throw std::runtime_error(SDL_GetError());
+    SDL_FillRect(sheet.get(), nullptr, 0xff202530);
+    for (size_t i = 0; i < file.frames.size(); ++i) {
+        const auto& f = file.frames[i];
+        for (int y = 0; y < f.height; ++y) {
+            auto* row = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(sheet->pixels)
+                        + (at[i].y + y) * sheet->pitch) + at[i].x;
+            for (int x = 0; x < f.width; ++x) {
+                const uint8_t index = f.pixels[size_t(y) * f.width + x];
+                if (index == 0) { row[x] = ((x / 4 + y / 4) & 1) ? 0xff505050 : 0xff707070; continue; }
+                const SDL_Color c = index < palette.ncolors ? palette.colors[index] : SDL_Color{255, 0, 255, 255};
+                row[x] = 0xff000000u | uint32_t(c.r) << 16 | uint32_t(c.g) << 8 | c.b;
+            }
+        }
+    }
+    std::cout << path.filename().string() << ": " << file.frames.size() << " Bilder\n";
+    return sheet;
+}
+
+static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& extension) {
+    std::vector<fs::path> result;
+    if (fs::is_directory(dir))
+        for (const auto& entry : fs::recursive_directory_iterator(dir))
+            if (entry.is_regular_file() && entry.path().extension() == extension)
+                result.push_back(entry.path());
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+static int run(int argc, char** argv) {
+    fs::path root, screenshot;
+    bool smoke = false;
+    View view = View::Overview;
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--help") {
+            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites] [--smoke-test] [--screenshot DATEI.bmp]\n"
+                         "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
+                         "M: Karte/Bausteine/Sprites | Links/Rechts: Datei | Mausrad: Zoom\n"
+                         "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
+            return 0;
+        } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
+            (arg == "--data" ? root : screenshot) = argv[++i];
+        } else if (arg == "--smoke-test") smoke = true;
+        else if (arg == "--tiles") view = View::Tiles;
+        else if (arg == "--sprites") view = View::Sprites;
+        else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
+    }
+    if (root.empty()) throw std::runtime_error("Datenpfad fehlt. Aufruf: dtvr-recomb --data PFAD");
+    root = programDirectory(root);
+    const auto tiles = findFiles(root / "map", ".sbb");
+    const auto sprites = findFiles(root, ".sbs");
+    if (view == View::Tiles && tiles.empty()) throw std::runtime_error("Keine SBB-Dateien gefunden");
+    if (view == View::Sprites && sprites.empty()) throw std::runtime_error("Keine SBS-Dateien gefunden");
+    const auto overview = loadBmp(root / "butt/1/map.bmp");
+    if (!overview->format->palette) throw std::runtime_error("map.bmp hat keine Palette");
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) throw std::runtime_error(SDL_GetError());
+    struct Quit { ~Quit() { SDL_Quit(); } } quit;
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
+        SDL_CreateWindow("DTVR Recomb", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                         1000, 800, SDL_WINDOW_RESIZABLE | (smoke ? SDL_WINDOW_HIDDEN : 0)),
+        SDL_DestroyWindow);
+    if (!window) throw std::runtime_error(SDL_GetError());
+    SDL_SetWindowMinimumSize(window.get(), 320, 240);
+    std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer(
+        SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
+    if (!renderer) throw std::runtime_error(SDL_GetError());
+    Texture texture(nullptr, SDL_DestroyTexture);
+    int width = 0, height = 0;
+    size_t tileIndex = 0, spriteIndex = 0;
+    float zoom = 1, x = 0, y = 0;
+    auto fit = [&] {
+        int w, h;
+        SDL_GetRendererOutputSize(renderer.get(), &w, &h);
+        zoom = std::min(float(w - 32) / width, float(h - 32) / height);
+        x = (w - width * zoom) / 2; y = (h - height * zoom) / 2;
+    };
+    auto load = [&] {
+        fs::path path = root / "butt/1/map.bmp";
+        Surface surface(nullptr, SDL_FreeSurface);
+        if (view == View::Tiles) surface = loadTiles(path = tiles[tileIndex]);
+        else if (view == View::Sprites) surface = loadSprites(path = sprites[spriteIndex], *overview->format->palette);
+        else surface = loadBmp(path);
+        width = surface->w; height = surface->h;
+        texture.reset(SDL_CreateTextureFromSurface(renderer.get(), surface.get()));
+        if (!texture) throw std::runtime_error(SDL_GetError());
+        const auto title = "DTVR Recomb | " + fs::relative(path, root).string()
+            + " | M: Ansicht | Pfeile: Datei | Rad: Zoom | Ziehen | R: Einpassen";
+        SDL_SetWindowTitle(window.get(), title.c_str());
+        std::cout << "Geladen: " << path << " (" << width << "x" << height << ")\n";
+        fit();
+    };
+    auto step = [&](int delta) {
+        auto& files = view == View::Tiles ? tiles : sprites;
+        auto& index = view == View::Tiles ? tileIndex : spriteIndex;
+        if (view == View::Overview || files.empty()) return;
+        index = (index + files.size() + delta) % files.size();
+        load();
+    };
+    load();
+    bool running = true;
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) running = false;
+            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) fit();
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                case SDLK_ESCAPE: running = false; break;
+                case SDLK_r: fit(); break;
+                case SDLK_m:
+                    do view = View((int(view) + 1) % 3);
+                    while ((view == View::Tiles && tiles.empty()) || (view == View::Sprites && sprites.empty()));
+                    load(); break;
+                case SDLK_RIGHT: step(1); break;
+                case SDLK_LEFT: step(-1); break;
+                default: break;
+                }
+            }
+            if (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)) {
+                x += event.motion.xrel; y += event.motion.yrel;
+            }
+            if (event.type == SDL_MOUSEWHEEL) {
+                int mx, my; SDL_GetMouseState(&mx, &my);
+                const float direction = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1.f : 1.f;
+                const float next = std::clamp(zoom * std::pow(1.2f, direction * event.wheel.y), 0.1f, 32.f);
+                x = mx - (mx - x) * next / zoom;
+                y = my - (my - y) * next / zoom;
+                zoom = next;
+            }
+        }
+        SDL_SetRenderDrawColor(renderer.get(), 20, 23, 30, 255);
+        if (SDL_RenderClear(renderer.get()) != 0) throw std::runtime_error(SDL_GetError());
+        SDL_FRect target{x, y, width * zoom, height * zoom};
+        if (SDL_RenderCopyF(renderer.get(), texture.get(), nullptr, &target) != 0)
+            throw std::runtime_error(SDL_GetError());
+        if (!screenshot.empty()) {
+            int w, h; SDL_GetRendererOutputSize(renderer.get(), &w, &h);
+            Surface shot(SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);
+            if (!shot || SDL_RenderReadPixels(renderer.get(), nullptr, SDL_PIXELFORMAT_ARGB8888,
+                                              shot->pixels, shot->pitch) != 0)
+                throw std::runtime_error(SDL_GetError());
+            if (SDL_SaveBMP(shot.get(), screenshot.c_str()) != 0) throw std::runtime_error(SDL_GetError());
+            screenshot.clear();
+        }
+        SDL_RenderPresent(renderer.get());
+        if (smoke) running = false;
+        else SDL_Delay(16);
+    }
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    try { return run(argc, argv); }
+    catch (const std::exception& error) {
+        std::cerr << "Fehler: " << error.what() << '\n';
+        return 1;
+    }
+}
