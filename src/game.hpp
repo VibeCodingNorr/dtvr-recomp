@@ -36,6 +36,9 @@ public:
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
+    // Yellow field with a full hand (seg3:1057): discard a card, then the card follows.
+    bool yellowCardPending() const { return yellowPending_; }
+    bool discardForCard(int handSlot);
     // Play hand slot 0..7 before spinning (game_cards.cpp). `target` depends on the
     // card: the target player for Fiskus/Schulden/Zucker/Blockieren/Schlafen (only
     // needed with three or more players, seg2:51EA), the direction 1..4 for Nägel,
@@ -112,6 +115,7 @@ private:
     void playPunch();            // seg3:2D17 (game_cards.cpp)
     void playTschuess(int target); // seg3:28ED
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
+    void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
     // game_events.cpp
     void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
     void applyEvent(EventKind kind);
@@ -139,6 +143,7 @@ private:
     bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
     int propertyMode_ = 0xFF;               // DS:3FC6
     bool aiActing_ = false;                 // inside runComputerTurn
+    bool yellowPending_ = false;            // yellow field waits for a discard
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113

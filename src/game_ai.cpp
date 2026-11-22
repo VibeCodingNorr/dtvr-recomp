@@ -34,11 +34,15 @@ AiState Game::aiState(bool steerless) const {
     s.dragoHolder = drago_.holder;
     s.dragoForm = drago_.form;
     s.month = calendar_.month;
+    s.year = calendar_.year;
     s.inflation = calendar_.inflation;
     s.remainingStages = remaining_;
     s.destination = destination_;
     s.routeMask = routeMask();
     s.steerless = steerless;
+    // DS:22 holds the last distances of seg2:43A8; during play they come from the
+    // stage destination with the route mask (approximation, see docs).
+    for (int d : fieldDistances(board_, destination_, routeMask())) s.fieldDist.push_back(d < 0 ? 0xFFFF : uint16_t(d));
     return s;
 }
 
@@ -51,10 +55,15 @@ bool Game::runComputerTurn() {
     const bool steerless = players_[size_t(current_)].flags & kFlagSteerless;
     declineInvestment(); // the computer's answer to an offer is not traced yet
     const int player = current_;
-    // State 1 (seg5:7386, card choice) is not rebuilt yet: the computer spins.
-    roll();
+    // State 1: card choice (seg5:7386); without a card the computer spins (state 2).
+    const AiCardChoice card = aiChooseCard(aiState(steerless), player, obstacles_, rng_);
+    if (card.slot < 0 || !playCard(card.slot, card.target)) roll();
     players_[size_t(player)].flags &= uint16_t(~kFlagSteerless); // after roll: computerControls() still held
     collect();
+    if (phase_ == Phase::Roll && current_ != player) { // the card ended the turn
+        messages_ = log;
+        return true;
+    }
     if (phase_ == Phase::Move) {
         // States 5 and 6: plan the route over exactly the spun number of fields, then drive it.
         const AiState state = aiState(steerless);
@@ -73,10 +82,23 @@ bool Game::runComputerTurn() {
             return false;
         }
     }
+    if (phase_ == Phase::Arrived && yellowPending_) { // seg3:1128: seg5:7CD2 picks the card to drop
+        const int slot = aiLeastValuableCard(aiState(steerless), player);
+        if (slot >= 0) discardForCard(slot);
+        collect();
+    }
     if (phase_ == Phase::Arrived) {
         // State 13 (seg5:7079): the town plan of seg5:8F01, executed by seg1:49D4.
         const int field = players_[size_t(player)].field;
-        if (townAt(field) >= 0) {
+        if (atCardField()) { // state 12: seg5:7D85 / 7E4F, executed by seg3:4266 (sales first)
+            for (const AiAction& a : aiCardShopPlan(aiState(steerless), player, cardShopOffers(deck_), rng_)) {
+                if (a.kind == 1) {
+                    for (int k = 0; k < 8; ++k)
+                        if (deck_.typeOfSlot(hands_[size_t(player)][size_t(k)]) == a.value) { sellCard(k); break; }
+                } else buyCard(a.value);
+                collect();
+            }
+        } else if (townAt(field) >= 0) {
             const AiTownPlan plan = aiTownPlan(aiState(steerless), player, field);
             for (const AiAction& a : plan.actions) {
                 if (a.kind == 2) playCard(a.value);

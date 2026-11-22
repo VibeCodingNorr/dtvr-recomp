@@ -180,16 +180,12 @@ void Game::arrive() {
     case 3: {
         // seg2:10A5: top card of the deck (seg3:032D(0)); nothing if it is taken.
         if (deck_.peek() == Deck::kTaken) break;
-        Hand& hand = hands_[size_t(current_)];
-        if (std::find(hand.begin(), hand.end(), Deck::kTaken) == hand.end()) {
+        if (handCount(current_) == 8) { // seg3:1057: one card must be discarded first (text 403)
+            yellowPending_ = true;
             messages_.push_back(who + ": Hand voll - erst eine Karte ablegen (Text 403)");
             break;
         }
-        const int slot = deck_.take();
-        addToHand(hand, slot);
-        messages_.push_back(who + " bekommt die Karte " + cardName(slot));
-        rng_.random(13); // text 4201 + random(13), seg2:1127
-        dragoAct(current_);
+        giveYellowCard();
         break;
     }
     case 5: // seg2:15AE -> seg3:4437: card shop until the turn ends
@@ -222,9 +218,28 @@ void Game::arrive() {
     }
 }
 
+void Game::giveYellowCard() {
+    const int slot = deck_.take();
+    addToHand(hands_[size_t(current_)], slot);
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " bekommt die Karte " + cardName(slot));
+    rng_.random(13); // text 4201 + random(13), seg2:1127
+    dragoAct(current_);
+}
+
+bool Game::discardForCard(int handSlot) {
+    messages_.clear();
+    if (!yellowPending_ || handSlot < 0 || handSlot >= 8 || hands_[size_t(current_)][size_t(handSlot)] == Deck::kTaken)
+        return false;
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " legt " + cardName(hands_[size_t(current_)][size_t(handSlot)]) + " ab");
+    discard(current_, handSlot);
+    yellowPending_ = false;
+    giveYellowCard();
+    return true;
+}
+
 bool Game::endTurn() {
     messages_.clear();
-    if (phase_ != Phase::Arrived) return false;
+    if (phase_ != Phase::Arrived || yellowPending_) return false;
     advanceTurn();
     return true;
 }

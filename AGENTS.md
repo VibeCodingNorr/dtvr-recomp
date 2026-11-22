@@ -24,9 +24,9 @@ the passive cards (src/obstacles.cpp); professor / football investments and the
 cards Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln (src/game_cards.cpp).
 Property cards 1-8 in the town dialog and Tschüss follow in round 14, the card
 field shop and the deck return in round 15, computer players (driving, town
-purchases, Steuerlos; src/ai.cpp, src/game_ai.cpp) in round 16.
-The SDL play mode lives in src/play_view.cpp. No Risiko mini-game, computer card
-play, save support,
+purchases, Steuerlos; src/ai.cpp, src/game_ai.cpp) in round 16, their card play
+and card field use (src/ai_cards.cpp) in round 17.
+The SDL play mode lives in src/play_view.cpp. No Risiko mini-game, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -92,7 +92,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   map composition following rally.exe (no SDL).
 - `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules.
 - `src/ai.{hpp,cpp}`: computer strategy tables, route planning and town plan (no SDL);
-  `src/game_ai.cpp` runs computer turns.
+  `src/ai_cards.cpp` card choice, targets, card worth and card field; `src/game_ai.cpp`
+  runs computer turns.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
@@ -167,7 +168,6 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Next: the computers' card choice (seg5:7386), card field (state 12) and the
-remaining state-machine decisions. The viewer is a debugging aid only; put effort into the simulation. Risiko is a timed mini-game still to be analysed.
+Next: a versioned save state, then the remaining open rules (Risiko, Nebel). The viewer is a debugging aid only; put effort into the simulation. Risiko is a timed mini-game still to be analysed.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

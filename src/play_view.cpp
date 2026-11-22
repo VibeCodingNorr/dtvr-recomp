@@ -95,7 +95,9 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     }
     if ((key >= SDLK_1 && key <= SDLK_9) || key == SDLK_0) {
         const int digit = key == SDLK_0 ? 9 : int(key - SDLK_1);
-        if (g.atCardField()) {
+        if (g.yellowCardPending()) {
+            if (digit < 8) g.discardForCard(digit);       // full hand on a yellow field
+        } else if (g.atCardField()) {
             if ((mod & KMOD_SHIFT) && digit < 8) g.sellCard(digit);
         } else if (g.phase() == Game::Phase::Arrived) {
             if (mod & KMOD_CTRL) { if (digit < 8) g.playCard(digit, cardTarget_); }

@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2>=2.0.10)
 
-add_library(dtvr-formats STATIC src/sbs.cpp src/worldmap.cpp src/board.cpp src/rules.cpp src/cards.cpp src/economy.cpp src/drago.cpp src/events.cpp src/obstacles.cpp src/ai.cpp src/game.cpp src/game_ai.cpp src/game_cards.cpp src/game_drago.cpp src/game_events.cpp)
+add_library(dtvr-formats STATIC src/sbs.cpp src/worldmap.cpp src/board.cpp src/rules.cpp src/cards.cpp src/economy.cpp src/drago.cpp src/events.cpp src/obstacles.cpp src/ai.cpp src/ai_cards.cpp src/game.cpp src/game_ai.cpp src/game_cards.cpp src/game_drago.cpp src/game_events.cpp)
 target_include_directories(dtvr-formats PUBLIC src)
 target_compile_features(dtvr-formats PUBLIC cxx_std_17)
 target_compile_options(dtvr-formats PRIVATE -Wall -Wextra -Wpedantic)

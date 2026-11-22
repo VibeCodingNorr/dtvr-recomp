@@ -712,11 +712,16 @@ Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
   seg5:6FCB), 12 card field (seg5:7D85 / 7E4F, list executed by seg3:4266),
   13 town (seg5:8F01 for the current field, executed by seg1:49D4).
 - **Profiles** DS:534A + slot · 0x16, far pointers: +0 driving strategy (five
-  records of 0x76 bytes at DS:4E60, 4ED6, 4F4C, 4FC2, 5038), +4 town weights
-  (DS:50AE, 5164), +8 DS:521A, +0xC word, +0xE money reserve (DS:52A2, 52D6,
-  530A; doubles 0 / 10,000 / 20,000 / 50,000 at +0x12), +0x12 DS:5344 / 533E.
-  Slots 0–7 use strategies 4ED6, 4ED6, 4E60, 5038, 4FC2, 4E60, 4E60, 4F4C and
-  town weights 5164, 50AE, 50AE, 50AE, 50AE, 5164, 50AE, 5164.
+  records of 0x76 bytes at DS:4E60, 4ED6, 4F4C, 4FC2, 5038), +4 card weights
+  (DS:50AE, 5164; read by the card choice, +0xA4 the Nimm threshold), +8 card
+  worth table DS:521A, +0xC word (shop random range), +0xE money record
+  (DS:52A2, 52D6, 530A: property weights by category in words 1–8, cash
+  reserve doubles 0 / 10,000 / 20,000 / 50,000 at +0x12), +0x12 target odds
+  (DS:5344 / 533E). Slots 0–7 use strategies 4ED6, 4ED6, 4E60, 5038, 4FC2,
+  4E60, 4E60, 4F4C, card weights 5164, 50AE, 50AE, 50AE, 50AE, 5164, 50AE, 5164
+  and money records 52A2, 52D6, 530A, then 52A2. Round 17 correction: the
+  property weights of seg5:990A come from the money record (seg5:8F01 passes
+  bp−6 = DS:5358), not from DS:534E.
 - **Graph** seg5:8B1B(buffer, flag): 16 bytes per field (four links, nails count
   +8, snow count +0xC). Masked fields (DS:A10F) lose all links, links to them are
   removed. Each obstacle of type 4/8/0x10/0x900 (DS:5E) either removes its link
@@ -739,16 +744,16 @@ Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
   else +0x4E; kind 5 +0x5A (+0x5C without spare money). Distance d to the
   destination: 0 → +0x5E (1000); else −d · +0x60 while stages remain (DS:A104),
   −d · +0x62 on the last stage, +0x60 back when d > 6; for 1 ≤ d ≤ 6 +0x66 if
-  the hand holds card number d + 0x1D (seg3:3FFC counts 1-based types, so this
-  is type d + 28, one below the matching "n Felder" card). Dr. Drago: +0x68[form]
+  the hand holds card number d + 0x1D (seg3:3FFC counts 1-based numbers: the
+  matching "d Felder" card). Dr. Drago: +0x68[form]
   when he is passed on, +0x6E[form] when taken over. Finally + random(+0x74).
 - **Spare money** seg5:9A34: cash − reserve[k] × inflation, at least 0; k = 0, or
   Dr. Drago's form + 1 while the player carries him.
 - **Town plan** seg5:8F01(list, player, field): nothing unless the field is kind
   4/6 with a town not wholly owned by the player. Entries up to the first empty
   one are classified (free, own, another player's, rented, burdened) and scored
-  by seg5:990A (income factor +0x1C plus town weight word 1 + category, at least
-  0), then bubble-sorted, highest first. Unless cards are blocked: Nimm on the
+  by seg5:990A (income factor +0x1C plus money-record word 1 + category, at least
+  0; the original towns use categories 1–6), then bubble-sorted, highest first. Unless cards are blocked: Nimm on the
   first other player's entry worth more than weight +0xA4 (100,000); otherwise
   the best discount card (Kaufen 25, Gold 50, Platin 90). With spare money every
   free entry whose (discounted: 0.75 / 0.5 / 0.1) value is below the remaining
@@ -757,10 +762,55 @@ Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
   other player's entry. DS:8D28 counts the purchases.
 
 Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
-`src/game_ai.cpp` (`runComputerTurn`, `setComputer`, Steuerlos). Not rebuilt
-yet: the card choice before spinning (seg5:7386, the computer always spins),
-the card field (state 12), the follow-ups of state 11, answers to the
-investment offer (declined) and the card targets of computers.
+`src/game_ai.cpp` (`runComputerTurn`, `setComputer`, Steuerlos).
+
+### Computer card play (round 17)
+
+- **Card choice** seg5:7386(player) → DS:8D20 (number), 8D21 (slot), 8D22
+  (target): nothing while cards are blocked. Distances d0 come from the flag-1
+  graph (snow, rain and nails passable) and the destination; field distances of
+  players from DS:22. For each hand card of category 2 the score starts at
+  random(W+2) (W = card weights DS:534E), then by number (table seg5:7C44):
+  2–5 Walzen W+0x14+2i if W+4+2i ≤ d0 ≤ W+0xC+2i and not under Steuerlos;
+  "n Felder" W+0x1C (1000) when it reaches the destination exactly; Hau ab
+  W+0x1E[form] while carrying Dr. Drago; Zucker / Schlafen / Blockieren
+  W+0x24 / 0x28 / 0x34 + random(next word) with a target from seg5:9B0B mode 0;
+  Fiskus W+0x30 with a mode 1 target; Weihnachten W+0x2C in December; Konto
+  W+0x40 when cash + W.double+0x38 × inflation ≤ the average cash; Zero W+0x4C
+  when cash ≤ W.double+0x44 × inflation (−50,000); Schulden W+0x58 when cash ≤
+  W.double+0x50 × inflation, mode 1 target; Tschüss (own DS:22 distance ≥
+  W+0x68): the other player closest to the goal within W+0x6A scores
+  W+0x6C, or himself (W+0x5E when his distance ≥ W+0x5C, else W+0x64 when ≥
+  W+0x62) if that scores higher; Konferenz W+0x74 when he is ≥ W+0x70 away and
+  someone is within W+0x72; Punch W+0x7A when within W+0x78 and someone shares
+  the field; Erdbeben W+0xAC in a town wholly owned by someone else; 1 oder 2
+  W+0xB0 within two fields. Property cards, Steuerlos, Risiko, Nägel and
+  Flugzeug keep the random start value. The best score must exceed W+0 (10),
+  which is also the starting best; ties keep the earlier card.
+- **Targets** seg5:9B0B(player, mode): other active players not sitting out
+  (bits 1, 2); mode 0 value 100 − distance + W+0x84[slot] + random(W+0x94[slot]),
+  mode 1 cash + property value. One candidate is taken; otherwise sorted
+  highest first and random(15) is compared with the odds (two candidates:
+  odds[0] → first; more: odds[1] → first, odds[2] → second, else third).
+- **Card worth** seg5:81AF(player, number): table DS:521A of {number, worth
+  before year 20, before 40, later}; unlisted 0xFF. seg5:7CD2 picks the hand
+  card with the lowest worth (an unlisted one at once).
+- **Yellow field with a full hand** seg3:1057: text 403, the card window in
+  discard mode; humans click a card, computers drop seg5:7CD2's choice through
+  seg3:4161; then the card is drawn as usual (seg2:1127). Correction to round 7:
+  the card is not skipped.
+- **Card field** state 12: seg5:7D85 sells every hand card without a worth
+  (adding half its value), seg5:7E4F takes spare money (seg5:9A34) plus the
+  sales, collects affordable offers with a worth, scores them worth +
+  random(word +0xC), +10 for the card that reaches the destination exactly,
+  sorts highest first and buys in order until one is too dear or the hand is
+  full. seg3:4266 executes sales first.
+- **Investment offer** seg8:6FBF has no computer branch: the modal dialog waits
+  for input on any turn. Assumption here: computers decline.
+
+Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. Approximation: DS:22 is
+taken as the distances from the destination with the route mask (the array
+holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
 
 ### SBS: remaining hypotheses
 

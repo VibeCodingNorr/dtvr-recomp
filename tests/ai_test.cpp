@@ -27,7 +27,7 @@ static Board row(int n) {
 int main() {
     // Profiles per slot (DS:534A): slot 2 uses the strategy at DS:4E60.
     CHECK(aiProfile(2).strategy->destination == 1000 && aiProfile(2).strategy->randomRange == 1);
-    CHECK(aiProfile(0).reserve[3] == 50000.0 && aiProfile(4).strategy->perFieldLast == 3);
+    CHECK(aiProfile(0).money->reserve[3] == 50000.0 && aiProfile(2).money->words[2] == 5 && aiProfile(4).strategy->perFieldLast == 3);
 
     // Graph: masked fields and obstacle links disappear, BFS from the destination.
     Board b = row(6);
@@ -101,6 +101,69 @@ int main() {
     ts.handTypes[0][3] = 4;                               // Platin: 10 % prices
     plan = aiTownPlan(ts, 0, 1);
     CHECK(plan.actions.size() == 4 && plan.actions[0].kind == 2 && plan.actions[0].value == 3 && plan.purchases == 3);
+
+    // Card choice (seg5:7386) on the row with the destination at field 4.
+    {
+        AiState cs = s;
+        cs.board = &line;
+        cs.steerless = false;
+        cs.destination = 4;
+        for (auto& h : cs.handTypes) h.fill(-1);
+        cs.fieldDist.assign(line.fields.size(), 0xFFFF);
+        auto fd = aiDistances(buildAiGraph(line, 0, none), 4);
+        for (size_t i = 0; i < fd.size(); ++i) cs.fieldDist[i] = fd[i];
+        players[0].field = 1;                             // three fields from the goal
+        ObstacleTable clear;
+        MsRandom cr(3);
+        CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1); // empty hand: spin
+        cs.handTypes[0][5] = 31;                          // "3 Felder": exactly to the goal
+        cs.handTypes[0][2] = 9;                           // Fiskus without a target
+        AiCardChoice c = aiChooseCard(cs, 0, clear, cr);
+        CHECK(c.slot == 5 && c.type == 31);
+        players[0].flags = kFlagCardsBlocked;
+        CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1);
+        players[0].flags = 0;
+        cs.handTypes[0][5] = -1;
+        cs.handTypes[0][6] = 35;                          // Hau ab while carrying Dr. Drago
+        cs.dragoHolder = 0; cs.dragoForm = 1;
+        c = aiChooseCard(cs, 0, clear, cr);
+        CHECK(c.slot == 6);
+        cs.dragoHolder = -1;
+        CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1);
+        // Targets: Fiskus goes to the only other player; two candidates follow the odds.
+        players[3].status = 1;
+        CHECK(aiChooseTarget(cs, 0, 1, cr) == 3);
+        players[3].flags = 0x2;                           // sitting out: not a target
+        CHECK(aiChooseTarget(cs, 0, 1, cr) == -1);
+        players[3].flags = 0;
+        players[5].status = 1;
+        int first = 0;
+        for (int i = 0; i < 200; ++i) first += aiChooseTarget(cs, 0, 1, cr) == 3; // equal wealth: stable order
+        CHECK(first > 100 && first < 200);                // slot 0 odds 13 of 0..15
+        players[3].status = players[5].status = 0;
+    }
+
+    // Card worth (DS:521A) and the card to drop / sell.
+    CHECK(aiCardRank(22, 0) == 10 && aiCardRank(6, 0) == 9 && aiCardRank(6, 25) == 11 && aiCardRank(6, 40) == 13);
+    CHECK(aiCardRank(39, 0) == 0xFF && aiCardRank(39, 20) == 4 && aiCardRank(1, 0) == 0xFF);
+    {
+        AiState ks = s;
+        for (auto& h : ks.handTypes) h.fill(-1);
+        CHECK(aiLeastValuableCard(ks, 0) == -1);
+        ks.handTypes[0][1] = 22;                          // 2 Walzen, worth 10
+        ks.handTypes[0][4] = 0;                           // Weihnachten, worth 3
+        CHECK(aiLeastValuableCard(ks, 0) == 4);
+        ks.handTypes[0][6] = 1;                           // Verkaufen: no worth, dropped at once
+        CHECK(aiLeastValuableCard(ks, 0) == 6);
+        // Shop: the worthless card is sold, then affordable offers bought by worth.
+        players[0].field = 0;
+        ks.fieldDist.assign(ks.board->fields.size(), 0xFFFF);
+        std::vector<CardOffer> offers{{0, 22}, {1, 30}, {2, 4}, {3, 29}}; // 2 Walzen, 2 Felder, Platin (too dear), 1 Feld (no worth)
+        MsRandom kr(4);
+        auto plan = aiCardShopPlan(ks, 0, offers, kr);
+        CHECK(plan.size() == 3 && plan[0].kind == 1 && plan[0].value == 1);
+        CHECK(plan.size() == 3 && plan[1].kind == 0 && plan[1].value == 22 && plan[2].kind == 0 && plan[2].value == 30);
+    }
 
     // Game: a computer takes its turn alone; humans cannot spin for it.
     {

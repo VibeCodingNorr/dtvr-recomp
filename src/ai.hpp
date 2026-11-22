@@ -36,24 +36,38 @@ struct AiStrategy {
     int16_t randomRange;            // +0x74
 };
 
-// Town weights (DS:50AE / 5164): word +2 + 2 * category, double +0xA4.
-struct AiTownWeights {
-    std::array<int16_t, 82> words;  // +0x00 .. +0xA3
-    double takeThreshold;           // +0xA4 (card Nimm only above it)
+// Card weights (DS:50AE / 5164, read by the card choice seg5:7386), double +0xA4
+// is the value above which the town plan uses Nimm.
+struct AiCardWeights {
+    std::array<int16_t, 91> words;  // +0x00 .. +0xB5 (raw, the double at +0xA4 included)
+    double takeThreshold;           // +0xA4
+    int16_t at(int offset) const { return words[size_t(offset / 2)]; }
+    double doubleAt(int offset) const; // the doubles at +0x38, +0x44, +0x50, +0xA4
+};
+
+// Money record (DS:52A2 / 52D6 / 530A): property weights by category (word
+// 1 + category, seg5:990A) and the cash kept back (+0x12, by Dr. Drago state).
+struct AiMoney {
+    std::array<int16_t, 9> words;
+    std::array<double, 4> reserve;
 };
 
 struct AiProfile {
     const AiStrategy* strategy;      // DS:534A
-    const AiTownWeights* town;       // DS:534E
-    std::array<double, 4> reserve;   // DS:5358 -> +0x12: cash kept back, by Dr. Drago state
+    const AiCardWeights* cards;      // DS:534E
+    const AiMoney* money;            // DS:5358
+    const std::array<int16_t, 3>* targetOdds; // DS:535C
+    int16_t shopRandom;              // DS:5356: random range added to card worth in the shop
 };
 // Per player slot (DS:534A + slot * 0x16).
 const AiProfile& aiProfile(int slot);
 
-// seg5:8B1B with flag 0: links of masked fields and links holding an obstacle
-// are removed (graph entries per field: up, right, down, left).
+// seg5:8B1B: links of masked fields are removed, and links holding an obstacle
+// (flag 0, route planning); with `clearable` (flag 1, card choice) only rockfall
+// removes a link (graph entries per field: up, right, down, left).
 using AiGraph = std::vector<std::array<int16_t, 4>>;
-AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles);
+AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles,
+                     bool clearable = false);
 // seg5:8DBF: breadth-first distances from `destination`, 0xFFFF = unreachable.
 std::vector<uint16_t> aiDistances(const AiGraph& graph, int destination);
 // seg5:A212: direction index k with board.next[k] == to, or 4.
@@ -68,11 +82,13 @@ struct AiState {
     std::array<std::array<int, 8>, 8> handTypes{}; // card type per hand slot, -1 = empty
     int dragoHolder = -1, dragoForm = 0;
     int month = 0;
+    int year = 0;                   // DS:A102
     double inflation = 1.0;
     int remainingStages = 0;        // DS:A104
     int destination = -1;           // DS:A10D
     uint16_t routeMask = 0;         // DS:A10F
     bool steerless = false;         // DS:8D2A: card Steuerlos, random(1000) scores
+    std::vector<uint16_t> fieldDist; // DS:22: last field distances (from the destination)
     int cardCount(int player, int type) const;   // seg3:3FFC (type 0-based here)
     int cardSlot(int player, int type) const;    // seg3:0D26, -1 if none
     int handCount(int player) const;
@@ -88,6 +104,25 @@ double aiSpareMoney(const AiState& s, int player);
 struct AiAction { int kind; int value; };
 struct AiTownPlan { std::vector<AiAction> actions; int purchases = 0; };
 AiTownPlan aiTownPlan(const AiState& s, int player, int field);
+
+// seg5:9B0B: target of Zucker / Schlafen / Blockieren (mode 0, nearest to the
+// destination) or Fiskus / Schulden (mode 1, richest); -1 if nobody qualifies.
+int aiChooseTarget(const AiState& s, int player, int mode, MsRandom& rng);
+
+// seg5:7386: card to play before spinning. slot -1 = spin (DS:8D20 = 0xFF).
+struct AiCardChoice { int slot = -1; int type = -1; int target = -1; };
+AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obstacles, MsRandom& rng);
+
+// seg5:81AF: worth of card number `type + 1` from the table at DS:521A by game
+// year (< 20, 20-39, >= 40); 0xFF = not listed.
+int aiCardRank(int type, int year);
+// seg5:7CD2: hand slot with the least worth (an unlisted card at once), -1 if none.
+int aiLeastValuableCard(const AiState& s, int player);
+
+// Card field (state 12): seg5:7D85 sells every hand card without a worth
+// (kind 1, card type), seg5:7E4F buys offers by worth (kind 0, card type).
+std::vector<AiAction> aiCardShopPlan(const AiState& s, int player, const std::vector<CardOffer>& offers,
+                                     MsRandom& rng);
 
 // seg5:829D with seg5:87A8: the route of exactly `steps` fields with the highest
 // score; empty if no route scores above 0. The fields exclude the start.

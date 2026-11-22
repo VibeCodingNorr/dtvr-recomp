@@ -35,29 +35,39 @@ const AiStrategy kStrategies[5] = {
      3, -3, 1000, 2, 3, -3, 12,
      {6, 12, 20}, {-6, -12, -20}, 0}, // DS:5038
 };
-const AiTownWeights kTownWeights[2] = {
+const AiCardWeights kCardWeights[2] = {
     {{10, 2, 6, 9, 12, 15, 30, 40, 50, 60, 16, 17, 18, 19, 1000, 13,
       18, 26, 6, 8, 6, 8, 12, 4, 6, 8, 6, 8, 0, 0, 27136, 16632,
       16, 8, 0, 0, 27136, -16152, 13, 12, 0, 0, 27136, -16152, 14, 12, 45, 15,
       8, 30, 6, 8, 25, 8, 8, 6, 25, 8, 8, 6, 6, 8, 6, 12,
       7, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0}, 100000.0}, // DS:50AE
+      0, 0, 0, 0, 27136, 16632, 20, 20, 14, 12, 1000}, 100000.0}, // DS:50AE
     {{10, 1, 6, 9, 12, 15, 30, 40, 50, 60, 16, 17, 18, 19, 1000, 0,
       12, 20, 8, 12, 8, 12, 12, 12, 8, 8, 8, 12, 0, 0, 27136, 16632,
       15, 10, 0, 0, 27136, -16152, 13, 12, 0, 0, 27136, -16152, 14, 12, 45, 12,
       8, 30, 6, 8, 25, 8, 8, 6, 25, 8, 8, 12, 6, 8, 12, 12,
       7, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0}, 100000.0}, // DS:5164
+      0, 0, 0, 0, 27136, 16632, 20, 20, 14, 12, 1000}, 100000.0}, // DS:5164
 };
-constexpr std::array<double, 4> kReserve{0.0, 10000.0, 20000.0, 50000.0}; // DS:52A2/52D6/530A +0x12
+const AiMoney kMoney[3] = {
+    {{1, 0, 0, 0, 2, -1, 0, 0, 0}, {0.0, 10000.0, 20000.0, 50000.0}},  // DS:52A2
+    {{2, 0, 0, 0, 10, -1, 0, 0, 0}, {0.0, 10000.0, 20000.0, 50000.0}}, // DS:52D6
+    {{5, 0, 5, 0, 2, -1, 5, 0, 0}, {0.0, 10000.0, 20000.0, 50000.0}},  // DS:530A
+};
 
-// DS:534A + slot * 0x16: strategy, town weights, reserve (all three reserve
-// records hold the same four values).
+// Target odds for seg5:9B0B (DS:533E / 5344): random(15) <= odds[i] picks place i.
+const std::array<int16_t, 3> kTargetOdds[2] = {{11, 9, 13}, {13, 13, 15}};
+
+// DS:534A + slot * 0x16: strategy, card weights, money record, target odds, shop random.
 const AiProfile kProfiles[8] = {
-    {&kStrategies[1], &kTownWeights[1], kReserve}, {&kStrategies[1], &kTownWeights[0], kReserve},
-    {&kStrategies[0], &kTownWeights[0], kReserve}, {&kStrategies[4], &kTownWeights[0], kReserve},
-    {&kStrategies[3], &kTownWeights[0], kReserve}, {&kStrategies[0], &kTownWeights[1], kReserve},
-    {&kStrategies[0], &kTownWeights[0], kReserve}, {&kStrategies[2], &kTownWeights[1], kReserve},
+    {&kStrategies[1], &kCardWeights[1], &kMoney[0], &kTargetOdds[1], 0},
+    {&kStrategies[1], &kCardWeights[0], &kMoney[1], &kTargetOdds[1], 3},
+    {&kStrategies[0], &kCardWeights[0], &kMoney[2], &kTargetOdds[0], 0},
+    {&kStrategies[4], &kCardWeights[0], &kMoney[0], &kTargetOdds[0], 2},
+    {&kStrategies[3], &kCardWeights[0], &kMoney[0], &kTargetOdds[0], 8},
+    {&kStrategies[0], &kCardWeights[1], &kMoney[0], &kTargetOdds[0], 2},
+    {&kStrategies[0], &kCardWeights[0], &kMoney[0], &kTargetOdds[0], 4},
+    {&kStrategies[2], &kCardWeights[1], &kMoney[0], &kTargetOdds[1], 2},
 };
 
 constexpr uint16_t kUnreached = 0xFFFF;
@@ -86,7 +96,7 @@ int aiDirection(const Board& board, int from, int to) {
     return 4;
 }
 
-AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles) {
+AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles, bool clearable) {
     AiGraph graph(board.fields.size());
     for (size_t i = 0; i < board.fields.size(); ++i) {
         const Field& f = board.fields[i];
@@ -100,6 +110,7 @@ AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable
     // its link in both directions; investments (0x400 / 0x800) are skipped.
     for (const Obstacle& o : obstacles.slots()) {
         if (o.type != kRockfall && o.type != kSnow && o.type != kRain && o.type != kNails) continue;
+        if (clearable && o.type != kRockfall) continue; // flag 1: counted as clearable, link stays
         if (o.field < 0 || o.dir < 1 || o.dir > 4) continue;
         const int a = o.field, b = board.fields[size_t(a)].next[size_t(o.dir - 1)];
         if (b == Field::kNone) continue;
@@ -131,16 +142,17 @@ std::vector<uint16_t> aiDistances(const AiGraph& graph, int destination) {
 
 double aiSpareMoney(const AiState& s, int player) {
     const int k = s.dragoHolder >= 0 && s.dragoHolder == player ? s.dragoForm + 1 : 0;
-    const double spare = s.cash(player) - aiProfile(player).reserve[size_t(k)] * s.inflation;
+    const double spare = s.cash(player) - aiProfile(player).money->reserve[size_t(k)] * s.inflation;
     return spare > 0 ? spare : 0.0;
 }
 
 namespace {
 
-// seg5:990A: income factor (+0x1C) plus the weight of the entry's category.
-int32_t entryScore(const TownEntry& e, const AiTownWeights& w) {
+// seg5:990A: income factor (+0x1C) plus the money record's weight for the
+// entry's category (word 1 + category; the original data uses categories 1-6).
+int32_t entryScore(const TownEntry& e, const AiMoney& m) {
     const size_t index = size_t(1 + e.words[1]);
-    const int32_t v = int32_t(e.words[0]) + (index < w.words.size() ? w.words[index] : 0);
+    const int32_t v = int32_t(e.words[0]) + (index < m.words.size() ? m.words[index] : 0);
     return v < 0 ? 0 : v;
 }
 
@@ -159,7 +171,7 @@ AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
     const TownState& state = s.economy->town(town);
     if (state.wholeOwner == player) return plan;             // seg1:7CDE
     const Town& rec = (*s.towns)[size_t(town)];
-    const AiTownWeights& weights = *aiProfile(player).town;
+    const AiProfile& profile = aiProfile(player);
 
     // Classes: 0 free, 1 own, 2 other player's, 3 rented, 4 burdened.
     struct Item { int cls; int32_t score; int entry; };
@@ -170,7 +182,7 @@ AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
         int cls = p.owner == player ? 1 : p.owner == kNoOwner ? 0 : 2;
         if (p.landlord != kNoOwner) cls = 3;
         else if (p.burden != 0) cls = 4;
-        items.push_back({cls, entryScore(rec.entries[size_t(e)], weights), e});
+        items.push_back({cls, entryScore(rec.entries[size_t(e)], *profile.money), e});
     }
     if (items.empty()) return plan;
     // Bubble sort, highest score first (seg5:911F); class and entry move along.
@@ -184,7 +196,7 @@ AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
         const int slot = s.cardSlot(player, 6);
         if (slot >= 0)
             for (const Item& it : items)
-                if (it.cls == 2 && weights.takeThreshold < value(it)) {
+                if (it.cls == 2 && profile.cards->takeThreshold < value(it)) {
                     mode = 7;
                     plan.actions.push_back({2, slot});
                     plan.actions.push_back({0, it.entry});
@@ -295,8 +307,7 @@ uint16_t scoreEnd(const AiState& s, int player, int end, int dragoStart, int dra
             score -= (s.remainingStages ? st.perField : st.perFieldLast) * d;
             if (d > 6) score += st.perField;
         }
-        // The "n Felder" bonus asks for card number d + 0x1D (seg3:3FFC, 1-based),
-        // i.e. type d + 28: one below the matching card (original behaviour).
+        // Card number d + 0x1D (seg3:3FFC, 1-based) = type d + 28: "d Felder".
         if (d >= 1 && d <= 6 && s.cardCount(player, d + 28) > 0) score += st.stepCard;
     }
     if (dragoStart != -1) {

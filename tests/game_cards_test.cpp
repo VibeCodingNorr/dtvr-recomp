@@ -167,6 +167,20 @@ int main() {
         CHECK(!g.buyCard(4) && g.cash(0) == cash - 5000); // Platin costs 500,000 > cash
     }
 
+    // Yellow field with a full hand: discard first, then the card follows.
+    {
+        Board yb = board;
+        for (int i = 1; i < 12; ++i) yb.fields[size_t(i)].kind = 3;
+        Game g(yb, towns, 1, 0, 5, 8);
+        g.setRandomEvents(false);
+        CHECK(g.handCount(0) == 8);
+        driveRight(g);
+        CHECK(g.yellowCardPending() && !g.endTurn());
+        const uint8_t dropped = g.hand(0)[2];
+        CHECK(g.discardForCard(2) && !g.yellowCardPending() && g.handCount(0) == 8);
+        CHECK(g.hand(0)[2] != dropped && g.endTurn());
+    }
+
     // Investments need an offer.
     Game plain(board, towns, 1, 0, 1);
     CHECK(plain.investmentOffer() == EventKind::None && !plain.invest(1000));
