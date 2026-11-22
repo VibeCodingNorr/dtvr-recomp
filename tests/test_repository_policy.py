@@ -8,6 +8,12 @@ from check_repository import check_file
 
 
 class PolicyTests(unittest.TestCase):
+    def test_code_line_limit(self):
+        self.assertIsNone(check_file("src/example.cpp", b"// line\n" * 1000))
+        self.assertIsNotNone(check_file("src/example.cpp", b"// line\n" * 1001))
+        self.assertIsNotNone(check_file("CMakeLists.txt", b"# line\n" * 1001))
+        self.assertIsNone(check_file("docs/example.md", b"Prose\n" * 1001))
+
     def test_reject_original_content_and_private_paths(self):
         for name in ("track.OGG", "image.iso", "map/europe.map", "segment.asm", "original.exe"):
             self.assertIsNotNone(check_file(name, b"example"))

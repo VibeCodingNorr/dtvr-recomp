@@ -7,6 +7,11 @@ import re
 import subprocess
 
 REPO = Path(__file__).resolve().parents[1]
+MAX_CODE_LINES = 1000
+CODE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".py", ".sh", ".cmake",
+                 ".js", ".jsx", ".ts", ".tsx", ".rs", ".svg", ".yaml", ".yml"}
+# Only technically unavoidable exceptions are allowed; record a concrete reason.
+LINE_LIMIT_EXCEPTIONS = {}
 FORBIDDEN_SUFFIXES = {
     ".iso", ".bin", ".cue", ".toc", ".exe", ".dll", ".drv", ".wav", ".ogg",
     ".mp3", ".flac", ".mid", ".midi", ".bmp", ".png", ".jpg", ".jpeg", ".gif",
@@ -26,6 +31,9 @@ def check_file(name, content, symlink=False):
         return "tracked files must be UTF-8 source or documentation"
     if "\x00" in text:
         return "binary content is not allowed"
+    if (Path(name).suffix.lower() in CODE_SUFFIXES or Path(name).name == "CMakeLists.txt"):
+        if len(text.splitlines()) > MAX_CODE_LINES and not LINE_LIMIT_EXCEPTIONS.get(name):
+            return "code exceeds 1000 lines; split by responsibility or document an unavoidable exception"
     if PRIVATE_PATH.search(text):
         return "machine-specific data path found; use a generic user-supplied path"
     return None
