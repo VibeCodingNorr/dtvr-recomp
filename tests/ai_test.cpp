@@ -217,6 +217,36 @@ int main() {
         CHECK(demo.phase() == Game::Phase::GameOver);
     }
 
+    // Reachable fields (round 80, seg5:9DE8): a row of 8 from field 2 -> 5 to the right
+    // end (no turning back); nails between 4 and 5 block without a Nägel weg card.
+    {
+        const Board line = row(8);
+        ObstacleTable none;
+        CHECK(reachableSteps(line, 0, none, 2, 0, 0) == 5);
+        CHECK(reachableSteps(line, 0, none, 7, 0, 0) == 7);
+        ObstacleTable nails;
+        Obstacle o;
+        o.type = kNails; o.duration = 4; o.field = 4; o.dir = 2;
+        nails.add(o);
+        CHECK(reachableSteps(line, 0, nails, 2, 0, 0) == 2);      // 2 -> 3 -> 4, then blocked
+        CHECK(reachableSteps(line, 0, nails, 2, 1, 0) == 5);      // the card clears it
+        CHECK(reachableSteps(line, 0, nails, 2, 0, 1) == 2);      // a Schneepflug does not
+        ObstacleTable rock;
+        o.type = kRockfall;
+        rock.add(o);
+        CHECK(reachableSteps(line, 0, rock, 2, 3, 3) == 2);       // rockfall: no card helps
+        CHECK(reachableSteps(line, 0, rock, 4, 0, 0) == 4);       // 4 -> 3 -> 2 -> 1 -> 0
+        // A ring is a cycle: 30.
+        Board ring = row(6);
+        ring.fields[5].next[1] = 0;
+        ring.fields[0].next[3] = 5;
+        CHECK(reachableSteps(ring, 0, none, 2, 0, 0) == 30);
+        // Masked fields (route mask) are no links: shut in completely.
+        Board masked = row(3);
+        masked.fields[0].flags = masked.fields[2].flags = 0x4000;
+        CHECK(reachableSteps(masked, 0x4000, none, 1, 0, 0) == 0);
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("ai_test: OK");
     return failures != 0;

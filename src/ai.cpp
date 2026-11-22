@@ -4,6 +4,7 @@
 #include "ai.hpp"
 
 #include <algorithm>
+#include <functional>
 
 namespace dtvr {
 namespace {
@@ -120,6 +121,51 @@ AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable
         graph[size_t(b)][size_t((d + 2) & 3)] = Field::kNone;
     }
     return graph;
+}
+
+int reachableSteps(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles, int start,
+                   int nailsCards, int ploughCards) {
+    constexpr int kCap = 0x1E; // seg5:9FE6 / A00A
+    if (start < 0 || size_t(start) >= board.fields.size()) return 0;
+    AiGraph graph = buildAiGraph(board, routeMask, obstacles, true); // flag 0: rockfall only
+    // Link counts of seg5:8B1B: +8 nails (0x900), +0xC snow / rain (8 / 0x10), both directions.
+    std::vector<std::array<int, 4>> nails(board.fields.size()), snow(board.fields.size());
+    for (const Obstacle& o : obstacles.slots()) {
+        if (o.type != kNails && o.type != kSnow && o.type != kRain) continue;
+        if (o.field < 0 || o.dir < 1 || o.dir > 4) continue;
+        const int a = o.field, b = board.fields[size_t(a)].next[size_t(o.dir - 1)];
+        if (b == Field::kNone) continue;
+        const int d = aiDirection(board, a, b);
+        if (d > 3) continue;
+        auto& counts = o.type == kNails ? nails : snow;
+        ++counts[size_t(a)][size_t(d)];
+        ++counts[size_t(b)][size_t((d + 2) & 3)];
+    }
+    std::vector<int> path{start};
+    int best = 0;
+    bool cycle = false;
+    // seg5:9ECE ff.: neighbours 0..3, the link back to the previous field removed.
+    std::function<void(int, int, int, int)> visit = [&](int field, int back, int nailsLeft, int ploughLeft) {
+        for (int k = 0; k < 4 && !cycle && best < kCap; ++k) {
+            const int next = graph[size_t(field)][size_t(k)];
+            if (next == Field::kNone || k == back) continue;
+            const int needNails = nails[size_t(field)][size_t(k)], needPlough = snow[size_t(field)][size_t(k)];
+            if (nailsLeft < needNails || ploughLeft < needPlough) continue; // seg5:9F3E
+            for (int p : path)
+                if (p == next) { cycle = true; return; }                     // seg5:9FD3: a cycle -> 30
+            const int r = (k + 2) & 3;
+            nails[size_t(field)][size_t(k)] = snow[size_t(field)][size_t(k)] = 0; // cleared on the way
+            nails[size_t(next)][size_t(r)] = snow[size_t(next)][size_t(r)] = 0;
+            path.push_back(next);
+            best = std::max(best, int(path.size()) - 1);
+            visit(next, r, nailsLeft - needNails, ploughLeft - needPlough);
+            path.pop_back();
+            nails[size_t(field)][size_t(k)] = nails[size_t(next)][size_t(r)] = needNails; // seg5:A0DF: restored
+            snow[size_t(field)][size_t(k)] = snow[size_t(next)][size_t(r)] = needPlough;
+        }
+    };
+    visit(start, -1, nailsCards, ploughCards);
+    return cycle ? kCap : std::min(best, kCap);
 }
 
 std::vector<uint16_t> aiDistances(const AiGraph& graph, int destination) {

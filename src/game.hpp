@@ -251,6 +251,9 @@ private:
     }
     double propertyPrice(const Economy::PropertyRef& p) const;
     void startRisiko();                     // game_risiko.cpp
+    // seg2:61B7: the move starts with `allowance` fields unless the player is shut
+    // in (seg5:99B3); false when the turn ended instead.
+    bool startMove(int allowance);
     void startRisikoLevel(int level);
     void finishRisiko();
     // game_events.cpp

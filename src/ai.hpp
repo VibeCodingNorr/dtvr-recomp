@@ -68,6 +68,13 @@ const AiProfile& aiProfile(int slot);
 using AiGraph = std::vector<std::array<int16_t, 4>>;
 AiGraph buildAiGraph(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles,
                      bool clearable = false);
+// seg5:99B3 -> seg5:9DE8: how many fields the player at `start` can drive at most
+// (capped at 30; a reachable cycle also gives 30): depth-first without turning back,
+// over the graph of seg5:8B1B(flag 0) where only rockfall removes a link and snow /
+// rain need a Schneepflug (`ploughCards`), nails a Nägel weg card (`nailsCards`),
+// used up along the path.
+int reachableSteps(const Board& board, uint16_t routeMask, const ObstacleTable& obstacles, int start,
+                   int nailsCards, int ploughCards);
 // seg5:8DBF: breadth-first distances from `destination`, 0xFFFF = unreachable.
 std::vector<uint16_t> aiDistances(const AiGraph& graph, int destination);
 // seg5:A212: direction index k with board.next[k] == to, or 4.

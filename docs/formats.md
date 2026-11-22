@@ -744,8 +744,10 @@ Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
 - **Graph** seg5:8B1B(buffer, flag): 16 bytes per field (four links, nails count
   +8, snow count +0xC). Masked fields (DS:A10F) lose all links, links to them are
   removed. Each obstacle of type 4/8/0x10/0x900 (DS:5E) either removes its link
-  in both directions (flag 0, used by the route planner, always for rockfall) or
-  counts as clearable (flag 1, used by the card choice). Directions come from
+  in both directions (flag ≠ 0, used by the route planner; always for rockfall)
+  or counts as clearable (flag 0: seg5:8CC7 `cmp [bp+0xA], 0; jne remove`; snow /
+  rain +0xC, nails +8). *Correction (round 80):* the flag values were swapped in
+  this description; the rebuilt callers were right. Directions come from
   seg5:A212: the index k with `next[k] == to`, else 4.
 - **Distances** seg5:8DBF: breadth-first search from the destination DS:A10D.
 - **Route** seg5:829D(player, steps = DS:A778, …): depth-first over neighbour
@@ -1789,6 +1791,24 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   **Assumptions:** any key or click closes Übersicht (its input handling is not
   traced); Q_FL is drawn at the field of the driver Dr. Drago rides with; after
   Umfeld the view follows the current player again.
+
+### Shut-in players (round 80)
+
+- **Move start** seg2:61B7, called after every spin (seg2:66B9), the fixed movement
+  cards (seg3:3A2B ff.) and Risiko (seg7:6BCE): r = seg5:99B3(player). When
+  0 < r < DS:A778 the allowance becomes r with text 6003 (r = 1, no draw) or 6005
+  + random(2) with `%Fs` and `%d` = r, then seg5:607B(5) and the move goes on.
+  When r = 0 (or the allowance is 0) text 6009 + random(2), DS:A778 = 0, seg5:6CE8
+  and nextPlayer seg2:06FC: the turn ends.
+- **Reach** seg5:99B3 builds the graph with seg5:8B1B(buffer, 0) and runs
+  seg5:9DE8(player): depth-first from the player's field (+0x3C) over the links
+  0–3, the link back to the previous field removed in each new frame (seg5:A0C5);
+  a link with nails / snow counts needs as many Nägel weg (card number 0x27) /
+  Schneepflug (0x25) cards, counted with seg3:3FFC and used up along the path
+  (the counts are cleared both ways and restored when backing out); a field that is
+  already on the path returns 0x1E at once (a cycle), as does a depth of 0x1E;
+  otherwise the deepest depth. Rebuilt as `reachableSteps` (src/ai.cpp, tested)
+  and `Game::startMove`; rules revision 33. seg5:607B(5) is not rebuilt.
 
 ### Mouse steering (round 78)
 

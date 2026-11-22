@@ -93,10 +93,9 @@ bool Game::playCard(int handSlot, int target) {
         const CardMove move = cardMove(type);
         int allowance = move.fields;
         if (move.reels) allowance += spin(move.reels, move.maximum);
-        counter_ = MoveCounter(allowance);
         if (type >= 29 && type <= 34) notice(11001 + type, {playerArg(current_)}); // "n Felder": 11030-11035
-        phase_ = Phase::Move;
         messages_.push_back(std::to_string(allowance) + " Felder");
+        startMove(allowance); // seg3:3A2B ff. / seg2:66B9 -> seg2:61B7
         return true;
     }
     case CardKind::Fiskus: { // card texts are 11001 + type (DS:9C71, seg3:1524)
@@ -165,9 +164,8 @@ bool Game::playCard(int handSlot, int target) {
         players_[size_t(victim)].flags |= cardStatusFlag(kind);
         int sum = 0;
         sum = spin(1, 5);
-        counter_ = MoveCounter(sum);
-        phase_ = Phase::Move;
         messages_.push_back("wuerfelt " + std::to_string(sum));
+        startMove(sum); // seg2:66B9 -> seg2:61B7
         return true;
     }
     }

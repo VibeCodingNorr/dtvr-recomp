@@ -90,8 +90,7 @@ void Game::finishRisiko() {
         advanceTurn();
         return;
     }
-    counter_ = MoveCounter(steps);
-    phase_ = Phase::Move;
+    startMove(steps); // seg7:6BCE -> seg2:61B7
 }
 
 } // namespace dtvr

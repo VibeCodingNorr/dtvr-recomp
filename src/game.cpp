@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "game.hpp"
 
+#include "ai.hpp"
+
 #include <algorithm>
 #include <cstdio>
 #include <stdexcept>
@@ -156,15 +158,48 @@ bool Game::sellProperty(int entry) {
     return true;
 }
 
+bool Game::startMove(int allowance) {
+    counter_ = MoveCounter(allowance);
+    phase_ = Phase::Move;
+    int nailsCards = 0, ploughCards = 0; // seg3:3FFC(player, 0x27 / 0x25)
+    for (uint8_t slot : hands_[size_t(current_)]) {
+        const int type = deck_.typeOfSlot(slot);
+        nailsCards += type == 38;
+        ploughCards += type == 36;
+    }
+    const int reach = reachableSteps(board_, routeMask(), obstacles_, players_[size_t(current_)].field, nailsCards,
+                                     ploughCards);
+    if (reach != 0 && reach < allowance) { // seg2:61DA: shortened to what is reachable
+        counter_ = MoveCounter(reach);
+        if (reach == 1) {
+            notice(6003, {playerArg(current_)}); // seg2:61F8
+        } else {
+            NoticeArg fields;
+            fields.text = std::to_string(reach);
+            notice(6005 + rng_.random(2), {playerArg(current_), fields}); // seg2:6238
+        }
+        messages_.push_back(playerName(current_) + " ist eingesperrt: nur " + std::to_string(reach) + " Felder");
+        return true;
+    }
+    if (reach == 0 || allowance == 0) { // seg2:62A4: shut in completely, the turn ends
+        notice(6009 + rng_.random(2), {playerArg(current_)}); // seg2:62BB
+        messages_.push_back(playerName(current_) + " ist total eingesperrt");
+        counter_ = MoveCounter(0);
+        phase_ = Phase::Roll;
+        advanceTurn(); // seg5:6CE8, seg2:06FC
+        return false;
+    }
+    return true;
+}
+
 bool Game::roll() {
     messages_.clear();
     if (phase_ != Phase::Roll || (computerControls() && !aiActing_)) return false;
     declineInvestment();
     int sum = 0;
     sum = spin(1, 5);
-    counter_ = MoveCounter(sum);
-    phase_ = Phase::Move;
     messages_.push_back(playerName(current_) + " wuerfelt " + std::to_string(sum));
+    startMove(sum); // seg2:66B9 -> seg2:61B7
     return true;
 }
 
