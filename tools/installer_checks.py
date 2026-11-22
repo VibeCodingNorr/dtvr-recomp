@@ -62,6 +62,8 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     if not iso.is_file():
         raise ValueError("Choose a readable original ISO file")
     output = validate_output(output)
+    if output in iso.parents:
+        raise ValueError("Original ISO must be outside the installation destination")
     previous = None
     if update:
         from installer_update import update_info

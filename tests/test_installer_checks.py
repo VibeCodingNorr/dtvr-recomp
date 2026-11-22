@@ -2,6 +2,7 @@
 """Preflight checks use synthetic media metadata and never write installation data."""
 
 import hashlib
+import os
 from pathlib import Path, PurePosixPath
 import subprocess
 import sys
@@ -98,6 +99,33 @@ class PreflightTests(unittest.TestCase):
                 subprocess.CompletedProcess([], 1)]):
             with self.assertRaisesRegex(ValueError, "vorbisfile"):
                 preflight(self.iso, self.output)
+
+    def test_unwritable_destination_does_not_create_files(self):
+        with patch("installer_checks.os.access", return_value=False):
+            with self.assertRaisesRegex(ValueError, "not writable"):
+                preflight(self.iso, self.output)
+        self.assertFalse(self.output.parent.exists())
+
+    def test_update_cannot_move_its_own_source_iso(self):
+        from test_installer_update import installation
+        installation(self.output)
+        inside = self.output / "original.iso"
+        self.iso.rename(inside)
+        with self.assertRaisesRegex(ValueError, "ISO.*outside"):
+            preflight(inside, self.output, update=True)
+        self.assertEqual(inside.read_bytes(), b"synthetic disc metadata")
+
+    @unittest.skipIf(os.geteuid() == 0, "root bypasses directory write permissions")
+    def test_actual_directory_permissions(self):
+        blocked = self.root / "read-only parent"
+        blocked.mkdir()
+        blocked.chmod(0o500)
+        try:
+            with self.assertRaisesRegex(ValueError, "not writable"):
+                preflight(self.iso, blocked / "installation")
+            self.assertFalse((blocked / "installation").exists())
+        finally:
+            blocked.chmod(0o700)
 
 
 if __name__ == "__main__":

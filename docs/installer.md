@@ -94,6 +94,9 @@ record what was actually installed.
 
 ## Validation
 
+For reproducible cancellation/failure scenarios and the AppImage check without a
+FUSE mount, see [installer testing](installer-testing.md).
+
 `tests/test_iso9660.py` uses synthetic standard and raw-sector images to check
 extraction, case/version normalization, overwrite rejection, invalid paths,
 truncation, out-of-volume extents and directory cycles. CTest runs these tests if

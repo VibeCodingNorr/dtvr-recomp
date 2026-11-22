@@ -6,6 +6,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import tempfile
@@ -20,6 +21,16 @@ def update_info(root):
     previous = manifest.get("project_version")
     if previous is None or version_tuple(previous) > version_tuple(read_version()):
         raise ValueError("Update requires a recognized project version; downgrades are not supported")
+    packs = manifest.get("soundtrack_packs", [])
+    if not isinstance(packs, list) or len(packs) > 128:
+        raise ValueError("Invalid installed soundtrack catalog")
+    identifiers = set()
+    for pack in packs:
+        pack_id = pack.get("id") if isinstance(pack, dict) else None
+        if (not isinstance(pack_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,47}", pack_id)
+                or pack_id in identifiers):
+            raise ValueError("Invalid or duplicate installed soundtrack identifier")
+        identifiers.add(pack_id)
     # Reject links even among user files; never copy content from outside the installation.
     for path in root.rglob("*"):
         if path.is_symlink() or not (path.is_dir() or path.is_file()):
@@ -103,8 +114,12 @@ def publish(stage, output, previous=None):
             output.rename(saved)
             try:
                 stage.rename(output)
-            except BaseException:
-                saved.rename(output)
+            except BaseException as publication_error:
+                try:
+                    saved.rename(output)
+                except OSError as rollback_error:
+                    raise OSError("Update publication and rollback failed; previous installation "
+                                  f"is preserved at backup {saved}: {rollback_error}") from publication_error
                 raise
         except BaseException:
             if not saved.exists():

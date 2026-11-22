@@ -23,7 +23,8 @@ from project_version import read_version
 
 def export_source(destination):
     """Export HEAD only, excluding ignored assets and concurrent working-tree edits."""
-    archive = subprocess.check_output(["git", "archive", "--format=tar", "HEAD"], cwd=REPO)
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    archive = subprocess.check_output(["git", "archive", "--format=tar", revision], cwd=REPO)
     with tarfile.open(fileobj=io.BytesIO(archive)) as files:
         for member in files:
             relative = PurePosixPath(member.name)
@@ -41,6 +42,7 @@ def export_source(destination):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
             target.chmod(0o755 if member.mode & 0o111 else 0o644)
+    return revision
 
 
 def build(python_runtime, appimagetool, runtime, output, arch):
@@ -61,7 +63,7 @@ def build(python_runtime, appimagetool, runtime, output, arch):
     with tempfile.TemporaryDirectory(prefix=".dtvr-appimage-", dir=output.parent) as temporary:
         appdir = Path(temporary) / "AppDir"
         source = appdir / "usr/src/dtvr-recomb"
-        export_source(source)
+        revision = export_source(source)
         version = read_version(source)
         if version != read_version():
             raise ValueError("Commit VERSION before packaging a release")
@@ -91,7 +93,7 @@ def build(python_runtime, appimagetool, runtime, output, arch):
             f"Name=DTVR Recomb Setup {version}\nExec=AppRun\nIcon=dtvr-recomb-setup\n"
             "Terminal=false\nCategories=Utility;\n")
         metadata = {"project_version": version, "architecture": arch,
-                    "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip(),
+                    "commit": revision,
                     "appimagetool_sha256": digest(appimagetool), "runtime_sha256": digest(runtime)}
         (appdir / "build-info.json").write_text(json.dumps(metadata, indent=2) + "\n")
         artifact = Path(temporary) / filename

@@ -102,6 +102,31 @@ class UpdateTests(unittest.TestCase):
                 with publication_lock(self.old):
                     self.fail("lock must reject a second publisher")
 
+    def test_invalid_pack_metadata_is_rejected_before_building(self):
+        manifest = self.old / "manifest.json"
+        for catalog in (None, "not a list", [{"id": "../escape"}],
+                        [{"id": "same"}, {"id": "same"}]):
+            with self.subTest(catalog=catalog):
+                manifest.write_text(json.dumps({**self.previous, "soundtrack_packs": catalog}))
+                with self.assertRaisesRegex(ValueError, "soundtrack"):
+                    update_info(self.old)
+
+    def test_failed_rollback_reports_the_preserved_backup(self):
+        rename = Path.rename
+
+        def fail_publication_and_restore(path, target):
+            if path == self.stage or path.name == "installation":
+                raise PermissionError("simulated filesystem failure")
+            return rename(path, target)
+
+        with patch.object(Path, "rename", fail_publication_and_restore):
+            with self.assertRaisesRegex(OSError, "backup.*installation"):
+                publish(self.stage, self.old, self.previous)
+        backups = list(self.root.glob("*.backup-*/installation"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual((backups[0] / "play").read_text(), "old")
+        self.assertTrue(self.stage.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
