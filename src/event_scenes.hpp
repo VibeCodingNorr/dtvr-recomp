@@ -19,9 +19,9 @@ struct EventScene {
 
 // The animation of an event message text, nullptr when it has none (yet).
 const EventScene* eventSceneForNotice(int text);
-// Passes until the record ends: every frame `delay` passes, `repetitions` times.
+// Drawn passes until the record is freed (seg2:6DCB: each frame stays delay + 1 passes).
 int eventScenePasses(const EventScene& scene);
-// The frame shown after `pass` passes.
+// The frame drawn in pass `pass` (0-based; the record advances before drawing).
 const char* eventSceneFrame(const EventScene& scene, int pass);
 
 } // namespace dtvr

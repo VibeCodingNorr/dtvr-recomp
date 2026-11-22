@@ -372,7 +372,7 @@ void GameScreen::drawMap() {
     if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
         const int pass = int((SDL_GetTicks() - sceneStart_) / kSceneStepMs);
         const auto& frames = sceneFrames_[scene_->file];
-        if (const auto it = frames.find(eventSceneFrame(*scene_, pass)); it != frames.end() && it->second) {
+        if (const auto it = frames.find(upperAscii(eventSceneFrame(*scene_, pass))); it != frames.end() && it->second) {
             int w = 0, h = 0;
             SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
             const SDL_Rect box{target.x + (sceneX_ - origin.x) * z, target.y + (sceneY_ - origin.y) * z, w * z, h * z};

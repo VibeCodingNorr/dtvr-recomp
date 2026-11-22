@@ -138,7 +138,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 67. Map scrolling as rally.exe: centring on turn, spin, Space and zoom; edge jumps while driving.
 68. Event places: the map zooms in on the place of an event while its message is open.
 69. Event animation framework and the storm (sturm.sbs) before its message.
-70. *Next:* the animations of the other events (rain, snow, rockfall, robbers, flood, quake, drought, Nessie, volcano).
+70. Exact animation record step (seg2:6DCB); robbers, volcano and rockfall animations.
+71. *Next:* the earthquake and the multi-record scenes (rain, snow, flood, drought, Nessie).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

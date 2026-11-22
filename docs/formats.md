@@ -1397,10 +1397,30 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   music catalogue) and seg1:2D40(7, `%s\snd\E1`) opens a WAV that this disc does
   not contain (snd holds only fx and midi), so nothing plays.
   **Sturm** (seg8:1C01): `sbs\sturm.sbs` (DS:5F3A), frames ST1–ST6 (DS:5F0E ff.),
-  delay 6, repetitions 4, position town · 16 + (8, −0x1D) (seg8:1D47 / 1D4C):
-  144 passes, about 2.9 s. Rebuilt in `src/event_scenes.cpp` (table, timing) and
-  `GameScreen::startEventScene`; the message waits for the scene. The other
-  events follow.
+  delay 6, repetitions 4, position town · 16 + (8, −0x1D) (seg8:1D47 / 1D4C).
+  Rebuilt in `src/event_scenes.cpp` (table, record step) and
+  `GameScreen::startEventScene`; the message waits for the scene.
+- **Record step** seg2:6DCB (exact, round 70): per record `old = countdown--`; if
+  old > 0 nothing else; otherwise countdown = definition delay and the frame
+  index grows; past the last frame it returns to 0 and a repetition is used up;
+  without repetitions the callback (+0xE, argument +0x12) runs, then the
+  follow-up definition (+4) replaces the current one, or the record is freed.
+  seg8:6E0F advances before drawing, so with countdown 0 the first drawn frame is
+  frame 1 and every frame stays delay + 1 passes. **Correction:** round 69 showed
+  each storm frame `delay` passes starting with ST1.
+- **Robbers** seg8:1E70: `raub.sbs` (DS:60E7), 39 frames RA01–RA24 (delay 5,
+  repetitions 0), position the victim's field (DS:52 record +0 / +1) · 16 +
+  (0xC, 4); the view zooms and centres on the victim (seg2:3216). **Volcano**
+  seg8:36FD: `vulkan.sbs` (DS:69FF), 54 frames V01–V29 (delay 5, repetitions 0),
+  place table (DS:69F0) · 16 + (0xD, 0x11). **Rockfall** seg8:5A76: `stein.sbs`
+  (DS:717F), 33 frames st01–st33 (delay 3, repetitions 0), place (DS:7170) · 16
+  + (7, −0x17). Their WAV files `snd\e2`, `e4`, `e9` are not on this disc.
+- **Still open:** Erdbeben (equake.sbs BR01–BR15, its own loop with offset
+  tables, seg8:3C0B), and the multi-record scenes Regen (regen.sbs: R00, R01–R08,
+  R09–R20), Schnee (schnee.sbs SN01–SN46), Hochwasser (flood.sbs RG00–RG26),
+  Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
+  four definitions, three WAVs E12 / E12a / E12b). Definitions extracted with the
+  private helper `animdef.py`.
 - **Correction (round 69):** the edge scroll of round 67 also ran for a standing
   vehicle; it now only follows a vehicle that moved in that tick, as in the
   movement tick seg2:239F.
