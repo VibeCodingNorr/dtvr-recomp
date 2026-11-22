@@ -27,6 +27,12 @@ public:
                const Board& board, const std::vector<Town>& towns, const Game& game,
                std::map<int, std::string> texts);
     void draw();
+    // Title (seg8:03AB): window TITEL over the canvas with butt/<n>/<lang>/t.bmp
+    // (DS:17FB); the menu MAIN is drawn above it.
+    void setTitle(bool title) { title_ = title; }
+    bool title() const { return title_; }
+    // The vehicle sets of the drivers in play (after loading a game).
+    void loadDriverSprites();
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
     CardView& cards() { return cards_; }
@@ -75,6 +81,7 @@ private:
     SaveSlots slots_;
     SaveView save_;
     int seenSpin_ = 0;
+    bool title_ = false;
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
     Uint32 lastAdvance_ = 0;
@@ -91,6 +98,7 @@ struct GameWindowOptions {
     bool holdRight = false;       // tests: the right arrow key is held from the start
     bool openSave = false;
     bool openStatistics = false;  // tests: open Statistik at the start
+    bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame

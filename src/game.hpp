@@ -111,6 +111,9 @@ public:
     // requestDemoEnd (Escape / right click, seg1:0211 -> seg2:5CAD sets DS:16 = 1);
     // it ends at the next player change.
     bool humansLeft() const;
+    // Counts turn changes since construction or loading (not saved; for the window's
+    // autosave at each turn start, seg2:0837).
+    int turnSerial() const { return turnSerial_; }
     // Driver names of the slots (texts 120-127 of the language file, UTF-8); without
     // them messages say "Spieler N".
     void setPlayerNames(const std::array<std::string, kPlayerSlots>& names) { names_ = names; }
@@ -212,6 +215,7 @@ private:
     bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
     int propertyMode_ = 0xFF;               // DS:3FC6
     bool aiActing_ = false;                 // inside runComputerTurn
+    int turnSerial_ = 0;
     bool aiTurn_ = false;                   // a computer turn is between stages (not saved)
     int aiPlayer_ = -1;
     bool aiSteerless_ = false;

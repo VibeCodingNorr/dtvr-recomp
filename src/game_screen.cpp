@@ -52,9 +52,16 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     loadSprites(fs::path("sbs") / "assorted.sbs"); // MENUN / MENUG of the menu window
     loadSprites(fs::path("sbs") / "buy.sbs", buySprites_); // town dialog (DS:3FCC, seg1:4C45)
     loadSprites(fs::path("sbs") / "ls.sbs", lsSprites_);   // save dialog (DS:8081)
-    for (int p = 0; p < kPlayerSlots; ++p)
-        if (game_.players()[size_t(p)].status)
-            loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
+    loadDriverSprites();
+}
+
+void GameScreen::loadDriverSprites() {
+    for (int p = 0; p < kPlayerSlots; ++p) {
+        if (!game_.players()[size_t(p)].status) continue;
+        const std::string letter(1, kPortraitLetters[p]);
+        if (find(sprites_, letter + "R1")) continue; // already loaded
+        loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
+    }
 }
 
 SDL_Texture* GameScreen::find(const SpriteSet& set, const std::string& name) {
@@ -260,6 +267,13 @@ void GameScreen::drawPlayerInfo() {
 }
 
 void GameScreen::draw() {
+    if (title_) {
+        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp"))
+            SDL_RenderCopy(renderer_, t, nullptr, nullptr);
+        save_.draw(slots_);
+        menu_.draw();
+        return;
+    }
     // Canvas (seg8:0000): butt/<n>/bk.bmp fills the client area.
     if (SDL_Texture* background = art(fs::path("butt") / std::to_string(layout_.artDir) / "bk.bmp"))
         SDL_RenderCopy(renderer_, background, nullptr, nullptr);
@@ -345,9 +359,35 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         return g.phase() == Game::Phase::Roll && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer());
     };
     bool running = true;
+    auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
+        screen.setTitle(true);
+        openMenu("MAIN");
+        // seg8:0DE7: "Spiel fortsetzen" (position 1) is grayed without an autosave (seg6:156D).
+        if (menu.isOpen() && !screen.saveSlots().hasAuto()) {
+            std::vector<NeMenuItem> items;
+            try { items = readNeMenu(language, "MAIN"); } catch (const std::exception&) {}
+            if (items.size() > 1) items[1].flags |= 0x01;
+            menu.open("MAIN", std::move(items));
+        }
+    };
+    auto startGame = [&] {
+        screen.setTitle(false);
+        screen.loadDriverSprites();
+        report();
+    };
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
+        case 1020: startGame(); break;                           // Neues Spiel (player choice not built)
+        case 1021: screen.saveDialog().open(false); break;       // Spiel laden: seg8:B157(0)
+        case 1022: {                                             // Spiel fortsetzen: seg8:A8DF(0), as.dat
+            std::string error;
+            if (screen.saveSlots().loadAuto(play.game(), error)) startGame();
+            else { std::cerr << "Fortsetzen: " << error << "\n"; openTitle(); }
+            break;
+        }
+        case 1025: running = false; break;                       // Rallye beenden
+        case 1023: case 1024: case 1026: openTitle(); break;     // Optionen, Demo, Credits: not built yet
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
@@ -362,18 +402,21 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         default: break; // Zoom, Übersicht, Umfeld, Statistik, Neues Spiel, Speichern ...: not built yet
         }
     };
+    if (options.title) openTitle();
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
+    int autosaved = -1; // turn serial of the last autosave
     SDL_Keycode heldArrow = options.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
     auto isArrow = [](SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT; };
     for (int frame = 1; running; ++frame) {
         screen.advanceVehicles(SDL_GetTicks());
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
-        for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
+        if (!screen.title())
+            for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
         if (cards.isOpen() && turnState() != cardWindowState) cards.close();
@@ -393,8 +436,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             else if (!estates.isOpen() || estates.town() != town) estates.open(town);
         }
         SaveView& saveDialog = screen.saveDialog();
+        if (screen.title()) { // nothing of the game runs behind the title
+            if (!menu.isOpen() && !saveDialog.isOpen()) openTitle();
+        } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
+                   && !play.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
+            std::string error;
+            if (!screen.saveSlots().saveAuto(play.game(), error)) std::cerr << "Autosave: " << error << "\n";
+            autosaved = play.game().turnSerial();
+        }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
-                           || estates.statistics();
+                           || estates.statistics() || screen.title();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -416,6 +467,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (saveDialog.isOpen()) { // seg8:B2F0: modal until Ok or Nein
                 const SaveView::Result r = saveDialog.handle(event);
+                if (r == SaveView::Result::Confirm && !saveDialog.saving()) { // load (title)
+                    std::string error;
+                    saveDialog.close();
+                    if (screen.saveSlots().load(saveDialog.slot(), play.game(), error)) startGame();
+                    else { std::cerr << "Laden fehlgeschlagen: " << error << "\n"; openTitle(); }
+                    continue;
+                }
+                if (r == SaveView::Result::Close && screen.title()) { saveDialog.close(); openTitle(); continue; }
                 if (r == SaveView::Result::Confirm) {
                     std::string error;
                     const int slot = saveDialog.slot();

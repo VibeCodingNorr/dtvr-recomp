@@ -62,4 +62,5 @@ older revision loads, but continues with the current rules.
 The game window's save dialog (round 33) writes slot `n` (0–8) to
 `slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomb/saves` (default
 `~/.local/share/dtvr-recomb/saves`), and its description to `saves.ini` in the
-same directory (`[Save]`, one `Slot<n>=<description>` line per slot).
+same directory (`[Save]`, one `Slot<n>=<description>` line per slot). The
+autosave of each turn start (round 35) is `as.sav` in the same directory.

@@ -31,6 +31,12 @@ public:
     bool save(int slot, const Game& game, const std::string& description, std::string& error) const;
     bool load(int slot, Game& game, std::string& error) const;
     std::filesystem::path file(int slot) const;
+    // Autosave of the turn start (seg8:A870: `%s\as.dat` and profile Save/AS = 1);
+    // "Spiel fortsetzen" loads it (seg8:A8DF).
+    bool saveAuto(const Game& game, std::string& error) const;
+    bool loadAuto(Game& game, std::string& error) const;
+    bool hasAuto() const;
+    std::filesystem::path autoFile() const { return directory_ / "as.sav"; }
 
 private:
     std::map<int, std::string> readIndex() const;

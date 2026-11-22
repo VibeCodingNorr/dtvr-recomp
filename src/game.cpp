@@ -294,6 +294,7 @@ bool Game::endTurn() {
 }
 
 void Game::advanceTurn() {
+    ++turnSerial_;
     doubleNext_ = false;
     propertyMode_ = 0xFF; // the town dialog closes (seg1:5399 / 5508 / 5767)
     declineInvestment();

@@ -92,6 +92,20 @@ bool SaveSlots::save(int slot, const Game& game, const std::string& description,
     return writeSaveFile((directory_ / kIndex).string(), o.str(), error);
 }
 
+bool SaveSlots::saveAuto(const Game& game, std::string& error) const {
+    std::error_code ec;
+    fs::create_directories(directory_, ec);
+    if (ec) { error = "Verzeichnis " + directory_.string() + ": " + ec.message(); return false; }
+    return writeSaveFile(autoFile().string(), SaveCodec::encode(game), error);
+}
+
+bool SaveSlots::loadAuto(Game& game, std::string& error) const {
+    std::string text;
+    return readSaveFile(autoFile().string(), text, error) && SaveCodec::decode(game, text, error);
+}
+
+bool SaveSlots::hasAuto() const { return fs::exists(autoFile()); }
+
 bool SaveSlots::load(int slot, Game& game, std::string& error) const {
     std::string text;
     if (slot < 0 || slot >= kSaveSlots || !readSaveFile(file(slot).string(), text, error)) {

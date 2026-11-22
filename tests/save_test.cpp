@@ -133,6 +133,8 @@ int main() {
     Game c(board, towns, 1, 0, 7, 1);
     CHECK(slots.load(3, c, error) && SaveCodec::encode(c) == SaveCodec::encode(a));
     CHECK(!slots.load(4, c, error) && !slots.save(9, a, "x", error));
+    CHECK(!slots.hasAuto() && slots.saveAuto(b, error) && slots.hasAuto());
+    CHECK(slots.loadAuto(c, error) && SaveCodec::encode(c) == SaveCodec::encode(b));
     std::filesystem::remove_all(dir);
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

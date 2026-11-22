@@ -26,6 +26,7 @@ public:
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     int slot() const { return slot_; }
+    bool saving() const { return saving_; }
 
     enum class Result { None, Close, Confirm };
     Result handle(const SDL_Event& event);

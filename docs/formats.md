@@ -1208,6 +1208,31 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Title menu and autosave (round 35)
+
+- **Title** seg8:03AB: window TITEL (DS:17EF) over the whole canvas with the
+  bitmap `%s\%d\%c\t.bmp` (DS:17FB: butt directory, art directory, language
+  letter); seg8:0DB0 opens the menu MAIN at (0, 0), i.e. centred, and reads the
+  profile value `Save` / `AS` (seg5:22C0): 0 grays "Spiel fortsetzen" (position
+  1, seg6:156D: EnableMenuItem MF_BYPOSITION | MF_GRAYED), otherwise it is
+  enabled (seg6:15BC).
+- **Commands** (seg4:0B76): 1020 Neues Spiel → seg8:045D (title off), menu off,
+  seg4:0DA9(0) (game setup; 0 → back to the title); 1024 Demo → seg4:0DA9(1);
+  1022 Spiel fortsetzen → seg8:A8DF(0) loads `%s\as.dat` (DS:7EDF), then the
+  game starts (seg5:186A(1), seg8:6709, seg2:0407, seg1:275E, seg5:6BF2,
+  ONFIELD); 1021 Spiel laden → the save dialog in load mode seg8:B157(0), same
+  start on success; failures return to the title.
+- **Autosave** seg2:0837 → seg8:A870 at every turn start while a human plays
+  (seg2:5C5A returns 0 when a slot has status 1): `%s\as` and profile `Save` /
+  `AS` = 1 (seg5:22FC).
+- **Rebuilt** (`src/game_screen.cpp`, `src/save_slots.cpp`): `--game` starts with
+  the title (`--no-title` skips it); Neues Spiel starts the game set up on the
+  command line (the setup dialogs SELPLAYER / NICKNAME are not rebuilt yet);
+  Spiel laden uses the save dialog with text 801; the autosave is `as.sav` in
+  the save directory, written at each turn start (turn counter
+  `Game::turnSerial`, not saved), and its presence enables Spiel fortsetzen.
+  Optionen, Demo and Credits return to the title for now.
+
 ### Statistik (round 34)
 
 - **Call** 1036 / 1042 → seg1:4DE5: when the current player stands on a field
@@ -1233,8 +1258,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   **Assumptions:** sort order (value and yield descending, towns in file order),
   a header click steps the category (x 145–250) or the sort order (from x 251);
   Escape or the right button close Statistik, and the game goes on.
-- **Loading:** the original loads from the title menu MAIN (1021), which is not
-  rebuilt yet; `--game --load <slot>` loads a slot of the save dialog instead.
+- **Loading:** the original loads from the title menu MAIN (1021, round 35);
+  `--game --load <slot>` loads a slot directly.
 
 ### Save dialog (round 33)
 
