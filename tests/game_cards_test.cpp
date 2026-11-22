@@ -66,6 +66,45 @@ int main() {
         CHECK(g->phase() == Game::Phase::Roll);
     } else CHECK(false);
 
+    // Obstacle question (round 65, seg2:2404): a human with the clearing card is asked
+    // (text 600, Yes / No, card picture); No keeps card and obstacle, Yes drives on.
+    {
+        std::unique_ptr<Game> g;
+        int nails = -1;
+        for (uint16_t seed = 1; seed < 20000 && !g; ++seed) {
+            auto c = std::make_unique<Game>(board, towns, 1, 0, seed, 8, nullptr, nullptr, false);
+            c->setRandomEvents(false);
+            int n = -1, clear = -1;
+            for (int s = 0; s < 8; ++s) {
+                const int type = c->deck().typeOfSlot(c->hand(0)[size_t(s)]);
+                if (type == 18 && n < 0) n = s;
+                if (type == 38) clear = s;
+            }
+            if (n >= 0 && clear >= 0) { g = std::move(c); nails = n; }
+        }
+        CHECK(g != nullptr);
+        if (g) {
+            CHECK(g->playCard(nails, 2) && g->obstacles().count() == 1);
+            g->takeNotices();
+            int asked = 0;
+            for (int guard = 0; guard < 200 && g->phase() != Game::Phase::Arrived && !asked; ++guard) {
+                if (g->phase() == Game::Phase::Roll) g->roll();
+                else if (!g->step(Direction::Right) && g->obstacleQuestion().card >= 0) asked = 1;
+            }
+            CHECK(asked && g->obstacleQuestion().card == 38 && g->obstacleQuestion().direction == Direction::Right);
+            const auto notices = g->takeNotices();
+            CHECK(!notices.empty() && notices.back().text == 600 && notices.back().buttons == 4
+                  && notices.back().cardPicture == 38);
+            const int field = g->playerField(0), cards = g->handCount(0);
+            CHECK(!g->step(Direction::Right));                       // waits for the answer
+            CHECK(!g->answerObstacle(false) && g->obstacleQuestion().card < 0);
+            CHECK(g->obstacles().count() == 1 && g->handCount(0) == cards && g->playerField(0) == field);
+            CHECK(!g->step(Direction::Right) && g->obstacleQuestion().card == 38); // asked again
+            CHECK(g->answerObstacle(true) && g->obstacles().count() == 0 && g->handCount(0) == cards - 1);
+            CHECK(g->playerField(0) != field);
+        }
+    }
+
     // Punch (20): the other player on the same field is pushed four fields against
     // the puncher's driving direction (initially right -> pushed left).
     if (auto g = gameWithCard(board, towns, 2, 0, 20, slot)) {

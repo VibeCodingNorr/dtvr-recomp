@@ -390,6 +390,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
+            if (screen.messages().question()) { // seg2:2404: obstacle question (text 600)
+                if (const int answer = screen.messages().handle(event); answer) {
+                    screen.messages().dismiss();
+                    sound.play(0, 2); // seg6:5627: Plopp02 when the window closes
+                    if (play.game().answerObstacle(answer == 6)) report();
+                }
+                continue;
+            }
             if (screen.messages().open()) {
                 if (event.type == SDL_KEYDOWN || click) screen.messages().dismiss();
                 continue;

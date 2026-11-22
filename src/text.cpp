@@ -104,6 +104,14 @@ void TextRenderer::draw(SDL_Renderer* renderer, const std::string& text, const S
     if (style.shadow) blit(SDL_Color{0, 0, 0, 255}, -style.shadow, -style.shadow);
     blit(style.color, 0, 0);
 }
+SDL_Point TextRenderer::measure(const std::string& text, const TextStyle& style) {
+    SDL_Point size{0, style.pixelHeight};
+    if (!available_) return size;
+    TTF_Font* font = impl_->font((style.bold ? 1 : 0) + (style.italic ? 2 : 0), style.pixelHeight);
+    if (font) TTF_SizeUTF8(font, text.c_str(), &size.x, &size.y);
+    return size;
+}
+
 void TextRenderer::drawWrapped(SDL_Renderer* renderer, const std::string& text, const ScreenRect& rect,
                                const TextStyle& style) {
     if (!available_ || text.empty()) return;
@@ -139,6 +147,7 @@ void TextRenderer::drawWrapped(SDL_Renderer*, const std::string&, const ScreenRe
 TextRenderer::TextRenderer() : description_("ohne SDL2_ttf gebaut: kein Text") {}
 TextRenderer::~TextRenderer() = default;
 void TextRenderer::draw(SDL_Renderer*, const std::string&, const ScreenRect&, const TextStyle&) {}
+SDL_Point TextRenderer::measure(const std::string&, const TextStyle& style) { return SDL_Point{0, style.pixelHeight}; }
 #endif
 
 } // namespace dtvr

@@ -867,12 +867,29 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   in the dark 41002 (seg7:6AE3) and the win after level 4 text 41003 (seg7:6B52),
   each with the driver name (`%Fs`, player record + 1) in the message window
   seg6:51EA. Rebuilt in `src/game_risiko.cpp` (notices and sound cues).
-- **Obstacle question (found in round 64, not rebuilt):** seg2:2404 clears an
-  obstacle with card 0x25 or 0x27 (seg3:0D26 finds it). Computers (seg2:5C02)
-  use it at once; for humans the message window opens in mode 4 with text 600
-  ("Willst Du diese Karte wirklich einsetzen ?") and the card picture
-  `%s\%d\%c\%dcard_%.2d.bmp` (DS:1A6C), and only the answer 6 (Yes) uses the
-  card (seg3:0E11, seg8:697C). The rebuild uses the card without asking.
+- **Obstacle question (round 65):** seg2:2404 clears an obstacle with card 0x25
+  or 0x27 (1-based numbers, types 36 / 38; seg3:0D26 finds it). Computers
+  (seg2:5C02) use it at once; for humans the message window opens with buttons 4
+  and text 600 ("Willst Du diese Karte wirklich einsetzen ?") and the card picture
+  `%s\%d\%c\%dcard_%.2d.bmp` (DS:1A6C: bmp directory, art directory, language,
+  art directory, card number), and only the answer 6 (Yes) uses the card
+  (seg3:0E11, seg8:697C) and drives on.
+- **Message window buttons** (round 65): seg6:51EA(picture, text, buttons) — a
+  non-empty picture path replaces the showmaster (height = picture + 0x24);
+  DS:8C36 holds the Windows MessageBox type (0 none, 1 OK / Cancel, 3 Yes / No /
+  Cancel, 4 Yes / No) and DS:8C38 the answer as an IDOK / IDCANCEL / IDYES / IDNO
+  value, which is also the index of the button rectangle (seg6:5F18: texts 114
+  Ok → 1, 117 Abbrechen → 2, 115 Ja → 6, 116 Nein → 7, sized by GetTextExtent in
+  Arial weight 600 at {18, 16, 14} + 5). WM_CREATE preselects 6 (1 for mode 1,
+  seg6:5834). Layout for mode 4 (seg6:639C) in the client rectangle inflated by
+  −10, left past the picture + 10, inflated by (−10, 0): Ja at the bottom left,
+  Nein at the bottom right. Paint (seg6:5CC1): the chosen answer in palette
+  colour 0xFF, the other 0x45. Keys (seg6:579F): left → 6, right → 7, Return /
+  space close with the choice, Escape / Backspace send VK_RIGHT (No) and close;
+  a left click inside a button rectangle answers it (seg6:54BB); closing plays
+  Plopp02 on channel 0. Rebuilt in `src/message_view.cpp` (mode 4) and
+  `Game::answerObstacle`; the open question is not saved (after loading the
+  step asks again).
 - **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
   in the string resources, but no code adds the base 5181 (all other events add
   their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the

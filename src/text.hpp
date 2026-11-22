@@ -34,6 +34,8 @@ public:
     const std::string& fontDescription() const { return description_; }
     // Draws one line of UTF-8 text inside `rect` (top-aligned, no clipping, as DT_NOCLIP).
     void draw(SDL_Renderer* renderer, const std::string& text, const ScreenRect& rect, const TextStyle& style);
+    // GetTextExtent: width and height of one line; {0, pixelHeight} without a font.
+    SDL_Point measure(const std::string& text, const TextStyle& style);
     // DT_WORDBREAK: breaks at spaces so that every line fits the rectangle's width.
     void drawWrapped(SDL_Renderer* renderer, const std::string& text, const ScreenRect& rect, const TextStyle& style);
 

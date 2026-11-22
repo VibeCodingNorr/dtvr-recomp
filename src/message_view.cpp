@@ -3,6 +3,8 @@
 
 #include "panel.hpp"
 
+#include <cstdio>
+
 namespace fs = std::filesystem;
 
 namespace dtvr {
@@ -28,16 +30,67 @@ SDL_Texture* MessageView::bitmap(const fs::path& relative, int& w, int& h) {
     return it->second.get();
 }
 
+int MessageView::buttonSize() const {
+    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    static constexpr int kSize[3] = {18, 16, 14};
+    return kSize[res] + 5; // seg6:5505: text size + 5 for the buttons
+}
+
+MessageView::Geometry MessageView::geometry() {
+    Geometry g;
+    const std::string dir = std::to_string(layout_.artDir);
+    const Notice& n = queue_.front();
+    if (n.cardPicture >= 0) { // DS:1A6C: "%s\%d\%c\%dcard_%.2d.bmp" instead of the showmaster
+        char name[32];
+        std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, n.cardPicture + 1);
+        g.picture = bitmap(fs::path("bmp") / dir / "d" / name, g.pw, g.ph);
+    }
+    if (!g.picture) g.picture = bitmap(fs::path("bmp") / dir / "sm.bmp", g.pw, g.ph);
+    // seg6:5213: width from element 5, height = picture + 0x24; centred on the canvas.
+    const int w = layout_.elements[5][0], h = g.ph + 0x24;
+    g.box = SDL_Rect{std::max(0, (layout_.width - w) / 2), std::max(0, (layout_.height - h) / 2), w, h};
+    if (n.buttons == 4) {
+        // seg6:54C4: client rectangle inflated by -10, left past the picture + 10, then
+        // inflated by (-10, 0); seg6:639C puts Ja (text 115) bottom left and Nein (116)
+        // bottom right of it.
+        const SDL_Rect r{g.box.x + 30 + g.pw, g.box.y + 10, w - 50 - g.pw, h - 20};
+        const TextStyle style{buttonSize(), true, false, false, false, 0, SDL_Color{}};
+        auto text = [&](int id) { const auto it = texts_.find(id); return it == texts_.end() ? std::string() : it->second; };
+        const SDL_Point yes = text_.measure(text(115), style), no = text_.measure(text(116), style);
+        g.yes = SDL_Rect{r.x, r.y + r.h - yes.y, yes.x, yes.y};
+        g.no = SDL_Rect{r.x + r.w - no.x, r.y + r.h - no.y, no.x, no.y};
+    }
+    return g;
+}
+
+int MessageView::handle(const SDL_Event& event) {
+    if (!question()) return 0;
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) { // seg6:54BB
+        const Geometry g = geometry();
+        const SDL_Point at{event.button.x, event.button.y};
+        if (SDL_PointInRect(&at, &g.yes)) return 6;
+        if (SDL_PointInRect(&at, &g.no)) return 7;
+        return 0;
+    }
+    if (event.type != SDL_KEYDOWN) return 0;
+    switch (event.key.keysym.sym) { // seg6:579F
+    case SDLK_LEFT: choice_ = 6; return 0;
+    case SDLK_RIGHT: choice_ = 7; return 0;
+    case SDLK_RETURN: case SDLK_KP_ENTER: case SDLK_SPACE: return choice_;
+    case SDLK_ESCAPE: case SDLK_BACKSPACE: return 7; // VK_RIGHT to itself, then closed
+    default: return 0;
+    }
+}
+
 void MessageView::draw(const Game& game) {
     if (queue_.empty()) return;
     const std::string dir = std::to_string(layout_.artDir);
-    int pw = 0, ph = 0, sw = 0, sh = 0;
+    int pw = 0, ph = 0;
     SDL_Texture* paper = bitmap(fs::path("butt") / dir / "p1.bmp", pw, ph);
-    SDL_Texture* showmaster = bitmap(fs::path("bmp") / dir / "sm.bmp", sw, sh);
-    // seg6:5213: width from element 5, height = showmaster + 0x24; centred on the
-    // canvas (seg6:5852 -> seg6:0000).
-    const int w = layout_.elements[5][0], h = sh + 0x24;
-    const SDL_Rect box{std::max(0, (layout_.width - w) / 2), std::max(0, (layout_.height - h) / 2), w, h};
+    const Geometry g = geometry();
+    SDL_Texture* showmaster = g.picture;
+    const int sw = g.pw, sh = g.ph, w = g.box.w, h = g.box.h;
+    const SDL_Rect box = g.box;
     if (paper && pw > 0 && ph > 0) // the paper fills the client area (tiled where it is smaller)
         for (int y = 0; y < h; y += ph)
             for (int x = 0; x < w; x += pw) {
@@ -59,6 +112,17 @@ void MessageView::draw(const Game& game) {
     TextStyle style{kSize[res], true, false, false, false, 0, SDL_Color{67, 27, 0, 255}};
     const ScreenRect textRect{box.x + 10 + sw, box.y + 10, w - 20 - sw, h - 20};
     text_.drawWrapped(renderer_, message, textRect, style);
+    if (n.buttons == 4) { // seg6:5CC1: the chosen answer in colour 0xFF, the other in 0x45
+        auto button = [&](int id, const SDL_Rect& r, bool chosen) {
+            const auto t = texts_.find(id);
+            if (t == texts_.end()) return;
+            const SDL_Color c = chosen ? SDL_Color{255, 255, 255, 255} : SDL_Color{67, 27, 0, 255};
+            text_.draw(renderer_, t->second, ScreenRect{r.x, r.y, r.w, r.h},
+                       TextStyle{buttonSize(), true, false, false, false, 0, c});
+        };
+        button(115, g.yes, choice_ == 6);
+        button(116, g.no, choice_ == 7);
+    }
 }
 
 } // namespace dtvr

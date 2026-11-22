@@ -34,6 +34,10 @@ struct NoticeArg {
 struct Notice {
     int text = 0;
     std::vector<NoticeArg> args;
+    // seg6:51EA(picture, text, buttons): 0 none, 4 Yes / No (MB_YESNO, answers 6 / 7);
+    // `cardPicture` >= 0 replaces the showmaster with that card type's picture.
+    int buttons = 0;
+    int cardPicture = -1;
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
@@ -63,6 +67,11 @@ public:
     bool endTurn();              // after arrival: next player, month bookkeeping
     // Yellow field with a full hand (seg3:1057): discard a card, then the card follows.
     bool yellowCardPending() const { return yellowPending_; }
+    // Obstacle with a clearing card in a human hand (seg2:2404): the message window
+    // asks with text 600 and the card picture; Yes uses the card and drives on.
+    struct ObstacleQuestion { int card = -1; Direction direction = Direction::None; };
+    const ObstacleQuestion& obstacleQuestion() const { return question_; }
+    bool answerObstacle(bool yes);
     bool discardForCard(int handSlot);
     // Play hand slot 0..7 before spinning (game_cards.cpp). `target` depends on the
     // card: the target player for Fiskus/Schulden/Zucker/Blockieren/Schlafen (only
@@ -257,6 +266,8 @@ private:
     bool aiSteerless_ = false;
     std::vector<int> aiRoute_;              // fields still to drive
     bool yellowPending_ = false;            // yellow field waits for a discard
+    ObstacleQuestion question_;             // transient: not saved, asked again after loading
+    bool obstacleConfirmed_ = false;
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
     std::vector<int> lastReels_;            // DS:9584 (presentation only)

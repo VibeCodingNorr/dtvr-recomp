@@ -168,9 +168,20 @@ bool Game::roll() {
     return true;
 }
 
+bool Game::answerObstacle(bool yes) {
+    if (question_.card < 0) return false;
+    const Direction d = question_.direction;
+    question_ = ObstacleQuestion{};
+    if (!yes) return false;                     // seg2:24FF: only answer 6 uses the card
+    obstacleConfirmed_ = true;
+    const bool moved = step(d);
+    obstacleConfirmed_ = false;
+    return moved;
+}
+
 bool Game::step(Direction d) {
     messages_.clear();
-    if (phase_ != Phase::Move || d == Direction::None) return false;
+    if (phase_ != Phase::Move || d == Direction::None || question_.card >= 0) return false;
     PlayerSlot& p = players_[size_t(current_)];
     const int16_t next = board_.fields[size_t(p.field)].next[size_t(d) - 1];
     if (next == Field::kNone) return false;
@@ -183,6 +194,14 @@ bool Game::step(Direction d) {
         const int slot = card >= 0 ? findCard(current_, card) : -1;
         if (slot < 0) {
             messages_.push_back("Hindernis auf der Strasse - ohne passende Karte geht es nicht weiter");
+            return false;
+        }
+        if (!computerControls() && !obstacleConfirmed_) { // seg2:24A6: humans are asked first
+            question_ = ObstacleQuestion{card, d};
+            Notice q{600, {}};                             // "Willst Du diese Karte wirklich einsetzen ?"
+            q.buttons = 4;
+            q.cardPicture = card;                          // DS:1A6C: <n>card_<number>.bmp
+            notices_.push_back(std::move(q));
             return false;
         }
         messages_.push_back(playerName(current_) + " raeumt das Hindernis mit "
