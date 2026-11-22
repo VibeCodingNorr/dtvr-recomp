@@ -142,6 +142,7 @@ static int run(int argc, char** argv) {
     fs::path root, screenshot;
     std::string menuName; // --game: open this menu resource at the start (screenshots)
     bool openCards = false; // --game: open the card window at the start (screenshots)
+    bool holdRight = false; // --game: hold the right arrow key (tests of driving)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
@@ -181,6 +182,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--frames" && i + 1 < argc) frames = std::stoi(argv[++i]);
         else if (arg == "--menu" && i + 1 < argc) menuName = argv[++i];
         else if (arg == "--cards") openCards = true;
+        else if (arg == "--hold-right") holdRight = true;
         else if (arg == "--estates" && i + 1 < argc) openEstates = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
@@ -224,6 +226,7 @@ static int run(int argc, char** argv) {
         options.rollAtStart = rollAtStart;
         options.openMenu = menuName;
         options.openCards = openCards;
+        options.holdRight = holdRight;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);

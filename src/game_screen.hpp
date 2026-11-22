@@ -33,6 +33,10 @@ public:
     std::vector<EstateRow> estateRows() const;
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
+    // Smooth driving (round 31): the drawn vehicle runs after the game position at
+    // 4 pixels per 50 ms tick (seg2:1CB0: DS:19EA / 19F4 = 2, shifted by DS:34 = 1).
+    void advanceVehicles(Uint32 now);
+    bool vehicleMoving(int player) const;
 
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
@@ -60,6 +64,10 @@ private:
     CardView cards_;
     EstatesView estates_;
     int seenSpin_ = 0;
+    std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
+    std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
+    Uint32 lastAdvance_ = 0;
+    Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick
 };
 
 struct GameWindowOptions {
@@ -69,6 +77,7 @@ struct GameWindowOptions {
     bool rollAtStart = false;     // spin at once (tests of the slot machine)
     std::string openMenu;         // tests: open this menu resource at the start (e.g. RIGHTBTN)
     bool openCards = false;       // tests: open the card window at the start
+    bool holdRight = false;       // tests: the right arrow key is held from the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame
 };

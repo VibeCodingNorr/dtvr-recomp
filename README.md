@@ -85,7 +85,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 29. Card window with the original card pictures and layout.
 30. Town dialog ESTATES: property list with owner, price, income and yield; buying
     and selling by mouse.
-31. *Next:* scroll arrows and remaining parts of the town dialog, smooth driving.
+31. Smooth driving at the original speed with held arrow keys; scrolling rule of
+    the town dialog.
+32. *Next:* computer turns step by step on the map, the remaining dialogs.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

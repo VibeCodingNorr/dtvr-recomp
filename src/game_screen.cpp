@@ -38,6 +38,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       cards_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_, [this](const std::string& name) { return sprite(name); }) {
     seenSpin_ = game.spinSerial();
+    shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
     // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
@@ -88,13 +89,56 @@ SDL_Texture* GameScreen::art(const fs::path& relative) {
     return raw;
 }
 
+void GameScreen::advanceVehicles(Uint32 now) {
+    constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
+    const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
+    lastAdvance_ = now;
+    carry_ += elapsed;
+    const int ticks = int(carry_ / kTickMs);
+    carry_ %= kTickMs;
+    for (int p = 0; p < kPlayerSlots; ++p) {
+        if (!game_.players()[size_t(p)].status) continue;
+        const int field = game_.playerField(p);
+        const Field& f = board_.fields[size_t(field)];
+        const SDL_Point target{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
+        SDL_Point& at = shown_[size_t(p)];
+        int& from = shownField_[size_t(p)];
+        if (from != field) {
+            // Only a step along a link is driven; any other change (start, flight,
+            // Konferenz, a computer turn done at once) puts the vehicle there directly.
+            bool linked = false;
+            if (from >= 0)
+                for (int16_t n : board_.fields[size_t(from)].next) linked |= n == field;
+            if (!linked || (at.x != target.x && at.y != target.y)) at = target;
+            from = field;
+        }
+        int budget = ticks * kPixelsPerTick;
+        auto approach = [&](int& v, int goal) {
+            const int d = std::clamp(goal - v, -budget, budget);
+            v += d;
+            budget -= std::abs(d);
+        };
+        approach(at.x, target.x);
+        approach(at.y, target.y);
+    }
+}
+
+bool GameScreen::vehicleMoving(int player) const {
+    if (player < 0 || shownField_[size_t(player)] < 0) return false;
+    const Field& f = board_.fields[size_t(game_.playerField(player))];
+    const SDL_Point at = shown_[size_t(player)];
+    return at.x != f.x * WorldMap::kTile || at.y != f.y * WorldMap::kTile;
+}
+
 SDL_Point GameScreen::viewOrigin() const {
     // Assumption until the scrolling code is traced: the viewport is centred on
     // the current player's field and kept inside the 4096 x 4096 world.
     constexpr int side = WorldMap::kSize * WorldMap::kTile;
-    const int field = game_.playerField(game_.currentPlayer());
-    const Field& f = board_.fields[size_t(field)];
-    const int cx = f.x * WorldMap::kTile + WorldMap::kTile / 2, cy = f.y * WorldMap::kTile + WorldMap::kTile / 2;
+    const int p = game_.currentPlayer();
+    const Field& f = board_.fields[size_t(game_.playerField(p))];
+    SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
+    if (p >= 0 && shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
+    const int cx = at.x + WorldMap::kTile / 2, cy = at.y + WorldMap::kTile / 2;
     const int w = layout_.viewport.w, h = layout_.viewport.h;
     return {std::clamp(cx - w / 2, 0, side - w) / WorldMap::kTile * WorldMap::kTile,
             std::clamp(cy - h / 2, 0, side - h) / WorldMap::kTile * WorldMap::kTile};
@@ -129,7 +173,9 @@ void GameScreen::drawMap() {
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
         const Field& f = board_.fields[size_t(game_.playerField(p))];
-        const bool driving = p == game_.currentPlayer() && game_.phase() == Game::Phase::Move;
+        SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
+        if (shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
+        const bool driving = vehicleMoving(p) || (p == game_.currentPlayer() && game_.phase() == Game::Phase::Move);
         const int frameNo = driving ? int(tick / 4 % 4) + 1 : 1;
         const std::string name = std::string(1, kPortraitLetters[p]) + kFacing[std::clamp(game_.facing(p), 1, 4)]
                                  + std::to_string(frameNo);
@@ -137,8 +183,7 @@ void GameScreen::drawMap() {
         if (!vehicle) continue;
         int w = 0, h = 0;
         SDL_QueryTexture(vehicle, nullptr, nullptr, &w, &h);
-        const SDL_Rect box{target.x + f.x * WorldMap::kTile - origin.x - 16,
-                           target.y + f.y * WorldMap::kTile - origin.y - 8, w, h};
+        const SDL_Rect box{target.x + at.x - origin.x - 16, target.y + at.y - origin.y - 8, w, h};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     SDL_RenderSetClipRect(renderer_, nullptr);
@@ -295,7 +340,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
+    SDL_Keycode heldArrow = options.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
+    auto isArrow = [](SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT; };
     for (int frame = 1; running; ++frame) {
+        screen.advanceVehicles(SDL_GetTicks());
+        const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
         // A played card changes the turn state and closes the card window.
@@ -310,14 +359,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (options.openEstates >= 0) {
                 if (!estates.isOpen()) estates.open(options.openEstates);
             } else if (town < 0) estates.close();
+            else if (moving) {} // the dialog opens when the car has arrived
             else if (!estates.isOpen() || estates.town() != town) estates.open(town);
         }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen();
-        if (!modal && play.update(SDL_GetTicks())) report();
-        if (!modal && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
+        if (!modal && !moving && play.update(SDL_GetTicks())) report();
+        if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
+        // A held arrow drives on field by field once the car has reached its field.
+        if (!modal && !moving && heldArrow != SDLK_UNKNOWN && play.game().phase() == Game::Phase::Move
+            && !play.game().isComputer(play.game().currentPlayer()) && play.handleKey(heldArrow, 0))
+            report();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
+            if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
             if (screen.messages().open()) {
                 if (event.type == SDL_KEYDOWN || click) screen.messages().dismiss();
@@ -357,6 +412,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (event.type != SDL_KEYDOWN) continue;
             const SDL_Keycode key = event.key.keysym.sym;
+            if (isArrow(key) && play.game().phase() == Game::Phase::Move) { heldArrow = key; continue; }
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
             if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();

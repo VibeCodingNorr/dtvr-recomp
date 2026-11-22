@@ -1019,6 +1019,13 @@ reels and pulling the lever with the mouse.
 
 Rebuilt in `src/game_screen.cpp`: the vehicles of all drivers in play with the
 facing of their last step; the current driver's car animates while driving.
+**Smooth driving (round 31):** the drawn position follows the game position at
+4 pixels per 50 ms tick (velocity 2 from DS:19EA / 19F4 shifted by DS:34 = 1,
+seg2:1CB0); a held arrow key drives on (DS:A77A stays set while the key is
+down, seg4:01F2), the next field step is taken when the car has reached its
+field. Only steps along a link are driven; other position changes (start,
+Flugzeug, Konferenz, computer turns, which the rebuild runs at once) are shown
+directly. The view origin follows the drawn position in whole tiles.
 Assumption until the offset is traced: frames are centred on the field cell
 (−16, −8), which puts the cars on the road in all four facings.
 
@@ -1185,9 +1192,13 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   A click on a tab selects Kaufen / Verkaufen, Karte opens the card window, a
   click (or Enter) on an enabled row buys / sells it. **Assumptions:** Escape or
   the right button close the dialog and end the turn; the arrow keys and the
-  mouse wheel move the selection / scroll (the PFEIL1 / PFEIL2 arrows, the
-  pressed-tab colours, the category icons and the statistics variant are not
-  drawn yet); the card modes Abkaufen / Kredit use the checks of the economy.
+  mouse wheel move the selection / scroll; the pressed-tab colours, the category
+  icons and the statistics variant (ZW_Z rows, PFEIL1 / PFEIL2 page buttons,
+  seg1:7506, paging by seven at seg1:59C7 / 5B15) are not drawn yet; the card
+  modes Abkaufen / Kredit use the checks of the economy. Scrolling follows
+  seg1:494F: past the eighth visible row the selection moves to the top (at most
+  to count − 7), above the top the list goes back by seven; a tab selects the
+  first visible row (seg1:543E / 5475).
 
 ### SBS: remaining hypotheses
 

@@ -3,6 +3,7 @@
 
 #include "panel.hpp"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace dtvr {
@@ -39,10 +40,12 @@ int EstatesView::rowAt(int x, int y, int count) const {
 }
 
 void EstatesView::keepVisible(int count) {
+    // seg1:494F: past the eighth visible row the list jumps so that the selection is
+    // on top (at most to count - 7); above the top it jumps back by seven.
     if (selected_ < 0) return;
-    if (selected_ < scroll_) scroll_ = selected_;
-    if (selected_ >= scroll_ + kVisibleRows) scroll_ = selected_ - kVisibleRows + 1;
-    if (scroll_ > count - 1) scroll_ = 0;
+    if (scroll_ + 8 <= selected_) scroll_ = std::min(selected_, count - 7);
+    else if (selected_ < scroll_) scroll_ = std::max(0, selected_ - 7);
+    scroll_ = std::max(0, scroll_);
 }
 
 EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vector<EstateRow>& rows) {
@@ -68,8 +71,11 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
         const int x = event.button.x - b.x, y = event.button.y - b.y;
         if (x >= 0 && x < b.w && y >= 0 && y < kRow) { // header tabs
             if (x >= kTabX[2]) action.kind = Action::Kind::Cards;
-            else if (x >= kTabX[1]) { tab_ = EstatesTab::Sell; action.kind = Action::Kind::Tab; }
-            else { tab_ = EstatesTab::Buy; action.kind = Action::Kind::Tab; }
+            else { // seg1:543E / 5475: the tab selects the first visible row
+                tab_ = x >= kTabX[1] ? EstatesTab::Sell : EstatesTab::Buy;
+                selected_ = count > 0 ? std::min(scroll_, count - 1) : -1;
+                action.kind = Action::Kind::Tab;
+            }
         } else if (const int row = rowAt(event.button.x, event.button.y, count); row >= 0) {
             rowAction(row);
         }
