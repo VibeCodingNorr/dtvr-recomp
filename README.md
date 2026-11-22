@@ -53,11 +53,16 @@ The viewer only reads these files.
 | Mouse wheel | Zoom around the pointer |
 | Left mouse drag | Pan |
 | R | Fit image to window |
-| M | Cycle overview / graphics blocks / sprites |
-| Left / Right | Previous / next SBB or SBS file |
+| M | Cycle overview / graphics blocks / sprites / world map |
+| Left / Right | Previous / next SBB or SBS file; month in world view |
+| V | World view: toggle tile 0x33 (`[Setup] Views`) |
 | Escape | Exit |
 
-Start directly in block view with `--tiles` or in sprite view with `--sprites`.
+Start directly in block view with `--tiles`, in sprite view with `--sprites` or
+in world view with `--world [--month 0-11] [--no-views]`. The world view composes
+`map/europe.map` from the season's SBB tiles using the rules recovered from
+`rally.exe` (two layers, mirroring, three draw passes, colour key 0); see
+docs/formats.md.
 The sprite view decodes every frame of an SBS file; index 0 is shown as a
 checkerboard (assumed transparency) and colours use the overview palette. Its grid is an inspection layout,
 not the reconstructed world map. The overview loads `butt/1/map.bmp`.
@@ -68,6 +73,7 @@ not the reconstructed world map. The overview loads `butt/1/map.bmp`.
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --smoke-test --screenshot build/overview.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --tiles --smoke-test --screenshot build/tiles.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --sprites --smoke-test --screenshot build/sprites.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --world --smoke-test --screenshot build/world.bmp
 ctest --test-dir build --output-on-failure
 python3 tools/inspect_game.py /media/steam1/Games/Dtvr/ISOINHALT > build/game-analysis.json
 ```
@@ -75,6 +81,10 @@ python3 tools/inspect_game.py /media/steam1/Games/Dtvr/ISOINHALT > build/game-an
 The smoke test renders one frame and exits, including without a desktop session.
 Screenshots use BMP format. The analysis reports file counts, the executable hash,
 NE segments, imported modules and the entry point. It never executes Windows code.
+
+`tools/ne_disasm.py` disassembles the NE code segments with `objdump` (binutils)
+and annotates relocations and imported functions. Its output contains game code;
+write it to the ignored `local/` directory.
 
 See [docs/formats.md](docs/formats.md) for observations and next steps.
 The agreed [architecture and modernization plan](docs/architecture.md) covers

@@ -8,7 +8,9 @@ Communicate with the user in German. Code and technical documentation may use En
 
 The current C++17 / SDL2 executable is a data viewer. It loads the original Europe
 overview and presents SBB bitmap strips as a graphics-block grid. Zoom, pan, view
-switching and SBB file navigation are implemented. SBS frames are decoded. No game rules, AI, save support,
+switching and SBB file navigation are implemented. SBS frames are decoded and
+the full world map is composed from europe.map with rules recovered from
+rally.exe. No game rules, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Local original data
@@ -34,7 +36,9 @@ cmake --build build -j
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --smoke-test --screenshot build/overview.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT/program --tiles --smoke-test --screenshot build/tiles.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --sprites --smoke-test --screenshot build/sprites.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /media/steam1/Games/Dtvr/ISOINHALT --world --smoke-test --screenshot build/world.bmp
 ctest --test-dir build --output-on-failure
+python3 tools/ne_disasm.py /media/steam1/Games/Dtvr/ISOINHALT/program/rally.exe local/disasm --use32 9 --dll-dir /media/steam1/Games/Dtvr/ISOINHALT/program --dll-dir /media/steam1/Games/Dtvr/ISOINHALT/wing --dll-dir /usr/lib/wine/i386-windows
 python3 tools/inspect_game.py /media/steam1/Games/Dtvr/ISOINHALT > build/game-analysis.json
 ```
 
@@ -48,7 +52,10 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 
 - `src/main.cpp`: native SDL viewer, command-line handling, image loading.
 - `src/sbs.{hpp,cpp}`: bounds-checked SBSF sprite container parser (no SDL).
-- `tests/sbs_test.cpp`: synthetic and malformed-input parser tests (ctest).
+- `src/worldmap.{hpp,cpp}`: europe.map cells, season table, SBB tile split and
+  map composition following rally.exe (no SDL).
+- `tests/*_test.cpp`: synthetic and malformed-input tests (ctest).
+- `tools/ne.py`, `tools/ne_disasm.py`: NE parser and annotated objdump disassembly.
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
 - `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.
@@ -71,7 +78,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - Identify binaries by hash when comparing versions. This local `rally.exe` has
   SHA-256 `aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83`.
 - The executable is 16-bit Windows NE, using segmented addressing and WinG/GDI.
-  Account for this when selecting disassembly or translation tools.
+  Account for this when selecting disassembly or translation tools. Segment 9
+  switches itself to 32-bit code; disassemble it with `--use32 9`.
 - Bounds-check new binary parsers and test malformed input as well as original
   files. Preserve indexed palettes and investigate transparency explicitly.
 - Add focused modules as more formats are decoded; keep format parsing separate
@@ -85,7 +93,6 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Confirm SBS transparency and palette selection from code, derive full map tile indexing from the
-original loader, then recover the city/road graph. Reconstruct and validate one
-complete human turn before broadening gameplay. Choosing a static translator versus
+Trace palette selection and the map viewport, then recover the city/road graph.
+Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

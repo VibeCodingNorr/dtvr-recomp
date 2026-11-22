@@ -1,4 +1,5 @@
 #include "sbs.hpp"
+#include "worldmap.hpp"
 
 #include <SDL.h>
 
@@ -9,6 +10,8 @@
 #include <iterator>
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <iomanip>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -24,7 +27,7 @@ static fs::path programDirectory(fs::path root) {
     return root;
 }
 
-enum class View { Overview, Tiles, Sprites };
+enum class View { Overview, Tiles, Sprites, World };
 
 static Surface loadBmp(const fs::path& path) {
     Surface image(SDL_LoadBMP(path.c_str()), SDL_FreeSurface);
@@ -51,13 +54,16 @@ static Surface loadTiles(const fs::path& path) {
     return grid;
 }
 
+static std::vector<uint8_t> readFile(const fs::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) throw std::runtime_error("Nicht lesbar: " + path.string());
+    return {std::istreambuf_iterator<char>(in), {}};
+}
+
 // Lays out all SBS frames in rows. The palette comes from the overview BMP and
 // index 0 is drawn as a checkerboard; both are working hypotheses, see docs/formats.md.
 static Surface loadSprites(const fs::path& path, const SDL_Palette& palette) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) throw std::runtime_error("Nicht lesbar: " + path.string());
-    const std::vector<uint8_t> data{std::istreambuf_iterator<char>(in), {}};
-    const auto file = dtvr::parseSbs(data);
+    const auto file = dtvr::parseSbs(readFile(path));
     constexpr int gap = 4, maxRow = 640;
     int width = gap, height = gap, rowW = gap, rowH = 0;
     std::vector<SDL_Point> at;
@@ -88,6 +94,40 @@ static Surface loadSprites(const fs::path& path, const SDL_Palette& palette) {
     return sheet;
 }
 
+// Composes europe.map from the season's SBB tiles as rally.exe does
+// (loader seg5:186A, cell lookup seg6:26B6, draw passes seg6:28D5).
+static Surface loadWorld(const fs::path& root, int month, bool views, fs::path& shown) {
+    const int season = dtvr::seasonForMonth(month);
+    std::vector<dtvr::Tile> tiles;
+    Surface palette(nullptr, SDL_FreeSurface);
+    for (int part = 0;; ++part) {
+        std::ostringstream name;
+        name << "part" << std::setw(4) << std::setfill('0') << part << ".sbb";
+        const auto path = root / "map" / std::to_string(season) / name.str();
+        if (!fs::is_regular_file(path)) break; // the original also stops at the first missing part
+        auto strip = loadBmp(path);
+        if (strip->format->BitsPerPixel != 8 || !strip->format->palette || strip->h != 16 * 192)
+            throw std::runtime_error("Unerwartetes SBB-Format: " + path.string());
+        const auto part_tiles = dtvr::splitSbb(static_cast<const uint8_t*>(strip->pixels),
+                                               strip->w, strip->h, strip->pitch);
+        tiles.insert(tiles.end(), part_tiles.begin(), part_tiles.end());
+        if (!palette) palette = std::move(strip);
+    }
+    if (!palette) throw std::runtime_error("Keine SBB-Dateien fuer Jahreszeit " + std::to_string(season));
+    const dtvr::WorldMap map(readFile(root / "map/europe.map"));
+    const auto pixels = dtvr::renderWorld(map, tiles, views);
+    constexpr int side = dtvr::WorldMap::kSize * dtvr::WorldMap::kTile;
+    Surface world(SDL_CreateRGBSurfaceWithFormat(0, side, side, 8, SDL_PIXELFORMAT_INDEX8), SDL_FreeSurface);
+    if (!world || SDL_SetSurfacePalette(world.get(), palette->format->palette) != 0)
+        throw std::runtime_error(SDL_GetError());
+    for (int y = 0; y < side; ++y)
+        std::copy_n(&pixels[size_t(y) * side], side, static_cast<uint8_t*>(world->pixels) + y * world->pitch);
+    shown = root / "map/europe.map";
+    std::cout << "Weltkarte: Monat " << month % 12 << ", map/" << season << ", "
+              << tiles.size() << " Bausteine, Views " << (views ? "an" : "aus") << "\n";
+    return world;
+}
+
 static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& extension) {
     std::vector<fs::path> result;
     if (fs::is_directory(dir))
@@ -100,14 +140,17 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
-    bool smoke = false;
+    bool smoke = false, views = true;
+    int month = 2;
     View view = View::Overview;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--help") {
-            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites] [--smoke-test] [--screenshot DATEI.bmp]\n"
+            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views]]\n"
+                         "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
-                         "M: Karte/Bausteine/Sprites | Links/Rechts: Datei | Mausrad: Zoom\n"
+                         "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
+                         "V: Baustein 0x33 (Views) | Mausrad: Zoom\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -115,6 +158,9 @@ static int run(int argc, char** argv) {
         } else if (arg == "--smoke-test") smoke = true;
         else if (arg == "--tiles") view = View::Tiles;
         else if (arg == "--sprites") view = View::Sprites;
+        else if (arg == "--world") view = View::World;
+        else if (arg == "--no-views") views = false;
+        else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
     }
     if (root.empty()) throw std::runtime_error("Datenpfad fehlt. Aufruf: dtvr-recomb --data PFAD");
@@ -152,6 +198,7 @@ static int run(int argc, char** argv) {
         Surface surface(nullptr, SDL_FreeSurface);
         if (view == View::Tiles) surface = loadTiles(path = tiles[tileIndex]);
         else if (view == View::Sprites) surface = loadSprites(path = sprites[spriteIndex], *overview->format->palette);
+        else if (view == View::World) surface = loadWorld(root, month, views, path);
         else surface = loadBmp(path);
         width = surface->w; height = surface->h;
         texture.reset(SDL_CreateTextureFromSurface(renderer.get(), surface.get()));
@@ -163,6 +210,7 @@ static int run(int argc, char** argv) {
         fit();
     };
     auto step = [&](int delta) {
+        if (view == View::World) { month = (month + 12 + delta) % 12; load(); return; }
         auto& files = view == View::Tiles ? tiles : sprites;
         auto& index = view == View::Tiles ? tileIndex : spriteIndex;
         if (view == View::Overview || files.empty()) return;
@@ -181,9 +229,10 @@ static int run(int argc, char** argv) {
                 case SDLK_ESCAPE: running = false; break;
                 case SDLK_r: fit(); break;
                 case SDLK_m:
-                    do view = View((int(view) + 1) % 3);
+                    do view = View((int(view) + 1) % 4);
                     while ((view == View::Tiles && tiles.empty()) || (view == View::Sprites && sprites.empty()));
                     load(); break;
+                case SDLK_v: if (view == View::World) { views = !views; load(); } break;
                 case SDLK_RIGHT: step(1); break;
                 case SDLK_LEFT: step(-1); break;
                 default: break;
