@@ -89,6 +89,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     bool victoryShown = false;
     int balanceSeen = play.game().balanceSerial();
     int announceSeen = play.game().announceSerial();
+    int shopSerial = -1;
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -174,6 +175,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.victory) { music.interrupt("s"); screen.startVictory(SDL_GetTicks()); }
     if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
+    if (options.cardShop) screen.cardShop().open(play.game());
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
@@ -244,6 +246,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         } else {
             messageShown = 0;
         }
+        // The card shop of a human player's stop on a card field (seg2:15AE -> seg3:4437).
+        {
+            const Game& g = play.game();
+            const bool shopDue = g.phase() == Game::Phase::Arrived && g.atCardField() && g.currentPlayer() >= 0
+                                 && !g.isComputer(g.currentPlayer());
+            if (!shopDue && !options.cardShop) screen.cardShop().close();
+            else if (shopDue && !moving && !screen.cardShop().isOpen() && shopSerial != g.turnSerial()) {
+                shopSerial = g.turnSerial(); // once per stop
+                screen.cardShop().open(g);
+            }
+        }
         // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
         screen.finish().update(SDL_GetTicks());
         // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
@@ -276,7 +289,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
                            || screen.victory().active() || screen.balance().active()
-                           || screen.announcement().active();
+                           || screen.announcement().active() || screen.cardShop().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -413,6 +426,22 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 if (click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
                 if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
+            }
+            if (screen.cardShop().isOpen()) { // seg3:4640
+                const auto action = screen.cardShop().handle(event, play.game());
+                using Kind = CardShopView::Action::Kind;
+                Game& g = play.game();
+                if (action.sound >= 0) sound.play(2, action.sound);
+                if (action.kind == Kind::Buy || action.kind == Kind::Sell) {
+                    const bool done = action.kind == Kind::Buy ? g.buyCard(action.value) : g.sellCard(action.value);
+                    sound.play(2, done ? 2 : 7); // seg3:4782 / 4850: Plopp02 or Zaehler2
+                    if (done) report();
+                } else if (action.kind == Kind::Close) { // Beenden: the stop ends the turn
+                    screen.cardShop().close();
+                    g.endTurn();
+                    report();
+                }
+                continue;
             }
             if (estates.isOpen() && !cards.isOpen()) {
                 const auto action = estates.handle(event, screen.estateRows());

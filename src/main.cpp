@@ -157,6 +157,7 @@ static int run(int argc, char** argv) {
     bool victory = false;          // --game: show the victory sequence (screenshots)
     bool balance = false;          // --game: show the year balance (screenshots)
     bool announce = false;         // --game: show the destination announcement (screenshots)
+    bool cardShop = false;         // --game: open the card shop (screenshots)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
@@ -211,6 +212,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--victory") victory = true;
         else if (arg == "--balance") balance = true;
         else if (arg == "--announce") announce = true;
+        else if (arg == "--card-shop") cardShop = true;
         else if (arg == "--estates" && i + 1 < argc) openEstates = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
@@ -268,10 +270,11 @@ static int run(int argc, char** argv) {
         options.victory = victory;
         options.balance = balance;
         options.announce = announce;
+        options.cardShop = cardShop;
         // The title menu comes first unless a test option asks for a specific state.
         options.title = !noTitle && loadSlot < 0 && menuName.empty() && !openCards && !holdRight && !openSave
                         && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup
-                        && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !announce;
+                        && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !announce && !cardShop;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);

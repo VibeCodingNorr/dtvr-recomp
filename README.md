@@ -118,7 +118,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     original voices; the next destination is chosen as in the original (rules revision 30).
 50. Sounds of the town and save dialogs.
 51. Weihnachten card gift sound; the card shop window decoded for the next round.
-52. *Next:* the card shop window (violet card fields) in the game window.
+52. Card shop of the violet card fields in the game window: buying and selling cards
+    with the original card pictures.
+53. *Next:* the Flugzeug destination choice and the remaining card dialogs.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

@@ -124,7 +124,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
   `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance;
-  `src/stage_view.{hpp,cpp}`: the destination announcement;
+  `src/stage_view.{hpp,cpp}`: the destination announcement; `src/card_shop_view.{hpp,cpp}`: the card shop;
   `src/scene.{hpp,cpp}`: their animation records.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.

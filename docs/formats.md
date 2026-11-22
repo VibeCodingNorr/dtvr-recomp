@@ -1401,12 +1401,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Round 51:** seg3 sounds: Weihnachten's card gift Hebel05 (seg3:1257);
   Nägel into water Platsch (seg3:1C99, case not modelled); the Flugzeug choice
   (seg3:3384) and the card shop (seg3:4643) Plopp02 / Zaehler2.
-- **Card shop window** (for the next round): seg3:4437 creates TEMP (558 × 462)
-  with `%s\%c\bcards.sbs` (butt/<lang>: strips K1 / K2 558 × 42, card pictures
-  1CARD_01–41 of 44 × 63); paint seg3:4D0E: strip rows at y = i · 42, the cards
-  in a grid from (15, 51) with a red PS_INSIDEFRAME pen of width 2 around the
-  chosen one; header (seg3:5234) with KO_ZI / KO_Z and texts; clicks in the
-  header ranges x 0–0x6E, 0xB4–0x140 and 0x1CC–0x22E (seg3:5051 ff.) post Enter.
+
+### Card shop (round 52)
+
+- **Window** seg3:4437: TEMP (558 × 462) with `%s\%c\bcards.sbs` (butt/<lang>:
+  strips K1 / K2 558 × 42, card pictures 1CARD_01–41 of 44 × 63, transparent
+  0xFF). Mode DS:9C82 (0 choose, 1 buy, 2 sell), choice DS:9C9A (0 Kaufen,
+  1 Verkaufen, 2 Beenden), chosen card DS:A0EA, list DS:A0F6 (seg3:5813: offers,
+  or the own hand in mode 2), count DS:A6EE.
+- **Paint** seg3:4D0E: nine strips K1 (choosing) or K2 at y = (i + 1) · 42; the
+  list's pictures `1card_%.2d` (type + 1) from (15, 51), 60 × 74 pixels per cell,
+  nine per row; a red PS_INSIDEFRAME pen of width 2 around the chosen card.
+  Header seg3:5234: KO_ZI while choosing, otherwise KO_Z; texts 321 Kaufen at
+  x 18, 322 Verkaufen centred and 371 Beenden right-aligned to x 553, Arial 20
+  weight 400; Verkaufen gray (0x43) without hand cards (DS:3FBA), the active
+  mode 0x2C. Info line seg3:553C on KO_Z at y 420: text 12000 + type, three
+  spaces and the price (value, halved by DS:8646 when selling) from x 10, the
+  cash right-aligned to x 548, colour 0x45.
+- **Input** seg3:4640: mouse in the header while choosing (x 0–0x6E, 0xB4–0x140,
+  0x1CC–0x22E, seg3:5051) sets the choice and posts Enter; a click on a card
+  chooses it (seg3:510C); Enter (seg3:4701): choosing → buy mode, sell mode (not
+  with an empty hand) or close; buy / sell mode → seg3:47F1 / 4912 with the chosen
+  card; Escape / Backspace (seg3:46A2): back to choosing, while choosing close;
+  Left / Right move the choice or the chosen card. Plopp02 / Zaehler2 sound the
+  steps (seg3:46B1 ff.).
+- **Rebuilt** (`src/card_shop_view.cpp`): the window for a human player's stop on
+  a card field; closing it ends the turn. **Assumptions:** a second click on the
+  chosen card acts like Enter, a right click like Escape, the window is
+  centred.
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:
