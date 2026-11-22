@@ -275,6 +275,8 @@ void Game::arrive() {
         sound(3, f.kind == 1 ? 14 : 1); // moneywin (seg2:0EF1) / Fate03 (seg2:1081)
         messages_.push_back(who + (f.kind == 1 ? " erhaelt " : " bezahlt ") + money(e.amount)
                             + " (Text " + std::to_string(e.textId) + ")");
+        // seg2:0F05 / 1095: message with player and unsigned gain/loss amount.
+        notice(e.textId, {playerArg(current_), moneyArg(f.kind == 1 ? e.amount : -e.amount)});
         dragoAct(current_);
         break;
     }

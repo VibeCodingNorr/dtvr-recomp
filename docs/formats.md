@@ -237,6 +237,11 @@ Confirmed from code unless marked otherwise.
   truncated by `_ftol` (seg10:368A). Amount = minimum + random((max − min) / 100)
   × 100, multiplied by the inflation factor DS:A11B; seg2:59E6 adds it to the
   player's doubles at +0x42 and +0x4A, seg2:5A47 subtracts it.
+  On arrival the field sound plays (seg2:0EF1 / 1081), then the message window
+  shows the text with the player and the unsigned amount (seg2:0F05 / 1095 →
+  seg6:51EA), before Dr. Drago acts (seg2:0F0D / 109D). Rebuilt in round 93 from
+  the audit `docs/original-money-field-audit.md` (test
+  `tests/money_field_notice_test.cpp`); passing such a field shows nothing.
 
   | Month | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
