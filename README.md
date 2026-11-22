@@ -4,6 +4,29 @@ Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
 The first milestone is an SDL2 viewer for the original map and graphics blocks.
 There is no playable game logic or executable recompilation yet.
 
+## Install from your original ISO
+
+The repository provides the native source and installer. You supply your own
+original CD image; neither the ISO nor original game data is distributed here.
+Requires Python 3, CMake, a C++17 compiler, pkg-config and SDL2 development files.
+
+```sh
+python3 tools/install.py --iso /media/steam1/Games/Dtvr/dtvr.iso
+./local/dtvr/play
+```
+
+The installer reads the ISO without mounting it, extracts the `program` tree,
+validates the known original executable, builds and tests the native code, and
+creates a local installation with a launcher and hash manifest. It supports
+2048-byte ISO9660 images and raw Mode 1 images with 2352-byte sectors, including
+the local `dtvr.iso`. No root access or Windows installer is needed.
+
+Use `--output /path/to/new/directory` to choose another destination and `--jobs N`
+to limit build parallelism. Existing destinations are never updated or overwritten.
+The ISO can be disconnected after installation. The installed application is
+currently the data viewer; extracting the ISO does not yet translate its executable
+or produce a playable reconstruction. See [installer details](docs/installer.md).
+
 ## Build and run
 
 Requires a C++17 compiler, CMake, pkg-config and SDL2 development files.

@@ -13,6 +13,10 @@ SBS animation playback or executable translation have been implemented.
 
 ## Local original data
 
+- Original ISO: `/media/steam1/Games/Dtvr/dtvr.iso` (raw Mode 1, 2352-byte sectors).
+- Distribution model: ship our installer/toolchain; users supply their original ISO.
+  Use `python3 tools/install.py --iso /path/to/dtvr.iso` to build a local installation.
+  This currently produces the native viewer, not a playable translated executable.
 - CD root: `/media/steam1/Games/Dtvr/ISOINHALT`
 - Program directory: `/media/steam1/Games/Dtvr/ISOINHALT/program`
 - Treat original files as read-only. Accept paths through `--data`; do not hardcode
@@ -46,6 +50,10 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/sbs.{hpp,cpp}`: bounds-checked SBSF sprite container parser (no SDL).
 - `tests/sbs_test.cpp`: synthetic and malformed-input parser tests (ctest).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
+- `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/iso9660.py`: bounded primary-tree reader for standard/raw Mode 1 ISO images.
+- `tests/test_iso9660.py`: synthetic ISO fixtures and malformed-input checks.
+- `docs/installer.md`: distribution contract, supported media and installer stages.
 - `docs/formats.md`: confirmed observations, unknowns and next milestones.
 - `docs/architecture.md`: agreed simulation, multiplayer, usability and graphics direction.
 - `README.md`: setup, controls, limitations and verification commands.
