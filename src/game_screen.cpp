@@ -363,7 +363,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             else if (!estates.isOpen() || estates.town() != town) estates.open(town);
         }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen();
-        if (!modal && !moving && play.update(SDL_GetTicks())) report();
+        if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
         if (!modal && !moving && heldArrow != SDLK_UNKNOWN && play.game().phase() == Game::Phase::Move

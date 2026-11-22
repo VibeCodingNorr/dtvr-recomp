@@ -26,8 +26,10 @@ public:
     // Returns true when the key belongs to the game (W, Enter, T, I, N, B, PgUp/PgDn,
     // digits, arrows).
     bool handleKey(SDL_Keycode key, Uint16 mod);
-    // Timed game steps (Risiko light); true when the state changed.
-    bool update(Uint32 now);
+    // Timed game steps (Risiko light) and computer turns; true when the state changed.
+    // `stepwise`: one stage of a computer turn per call (the game window drives the
+    // computer's car field by field), otherwise the whole turn at once.
+    bool update(Uint32 now, bool stepwise = false);
     // Origin, destination, obstacles, Dr. Drago and the players on the world view.
     void draw(SDL_Renderer* renderer, float x, float y, float zoom) const;
 

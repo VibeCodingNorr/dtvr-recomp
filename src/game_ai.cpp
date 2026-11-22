@@ -3,6 +3,8 @@
 // decisions; see docs/formats.md, "Computer players".
 #include "game.hpp"
 
+#include <algorithm>
+
 #include "ai.hpp"
 
 namespace dtvr {
@@ -67,58 +69,82 @@ AiState Game::aiState(bool steerless) const {
 bool Game::runComputerTurn() {
     if (phase_ != Phase::Roll || !computerControls()) return false;
     std::vector<std::string> log;
-    struct Acting { bool& flag; explicit Acting(bool& f) : flag(f) { flag = true; } ~Acting() { flag = false; } } acting(aiActing_);
-    auto collect = [&] { log.insert(log.end(), messages_.begin(), messages_.end()); };
-    // Steuerlos: seg2:0A6F clears the bit and seg5:A1CD sets DS:8D2A = 1.
-    const bool steerless = players_[size_t(current_)].flags & kFlagSteerless;
-    declineInvestment(); // the computer's answer to an offer is not traced yet
-    const int player = current_;
-    // State 1: card choice (seg5:7386); without a card the computer spins (state 2).
-    const AiCardChoice card = aiChooseCard(aiState(steerless), player, obstacles_, rng_);
-    if (card.slot < 0 || !playCard(card.slot, card.target)) roll();
-    for (int guard = 0; phase_ == Phase::Risiko && guard < 1000; ++guard) risikoTick(); // presses inside
-    players_[size_t(player)].flags &= uint16_t(~kFlagSteerless); // after roll: computerControls() still held
-    collect();
-    if (phase_ == Phase::Roll && current_ != player) { // the card ended the turn
-        messages_ = log;
-        return true;
+    bool changed = false;
+    for (int guard = 0; guard < 10000; ++guard) {
+        const bool done = computerAdvance();
+        log.insert(log.end(), messages_.begin(), messages_.end());
+        changed |= done;
+        if (!done || !aiTurn_) break;
     }
-    if (phase_ == Phase::Move) {
-        // States 5 and 6: plan the route over exactly the spun number of fields, then drive it.
-        const AiState state = aiState(steerless);
-        const AiGraph graph = buildAiGraph(board_, routeMask(), obstacles_);
-        const auto dist = aiDistances(graph, destination_);
-        const auto route = aiChooseRoute(state, player, counter_.allowance(), graph, dist, rng_);
-        for (int next : route) {
-            if (phase_ != Phase::Move) break;
-            const int d = aiDirection(board_, players_[size_t(player)].field, next);
-            if (d > 3 || !step(Direction(d + 1))) break;
+    messages_ = log;
+    return changed;
+}
+
+bool Game::computerAdvance() {
+    struct Acting { bool& flag; explicit Acting(bool& f) : flag(f) { flag = true; } ~Acting() { flag = false; } } acting(aiActing_);
+    std::vector<std::string> log;
+    auto collect = [&] { log.insert(log.end(), messages_.begin(), messages_.end()); };
+    auto finish = [&](bool result) { messages_ = log; return result; };
+    if (!aiTurn_) {
+        if (phase_ != Phase::Roll || !computerControls()) return false;
+        // Steuerlos: seg2:0A6F clears the bit and seg5:A1CD sets DS:8D2A = 1.
+        aiSteerless_ = players_[size_t(current_)].flags & kFlagSteerless;
+        aiPlayer_ = current_;
+        declineInvestment(); // the computer's answer to an offer is not traced yet
+        // State 1: card choice (seg5:7386); without a card the computer spins (state 2).
+        const AiCardChoice card = aiChooseCard(aiState(aiSteerless_), aiPlayer_, obstacles_, rng_);
+        if (card.slot < 0 || !playCard(card.slot, card.target)) roll();
+        for (int guard = 0; phase_ == Phase::Risiko && guard < 1000; ++guard) risikoTick(); // presses inside
+        players_[size_t(aiPlayer_)].flags &= uint16_t(~kFlagSteerless); // after roll: computerControls() still held
+        collect();
+        if (phase_ == Phase::Roll && current_ != aiPlayer_) return finish(true); // the card ended the turn
+        aiTurn_ = true;
+        aiRoute_.clear();
+        if (phase_ == Phase::Move) {
+            // States 5 and 6: plan the route over exactly the spun number of fields.
+            const AiGraph graph = buildAiGraph(board_, routeMask(), obstacles_);
+            const auto dist = aiDistances(graph, destination_);
+            aiRoute_ = aiChooseRoute(aiState(aiSteerless_), aiPlayer_, counter_.allowance(), graph, dist, rng_);
+            std::reverse(aiRoute_.begin(), aiRoute_.end()); // taken from the back
+        }
+        return finish(true);
+    }
+    if (phase_ == Phase::Move) { // state 6: one field per stage
+        bool stepped = false;
+        if (!aiRoute_.empty()) {
+            const int next = aiRoute_.back();
+            aiRoute_.pop_back();
+            const int d = aiDirection(board_, players_[size_t(aiPlayer_)].field, next);
+            stepped = d <= 3 && step(Direction(d + 1));
             collect();
         }
-        if (phase_ == Phase::Move) { // no route found: the original state machine would wait
+        if (!stepped) aiRoute_.clear();
+        if (phase_ == Phase::Move && aiRoute_.empty()) { // no route: the state machine would wait
             log.push_back("Computer: keine Route gefunden");
-            messages_ = log;
-            return false;
+            aiTurn_ = false;
+            return finish(false);
         }
+        return finish(true);
     }
+    aiTurn_ = false;
     if (phase_ == Phase::Arrived && yellowPending_) { // seg3:1128: seg5:7CD2 picks the card to drop
-        const int slot = aiLeastValuableCard(aiState(steerless), player);
+        const int slot = aiLeastValuableCard(aiState(aiSteerless_), aiPlayer_);
         if (slot >= 0) discardForCard(slot);
         collect();
     }
     if (phase_ == Phase::Arrived) {
         // State 13 (seg5:7079): the town plan of seg5:8F01, executed by seg1:49D4.
-        const int field = players_[size_t(player)].field;
+        const int field = players_[size_t(aiPlayer_)].field;
         if (atCardField()) { // state 12: seg5:7D85 / 7E4F, executed by seg3:4266 (sales first)
-            for (const AiAction& a : aiCardShopPlan(aiState(steerless), player, cardShopOffers(deck_), rng_)) {
+            for (const AiAction& a : aiCardShopPlan(aiState(aiSteerless_), aiPlayer_, cardShopOffers(deck_), rng_)) {
                 if (a.kind == 1) {
                     for (int k = 0; k < 8; ++k)
-                        if (deck_.typeOfSlot(hands_[size_t(player)][size_t(k)]) == a.value) { sellCard(k); break; }
+                        if (deck_.typeOfSlot(hands_[size_t(aiPlayer_)][size_t(k)]) == a.value) { sellCard(k); break; }
                 } else buyCard(a.value);
                 collect();
             }
         } else if (townAt(field) >= 0) {
-            const AiTownPlan plan = aiTownPlan(aiState(steerless), player, field);
+            const AiTownPlan plan = aiTownPlan(aiState(aiSteerless_), aiPlayer_, field);
             for (const AiAction& a : plan.actions) {
                 if (a.kind == 2) playCard(a.value);
                 else buyProperty(a.value);
@@ -128,8 +154,7 @@ bool Game::runComputerTurn() {
         endTurn();
         collect();
     }
-    messages_ = log;
-    return true;
+    return finish(true);
 }
 
 } // namespace dtvr

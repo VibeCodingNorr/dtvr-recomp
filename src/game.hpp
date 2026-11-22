@@ -102,6 +102,11 @@ public:
     bool isComputer(int player) const;
     bool computerControls() const;
     bool runComputerTurn();
+    // One stage of a computer turn (round 32): card / spin and route, then one field
+    // step per call, then the stop's actions and the end of the turn. The same draws
+    // in the same order as runComputerTurn, which runs these stages at once.
+    bool computerAdvance();
+    bool computerTurnRunning() const { return aiTurn_; }
     // seg2:5C5A: whether any slot is human. A game of computers runs until
     // requestDemoEnd (Escape / right click, seg1:0211 -> seg2:5CAD sets DS:16 = 1);
     // it ends at the next player change.
@@ -207,6 +212,10 @@ private:
     bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
     int propertyMode_ = 0xFF;               // DS:3FC6
     bool aiActing_ = false;                 // inside runComputerTurn
+    bool aiTurn_ = false;                   // a computer turn is between stages (not saved)
+    int aiPlayer_ = -1;
+    bool aiSteerless_ = false;
+    std::vector<int> aiRoute_;              // fields still to drive
     bool yellowPending_ = false;            // yellow field waits for a discard
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16

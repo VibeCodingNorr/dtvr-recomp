@@ -1024,8 +1024,16 @@ facing of their last step; the current driver's car animates while driving.
 seg2:1CB0); a held arrow key drives on (DS:A77A stays set while the key is
 down, seg4:01F2), the next field step is taken when the car has reached its
 field. Only steps along a link are driven; other position changes (start,
-Flugzeug, Konferenz, computer turns, which the rebuild runs at once) are shown
-directly. The view origin follows the drawn position in whole tiles.
+Flugzeug, Konferenz) are shown directly. The view origin follows the drawn
+position in whole tiles.
+**Computer turns on the map (round 32):** `Game::computerAdvance` runs a
+computer turn in stages (card or spin with the route of states 5 / 6, one field
+per call, then the stop's actions of states 12 / 13 and the end of the turn);
+`runComputerTurn` runs the same stages at once, so both use the same random
+draws in the same order (whole computer games compared before and after the
+split: identical). The game window takes the next stage when the car has
+reached its field. The stage state (remaining route) is not saved; the save
+format and rules revision are unchanged.
 Assumption until the offset is traced: frames are centred on the field cell
 (−16, −8), which puts the cars on the road in all four facings.
 

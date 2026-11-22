@@ -119,8 +119,10 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     return false;
 }
 
-bool PlayView::update(Uint32 now) {
+bool PlayView::update(Uint32 now, bool stepwise) {
     Game& g = *game_;
+    if (stepwise && (g.computerTurnRunning() || (g.phase() == Game::Phase::Roll && g.computerControls())))
+        return g.computerAdvance();
     if (g.phase() == Game::Phase::Roll && g.computerControls()) return g.runComputerTurn(); // computer slots
     if (g.phase() != Game::Phase::Risiko) { nextTick_ = 0; return false; }
     if (!nextTick_) nextTick_ = now + Uint32(g.risikoTickMs());

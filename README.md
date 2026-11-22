@@ -87,7 +87,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     and selling by mouse.
 31. Smooth driving at the original speed with held arrow keys; scrolling rule of
     the town dialog.
-32. *Next:* computer turns step by step on the map, the remaining dialogs.
+32. Computer turns drive field by field on the map (same draws as before).
+33. *Next:* the remaining dialogs (statistics, overview, options) and saving from the menu.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
