@@ -415,8 +415,8 @@ void Game::advanceTurn() {
     hooks.clearCredits = [this] { economy_.clearCredits(); };
     // seg8:88C6 draws rand() % 7 at once and rand() % 5, rand() % 4 when its window
     // is up (seg8:8C49 / 8C57), then rand() % 4 for each player's announcement
-    // (seg8:8E38); a draw in some animation states (seg8:9605) depends on timing and
-    // is not modelled (docs/formats.md "Year balance").
+    // (seg8:8E38) and, in the closing part, rand() % 2 for its voice (seg8:9605)
+    // unless the letter after the last player is 4 or 5 (docs/formats.md "Year balance").
     hooks.yearBalance = [this] {
         balanceChoice_ = rng_.rand() % 7;
         rng_.rand();
@@ -437,6 +437,9 @@ void Game::advanceTurn() {
             letter = (letter + 1) % 7; // seg8:913D
             balance_.push_back(e);
         }
+        // seg8:95E5: the closing pos_ voice; assumption: the show runs until the lever
+        // is pulled (a human could close it earlier and skip the draw).
+        balanceClosing_ = letter == 4 ? 5 : letter == 5 ? 4 : rng_.rand() % 2 + 4;
         ++balanceSerial_;
     };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };

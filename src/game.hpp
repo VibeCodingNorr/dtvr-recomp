@@ -215,6 +215,7 @@ public:
     // and pos_ / neg_<A + letter>. Not saved.
     struct BalanceEntry { int player = -1; int variant = 0; bool positive = true; int letter = 0; };
     int balanceIntro() const { return balanceIntro_; }
+    int balanceClosing() const { return balanceClosing_; } // 4 or 5: pos_e / pos_f (seg8:9616)
     // The destination announcement seg7:372F(mode) (not saved): 2 at the game start,
     // 1 for a new stage, 3 before the last stage; variant 'a' + it of the voices
     // Part01-04 (mode 1: the rand() % 5 of seg7:3B4E, otherwise 3).
@@ -319,7 +320,7 @@ private:
     int origin_ = -1, destination_ = -1;
     int remaining_ = 0;
     int totalStages_ = 0;
-    int balanceSerial_ = 0, balanceChoice_ = 0, balanceIntro_ = 0;
+    int balanceSerial_ = 0, balanceChoice_ = 0, balanceIntro_ = 0, balanceClosing_ = 4;
     int announceSerial_ = 0, announceMode_ = 2, announceVariant_ = 3;
     std::vector<BalanceEntry> balance_;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;

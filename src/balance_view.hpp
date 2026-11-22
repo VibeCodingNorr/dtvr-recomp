@@ -22,17 +22,24 @@ namespace dtvr {
 class BalanceView {
 public:
     BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
-    bool start(int intro, const std::vector<Game::BalanceEntry>& entries, bool humans, SoundPlayer* sound, Uint32 now);
+    bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,
+               Uint32 now);
     bool active() const { return active_; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     void stop() { active_ = false; }
-    // A click (seg8:8D5C) lets the show master go on to the next player.
-    void click() { clicked_ = true; }
+    // BILANZ (seg8:A829): Enter, Space or a left click set DS:8D5C: during the opening
+    // voice it stops (seg8:8D17), later the show master goes on, in the closing
+    // part the show ends (seg8:986C).
+    void click();
+    // Escape or a right click clear DS:A6F2: the players' part jumps to the closing
+    // part (seg8:9253), the closing part ends (seg8:984E).
+    void escape(Uint32 now);
     void update(Uint32 now);
     void draw(Uint32 now);
 
 private:
-    enum class Stage { Intro, Wait, Pull, Next, Result };
+    enum class Stage { Intro, Wait, Pull, Next, Result, Closing, ClosingPull, ClosingResult, ClosingWait };
+    bool closingPart() const { return stage_ >= Stage::Closing; }
     void enter(Stage stage, Uint32 now);
     void voice(const std::string& name);
     bool voiceDone(Uint32 now, Uint32 minimum) const;
@@ -45,7 +52,8 @@ private:
     std::vector<Game::BalanceEntry> entries_;
     SoundPlayer* sound_ = nullptr;
     SubtitleView* subtitles_ = nullptr;
-    int intro_ = 0;
+    int intro_ = 0, closing_ = 4;
+    bool skipped_ = false; // the opening voice was stopped by a click
     size_t index_ = 0;
     bool humans_ = true, clicked_ = false, active_ = false;
     Stage stage_ = Stage::Intro;

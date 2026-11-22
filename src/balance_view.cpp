@@ -27,8 +27,8 @@ const SceneRecord kHold{80, 159, 0, 3, {"HEBEL02", "HEBEL03", "HEBEL02", "HEBEL0
 BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
-bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, bool humans, SoundPlayer* sound,
-                        Uint32 now) {
+bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans,
+                        SoundPlayer* sound, Uint32 now) {
     active_ = false;
     const fs::path butt("butt");
     Surface scene = loadBmp(findCaseInsensitive(root_, butt / "bil_leer.bmp")); // DS:7CDA
@@ -39,7 +39,9 @@ bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entrie
         loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / file), scene->format->palette, frames_, 0xFF);
     entries_ = entries;
     intro_ = intro;
+    closing_ = closing;
     humans_ = humans;
+    skipped_ = false;
     sound_ = sound;
     index_ = 0;
     clicked_ = false;
@@ -57,15 +59,34 @@ void BalanceView::voice(const std::string& name) {
 }
 
 bool BalanceView::voiceDone(Uint32 now, Uint32 minimum) const {
+    if (skipped_) return true;
     if (now - stageStart_ < minimum) return false;
     if (now - stageStart_ > 20000) return true; // a stalled audio device must not hold the scene
     return !sound_ || !sound_->busy(kVoiceChannel);
 }
 
+void BalanceView::click() {
+    if (!active_) return;
+    if (closingPart()) { active_ = false; return; } // seg8:986C
+    if (stage_ == Stage::Intro && !voiceDone(SDL_GetTicks(), 0)) { // seg8:8D17: stop the opening voice
+        if (sound_) sound_->stop(kVoiceChannel);
+        skipped_ = true;
+        return;
+    }
+    clicked_ = true; // kept until the show master goes on (seg8:8E1A)
+}
+
+void BalanceView::escape(Uint32 now) {
+    if (!active_) return;
+    if (closingPart()) { active_ = false; return; } // seg8:984E
+    if (sound_) sound_->stop(kVoiceChannel);        // seg8:925C: seg1:38B7
+    enter(Stage::Closing, now);
+}
+
 void BalanceView::enter(Stage stage, Uint32 now) {
     stage_ = stage;
     stageStart_ = now;
-    clicked_ = false;
+    skipped_ = false;
     const char a = 'a';
     switch (stage) {
     case Stage::Intro: voice(std::string("bilanz_") + char(a + intro_)); break; // seg8:8C74
@@ -77,6 +98,10 @@ void BalanceView::enter(Stage stage, Uint32 now) {
         voice(std::string(entries_[index_].positive ? "pos_" : "neg_") + char(a + entries_[index_].letter));
         break;
     case Stage::Wait: break;
+    case Stage::Closing: clicked_ = false; voice("next_a_a"); break;           // DS:7D85
+    case Stage::ClosingPull: if (sound_) sound_->play(2, 4); break;            // Hebel01 (DS:7DA5)
+    case Stage::ClosingResult: voice(std::string("pos_") + char(a + closing_)); break; // DS:7DB7, seg8:9616
+    case Stage::ClosingWait: break;
     }
 }
 
@@ -90,7 +115,10 @@ void BalanceView::update(Uint32 now) {
         }
         break;
     case Stage::Wait: // seg8:8DF4: a click, or 300 passes (6 s) without a human
-        if (clicked_ || (!humans_ && now - stageStart_ > 300 * kSceneStepMs)) enter(Stage::Pull, now);
+        if (clicked_ || (!humans_ && now - stageStart_ > 300 * kSceneStepMs)) {
+            clicked_ = false;                                          // seg8:8E1A
+            enter(index_ >= entries_.size() ? Stage::Closing : Stage::Pull, now); // seg8:8E20
+        }
         break;
     case Stage::Pull:
         if (now - stageStart_ >= Uint32(kPull.frames.size() * kPull.delay) * kSceneStepMs) enter(Stage::Next, now);
@@ -100,9 +128,21 @@ void BalanceView::update(Uint32 now) {
         break;
     case Stage::Result:
         if (voiceDone(now, 1500)) {
-            if (++index_ >= entries_.size()) active_ = false; // seg8:8E24: after the last player
-            else enter(Stage::Wait, now);
+            ++index_;
+            enter(Stage::Wait, now); // after the last player a click leads to the closing part
         }
+        break;
+    case Stage::Closing: // seg8:943B: Next_a_a played out, the lever follows
+        if (voiceDone(now, 1500)) enter(Stage::ClosingPull, now);
+        break;
+    case Stage::ClosingPull:
+        if (now - stageStart_ >= Uint32(kPull.frames.size() * kPull.delay) * kSceneStepMs) enter(Stage::ClosingResult, now);
+        break;
+    case Stage::ClosingResult:
+        if (voiceDone(now, 1500)) enter(Stage::ClosingWait, now);
+        [[fallthrough]];
+    case Stage::ClosingWait: // seg8:9857: 500 passes without a human since the pos_ voice
+        if (!humans_ && now - stageStart_ >= 500 * kSceneStepMs) active_ = false;
         break;
     }
 }
@@ -117,10 +157,12 @@ void BalanceView::draw(Uint32 now) {
     SDL_RenderCopy(renderer_, background_.get(), nullptr, &area);
     SDL_RenderSetClipRect(renderer_, &area);
     const int t = int((now - stageStart_) / kSceneStepMs);
-    const SceneRecord& master = stage_ == Stage::Pull ? kPull : stage_ == Stage::Wait ? kHold : kSpeaking;
+    const SceneRecord& master = (stage_ == Stage::Pull || stage_ == Stage::ClosingPull) ? kPull
+                                : (stage_ == Stage::Wait || stage_ == Stage::ClosingWait) ? kHold
+                                                                                         : kSpeaking;
     drawSceneFrame(renderer_, frames_, sceneFrame(master, t), ox + master.x, oy + master.y);
     drawSceneFrame(renderer_, frames_, sceneFrame(kFoot, t), ox + kFoot.x, oy + kFoot.y);
-    if (stage_ != Stage::Pull) drawSceneFrame(renderer_, frames_, sceneFrame(kLever, t), ox + kLever.x, oy + kLever.y);
+    if (stage_ != Stage::Pull && stage_ != Stage::ClosingPull) drawSceneFrame(renderer_, frames_, sceneFrame(kLever, t), ox + kLever.x, oy + kLever.y);
     SDL_RenderSetClipRect(renderer_, nullptr);
 }
 

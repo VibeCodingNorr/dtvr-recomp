@@ -1603,9 +1603,27 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   with 'A' + r (seg8:8C57). During the animation further draws depend on its
   timing: rand() % 4 for `Next_%c_%c` after 300 ticks without a human
   (seg8:8E38) and rand() % 2 for `pos_` (seg8:9605) in some animation states;
-  they cannot be reproduced and are not modelled.
+  they cannot be reproduced and are not modelled. *Correction (round 92):* the
+  draw at seg8:9605 belongs to the closing part (below) and is not timing-bound
+  for computers; it is modelled since rules revision 35.
 - **Rebuilt:** the three fixed draws (hook `yearBalance` between inflation and
   clearing the credits; rules revision 28).
+- **Closing part** (round 92): the players' loop seg8:8CC5..9258 continues to
+  seg8:925C when, after the last player (seg8:8E20, slot index 8), the show
+  master would go on, or at once when DS:A6F2 is cleared. seg1:38B7 stops the
+  voice, `Next_a_a` (DS:7D85) plays; when it has played out the lever is pulled
+  (Hebel01, DS:7DA5); at lever frame > 13 `pos_<letter>` (DS:7DB7, lower-case)
+  follows, the letter being [bp−0x7E] = the next letter after the last player:
+  4 → 5, 5 → 4, otherwise rand() % 2 + 4 (seg8:95E5..9613). The loop
+  seg8:93CF..9871 ends when DS:A6F2 is cleared, on DS:8D5C, or after 500 passes
+  without a human (seg2:5C5A). The draw is modelled in `Game::yearBalance`
+  (rules revision 35; **assumption:** the show reaches the lever — a human who
+  ends the closing part earlier skips the draw in the original).
+- **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
+  and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.
+  In the players' part DS:8D5C stops the opening voice (seg8:8D17) or lets the
+  show master go on (kept until used, seg8:8E1A); in the closing part both flags
+  end the show.
 - **Show (round 47):** window BILANZ (0x1F0 × 0x178) with `bil_leer.bmp` (the empty
   board; `bilanz.bmp` is not used by rally.exe) and three records: the show
   master speaking (DS:4800, intro\redet, 79/155), his foot (DS:4798 red_foot,
@@ -1624,7 +1642,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (`src/balance_view.cpp`, data `Game::balanceEntries`). **Simplifications:** the
   timing-dependent draw of seg8:9605 and its pos voice variant, the subtitles and
   the exact switching of the show master's records are not modelled; voices end
-  a stage when they have played out (at least 1.5 s); Escape ends the show.
+  a stage when they have played out (at least 1.5 s).
 
 ### Victory sequence (round 46)
 

@@ -201,6 +201,23 @@ int main() {
         CHECK(swap.setComputer(0, false) && !swap.isComputer(0));
     }
 
+    // Year balance closing (round 92, seg8:95E5): pos_e / pos_f; letter 4 gives 5,
+    // letter 5 gives 4, otherwise one more draw rand() % 2 + 4.
+    {
+        Game year(board, towns, 2, 40, 7, 1, nullptr, nullptr, false);
+        year.setComputer(0, true);
+        year.setComputer(1, true);
+        for (int guard = 0; guard < 20000 && year.balanceSerial() == 0; ++guard) year.runComputerTurn();
+        CHECK(year.balanceSerial() == 1 && !year.balanceEntries().empty());
+        if (!year.balanceEntries().empty()) {
+            const int next = (year.balanceEntries().back().letter + 1) % 7;
+            const int c = year.balanceClosing();
+            CHECK(c == 4 || c == 5);
+            if (next == 4) CHECK(c == 5);
+            if (next == 5) CHECK(c == 4);
+        }
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");
     return failures != 0;

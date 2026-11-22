@@ -309,7 +309,8 @@ bool GameScreen::startAnnouncement(int mode, int variant, Uint32 now) {
 
 bool GameScreen::startBalance(Uint32 now) {
     prepareSubtitles();
-    return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.humansLeft(), sound_, now);
+    return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.balanceClosing(), game_.humansLeft(),
+                          sound_, now);
 }
 
 bool GameScreen::startIntro(Uint32 now) {

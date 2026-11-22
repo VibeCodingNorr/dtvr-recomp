@@ -519,10 +519,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (screen.balance().active()) { // a click lets the show master go on (seg8:8D5C)
-                if (event.type == SDL_MOUSEBUTTONDOWN || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN))
-                    screen.balance().click();
-                else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-                    screen.balance().stop(); // assumption
+                const SDL_Keycode k = event.type == SDL_KEYDOWN ? event.key.keysym.sym : SDLK_UNKNOWN;
+                const int button = event.type == SDL_MOUSEBUTTONDOWN ? event.button.button : 0;
+                if (k == SDLK_RETURN || k == SDLK_KP_ENTER || k == SDLK_SPACE || button == SDL_BUTTON_LEFT)
+                    screen.balance().click(); // seg8:99BA / 99D3
+                else if (k == SDLK_ESCAPE || button == SDL_BUTTON_RIGHT)
+                    screen.balance().escape(SDL_GetTicks()); // seg8:99AC / 99DC
                 continue;
             }
             if (screen.victory().active()) { // seg7:83EE: Esc / Space / Enter or a left click
