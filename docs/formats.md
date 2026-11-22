@@ -1691,9 +1691,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   set when a seaway starts or ends (seg2:280F ff.). With state 2 seg3:1CD8 plays
   sound 0x12 on channel 5 and text 5500 and jumps to the common end (seg3:1E3D,
   WM_COMMAND 10000 spins); no direction is asked and no obstacle placed, the
-  card is used. Rebuilt as `Game::nailsInWater` (the current field's cell is a
-  seaway, kRoad | kSeaRoute as seg2:1EB5); **approximation:** the boat state is
-  taken from the field cell, not from the drawn transformation.
+  card is used. Rebuilt as `Game::nailsInWater`. *Correction (round 85):* +0x2D is a
+  plane state, and a player at rest has it on sea fields, whose cells carry field +
+  water (0x09; seaway cells between fields carry road + sea route, 0x06); the check
+  of round 75 asked for the seaway bits and was practically never true. Rules
+  revision 34.
 
 ### Card shop (round 52)
 
@@ -1812,6 +1814,26 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   already on the path returns 0x1E at once (a cycle), as does a depth of 0x1E;
   otherwise the deepest depth. Rebuilt as `reachableSteps` (src/ai.cpp, tested)
   and `Game::startMove`; rules revision 33. seg5:607B(5) is not rebuilt.
+
+### Planes (round 85)
+
+- **Cells** of the board fields (europe.pit, seg2:3260): 555 land fields carry field +
+  road (0x03), 112 sea fields field + water (0x09), 33 only the field bit; the
+  seaway cells between sea fields carry road + sea route (0x06).
+- **Take-off** seg2:1EB5: at a step the animation is chosen by the cell next in the
+  driving direction: road + sea route → mode 0 of table DS:1994 (`?fup` / `?fr` /
+  `?fdown` / `?fl`, 48 × 32 biplane frames in `sbs/<letter>.sbs`), else mode 1
+  (the car). seg2:2B30 sets the definition; one of the four plane definitions
+  (DS:1FAE, 1F82, 1FE2, 1F5A) calls seg2:27EE: from state 0 or 3 the state +0x2D
+  becomes 1 with height +0x2E = 0 (seg2:2656(3)). seg2:2318 keeps the plane while
+  +0x2D ≠ 0.
+- **Height** seg2:1793 / 17EE in the drawing pass: state 1 adds 1 << DS:34 (2) up to
+  0x18, then state 2; state 3 subtracts it down to 0, then state 0 (seg2:2656(2)).
+  The sprite's y is +0x18 − height + 2 (seg2:1878).
+- **Landing** seg2:2866: while state 1 / 2 the cell three cells ahead in the driving
+  direction is read; field + road (a land field) sets state 3 (seg2:29D1).
+- **Rebuilt** in `src/vehicle_air.cpp` (tested) and `GameScreen::advanceVehicles`:
+  per movement tick; vehicles placed directly start flying on sea fields.
 
 ### Films (round 83)
 

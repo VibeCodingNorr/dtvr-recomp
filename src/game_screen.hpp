@@ -9,6 +9,7 @@
 #include "event_scenes.hpp"
 #include "mouse_control_view.hpp"
 #include "film_view.hpp"
+#include "vehicle_air.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
@@ -181,6 +182,9 @@ private:
     SDL_Point surroundOrigin_{};                    // DS:956A / 9568 in tiles while in Umfeld
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
+    std::array<VehicleAir, kPlayerSlots> air_{};    // plane state +0x2D / height +0x2E
+    std::array<bool, kPlayerSlots> airSet_{};
+    std::array<bool, kPlayerSlots> stepPending_{};  // a step began, its first tick is still due
     Uint32 lastAdvance_ = 0;
     MapViewSize viewSize() const;
     TilePoint origin_{};          // DS:956A / 9568 outside Umfeld

@@ -198,24 +198,43 @@ void GameScreen::advanceVehicles(Uint32 now) {
                 for (int16_t n : board_.fields[size_t(from)].next) linked |= n == field;
             if (!linked || (at.x != target.x && at.y != target.y)) {
                 at = target;
+                air_[size_t(p)] = restingAir(game_.cellProperties(f.x, f.y));
+                airSet_[size_t(p)] = true;
                 if (p == game_.currentPlayer()) centreOnPlayer(); // Tschüss / Flugzeug: seg3:29E7 / 3314
+            } else {
+                stepPending_[size_t(p)] = true; // consumed by the next movement tick
             }
             from = field;
         }
-        int budget = ticks * kPixelsPerTick;
-        auto approach = [&](int& v, int goal) {
-            const int d = std::clamp(goal - v, -budget, budget);
-            v += d;
-            budget -= std::abs(d);
-        };
-        const SDL_Point before = at;
-        approach(at.x, target.x);
-        approach(at.y, target.y);
-        // seg2:239F: every movement tick of the current vehicle keeps it 32 pixels inside
-        // the view (seg2:29EB); a step that leaves it scrolls by seg6:30F8. Only a
-        // vehicle that moves is checked.
-        if (p == game_.currentPlayer() && originSet_ && (at.x != before.x || at.y != before.y))
-            edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
+        if (!airSet_[size_t(p)]) {
+            air_[size_t(p)] = restingAir(game_.cellProperties(f.x, f.y));
+            airSet_[size_t(p)] = true;
+        }
+        auto sign = [](int v) { return v > 0 ? 1 : v < 0 ? -1 : 0; };
+        for (int t = 0; t < ticks; ++t) {
+            const SDL_Point before = at;
+            const int dx = sign(target.x - at.x), dy = sign(target.y - at.y);
+            int budget = kPixelsPerTick;
+            auto approach = [&](int& v, int goal) {
+                const int d = std::clamp(goal - v, -budget, budget);
+                v += d;
+                budget -= std::abs(d);
+            };
+            approach(at.x, target.x);
+            approach(at.y, target.y);
+            const bool moved = at.x != before.x || at.y != before.y;
+            // Plane (seg2:1EB5 / 2866): the cell next in the driving direction decides
+            // the take-off, the cell three ahead the landing; the height moves by 2.
+            const int cx = before.x / WorldMap::kTile, cy = before.y / WorldMap::kTile;
+            const bool stepStart = stepPending_[size_t(p)];
+            stepPending_[size_t(p)] = false;
+            airTick(air_[size_t(p)], stepStart, game_.cellProperties(cx + dx, cy + dy), moved,
+                    game_.cellProperties(at.x / WorldMap::kTile + 3 * dx, at.y / WorldMap::kTile + 3 * dy));
+            // seg2:239F: every movement tick of the current vehicle keeps it 32 pixels
+            // inside the view (seg2:29EB); only a vehicle that moves is checked.
+            if (p == game_.currentPlayer() && originSet_ && moved)
+                edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
+        }
     }
     // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
     if (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_) {
@@ -400,14 +419,15 @@ void GameScreen::drawMap() {
         if (shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
         const bool driving = vehicleMoving(p) || (p == game_.currentPlayer() && game_.phase() == Game::Phase::Move);
         const int frameNo = driving ? int(tick / 4 % 4) + 1 : 1;
-        const std::string name = std::string(1, kPortraitLetters[p]) + kFacing[std::clamp(game_.facing(p), 1, 4)]
-                                 + std::to_string(frameNo);
+        const VehicleAir& air = air_[size_t(p)]; // seg2:2318: plane frames ?f… unless on the ground
+        const std::string name = std::string(1, kPortraitLetters[p]) + (air.plane() ? "F" : "")
+                                 + kFacing[std::clamp(game_.facing(p), 1, 4)] + std::to_string(frameNo);
         SDL_Texture* vehicle = sprite(name);
         if (!vehicle) continue;
         int w = 0, h = 0;
         SDL_QueryTexture(vehicle, nullptr, nullptr, &w, &h);
         const SDL_Rect box{target.x + (at.x - origin.x - kSpriteShift) * z,
-                           target.y + (at.y + 2 - origin.y - kSpriteShift) * z, w * z, h * z};
+                           target.y + (at.y + 2 - air.height - origin.y - kSpriteShift) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position

@@ -90,9 +90,12 @@ public:
     // needed with three or more players, seg2:51EA), the direction 1..4 for Nägel,
     // the town index for Flugzeug; ignored otherwise.
     bool playCard(int handSlot, int target = -1);
-    // seg3:1CCF: the current vehicle is a boat (record +0x2D = 2, on a seaway); Nägel
-    // then fall into the water without asking for a direction.
+    // seg3:1CCF: the current vehicle flies (record +0x2D = 2), which is the case on a
+    // sea field (cell bits field + water); Nägel then fall into the water without
+    // asking for a direction.
     bool nailsInWater() const;
+    // europe.pit properties of a map cell (seg2:3260), 0 without map data.
+    uint16_t cellProperties(int x, int y) const;
     // "Karte einsetzen" (seg4:0930 -> seg2:0B08): false with text 1020 + random(2)
     // when the current player's cards are blocked.
     bool openCardWindow();

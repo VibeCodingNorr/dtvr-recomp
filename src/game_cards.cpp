@@ -23,12 +23,16 @@ bool Game::openCardWindow() {
     return false;
 }
 
+uint16_t Game::cellProperties(int x, int y) const {
+    return map_ && props_ ? props_->cell(*map_, x, y) : 0;
+}
+
 bool Game::nailsInWater() const {
-    if (!map_ || !props_ || current_ < 0) return false;
+    if (current_ < 0) return false;
+    // At rest the plane state 2 holds on sea fields (cell 0x09 = field + water); land
+    // fields (0x03) are reached after the landing (seg2:2866) has ended it.
     const Field& f = board_.fields[size_t(players_[size_t(current_)].field)];
-    const uint16_t cell = props_->cell(*map_, f.x, f.y);
-    constexpr uint16_t seaway = TileProperties::kRoad | TileProperties::kSeaRoute; // seg2:1EB5
-    return (cell & seaway) == seaway;
+    return (cellProperties(f.x, f.y) & TileProperties::kWater) != 0;
 }
 
 bool Game::playCard(int handSlot, int target) {

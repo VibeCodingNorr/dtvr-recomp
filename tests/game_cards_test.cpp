@@ -68,11 +68,11 @@ int main() {
         CHECK(g->phase() == Game::Phase::Roll);
     } else CHECK(false);
 
-    // Nägel on a seaway (round 75, seg3:1CCF): no direction, no obstacle, Platsch and
-    // text 5500; the card is used. Field 0 (cell 0 / 0) is a seaway here.
+    // Nägel on a sea field (rounds 75 / 85, seg3:1CCF): no direction, no obstacle, Platsch and
+    // text 5500; the card is used. Field 0 (cell 0 / 0) is a sea field here.
     {
         std::vector<uint8_t> pit(0x4000, 0);
-        pit[(0x1000 + 9) * 2] = TileProperties::kRoad | TileProperties::kSeaRoute;
+        pit[(0x1000 + 9) * 2] = TileProperties::kField | TileProperties::kWater; // a sea field (0x09)
         const TileProperties props(pit);
         std::vector<uint8_t> mapData(262144, 0);
         mapData[0] = 9; // layer 0, cell (0, 0): tile 9
