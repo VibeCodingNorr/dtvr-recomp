@@ -10,6 +10,7 @@
 #include "card_view.hpp"
 #include "estates_view.hpp"
 #include "save_view.hpp"
+#include "overview_view.hpp"
 #include "setup_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
@@ -40,6 +41,7 @@ public:
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
+    OverviewView& overview() { return overview_; }
     const SaveSlots& saveSlots() const { return slots_; }
     const std::map<int, std::string>& texts() const { return texts_; }
     std::vector<EstateRow> estateRows() const;
@@ -49,6 +51,12 @@ public:
     // 4 pixels per 50 ms tick (seg2:1CB0: DS:19EA / 19F4 = 2, shifted by DS:34 = 1).
     void advanceVehicles(Uint32 now);
     bool vehicleMoving(int player) const;
+    // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
+    // edge strip or an arrow key moves it by a third of the view; a left click,
+    // Enter, Escape or Space ends it. Returns true when the event belonged to it.
+    void startSurroundings();
+    bool surroundings() const { return surroundings_; }
+    bool handleSurroundings(const SDL_Event& event);
 
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
@@ -83,8 +91,11 @@ private:
     SaveSlots slots_;
     SaveView save_;
     SetupView setup_;
+    OverviewView overview_;
     int seenSpin_ = 0;
     bool title_ = false;
+    bool surroundings_ = false;
+    SDL_Point surroundOrigin_{};                    // DS:956A / 9568 in tiles while in Umfeld
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
     Uint32 lastAdvance_ = 0;
@@ -102,6 +113,8 @@ struct GameWindowOptions {
     bool openSave = false;
     bool openStatistics = false;  // tests: open Statistik at the start
     bool openSetup = false;       // tests: open the player setup at the start
+    bool openOverview = false;    // tests: open Übersicht at the start
+    bool openSurroundings = false; // tests: start Umfeld
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

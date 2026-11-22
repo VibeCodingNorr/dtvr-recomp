@@ -94,7 +94,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 35. Title menu MAIN with the original title picture: new game, load, continue from
     the autosave of each turn start.
 36. Player setup PLAYER: drivers as free / human / computer, names, start.
-37. *Next:* Übersicht and Umfeld, options.
+37. Übersicht (overview map with route and flags) and Umfeld (looking around).
+38. *Next:* Zoom, options and the remaining sounds and animations.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

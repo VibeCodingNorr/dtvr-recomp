@@ -44,7 +44,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                }),
       slots_(defaultSaveDirectory()),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
-      setup_(renderer, root, layout, text_) {
+      setup_(renderer, root, layout, text_),
+      overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -150,7 +151,52 @@ bool GameScreen::vehicleMoving(int player) const {
     return at.x != f.x * WorldMap::kTile || at.y != f.y * WorldMap::kTile;
 }
 
+void GameScreen::startSurroundings() {
+    const SDL_Point o = viewOrigin(); // seg6:3CC5: from the current origin
+    surroundOrigin_ = {o.x / WorldMap::kTile, o.y / WorldMap::kTile};
+    surroundings_ = true;
+}
+
+bool GameScreen::handleSurroundings(const SDL_Event& event) {
+    if (!surroundings_) return false;
+    const int third = layout_.viewport.w / 3 / WorldMap::kTile; // (w / ±3) / 16, truncated (seg6:17F4)
+    constexpr int side = WorldMap::kSize * WorldMap::kTile;
+    auto move = [&](int dx, int dy) { // seg6:2B19 keeps the view inside the world
+        const int maxX = (side - layout_.viewport.w) / WorldMap::kTile, maxY = (side - layout_.viewport.h) / WorldMap::kTile;
+        surroundOrigin_.x = std::clamp(surroundOrigin_.x + dx * third, 0, maxX);
+        surroundOrigin_.y = std::clamp(surroundOrigin_.y + dy * third, 0, maxY);
+    };
+    if (event.type == SDL_MOUSEMOTION) { // seg6:1798: strips of 0x3C pixels, corners excluded
+        const int x = event.motion.x - layout_.map.x, y = event.motion.y - layout_.map.y;
+        const int l = layout_.viewport.x, t = layout_.viewport.y;
+        const int r = l + layout_.viewport.w, b = t + layout_.viewport.h;
+        const bool midY = y >= t + 60 && y <= b - 60, midX = x >= l + 60 && x <= r - 60;
+        if (midY && x >= l && x <= l + 60) move(-1, 0);
+        if (midX && y >= t && y <= t + 60) move(0, -1);
+        if (midY && x >= r - 60 && x <= r) move(1, 0);
+        if (midX && y >= b - 60 && y <= b) move(0, 1);
+        return true;
+    }
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) { // seg6:176E
+        surroundings_ = false;
+        return true;
+    }
+    if (event.type == SDL_KEYDOWN) { // seg6:1991
+        switch (event.key.keysym.sym) {
+        case SDLK_RETURN: case SDLK_ESCAPE: case SDLK_SPACE: surroundings_ = false; break;
+        case SDLK_LEFT: case SDLK_KP_4: move(-1, 0); break;
+        case SDLK_UP: case SDLK_KP_8: move(0, -1); break;
+        case SDLK_RIGHT: case SDLK_KP_6: move(1, 0); break;
+        case SDLK_DOWN: case SDLK_KP_2: move(0, 1); break;
+        default: break;
+        }
+        return true;
+    }
+    return event.type == SDL_MOUSEBUTTONDOWN;
+}
+
 SDL_Point GameScreen::viewOrigin() const {
+    if (surroundings_) return {surroundOrigin_.x * WorldMap::kTile, surroundOrigin_.y * WorldMap::kTile};
     // Assumption until the scrolling code is traced: the viewport is centred on
     // the current player's field and kept inside the 4096 x 4096 world.
     constexpr int side = WorldMap::kSize * WorldMap::kTile;
@@ -297,6 +343,7 @@ void GameScreen::draw() {
         for (size_t i = 0; i < 8; ++i) letters[i] = kPortraitLetters[i]; // seg2:2D43
         estates_.draw(estateRows(), letters);
     }
+    overview_.draw(game_);
     cards_.draw();
     save_.draw(slots_);
     menu_.draw();
@@ -413,6 +460,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
         case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
+        case 1034: case 1041: screen.overview().open(); break;  // Übersicht: seg1:A240
+        case 1035: case 1043: screen.startSurroundings(); break; // Umfeld: seg6:3C94
         case 1036: case 1042:                                    // Statistik: seg1:4DE5
             screen.estates().openStatistics(play.game().currentPlayer());
             break;
@@ -423,6 +472,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openSetup) { screen.setTitle(true); menu.close(); command(1020); }
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
+    if (options.openOverview) screen.overview().open();
+    if (options.openSurroundings) screen.startSurroundings();
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
@@ -462,7 +513,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             autosaved = play.game().turnSerial();
         }
         const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
-                           || estates.statistics() || screen.title();
+                           || estates.statistics() || screen.title() || screen.overview().isOpen()
+                           || screen.surroundings();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -482,6 +534,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (const int id = menu.handle(event)) command(id);
                 continue;
             }
+            if (screen.overview().isOpen()) { screen.overview().handle(event); continue; }
+            if (screen.handleSurroundings(event)) continue;
             if (screen.setup().isOpen()) { // seg1:0A60
                 const SetupView::Result r = screen.setup().handle(event);
                 if (r == SetupView::Result::Start) {

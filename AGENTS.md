@@ -110,7 +110,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window;
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
   `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
-  `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp).
+  `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
+  `src/overview_view.{hpp,cpp}`: the overview map.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),

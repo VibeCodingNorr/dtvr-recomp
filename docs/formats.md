@@ -1208,6 +1208,36 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Übersicht and Umfeld (round 37)
+
+- **Übersicht** seg1:A240 (commands 1034 / 1041): window OUTLINE (DS:40BC) with
+  the rectangle of the map window (DS:9C84..9C8A), holding capture and focus;
+  the bitmap `%s\%d\map.bmp` (DS:40AE, butt directory: 432 / 544 / 688 pixels)
+  at (0, 0). Scale = 4096 (DS:86DE) / bitmap width; a field's point is
+  cell · 16 / scale, truncated, + 1 (seg1:A8C7). With CreatePen(PS_INSIDEFRAME,
+  2, PALETTERGB(255, 0, 0)) the route is drawn from the current player's field
+  (player +0x3E): distances from the destination DS:A10D with the mask
+  (seg2:43A8), then always the first neighbour (up, right, down, left) with a
+  smaller distance (MoveTo / LineTo until distance 0). Ellipses of radius 6
+  with that pen: green brush PALETTERGB(0, 255, 0) at the stage start DS:A10B,
+  blue PALETTERGB(0, 0, 255) at the route's end. SBS `Q_FL` at Dr. Drago's pixel
+  position DS:9D01 / 9D03 ÷ scale when DS:9CFC ≠ 0xFF; `%c_FL` (DS:40D1; 15 /
+  17 / 20 pixels in `<n>_assort.sbs`) at each driver's pixel position (+0x16 /
+  +0x18) ÷ scale, starting after the current player so that its flag is drawn
+  last.
+- **Umfeld** seg6:3C94 (commands 1035 / 1043): capture and focus to the map,
+  DS:169C = 1, target DS:96A2 / 96A4 = origin; a loop moves the origin
+  DS:956A / 9568 to the target (seg6:2B19 keeps it inside the world) and
+  redraws. Mouse moves in the map window (seg6:1798, coordinates ÷ (zoom DS:9C70
+  + 1)): in a strip of 0x3C pixels at an edge of the viewport DS:94DA..94E0
+  (corner squares excluded) the target moves by (width ÷ ±3) ÷ 16 tiles in that
+  direction. Keys (seg6:1991): arrows and numpad 2 / 4 / 6 / 8 move the same way;
+  Enter, Escape and Space end it; a left click ends it (seg6:176E).
+- **Rebuilt** (`src/overview_view.cpp`, Umfeld in `src/game_screen.cpp`).
+  **Assumptions:** any key or click closes Übersicht (its input handling is not
+  traced); Q_FL is drawn at the field of the driver Dr. Drago rides with; after
+  Umfeld the view follows the current player again.
+
 ### Player setup (round 36)
 
 - **Neues Spiel** seg4:0DA9(0): seg8:0747 (an intro window TEMP, only without the
