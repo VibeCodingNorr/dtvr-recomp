@@ -105,6 +105,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int shopSerial = -1;
     int targetCardSlot = -1; // hand slot waiting for the target choice
     int flightCardSlot = -1; // hand slot of the Flugzeug card being booked
+    int nailsCardSlot = -1;  // hand slot of the Nägel card waiting for a direction
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -191,6 +192,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.cardShop) screen.cardShop().open(play.game());
+    if (options.nails) screen.nails().open();
     if (options.flight) screen.flight().open(play.game().eastOpen(), play.game().remainingStages() == 0);
     if (options.selectPlayer) {
         std::vector<int> others;
@@ -315,7 +317,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
                            || screen.victory().active() || screen.balance().active()
                            || screen.announcement().active() || screen.cardShop().isOpen()
-                           || screen.selectPlayer().isOpen() || screen.flight().isOpen();
+                           || screen.selectPlayer().isOpen() || screen.flight().isOpen()
+                           || screen.nails().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -444,6 +447,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (r != SaveView::Result::None) saveDialog.close();
                 continue;
             }
+            if (screen.nails().isOpen()) { // seg3:1E5E
+                const int d = screen.nails().handle(event);
+                if (d != 0) screen.nails().close();
+                if (d > 0 && play.game().playCard(nailsCardSlot, d)) report();
+                continue;
+            }
             if (screen.flight().isOpen()) { // seg3:3384
                 const FlightView::Result r = screen.flight().handle(event);
                 if (r.closed) screen.messages().push(Notice{8300, {}}); // Bodennebel over Brussels
@@ -490,6 +499,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                             continue;
                         }
                         if (candidates.size() == 1 && play.game().playCard(slot, candidates.front())) report();
+                        continue;
+                    }
+                    if (kind == CardKind::Naegel) { // seg3:1C96: the direction window
+                        nailsCardSlot = slot;
+                        screen.nails().open();
                         continue;
                     }
                     if (kind == CardKind::Flugzeug) { // seg3:31D5: the booking window

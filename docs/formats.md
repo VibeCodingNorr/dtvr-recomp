@@ -1422,6 +1422,22 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Nägel into water Platsch (seg3:1C99, case not modelled); the Flugzeug choice
   (seg3:3384) and the card shop (seg3:4643) Plopp02 / Zaehler2.
 
+### Nägel direction (round 55)
+
+- **seg3:1C96:** when the player's +0x2D is 2 (assumed: the vehicle on a sea
+  route) the nails fall into the water: Platsch on channel 5 and text 5500, the
+  card is used up. Otherwise the window TEMP 0x226 × 0x104 (CreateWindow
+  seg3:1D27, procedure seg3:1E5E) on `%s\n.bmp` (butt) with text 510 opens; four
+  triangles (seg3:1E72, client coordinates) up (0x78, 7), (0x87, 0x16), (0x69,
+  0x16); right (0xDC, 0x69), (0xEB, 0x78), (0xDC, 0x87); down (0x69, 0xDC),
+  (0x87, 0xDC), (0x78, 0xEB); left (6, 0x78), (0x15, 0x69), (0x15, 0x87) are
+  tested with CreatePolygonRgn / PtInRegion (seg3:1F5D) and post VK_UP / RIGHT /
+  DOWN / LEFT; then `%s\flc\karte1.flc` (an FLC film) and `%s\snd\Naegel.wav`.
+- **Rebuilt** (`src/nails_view.cpp`): the window with the triangles, the arrow
+  keys and text 510. **Not rebuilt / assumptions:** the paint of the window (the
+  arrows are filled in the text colour, the compass interior stays empty), the
+  water case, the film; Escape / right button cancel; the window centred.
+
 ### Card shop (round 52)
 
 - **Window** seg3:4437: TEMP (558 × 462) with `%s\%c\bcards.sbs` (butt/<lang>:

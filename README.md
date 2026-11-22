@@ -123,7 +123,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 53. Target choice SELPLAYER for cards with a target (Fiskus, Schulden, Zucker,
     Blockieren, Schlafen, Tschüss) in the game window.
 54. Flugzeug booking window with the original towns and the fog over Brussels.
-55. *Next:* the Nägel direction and the remaining keyboard-only actions.
+55. Nägel direction window: the four arrows of the original as click areas.
+56. *Next:* the remaining keyboard-only actions (investments, yellow field discard).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

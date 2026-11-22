@@ -11,6 +11,7 @@
 #include "card_shop_view.hpp"
 #include "select_player_view.hpp"
 #include "flight_view.hpp"
+#include "nails_view.hpp"
 #include "estates_view.hpp"
 #include "finish_view.hpp"
 #include "victory_view.hpp"
@@ -55,6 +56,7 @@ public:
     CardShopView& cardShop() { return cardShop_; }
     SelectPlayerView& selectPlayer() { return selectPlayer_; }
     FlightView& flight() { return flight_; }
+    NailsView& nails() { return nails_; }
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
@@ -128,6 +130,7 @@ private:
     CardShopView cardShop_;
     SelectPlayerView selectPlayer_;
     FlightView flight_;
+    NailsView nails_;
     EstatesView estates_;
     SaveSlots slots_;
     SaveView save_;
@@ -176,6 +179,7 @@ struct GameWindowOptions {
     bool cardShop = false;        // tests: open the card shop
     bool selectPlayer = false;    // tests: open the target choice for the other players
     bool flight = false;          // tests: open the Flugzeug booking
+    bool nails = false;           // tests: open the Nägel direction choice
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
