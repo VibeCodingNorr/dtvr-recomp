@@ -40,6 +40,11 @@ for the provisional segment layout and the native playback integration plan.
 The current viewer does not yet play music. The intended game uses these local
 Ogg assets through the recovered original music cues, without a mounted disc.
 
+Pass `--soundfont /path/to/bank.sf2` to additionally render a complete 25-cue Ogg
+pack. `--music-style classic|dry`, `--music-pack-id` and `--music-pack-name`
+configure it. Repeat `--soundfont` for ordered base/overlay banks. See
+[soundtrack preparation](soundtracks.md) for dependencies, timing and verification.
+
 ## Supported inputs and limits
 
 The supported mixed-mode image uses raw Mode 1

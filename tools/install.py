@@ -14,6 +14,7 @@ import tempfile
 from inspect_game import inspect_game
 from iso9660 import IsoImage
 from cd_audio import audio_layout, convert_audio
+from soundtrack import render_pack, validate_identity
 
 KNOWN_EXE = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83"
 REPO = Path(__file__).resolve().parent.parent
@@ -43,11 +44,14 @@ def digest(path):
     return h.hexdigest()
 
 
-def install(iso, output, jobs):
+def install(iso, output, jobs, soundfonts=None, music_style="classic",
+            music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont"):
     iso = iso.resolve(strict=True)
     output = validate_output(output)
     if output.exists() or output.is_symlink():
         raise ValueError(f"Target already exists; choose a new directory: {output}")
+    if soundfonts:
+        validate_identity(music_pack_id, music_pack_name, music_style)
     for command in ("cmake", "c++", "pkg-config"):
         if not shutil.which(command):
             raise ValueError(f"Missing build dependency: {command}")
@@ -80,6 +84,13 @@ def install(iso, output, jobs):
         else:
             audio = {"status": "no-known-layout", "regions": []}
             print("No verified audio-region profile for this image; no CD audio converted.", flush=True)
+        packs = []
+        if soundfonts:
+            pack = render_pack(data / "program/snd/midi", soundfonts,
+                               data / "music/packs" / music_pack_id,
+                               music_pack_id, music_pack_name, music_style)
+            packs.append({"id": pack["id"], "name": pack["name"],
+                          "directory": f"data/music/packs/{music_pack_id}", "cue_count": len(pack["cues"])})
         build = Path(temporary) / "build"
         subprocess.run(["cmake", "-S", str(REPO), "-B", str(build),
                         "-DCMAKE_BUILD_TYPE=Release"], check=True)
@@ -94,6 +105,7 @@ def install(iso, output, jobs):
         manifest = {"schema_version": 1, "capability": "native-data-viewer",
                     "iso_sha256": iso_hash, "iso_sector_size": sector_size,
                     "cd_audio": audio,
+                    "soundtrack_packs": packs,
                     "executable_sha256": KNOWN_EXE,
                     "files": {p.relative_to(stage).as_posix(): digest(p)
                               for p in sorted(stage.rglob("*")) if p.is_file()}}
@@ -115,12 +127,21 @@ def main():
     parser.add_argument("--output", type=Path, default=default_output(),
                         help="New installation directory outside the checkout (default: XDG data directory)")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 8))
+    parser.add_argument("--soundfont", type=Path, action="append", default=[],
+                        help="Render a complete Ogg pack; repeat for ordered base/overlay banks")
+    parser.add_argument("--music-style", choices=("classic", "dry"), default="classic")
+    parser.add_argument("--music-pack-id", default="rendered-gm")
+    parser.add_argument("--music-pack-name", default="Rendered SoundFont")
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")
+    if not args.soundfont and (args.music_style != "classic" or args.music_pack_id != "rendered-gm"
+                               or args.music_pack_name != "Rendered SoundFont"):
+        parser.error("Music pack options require --soundfont")
     try:
-        install(args.iso, args.output, args.jobs)
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        install(args.iso, args.output, args.jobs, args.soundfont, args.music_style,
+                args.music_pack_id, args.music_pack_name)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Installation failed: {error}\n")
 
 

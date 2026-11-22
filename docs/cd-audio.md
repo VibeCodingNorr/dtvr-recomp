@@ -65,6 +65,10 @@ sequencer routines, provisional recording matches and the plan for install-time
 sound-set rendering without runtime MIDI. Native start/Escape menu ideas are in
 [pause-menu.md](pause-menu.md).
 
+Complete bank-rendered Ogg sets, including cues absent from CD recordings, can
+now be prepared with the [soundtrack builder](soundtracks.md). Native playback
+and the original CD track numbers are still unverified/unimplemented.
+
 1. Extend the first-pass music analysis: normal background/cue playback uses the
    sequencer; the separate CD helper has no found caller. Five background recordings
    and an intro excerpt have candidate matches. Exact disc track IDs, full cue

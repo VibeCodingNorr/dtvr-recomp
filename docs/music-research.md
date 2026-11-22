@@ -93,7 +93,7 @@ The model ignores sustain-controller state, pitch bends and device effects. The
 research tool compares at most the first 600 seconds of an audio file; all six
 recordings here fit within that limit.
 
-Local comparison against all 27 MIDI files produced:
+Local comparison against all 25 MIDI files produced:
 
 | Imported recording | Best MIDI match | Similarity | Runner-up | MIDI end time | Ogg duration |
 | --- | --- | --- | --- | --- | --- |
@@ -141,7 +141,8 @@ the user can render original MIDI sources with a selected synthesizer and suppli
 SoundFont. [FluidSynth's file renderer](https://www.fluidsynth.org/api/FileRenderer.html)
 supports offline MIDI-to-audio rendering; its
 [SoundFont requirements](https://www.fluidsynth.org/wiki/GettingStarted/) are SF2/SF3.
-This is a proposal, not an implemented installer option.
+The offline renderer and installer option are now implemented; see
+[soundtrack preparation](soundtracks.md). Native playback/menu selection remain pending.
 
 | Soundtrack option | Proposed construction | Limitation |
 | --- | --- | --- |
