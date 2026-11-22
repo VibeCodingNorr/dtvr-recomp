@@ -382,6 +382,7 @@ void GameScreen::draw() {
             SDL_RenderCopy(renderer_, t, nullptr, nullptr);
         save_.draw(slots_);
         menu_.draw();
+        messages_.draw(game_); // the quit question (seg4:0EDF) also opens over the title
         return;
     }
     // Canvas (seg8:0000): butt/<n>/bk.bmp fills the client area.

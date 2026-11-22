@@ -134,7 +134,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 63. Window / fullscreen with pixel scaling (F11, Alt+Enter, `--fullscreen`, `[Display]`).
 64. Risiko texts 41001-41003 and press sounds as in seg7:69DE ff.
 65. Obstacle question: Yes / No message window with the card picture before a clearing card is used.
-66. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
+66. Quit question (text 700, Yes / No) for Rallye beenden and the key Q.
+67. *Next:* the remaining messages and dialogs of the turn as in rally.exe.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

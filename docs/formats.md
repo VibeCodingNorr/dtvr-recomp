@@ -890,6 +890,14 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   Plopp02 on channel 0. Rebuilt in `src/message_view.cpp` (mode 4) and
   `Game::answerObstacle`; the open question is not saved (after loading the
   step asks again).
+- **Quit question** (round 66): seg4:0EDF loads text 700 ("Soll D.T.V.R.
+  wirklich beendet werden?") and calls seg6:51EA with buttons 4 and the empty
+  picture DS:B6 (showmaster); answer 6 sets DS:88 = 1 and posts WM_CLOSE to the
+  main window (seg4:0F26). Callers: title menu 1025 (seg4:055E), MAIN1 1064
+  (seg4:073F, MAIN1 again when it returns 0), seg4:0837 (after seg4:0803, Mitspieler;
+  not traced further), the key Q
+  of the main window (seg4:01A6) and seg4:0050. Rebuilt in `src/game_window.cpp`
+  (askQuit) for 1025, 1064 and Q; closing the desktop window still quits at once.
 - **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
   in the string resources, but no code adds the base 5181 (all other events add
   their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the
@@ -1214,7 +1222,7 @@ Rebuilt in `src/ne_strings.cpp` (readNeMenu) and `src/menu_view.cpp`; flow in
 `src/game_screen.cpp`. Simplifications: ONFIELD opens whenever a human player is
 in the spin phase and no window is open (also after RIGHTBTN Zurück, which in the
 original only closes); "Karte einsetzen" opens the card window (round 29);
-Rallye beenden quits without seg4:0EDF;
+Rallye beenden asks first since round 66 (see below);
 Zoom, Übersicht, Umfeld, Statistik and MAIN1 entries besides 1064 / 1065 do
 nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 

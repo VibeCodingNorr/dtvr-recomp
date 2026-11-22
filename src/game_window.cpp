@@ -137,6 +137,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         screen.loadDriverSprites();
         report();
     };
+    // seg4:0EDF: text 700 with Yes / No (buttons 4); Yes ends the program (DS:88 = 1,
+    // WM_CLOSE). From MAIN1 (1064) a No opens MAIN1 again.
+    bool quitReopensMain = false;
+    auto askQuit = [&](bool reopenMain) {
+        Notice q{700, {}};
+        q.buttons = 4;
+        screen.messages().push(q);
+        quitReopensMain = reopenMain;
+        menu.close();
+    };
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
@@ -157,7 +167,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             else { std::cerr << "Fortsetzen: " << error << "\n"; openTitle(); }
             break;
         }
-        case 1025: running = false; break;                       // Rallye beenden
+        case 1025: askQuit(false); break;                        // Rallye beenden: seg4:055E -> 0EDF
         case 1023: case 1063: screen.options().open(screen.settings()); break; // Optionen: seg1:ACE7
         case 1026: screen.showPicture("Credits.bmp"); break;    // Credits: seg4:070C -> seg6:0A4D
         case 1024: {                                             // Demo: seg4:05A8 -> seg4:0DA9(1)
@@ -178,7 +188,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (cards.open(play.game(), 2)) cardWindowState = turnState(); // seg3:0887(2)
             break;
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
-        case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
+        case 1064: askQuit(true); break;                         // Rallye beenden (seg4:073F -> 0EDF)
         case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
         case 1032: case 1040: screen.toggleZoom(); break;       // Zoom: seg6:2E54(3), then centred
         case 1034: case 1041: screen.overview().open(); break;  // Übersicht: seg1:A240
@@ -280,7 +290,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
             if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.options().isOpen()
-                && !screen.pictureShown())
+                && !screen.pictureShown() && !screen.messages().open())
                 openTitle();
         } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
                    && !play.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
@@ -392,9 +402,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
             if (screen.messages().question()) { // seg2:2404: obstacle question (text 600)
                 if (const int answer = screen.messages().handle(event); answer) {
+                    const int text = screen.messages().frontText();
                     screen.messages().dismiss();
                     sound.play(0, 2); // seg6:5627: Plopp02 when the window closes
-                    if (play.game().answerObstacle(answer == 6)) report();
+                    if (text == 700) { // seg4:0F20
+                        if (answer == 6) running = false;
+                        else if (quitReopensMain) openMenu("MAIN1");
+                    } else if (play.game().answerObstacle(answer == 6)) {
+                        report();
+                    }
                 }
                 continue;
             }
@@ -663,6 +679,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 sound.play(0, 35 + s.pause); // MEMO01-04 (seg6:0DFD / 0DCA / 0DDB / 0DEC)
                 continue;
             }
+            if (key == SDLK_q && !screen.title()) { askQuit(false); continue; } // seg4:0259: Q -> seg4:0EDF
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
             if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();
