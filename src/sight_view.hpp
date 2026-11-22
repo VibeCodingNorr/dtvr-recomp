@@ -18,8 +18,9 @@ namespace dtvr {
 
 class SightView {
 public:
-    SightView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text)
-        : renderer_(renderer), root_(root), text_(text) {}
+    SightView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text, int canvasWidth,
+              int canvasHeight)
+        : renderer_(renderer), root_(root), text_(text), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
     // False when the cell has no picture.
     bool open(int cellX, int cellY);
     bool isOpen() const { return open_; }
@@ -31,6 +32,7 @@ private:
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     TextRenderer& text_;
+    int canvasWidth_, canvasHeight_;
     Texture paper_{nullptr, SDL_DestroyTexture};
     Texture picture_{nullptr, SDL_DestroyTexture};
     std::string body_;

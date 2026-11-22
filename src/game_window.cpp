@@ -332,7 +332,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         if (!screen.film().active() && !pendingFilms.empty() && !moving && !screen.messages().open()) {
             const FilmCue f = pendingFilms.front();
             pendingFilms.erase(pendingFilms.begin());
-            if (screen.film().start(f.film, f.loops, 10, 10, SDL_GetTicks())) { // (10, 10) of the canvas
+            if (screen.film().start(f.film, f.loops, layout.width, layout.height, SDL_GetTicks())) { // centred
                 const fs::path wav = findCaseInsensitive(screen.root(), fs::path("butt") / "snd" / f.sound);
                 if (!wav.empty()) sound.playFile(7, wav); // seg1:2D40(7, …)
             }

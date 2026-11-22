@@ -26,6 +26,8 @@ public:
                Uint32 now);
     bool active() const { return active_; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
+    // seg8:8BDB: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
+    int lift() const { return subtitles_ && subtitles_->enabled() ? 22 : 0; }
     void stop() { active_ = false; }
     // BILANZ (seg8:A829): Enter, Space or a left click set DS:8D5C: during the opening
     // voice it stops (seg8:8D17), later the show master goes on, in the closing

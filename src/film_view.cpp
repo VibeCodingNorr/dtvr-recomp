@@ -9,7 +9,7 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
-bool FilmView::start(int film, int loops, int canvasX, int canvasY, Uint32 now) {
+bool FilmView::start(int film, int loops, int canvasWidth, int canvasHeight, Uint32 now) {
     film_.reset();
     const fs::path path = findCaseInsensitive(root_, fs::path("butt") / "flc" / ("karte" + std::to_string(film) + ".flc"));
     if (path.empty()) return false;
@@ -23,7 +23,9 @@ bool FilmView::start(int film, int loops, int canvasX, int canvasY, Uint32 now) 
     if (!film_->decodeNext()) { film_.reset(); return false; }
     texture_.reset(SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, film_->width(),
                                      film_->height()));
-    box_ = SDL_Rect{canvasX, canvasY, film_->width(), film_->height()};
+    // Created at (x, y) = (10, 10), then centred by WM_CREATE (seg7:6477 -> seg6:0000).
+    box_ = SDL_Rect{(canvasWidth - film_->width()) / 2, (canvasHeight - film_->height()) / 2, film_->width(),
+                    film_->height()};
     loops_ = loops > 0 ? loops : 1;
     shown_ = 1;
     nextFrame_ = now + Uint32(film_->frameMs());

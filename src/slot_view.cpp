@@ -76,7 +76,7 @@ SDL_Texture* SlotView::frame(int reels, const std::string& name) {
 void SlotView::start(const std::vector<int>& reels, Uint32 now) {
     reels_ = reels;
     if (reels_.size() > 5) reels_.resize(5);
-    started_ = now;
+    started_ = now + kSlideTime; // seg2:6597: the window slides in first
 }
 
 bool SlotView::stopped(Uint32 now) const {
@@ -87,7 +87,17 @@ bool SlotView::stopped(Uint32 now) const {
 bool SlotView::active(Uint32 now) const {
     if (reels_.empty()) return false;
     const int last = stopTick(int(reels_.size()) - 1);
-    return now < started_ + Uint32(last) * kTickMs + 1000; // the result stays visible for a moment
+    // The result stays visible for a moment (assumption), then the window slides out.
+    return now < started_ + Uint32(last) * kTickMs + 1000 + kSlideTime;
+}
+
+int SlotView::slideOffset(Uint32 now) const {
+    const Uint32 in = started_ - kSlideTime;
+    if (now < started_) // seg2:6777: each step first moves, then waits
+        return kSlideStep * std::min(kSlideSteps, int((now - in) / kSlideMs) + 1);
+    const Uint32 out = started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs + 1000;
+    if (now < out) return kSlideStep * kSlideSteps;
+    return kSlideStep * std::max(0, kSlideSteps - (int((now - out) / kSlideMs) + 1)); // seg2:6817
 }
 
 void SlotView::draw(const ScreenRect& map, Uint32 now) {
@@ -97,8 +107,10 @@ void SlotView::draw(const ScreenRect& map, Uint32 now) {
     if (!box) return;
     int w = 0, h = 0;
     SDL_QueryTexture(box, nullptr, nullptr, &w, &h);
-    const int x0 = map.x + map.w / 2 - w / 2, y0 = map.y + map.h - h; // seg2:6528
+    const int x0 = map.x + map.w / 2 - w / 2, y0 = map.y - h + slideOffset(now); // seg2:6528 / 6717
     const SDL_Rect target{x0, y0, w, h};
+    const SDL_Rect clip{map.x, map.y, map.w, map.h}; // a child of the map window
+    SDL_RenderSetClipRect(renderer_, &clip);
     SDL_RenderCopy(renderer_, box, nullptr, &target);
     auto blit = [&](const std::string& name, int x, int y) {
         if (SDL_Texture* t = frame(n, name)) {
@@ -108,7 +120,7 @@ void SlotView::draw(const ScreenRect& map, Uint32 now) {
             SDL_RenderCopy(renderer_, t, nullptr, &r);
         }
     };
-    const int tick = int((now - started_) / kTickMs);
+    const int tick = now < started_ ? 0 : int((now - started_) / kTickMs);
     int sum = 0;
     for (int i = 0; i < n; ++i) {
         const int stop = stopTick(i);
@@ -123,6 +135,7 @@ void SlotView::draw(const ScreenRect& map, Uint32 now) {
         blit("count_" + std::to_string(sum / 10 % 10), kCountX[n - 1][0], kCountY[n - 1]);
         blit("count_" + std::to_string(sum % 10), kCountX[n - 1][1], kCountY[n - 1]);
     }
+    SDL_RenderSetClipRect(renderer_, nullptr);
 }
 
 } // namespace dtvr

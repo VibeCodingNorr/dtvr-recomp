@@ -61,7 +61,10 @@ SDL_Rect StagesView::window() const {
     int h = 64;
     if (SDL_Texture* sm = const_cast<StagesView*>(this)->bitmap(fs::path("bmp") / std::to_string(layout_.artDir) / "sm.bmp"))
         SDL_QueryTexture(sm, nullptr, nullptr, nullptr, &h);
-    return SDL_Rect{0, 0, kWidth, h + 0x24 + kExtra}; // seg8:082D: sm height + 0x24
+    // seg8:082D: sm height + 0x24 (plus the slider strip), created at (0, 0) and
+    // centred on the canvas by WM_CREATE (seg8:09E7 -> seg6:0000).
+    const int height = h + 0x24 + kExtra;
+    return SDL_Rect{(layout_.width - kWidth) / 2, (layout_.height - height) / 2, kWidth, height};
 }
 
 SDL_Rect StagesView::field() const {
@@ -104,7 +107,7 @@ StagesView::Result StagesView::handle(const SDL_Event& event) {
             setFromSlider(at.x);
             return Result::None;
         }
-        const SDL_Rect inField{f.x, f.y, f.w, std::min(f.h, w.h - f.y)};
+        const SDL_Rect inField{w.x + f.x, w.y + f.y, f.w, std::min(f.h, w.h - f.y)}; // the field is a child of TEMP
         if (SDL_PointInRect(&at, &inField)) return Result::None; // SBINPUT takes the focus (seg1:2228)
         if (SDL_PointInRect(&at, &w)) // seg8:0D95: WM_LBUTTONDOWN accepts like Enter
             return accept() ? Result::Accept : Result::None;

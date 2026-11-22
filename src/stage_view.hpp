@@ -28,6 +28,8 @@ public:
     bool start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now);
     bool active() const { return active_; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
+    // seg7:3AC8: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
+    int lift() const { return subtitles_ && subtitles_->enabled() ? 22 : 0; }
     void stop() { active_ = false; }
     // ZIEL (seg7:50D6): Escape, Space, Enter or a left click stop the voices
     // (seg5:607B(-1)) and clear DS:A29C, which ends the current loop only.

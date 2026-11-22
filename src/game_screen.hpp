@@ -210,6 +210,7 @@ private:
     int seenSpin_ = 0;
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;
+    bool reelsPending_ = false;
     bool title_ = false;
     std::string picture_;
     bool surroundings_ = false;

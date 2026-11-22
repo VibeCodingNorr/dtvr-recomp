@@ -49,7 +49,9 @@ bool SightView::handle(const SDL_Event& event) {
 
 void SightView::draw() {
     if (!open_) return;
-    const SDL_Rect box{0, 0, kWidth, kHeight}; // child of the canvas DS:40 at (0, 0) (seg6:4ED8)
+    // Child of the canvas DS:40 created at (0, 0) (seg6:4ED8); WM_CREATE centres it
+    // with seg6:0000 (seg6:4F86).
+    const SDL_Rect box{(canvasWidth_ - kWidth) / 2, (canvasHeight_ - kHeight) / 2, kWidth, kHeight};
     if (paper_) {
         const SDL_Rect src{0, 0, kWidth, kHeight};
         SDL_RenderCopy(renderer_, paper_.get(), &src, &box);

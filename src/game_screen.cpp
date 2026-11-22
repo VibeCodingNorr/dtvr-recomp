@@ -41,7 +41,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root), sight_(renderer, root, text_),
+      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root), sight_(renderer, root, text_, layout.width, layout.height),
       cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
@@ -332,8 +332,9 @@ bool GameScreen::startIntro(Uint32 now) {
 bool GameScreen::startVictory(Uint32 now) {
     if (!victory_.start(game_.ranking(), now)) return false;
     prepareSubtitles();
+    victory_.setLift(subtitles_.enabled() ? 22 : 0);
     constexpr int w = 0x1F0, h = 0x178; // seg7:738D
-    subtitles_.voice("sieg.wav", SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2, w, h}, now);
+    subtitles_.voice("sieg.wav", SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2 - victory_.lift(), w, h}, now);
     // seg7:7BAB: "%s\%c\VOICE\SIEG\SIEG.WAV" (seg1:3579)
     if (sound_) sound_->playVoice(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
     return true;
@@ -655,6 +656,10 @@ void GameScreen::draw() {
     if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
         seenSpin_ = game_.spinSerial();
         slot_.start(game_.lastReels(), now);
+        reelsPending_ = true; // the reels turn once the window has slid in
+    }
+    if (reelsPending_ && slot_.running(now)) {
+        reelsPending_ = false;
         if (sound_) sound_->play(3, 5, 0xFFFF); // Walze10 endless while the reels turn (seg2:78B1)
         reelsSounding_ = true;
     }

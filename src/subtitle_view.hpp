@@ -22,6 +22,7 @@ public:
     SubtitleView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text,
                  const std::map<int, std::string>& texts);
     void setEnabled(bool enabled) { enabled_ = enabled; }
+    bool enabled() const { return enabled_; }
     // A voice starts below the window `owner` (canvas coordinates, GetWindowRect).
     void voice(const std::string& file, const SDL_Rect& owner, Uint32 now);
     void close(); // seg6:6554

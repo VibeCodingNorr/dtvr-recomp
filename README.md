@@ -174,7 +174,8 @@ is claimed.
 98. The stage count window after the player setup, with a slider (recomb addition).
 99. Text smoothing in three modes (F12): Original, canvas size, screen resolution.
 100. Locked town dialog items (empty hand, property card modes) and the statistics header arrows.
-101. *Next:* remaining presentation details (compare windows with rally.exe).
+101. Window centring as rally.exe (seg6:0000); the slot machine slides in from the top of the map and out again.
+102. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

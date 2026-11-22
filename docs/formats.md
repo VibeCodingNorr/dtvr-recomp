@@ -1065,6 +1065,22 @@ Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
 Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
 shows while the player stands on the reached field (phase Arrived).
 
+### Window centring (round 111)
+
+- seg6:0000(hwnd) centres a window on its parent: GetWindowRect of both, half the
+  difference, MoveWindow. WM_CREATE calls it in INFO (seg6:5852), MENU
+  (seg5:5779), ESTATES (seg1:5C22), STAT (seg1:98BF), SELPLAYER (seg2:574C), the
+  joystick dialog (seg2:8ED0), seg3:1E5E, seg3:3381, the card shop (seg3:4C18; its
+  CreateWindow passes two never-written locals as x, y), INTRO (seg7:2294), ZIEL
+  (seg7:4DE6, finish and destination search share the class), seg7:60C4, FLIC
+  (seg7:6477; created at (10, 10)), seg7:6BDF, seg7:7DBC, TEMP (seg8:09E7),
+  seg8:7095, BILANZ (seg8:9A6D), seg8:B301, PICT (seg6:0B8E) and Tourism
+  (seg6:4F86). SLOT does not. With subtitles on, seg6:160B(hwnd, 0, −22) lifts the
+  intro (seg7:047E), the destination search (seg7:3AD9), the victory (seg7:73D6)
+  and the balance (seg8:8BEC). Rebuilt: the stage count window, sights and films
+  are now centred, the three scenes lifted; ZIEL / SIEG / BILANZ / card shop were
+  already centred, which replaces those assumptions.
+
 ### Slot machine and animations (round 23)
 
 - **Animation definitions** (data segment, e.g. DS:2398): u16 delay in ticks,
@@ -1079,8 +1095,13 @@ shows while the player stands on the reached field (phase Arrived).
 - **Slot window** seg2:6426(reels, maximum, …): loads `bmp\slot%i.bmp` (DS:2E80)
   and `sbs\slot%i.sbs` (DS:2E8E; only slot3–5 exist, the common frames come from
   `slot0.sbs`, loaded at start, DS:02B1), creates `SLOT` as a child of the map
-  window (DS:A6F0) centred at its bottom: x = client width / 2 − bitmap width / 2,
-  y = client height − bitmap height (seg2:6528). The paint (seg2:6C2B) only blits
+  window (DS:A6F0) at x = client right / 2 − bitmap width / 2, y = client top −
+  bitmap height (seg2:6528; *corrected in round 111*, the earlier reading took
+  the RECT's top for its bottom), i.e. above the map. seg2:6717(&hwnd, 0x100)
+  then slides it down 0x100 >> 4 = 16 times by 16 pixels, each step followed by
+  seg6:0CDF(20) (wait until 20 ms of TimerCount have passed since its last call;
+  5 ms with DS:16); with the 265 pixel bitmaps it ends at y = −9. At the end
+  seg2:6B1D → seg2:67B8 slides it up the same way before DestroyWindow. The paint (seg2:6C2B) only blits
   the slot DIB; palette entries 10–153 come from the slot bitmap (seg2:6C63).
   Computers pull the lever by posting 0x7EF.
 - **Reels** seg2:776A: value random(max) + 1 in DS:9584[i]; record 3 + i spins
@@ -1628,8 +1649,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   and waits 20 ms (seg6:0CDF). No random numbers.
 - **Rebuilt** (`src/finish_view.cpp`, name mapping `finishPhotoName` in
   `src/board.cpp`): the scene and its animation when a destination is reached
-  and the car has arrived. **Assumptions:** the window is centred on the canvas
-  with a black frame, records draw with their top-left corner at the position.
+  and the car has arrived. The window is centred on the canvas (seg6:0000, round
+  111). **Assumptions:** a black frame, records draw with their top-left corner at the position.
   **Input** (round 94): the window ZIEL (seg7:50D6) takes Escape, Space, Enter
   and the left button: seg5:607B(−1) and DS:A29C = 0 end the loop seg7:3536..3677
   (set to 1 on its first pass, seg7:35F0); the window is destroyed with the clean-up
@@ -1754,7 +1775,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `Game::ranking`): the scene after the finish of the Master-Rallye, then the
   title. **Input** (round 90, seg7:83EE): after the first pass (DS:9CDE,
   seg7:7CE9) WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN destroy the
-  window; other keys and buttons do nothing. **Assumption:** centred window with a
+  window; other keys and buttons do nothing. Centred by seg6:0000 (round 111). **Assumption:** a
   black frame.
 
 ### Sounds (round 40)
@@ -1869,8 +1890,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (seg3:49E0 ff.). The header previews its choice: Left / Right rebuild the list
   with seg3:5813(choice) (seg3:4A79 / 4AEF) — Kaufen the offers, Verkaufen the
   hand, Beenden none (seg3:5997, count 0); opening builds it with 0 (seg3:452F),
-  returning from buy / sell keeps the list (seg3:46E0). **Assumption:** the window
-  centred.
+  returning from buy / sell keeps the list (seg3:46E0). The window is centred by seg6:0000 (seg3:4C18, round 111).
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:

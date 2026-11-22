@@ -24,6 +24,9 @@ public:
     bool start(const std::vector<int>& ranking, Uint32 now);
     bool active() const { return active_; }
     void stop() { active_ = false; }
+    // seg7:73C5: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
+    void setLift(int lift) { lift_ = lift; }
+    int lift() const { return lift_; }
     void update(Uint32 now); // ends after 5000 passes (seg7:7D4E sends Enter)
     // seg7:7DEA / 7E16: WM_KEYDOWN with Escape, Space or Enter, or WM_LBUTTONDOWN,
     // once the first pass set DS:9CDE (seg7:7CE9).
@@ -34,6 +37,7 @@ private:
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     int canvasWidth_, canvasHeight_;
+    int lift_ = 0;
     Texture background_{nullptr, SDL_DestroyTexture};
     std::map<std::string, Texture> frames_;
     struct Place { std::string name; int x, y; };
