@@ -21,6 +21,7 @@ int pickText(MsRandom& rng, int count) { return rng.random(count - 1); }
 void Game::dragoAct(int player) {
     if (drago_.holder < 0 || drago_.holder != player) return;
     const DragoAction action = chooseDragoAction(drago_.form, rng_);
+    const size_t firstNotice = notices_.size();
     const std::string who = "Dr. Drago (bei Spieler " + std::to_string(player + 1) + "): ";
     const double limit = 30000.0 * calendar_.inflation; // DS:8676 x inflation (seg2:B957)
     auto giveProperty = [&]() {      // seg2:BCAF
@@ -83,6 +84,9 @@ void Game::dragoAct(int player) {
         messages_.push_back(who + "blockiert den naechsten Zug");
         break;
     }
+    // seg2:BAB5 / BBB8 / BCE1 / BE51 / BEC7: "%s\%d\qp.bmp" replaces the showmaster.
+    for (size_t i = firstNotice; i < notices_.size(); ++i) notices_[i].drago = true;
+    if (action == DragoAction::Block) notice(3351); // seg2:BFD6: text 3351, no picture (DS:3E2F "")
 }
 
 void Game::placeDragoForStage() {

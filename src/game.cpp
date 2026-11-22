@@ -409,6 +409,7 @@ void Game::advanceTurn() {
     for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
     for (const auto& [text, p] : change.texts) {
         notice(text, {playerArg(p)});
+        if (text >= 3251 && text < 3256) notices_.back().drago = true; // breakdown: qp.bmp (seg2:C040)
         if (text >= 1000 && text < 1010) sound(5, 15);      // Zucker: Sfx08 (seg2:095B)
         else if (text >= 1010 && text < 1020) sound(5, 20); // Schlafen: Schlaf01 (seg2:09F9)
     }

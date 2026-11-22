@@ -1145,6 +1145,13 @@ showmaster's other portraits.
   3101 (3, town and price, seg2:BC41), giving a property away 3001 (11, town,
   seg2:BD42), tearing a card 3051 (8, seg2:BE70), giving money 3201 (5, amount
   and recipient, seg2:BEE6), breakdown 3251 (5, seg2:C05F, at the turn change).
+  *Round 76:* these Drago messages pass the picture `%s\%d\qp.bmp` (bmp
+  directory, art directory; DS:3DEE, 3DFB, 3E08, 3E15, 3E22, 3E30 at seg2:BAB5,
+  BBB8, BCE1, BE51, BEC7, C040) to seg6:51EA, so Dr. Drago's portrait replaces the
+  showmaster. The block action seg2:BFB0 sets bit 0 and shows text 3351 (0xD17,
+  no draw) with the empty picture DS:3E2F, i.e. the showmaster; the rebuild had
+  no message for it. Rebuilt with `Notice::drago` and `bmp/<n>/qp.bmp` in
+  `src/message_view.cpp`.
   Weihnachten (seg3): 13001 not December (seg3:1189), 13006 card (seg3:1223),
   13011 money (seg3:1292), three texts each.
 - **Turn start** of the next player: Zucker clears bit 1 and shows 1000 +

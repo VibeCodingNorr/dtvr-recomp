@@ -144,7 +144,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 73. Rain, snow and flood animations: the cloud flies in from the drawn corner, then plays at the place.
 74. Drought (sinking sun) and Nessie (Loch Ness, then the lake of the place): all event animations rebuilt.
 75. Nägel fall into the water on a seaway (text 5500, no obstacle; rules revision 32).
-76. *Next:* remaining original messages and windows of a turn (compare with rally.exe).
+76. Dr. Drago's messages show his portrait (qp.bmp); the block action shows text 3351.
+77. *Next:* remaining original messages and windows of a turn (compare with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
