@@ -4,6 +4,7 @@
 #include "game_screen.hpp"
 
 #include "board.hpp"
+#include "controller.hpp"
 #include "panel.hpp"
 #include "settings.hpp"
 #include "music_menu.hpp"
@@ -51,6 +52,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height) != 0
         || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale ? SDL_TRUE : SDL_FALSE) != 0)
         throw std::runtime_error(SDL_GetError());
+    ControllerInput controller; // joystick 1 of the original (seg2:8A30), any SDL game controller
     std::map<int, std::string> texts; // language file (texts in UTF-8)
     std::vector<uint8_t> language;    // also holds the menu resources
     if (const fs::path file = findCaseInsensitive(root, "dat/d/rally_d.dat"); !file.empty()) language = readFile(file);
@@ -376,9 +378,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         if (!modal && !moving && heldArrow != SDLK_UNKNOWN && play.game().phase() == Game::Phase::Move
             && !play.game().isComputer(play.game().currentPlayer()) && play.handleKey(heldArrow, 0))
             report();
+        // seg2:8A30 every 80 ms while [Setup] Joystick is on: keys for the focused window.
+        if (!options.smokeTest) controller.update(SDL_GetTicks(), screen.settings().value[Settings::Joystick] != 0);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
+            controller.handleEvent(event);
             if (event.type == SDL_WINDOWEVENT) {
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) // keep the canvas centred and scaled
                     SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height);

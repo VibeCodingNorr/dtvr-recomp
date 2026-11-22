@@ -1815,6 +1815,36 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   **Assumptions:** M1 is shown when the phase is Arrived; the cursor is not
   confined, positions outside count as the nearest edge.
 
+### Joystick (round 79)
+
+- **Game port** seg10:0010(n): with interrupts off, writes port 0x201 and counts
+  the axis bits (joystick 0: bits 0 / 1, joystick 1: bits 2 / 3) up to 0x7530
+  loops into DS:A7C4 (x) / A7C6 (y); the buttons are bits 4–5 (6–7) of the port,
+  inverted, in DS:9ADE (bit 0 button 1, bit 1 button 2). seg10:00BF detects the
+  sticks.
+- **Direction** seg2:8C2B(n): two readings that both pass the calibrated limits
+  (table DS:32E2[n]: +8 / +0xA x, +0x12 / +0x14 y) give VK_UP, VK_DOWN, VK_LEFT
+  or VK_RIGHT in this order of checks, else 0, in DS:9698[n]; buttons in
+  DS:A0DE[n].
+- **Tick** seg2:8A30 (timer procedure; SetTimer(…, 0x50 ms) at seg2:8018 after the
+  calibration seg2:8252, called from seg2:7F72 on the key C when [Setup]
+  Joystick is set): only while a window has the focus and DS:94E6 ≠ 0; joystick
+  1 when DS:A126 bit 0 is set (joystick 2 is never read: an unconditional jump
+  at seg2:8A83). Per joystick: no direction after one → repeat counter DS:A0E2 =
+  0 and the steering direction DS:A77A = 0; a new direction → WM_KEYDOWN of it to
+  the focused window at once; the same → after three ticks every tick; button 1
+  set and the buttons changed → VK_RETURN, button 2 → VK_ESCAPE. The JOY window
+  seg2:8D81 is the calibration dialog (pictures DS:32F2 / 32FD; Escape, Return,
+  Space close it).
+- **Rebuilt** in `src/controller.cpp`: the first SDL game controller (Xbox and
+  other pads; also hot-plugged) is joystick 1 while [Setup] Joystick ≠ 0: d-pad or
+  left stick give the direction, A is button 1 (Return), B button 2 (Escape).
+  The repetition is the tested `JoystickRepeater`; its keys are pushed into the
+  SDL queue so menus, dialogs and driving receive them like the keyboard, and a
+  released direction sends key-up (clears the held arrow, DS:A77A). **Not
+  rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
+  the stick limit is half the range), the two-stick mode.
+
 ### Player setup (round 36)
 
 - **Neues Spiel** seg4:0DA9(0): seg8:0747 (an intro window TEMP, only without the
