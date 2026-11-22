@@ -16,18 +16,28 @@ no overall completion percentage is claimed.
 | ISO installer and Linux build | ✅ Implemented | Read standard/raw Mode 1 ISO, validate supported input, build/test/install and create a launcher. GUI and updates remain planned. | [Installer](tools/install.py), [pipeline](docs/installer.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
-| Sprite data | 🟡 Partial | SBS frames decoded; animation sequencing, timing and full palette behavior still open. | [SBS parser](src/sbs.cpp) |
+| Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation sequencing, timing and palette selection still open. | [SBS parser](src/sbs.cpp) |
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; viewport and palette cycling still open. | [World map](src/worldmap.cpp) |
-| Board and towns | 🟡 Partial | 700 fields, links and 115 towns decoded, with graph overlay; field actions and movement still open. | [Board parser](src/board.cpp) |
+| Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
-| Turn logic and original rules | ⬜ Not implemented | Recover and validate one complete human turn before broadening mechanics. | [Format research](docs/formats.md) |
+| Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
+| Turn logic and original rules | ⬜ Not implemented | Field effects on arrival, then one complete human turn before broadening mechanics. | [Format research](docs/formats.md) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
 | Optional graphics | ⬜ Planned | Pixel scaling, shaders and restrained parallax; effects remain optional. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
+
+Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/formats.md)):
+
+1. SBS sprite container decoded (all 94 files, 1,559 frames).
+2. World map composed with the original loader and draw rules; transparency confirmed.
+3. Board decoded: field graph from `europe.str`, towns, field lists.
+4. Movement: slot machine, step counter, `europe.pit` tile flags, rand(), routes.
+5. *In progress:* direction input, end of a move and field effects — the first
+   complete human turn.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -71,7 +81,8 @@ of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
 ## How to play
 
 The current build is an **inspection viewer**, not a playable rally yet. You can
-explore the reconstructed world and board graph; turns, AI opponents, saves,
+explore the reconstructed world and board graph and preview a move (press **W**
+in the world view); full turns, AI opponents, saves,
 multiplayer and native music playback are not implemented.
 
 1. Have your own supported original ISO and install the dependencies listed above.
