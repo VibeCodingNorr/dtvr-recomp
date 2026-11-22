@@ -1810,6 +1810,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   otherwise the deepest depth. Rebuilt as `reachableSteps` (src/ai.cpp, tested)
   and `Game::startMove`; rules revision 33. seg5:607B(5) is not rebuilt.
 
+### Message coverage (round 81)
+
+- All 73 calls of the message window seg6:51EA were listed with their text id or
+  random base (private helper `msgbases.py`) and compared with the rebuild: every
+  language text shown by the original during a game is rebuilt (shut-in texts
+  6003–6011 were the last gap, round 80). Not rebuilt: the English save / load
+  errors stored in rally.exe itself (DS:7EE9 ff., e.g. "Error saving player",
+  "Wrong structsize. File not compatible", seg8:ABE5 ff. / B08D ff.); the native
+  save format reports its own errors on stderr.
+
 ### Mouse steering (round 78)
 
 - **Map click** seg6:1798 (map window procedure from seg6:1681): outside Umfeld

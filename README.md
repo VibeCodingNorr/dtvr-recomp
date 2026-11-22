@@ -149,7 +149,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 78. Mouse steering: the original MCTRL cross opens on a map click and posts the chosen direction.
 79. Controllers: any SDL game controller acts as the original joystick 1 (d-pad / stick, A = Return, B = Escape, 80 ms repeat).
 80. Shut-in players: the move is shortened to what is reachable or the turn ends (seg2:61B7, texts 6003-6011).
-81. *Next:* remaining original messages and windows of a turn (compare with rally.exe).
+81. Message coverage checked: every in-game language message of rally.exe is rebuilt.
+82. *Next:* FLC films (card and event films), then palette cycling of the water.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
