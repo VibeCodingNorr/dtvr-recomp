@@ -338,24 +338,53 @@ SDL_Point GameScreen::viewOrigin() const {
             std::clamp(cy - h / 2, 0, side - h) / WorldMap::kTile * WorldMap::kTile};
 }
 
+// seg5:3BB9 every 50 ms (SetTimer 0x32, seg5:01EB): the ten colours from palette
+// index 0x90 rotate by one (the last becomes the first) and are written to the DAC
+// (seg5:2FB4) while [Setup] Colorcycle is on.
+void GameScreen::cyclePalette(bool on) {
+    if (!world_ || !world_->format->palette || world_->format->palette->ncolors < 0x9A) return;
+    const int phase = on ? int(SDL_GetTicks() / 50 % 10) : 0;
+    if (phase == cyclePhase_) return;
+    cyclePhase_ = phase;
+    SDL_Color colors[10];
+    for (int i = 0; i < 10; ++i) colors[i] = cycleBase_[size_t((i - phase + 10) % 10)];
+    SDL_SetPaletteColors(world_->format->palette, colors, 0x90, 10);
+}
+
 void GameScreen::drawMap() {
     // The map window clears its WinG bitmap (PATBLT BLACKNESS, seg6:171E) and draws
     // the world from the tile origin DS:956A/9568 into DS:94DA..94DE.
     const SDL_Rect map = toSdl(layout_.map);
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &map);
-    const int season = seasonForMonth(game_.calendar().month);
+    // [Setup] Colorcycle ("Wellen und Jahreszeiten"): off fixes the tile directory to 1
+    // (seg5:1929) and stops the water's palette cycle (seg5:3C22).
+    const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
+    const int season = colorcycle ? seasonForMonth(game_.calendar().month) : 1;
     if (season != worldSeason_) {
-        auto surface = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0); // [Setup] Views
-        world_.reset(SDL_CreateTextureFromSurface(renderer_, surface.get()));
+        world_ = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0, colorcycle); // Views
         worldSeason_ = season;
+        if (world_ && world_->format->palette && world_->format->palette->ncolors >= 0x9A)
+            for (int i = 0; i < 10; ++i) cycleBase_[size_t(i)] = world_->format->palette->colors[0x90 + i];
+        cyclePhase_ = 0;
     }
     if (!world_) return;
+    cyclePalette(colorcycle);
     const SDL_Point origin = viewOrigin();
     const int z = zoomFactor(); // the world area of the viewport is shown z times as large
-    const SDL_Rect source{origin.x, origin.y, layout_.viewport.w / z, layout_.viewport.h / z};
+    SDL_Rect source{origin.x, origin.y, layout_.viewport.w / z, layout_.viewport.h / z};
     const SDL_Rect target{map.x + layout_.viewport.x, map.y + layout_.viewport.y, source.w * z, source.h * z};
-    SDL_RenderCopy(renderer_, world_.get(), &source, &target);
+    // Only the visible area is converted from the indexed world, so a palette change
+    // shows at once (the original changes the hardware palette, seg5:2FB4).
+    if (!viewRgb_ || viewRgb_->w != source.w || viewRgb_->h != source.h) {
+        viewRgb_.reset(SDL_CreateRGBSurfaceWithFormat(0, source.w, source.h, 32, SDL_PIXELFORMAT_ARGB8888));
+        viewTexture_.reset(SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                             source.w, source.h));
+    }
+    if (!viewRgb_ || !viewTexture_) return;
+    SDL_BlitSurface(world_.get(), &source, viewRgb_.get(), nullptr);
+    SDL_UpdateTexture(viewTexture_.get(), nullptr, viewRgb_->pixels, viewRgb_->pitch);
+    SDL_RenderCopy(renderer_, viewTexture_.get(), nullptr, &target);
     // Vehicles (seg2:1846): frame of the facing's animation (table DS:1994, mode 1:
     // <letter>UP / R / DOWN / L 1-4, delay 4 ticks). The code read so far puts the
     // frame's top-left corner at (field * 16, field * 16 + 2 - height) minus the map

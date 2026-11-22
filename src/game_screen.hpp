@@ -138,8 +138,13 @@ private:
     SpriteSet buySprites_;   // sbs/buy.sbs of the town dialog (seg1:4C45)
     SpriteSet lsSprites_;    // sbs/ls.sbs of the save dialog (seg8:B1CE)
     std::map<std::string, Texture> art_;
-    Texture world_{nullptr, SDL_DestroyTexture};
+    Surface world_{nullptr, SDL_FreeSurface};      // 8-bit world, its palette cycles
     int worldSeason_ = -1;
+    std::array<SDL_Color, 10> cycleBase_{};        // palette entries 0x90..0x99 as loaded
+    int cyclePhase_ = 0;
+    Surface viewRgb_{nullptr, SDL_FreeSurface};    // the visible world area, converted
+    Texture viewTexture_{nullptr, SDL_DestroyTexture};
+    void cyclePalette(bool on);
     SlotView slot_;
     MessageView messages_;
     MenuView menu_;

@@ -48,8 +48,8 @@ fs::path findCaseInsensitive(const fs::path& root, const fs::path& relative) {
     return current;
 }
 
-Surface loadWorld(const fs::path& root, int month, bool views) {
-    const int season = seasonForMonth(month);
+Surface loadWorld(const fs::path& root, int month, bool views, bool seasons) {
+    const int season = seasons ? seasonForMonth(month) : 1;
     std::vector<Tile> tiles;
     Surface palette(nullptr, SDL_FreeSurface);
     for (int part = 0;; ++part) {

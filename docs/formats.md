@@ -1810,6 +1810,25 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   otherwise the deepest depth. Rebuilt as `reachableSteps` (src/ai.cpp, tested)
   and `Game::startMove`; rules revision 33. seg5:607B(5) is not rebuilt.
 
+### Colour cycling (round 82)
+
+- **Timer** seg5:01EB: SetTimer(…, 0x32 = 50 ms, seg5:3BB9). Each tick rotates the
+  ten 4-byte entries at DS:9526 by one (entry 9 becomes entry 0, the others move up,
+  seg5:3BCD ff.) and, while DS:13A4 ≠ 0, [Setup] Colorcycle (DS:B5DC) ≠ 0 and the
+  main window is not iconic, seg5:2FB4(0x90, 0x0A, DS:9526) writes them to the VGA
+  DAC directly (port 0x3C8 index, 0x3C9 data) as palette indices 0x90–0x99.
+- **Colours** seg5:3AEE ff. fill DS:9526 from palette entries 0x90–0x99 (reduced
+  to 6 bits with `shr 2` when the device gives 8-bit values). In the SBB tile sets
+  these ten indices are the sea blues (about 6,500 pixels each per set, the
+  neighbouring indices 0x9A–0x9F unused): the cycle makes the water ripple.
+- **Seasons** with Colorcycle = 0 seg5:1929 fixes the tile directory to 1, so the
+  map keeps the summer tiles ("Wellen und Jahreszeiten" switches both).
+- **Rebuilt** in `GameScreen::cyclePalette` / `drawMap`: the world stays an
+  indexed surface whose entries 0x90–0x99 rotate every 50 ms; only the visible area
+  is converted into a streaming texture each frame. **Not rebuilt:** the hardware
+  palette also affected sprites and windows using these indices; here only the map
+  cycles.
+
 ### Message coverage (round 81)
 
 - All 73 calls of the message window seg6:51EA were listed with their text id or
@@ -1991,7 +2010,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256
   entries; viewers use the SBB palette for the map and `map.bmp` for sprites.
-  Palette selection and colour cycling (`[Setup] Colorcycle`) remain to be traced.
+  Colour cycling (`[Setup] Colorcycle`) is traced in "Colour cycling" (round 82).
 - Frame names suggest animation sequences (`DDOWN1..4`, `V01..`); playback order,
   timing and placement come from code that is not yet analysed.
 - `map/europe_d.tow`: contains readable city and property names, including

@@ -20,8 +20,8 @@ no overall completion percentage is claimed.
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
-| Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation records and their exact step rule (seg2:6DCB) drive the finish, victory and all event scenes. Vehicle frame offsets and palette cycling still open. | [SBS parser](src/sbs.cpp), [event scenes](src/event_scenes.cpp) |
-| World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom. Palette cycling still open. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
+| Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter. Animation records and their exact step rule (seg2:6DCB) drive the finish, victory and all event scenes. Vehicle frame offsets still open. | [SBS parser](src/sbs.cpp), [event scenes](src/event_scenes.cpp) |
+| World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom; the water cycles its palette as the original. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
 | Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Open: FLC films, vehicle frame offsets, remaining dialogs. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
@@ -150,7 +150,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 79. Controllers: any SDL game controller acts as the original joystick 1 (d-pad / stick, A = Return, B = Escape, 80 ms repeat).
 80. Shut-in players: the move is shortened to what is reachable or the turn ends (seg2:61B7, texts 6003-6011).
 81. Message coverage checked: every in-game language message of rally.exe is rebuilt.
-82. *Next:* FLC films (card and event films), then palette cycling of the water.
+82. Colour cycling: the sea ripples by rotating palette entries 0x90-0x99 every 50 ms; Colorcycle off keeps the summer tiles.
+83. *Next:* FLC films (card and event films).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
