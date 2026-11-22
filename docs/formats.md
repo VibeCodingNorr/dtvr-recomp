@@ -632,6 +632,16 @@ the types 0x400/0x800 follow in round 13).
   +0x1E = 0); if that player carries Dr. Drago, seg2:9C97 places him anew.
 - **Flugzeug** (card 27, seg3:31D5): a window (resource 0x3381) chooses a target
   town; the flight ends with the town's field action.
+  *Round 54:* window TEMP 0x114 × 0x100 (procedure seg3:3384) on `%s\f.bmp`
+  (butt); heading text 5601 (Arial 20 weight 600), rows 5602 + i (London,
+  Brüssel, Berlin, Rom, Oslo, Madrid, Athen, Moskau; Arial 18) at y = 0x32 +
+  0x18 · i, x 0–0xF0, colour 0x45, centred; DS:8C1E = 7 (with Moskau) when the
+  east is open (DS:A10F = 0), otherwise 6. A click on row 1 (Brüssel) while
+  DS:A104 = 0 shows text 8300 instead (seg3:33F2). The chosen name is matched
+  against the towns with `_fstricmp` (seg3:32CE ff.), then the player flies
+  there (seg2:04AD) and the field action follows. Rebuilt in
+  `src/flight_view.cpp`; **assumptions:** focus by mouse or arrow keys shown in
+  white, Escape / right button cancel, the window centred.
 - **Verdoppeln** (card 40, seg3:3FBB): sets DS:2EB0 = 1; the card handler at
   seg3:0E83 then skips removing the next card (seg2:3C62) and clears the flag.
   seg2:0CE8 clears it at every player change.

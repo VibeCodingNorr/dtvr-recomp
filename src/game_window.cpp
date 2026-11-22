@@ -3,10 +3,12 @@
 // dialogs, the scenes and the game loop around GameScreen.
 #include "game_screen.hpp"
 
+#include "board.hpp"
 #include "music_menu.hpp"
 #include "ne_strings.hpp"
 
 #include <array>
+#include <cctype>
 #include <ctime>
 #include <iostream>
 #include <stdexcept>
@@ -14,6 +16,17 @@
 namespace fs = std::filesystem;
 
 namespace dtvr {
+namespace {
+
+// Names compared without regard to ASCII case (seg10:22CA folds A-Z only).
+bool sameName(const std::string& a, const std::string& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) return false;
+    return true;
+}
+
+} // namespace
 
 int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
                   const GameWindowOptions& options) {
@@ -91,6 +104,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int announceSeen = play.game().announceSerial();
     int shopSerial = -1;
     int targetCardSlot = -1; // hand slot waiting for the target choice
+    int flightCardSlot = -1; // hand slot of the Flugzeug card being booked
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -177,6 +191,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.cardShop) screen.cardShop().open(play.game());
+    if (options.flight) screen.flight().open(play.game().eastOpen(), play.game().remainingStages() == 0);
     if (options.selectPlayer) {
         std::vector<int> others;
         std::array<uint8_t, kPlayerSlots> status{};
@@ -300,7 +315,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
                            || screen.victory().active() || screen.balance().active()
                            || screen.announcement().active() || screen.cardShop().isOpen()
-                           || screen.selectPlayer().isOpen();
+                           || screen.selectPlayer().isOpen() || screen.flight().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -429,6 +444,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (r != SaveView::Result::None) saveDialog.close();
                 continue;
             }
+            if (screen.flight().isOpen()) { // seg3:3384
+                const FlightView::Result r = screen.flight().handle(event);
+                if (r.closed) screen.messages().push(Notice{8300, {}}); // Bodennebel over Brussels
+                if (r.cancel) screen.flight().close();
+                if (!r.town.empty()) {
+                    screen.flight().close();
+                    // seg3:32CE: the town whose name equals the booked one (_fstricmp).
+                    int town = -1;
+                    for (size_t t = 0; t < towns.size() && town < 0; ++t)
+                        if (sameName(oemToUtf8(towns[t].name), r.town)) town = int(t);
+                    if (town >= 0 && play.game().playCard(flightCardSlot, town)) report();
+                }
+                continue;
+            }
             if (screen.selectPlayer().isOpen()) { // SELPLAYER (seg2:5386)
                 const int chosen = screen.selectPlayer().handle(event);
                 if (chosen >= 0) {
@@ -461,6 +490,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                             continue;
                         }
                         if (candidates.size() == 1 && play.game().playCard(slot, candidates.front())) report();
+                        continue;
+                    }
+                    if (kind == CardKind::Flugzeug) { // seg3:31D5: the booking window
+                        flightCardSlot = slot;
+                        screen.flight().open(g.eastOpen(), g.remainingStages() == 0);
                         continue;
                     }
                     if (play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();

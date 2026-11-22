@@ -33,7 +33,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout),
+      cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
                    SDL_Texture* t = find(buySprites_, name);
@@ -418,6 +418,7 @@ void GameScreen::draw() {
     cardShop_.draw(game_);
     cards_.draw();
     selectPlayer_.draw();
+    flight_.draw();
     save_.draw(slots_);
     menu_.draw();
     messages_.draw(game_);
