@@ -28,10 +28,13 @@ public:
     bool isOpen() const { return !buttons_.empty(); }
     // The hand slot of a clicked enabled card, -1 otherwise.
     int slotAt(int x, int y) const;
-    void draw();
+    // `disabled` is the frame dis_<language> of <n>_assort.sbs laid over a disabled
+    // card (SBBUTTON paint seg1:1902, state bit 0x10).
+    void draw(SDL_Texture* disabled);
 
 private:
     SDL_Texture* picture(int type);
+    bool enabled(int type) const;
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;

@@ -43,20 +43,22 @@ SDL_Texture* CardView::picture(int type) {
     return it->second.get();
 }
 
+bool CardView::enabled(int type) const {
+    if (mask_ < 0 || type < 0) return true;
+    const int category = cardTypes()[size_t(type)].category; // seg3:0701
+    return (category & mask_) == category;
+}
+
 int CardView::slotAt(int x, int y) const {
     for (const auto& [b, type] : buttons_) {
         const ScreenRect& r = b.rect;
         if (x < r.x || x >= r.x + r.w || y < r.y || y >= r.y + r.h) continue;
-        if (mask_ >= 0 && type >= 0) { // seg3:0701: a disabled button does not react
-            const int category = cardTypes()[size_t(type)].category;
-            if ((category & mask_) != category) return -1;
-        }
-        return b.slot;
+        return enabled(type) ? b.slot : -1; // a disabled button ignores input (seg1:0F9C)
     }
     return -1;
 }
 
-void CardView::draw() {
+void CardView::draw(SDL_Texture* disabled) {
     for (const auto& [b, type] : buttons_) {
         const SDL_Rect dst{b.rect.x, b.rect.y, b.rect.w, b.rect.h};
         if (SDL_Texture* t = picture(type)) SDL_RenderCopy(renderer_, t, nullptr, &dst);
@@ -64,6 +66,7 @@ void CardView::draw() {
             SDL_SetRenderDrawColor(renderer_, 67, 27, 0, 255);
             SDL_RenderDrawRect(renderer_, &dst);
         }
+        if (disabled && !enabled(type)) SDL_RenderCopy(renderer_, disabled, nullptr, &dst); // seg2:9497 at (0, 0)
     }
 }
 

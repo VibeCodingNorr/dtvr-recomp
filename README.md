@@ -128,7 +128,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 57. Yellow field with a full hand: the card window opens in discard mode after text 403.
 58. Risiko window: the light frames and pressed buttons of risiko.sbs, CHANCE / STOP by mouse.
 59. Card window masks: only the cards of the current category react (seg3:0701).
-60. *Next:* find the SBBUTTON window procedure (disabled and focus look).
+60. SBBUTTON decoded (seg1:0E78): disabled cards show the original GESPERRT overlay.
+61. *Next:* keyboard focus with the red frame and the pressed offset of SBBUTTON.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

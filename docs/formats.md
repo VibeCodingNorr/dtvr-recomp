@@ -1208,11 +1208,23 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Unknown:** the button behaviour of SBBUTTON (focus look, keys, how the window
   closes without playing). *Round 59:* seg3:0701 sends 0x7ED with wParam 0 to
   the button of a card whose category matches DS:18 and wParam 1 otherwise. The
-  class is registered neither by sbtimer.dll, wavemix.dll nor the WinG DLLs (no
-  SBBUTTON string there) and its window procedure is not found in rally.exe yet,
-  so the look of a disabled button is unknown. Rebuilt: disabled cards ignore
-  clicks (masks 2 from the menu, 1 from the town dialog, all for the discard
-  choice); they are drawn unchanged. Rebuilt (`src/layout.cpp` cardWindowLayout,
+  class is registered by rally.exe itself.
+- **SBBUTTON** (round 60): seg1:0D7E superclasses the system class BUTTON
+  (GetClassInfo, DS:32B3; old procedure kept at DS:A0FA) under the name
+  SBBUTTON (DS:32BA) with the procedure seg1:0E78. Messages: 0x7EA sets the
+  picture pointer (window long 2) and repaints; 0x7ED with wParam 1 sets state
+  bit 0x10 (seg1:14C1), wParam 0 clears it (seg1:1519); a key 0x20 (space) is
+  ignored while bit 0x10 is set (seg1:0F9C), otherwise Plopp02 on channel 2 and
+  WM_COMMAND with the control id to the parent. Paint seg1:1718: the picture at
+  (0, 0), or at (1, 1) while state bit 1 (pressed) is set; with bit 0x10 the
+  frame `dis_%c` (DS:32CB, language letter DS:A0F0) laid over it with colour 0
+  transparent (seg2:9497) — in `sbs/<n>_assort.sbs` DIS_D / DIS_E have the card
+  size and hold a black checker dither with a red "GESPERRT!" band; with bit 4
+  (focus) a rectangle with CreatePen(PS_INSIDEFRAME, 5, PALETTERGB(255, 0, 0)) and
+  the null brush around the client area. Rebuilt: disabled cards ignore clicks
+  (masks 2 from the menu, 1 from the town dialog, all for the discard choice)
+  and show DIS_D. Not rebuilt: the pressed offset and the red focus frame
+  (keyboard focus of the card buttons). Rebuilt (`src/layout.cpp` cardWindowLayout,
   `src/card_view.cpp`): a left click plays the card through the same path as
   the digit keys (target `T`, nail direction by arrow key); Escape or the right
   button close the window (assumption); a played card closes it.

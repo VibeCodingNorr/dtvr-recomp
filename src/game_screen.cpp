@@ -418,7 +418,7 @@ void GameScreen::draw() {
     balance_.draw(SDL_GetTicks());
     stage_.draw(SDL_GetTicks());
     cardShop_.draw(game_);
-    cards_.draw();
+    cards_.draw(sprite("dis_d")); // "dis_%c" with the language letter DS:A0F0 (seg1:190D)
     selectPlayer_.draw();
     flight_.draw();
     nails_.draw();
