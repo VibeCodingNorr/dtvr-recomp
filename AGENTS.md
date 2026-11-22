@@ -6,6 +6,14 @@ Reconstruct Die total verrückte Rallye as a native Linux game using the user's
 original installation. Repository: https://github.com/VibeCodingNorr/dtvr-recomb.
 Communicate with the user in German. Code and technical documentation may use English.
 
+## Parallel work with Claude
+
+- Choose tasks that do not block Claude's active engine work. Prefer isolated
+  installer/packaging modules, documentation or external validation.
+- Inspect ongoing changes before choosing scope. Do not edit Claude's active
+  modules or shared integration files as part of parallel feature work. Prepare
+  any required integration separately for handoff instead.
+
 The current C++17 / SDL2 executable is a data viewer. It loads the original Europe
 overview and presents SBB bitmap strips as a graphics-block grid. Zoom, pan, view
 switching and SBB file navigation are implemented. SBS frames are decoded and
@@ -137,6 +145,12 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `tools/installer_update.py`: explicit verified updates, preserved local files/Ogg
   packs and retained rollback installation. Never hash mutable saves as managed
   assets or modify XDG settings; run smoke checks with isolated XDG directories.
+- `src/music_{catalog,stream,player,menu}.{hpp,cpp}`: complete local Ogg catalogs,
+  bounded worker decoding, presentation-only cue control and F8 sound-set selection.
+  One 44.1 kHz stereo device mixes music and effects. No file I/O or waiting in
+  the audio callback; stop/error must never count as natural completion.
+- `docs/native-music.md`: supported triggers, timing limitations, preferences and
+  generated-tone tests. Preserve game RNG when exposing musical choices.
 - `tools/check_repository.py`: tracked source/media/path distribution checks.
 - `docs/distribution.md`: source-only boundaries and external installation policy.
 - `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.

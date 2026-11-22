@@ -14,6 +14,8 @@
 
 namespace dtvr {
 
+class MusicStream;
+
 constexpr int kSoundCount = 39;
 const char* soundFile(int index); // "Plopp01.wav" ...
 
@@ -30,6 +32,8 @@ public:
     // seg1:3579: a WAV file by path (finish, voices); same channel rules.
     void playFile(int channel, const std::filesystem::path& file);
     void stop(int channel);
+    // Must outlive this audio device; all sources share one stereo mixer.
+    void setMusic(MusicStream* music);
 
 private:
     struct Voice { const std::vector<int16_t>* samples = nullptr; size_t pos = 0; int loops = 0; };
@@ -47,6 +51,7 @@ private:
     std::array<std::vector<int16_t>, kSoundCount> cache_;
     std::array<bool, kSoundCount> loaded_{};
     std::array<Voice, 8> voices_{};
+    MusicStream* music_ = nullptr;
 };
 
 } // namespace dtvr

@@ -1,8 +1,8 @@
 # Preparing complete Ogg sound sets
 
 Status: offline pack building, verification and optional installer integration
-are implemented. In-game music playback and soundtrack selection are not yet
-implemented. Original media and SoundFonts are supplied by the user.
+are implemented. The game window now supports [native Ogg playback and F8
+soundtrack selection](native-music.md). Original media and SoundFonts are supplied by the user.
 
 ## Contents and styles
 
@@ -55,7 +55,7 @@ the selected pack, then builds/tests the native installation. The pack is placed
 at `data/music/packs/my-gm-classic/` and listed/hashed in the installation manifest.
 Without `--soundfont`, the installer retains CD extraction only and does not
 claim a complete soundtrack. Additional independently built packs can live under
-the external installation's `data/music/packs/`; runtime discovery is still pending.
+the external installation's `data/music/packs/`; the game discovers complete packs on startup.
 
 ## Catalog and timing
 
@@ -75,9 +75,9 @@ promised; versions and inputs are recorded.
 - `media_duration_seconds` adds exactly two seconds for note release/reverb.
   Rendering is padded/bounded to that length; leading/internal MIDI silence stays.
 
-Future playback should trigger recovered completion behavior at the nominal end,
-without adding two seconds to every background change. Tail overlap and interrupt
-behavior need explicit integration. The catalog marks original hardware and
+Native playback triggers completion at the nominal end, without adding two
+seconds to every background change. Overlapping tails and all original animation
+boundaries still need integration. The catalog marks original hardware and
 playback timing as unverified. `loop` is false; background cycling is not an
 infinite loop of the same piece.
 
@@ -95,7 +95,7 @@ python3 tools/build_soundtrack.py --verify /path/to/soundtrack-packs/my-gm-class
 
 Verification checks the 25 required IDs, local paths, hashes, timing and full
 decoding. It uses ffprobe/FFmpeg but does not load FluidSynth, banks or MIDI.
-These are preparation/diagnostic tools; the future game needs a native Ogg decoder.
+These are preparation/diagnostic tools; the game uses libvorbisfile for native decoding.
 
 Synthetic `tests/test_soundtrack.py` checks completeness, reuse, missing cues,
 unsafe IDs/paths, invalid timelines, tampering and failed-render cleanup. Set
@@ -105,8 +105,9 @@ Two local complete sets were prepared using the supported original files and the
 available FluidR3 GM bank: `fluidr3-gm-classic` and `fluidr3-gm-dry`. Their files
 remain external, not repository/release contents or authentic hardware claims.
 
-Next: listening checks, native streaming, original music events and the
-[ESC soundtrack selector](pause-menu.md). A CD-hybrid set remains experimental
+Next: listening checks, remaining original transition boundaries and a broader
+[ESC settings interface](pause-menu.md). F8 selection and streaming are implemented.
+A CD-hybrid set remains experimental
 because source boundaries/timing are unverified; its short recorded intro must
 not blindly replace the full intro. See [music research](music-research.md) and
 [FluidSynth's file renderer](https://www.fluidsynth.org/api/FileRenderer.html).

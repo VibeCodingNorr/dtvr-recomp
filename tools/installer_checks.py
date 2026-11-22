@@ -99,6 +99,10 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     ttf = subprocess.run(["pkg-config", "--exists", "SDL2_ttf"], capture_output=True)
     if ttf.returncode:
         raise ValueError("SDL2_ttf development files are required for text in the game interface (pkg-config SDL2_ttf)")
+    for module in ("vorbisfile", "json-c >= 0.15"):
+        result = subprocess.run(["pkg-config", "--exists", module], capture_output=True)
+        if result.returncode:
+            raise ValueError(f"Development files required for native Ogg music: {module} (pkg-config)")
     font = interface_font()
     if not font:
         raise ValueError("Install a complete Arial or Liberation Sans font family (regular, bold, italic, bold italic) for readable game text")

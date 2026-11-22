@@ -2,6 +2,7 @@
 #include "sound.hpp"
 
 #include "sdl_assets.hpp"
+#include "music_stream.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -27,9 +28,9 @@ SoundPlayer::SoundPlayer(const fs::path& root) : root_(root) {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return;
     initialized_ = true;
     SDL_AudioSpec want{};
-    want.freq = 22050;
+    want.freq = 44100;
     want.format = AUDIO_S16SYS;
-    want.channels = 1;
+    want.channels = 2;
     want.samples = 512;
     want.callback = &SoundPlayer::callback;
     want.userdata = this;
@@ -68,7 +69,7 @@ bool SoundPlayer::convert(const fs::path& path, std::vector<int16_t>& out) const
     Uint32 length = 0;
     if (path.empty() || !SDL_LoadWAV(path.string().c_str(), &spec, &data, &length)) return false;
     SDL_AudioCVT cvt{};
-    if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, 1, spec_.freq) >= 0) {
+    if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq, AUDIO_S16SYS, spec_.channels, spec_.freq) >= 0) {
         std::vector<Uint8> buffer(size_t(length) * size_t(cvt.len_mult));
         std::memcpy(buffer.data(), data, length);
         cvt.buf = buffer.data();
@@ -103,8 +104,10 @@ void SoundPlayer::callback(void* self, Uint8* stream, int len) {
 }
 
 void SoundPlayer::mix(int16_t* out, size_t samples) {
+    if (music_) music_->render(out, samples);
+    else std::fill(out, out + samples, 0);
     for (size_t i = 0; i < samples; ++i) {
-        int sum = 0;
+        int sum = out[i];
         for (Voice& v : voices_) {
             if (!v.samples) continue;
             if (v.pos >= v.samples->size()) {
@@ -116,6 +119,12 @@ void SoundPlayer::mix(int16_t* out, size_t samples) {
         }
         out[i] = int16_t(std::clamp(sum, -32768, 32767));
     }
+}
+
+void SoundPlayer::setMusic(MusicStream* music) {
+    if (device_) SDL_LockAudioDevice(device_);
+    music_ = music;
+    if (device_) SDL_UnlockAudioDevice(device_);
 }
 
 } // namespace dtvr

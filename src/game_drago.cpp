@@ -127,6 +127,7 @@ void Game::playHauAb() {
     const int target = randomOtherPlayer(players_, current_, rng_); // always drawn (seg3:3F13)
     if (drago_.holder == current_ && target != current_) {          // seg2:B4E3
         drago_.holder = target;
+        music_.push_back("f3"); // seg2:B53B (Hau ab), no new random draw
         messages_.push_back("Dr. Drago muss zu Spieler " + std::to_string(target + 1));
     } else {
         messages_.push_back("Hau ab: Dr. Drago ist nicht bei Spieler " + std::to_string(current_ + 1));

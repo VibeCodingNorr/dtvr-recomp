@@ -92,6 +92,13 @@ class PreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "font family"):
                 preflight(self.iso, self.output)
 
+    def test_native_ogg_dependencies(self):
+        with patch("installer_checks.subprocess.run", side_effect=[
+                subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 0),
+                subprocess.CompletedProcess([], 1)]):
+            with self.assertRaisesRegex(ValueError, "vorbisfile"):
+                preflight(self.iso, self.output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -820,7 +820,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
         SDL_RenderClear(renderer.get());
         screen.draw();
-        musicMenu.draw(screen.textRenderer());
+        musicMenu.draw(screen.textRenderer(), screen.options().isOpen());
         const bool last = options.smokeTest && frame >= options.frames;
         if (!options.screenshot.empty() && (last || !options.smokeTest)) {
             Surface shot(SDL_CreateRGBSurfaceWithFormat(0, layout.width, layout.height, 32, SDL_PIXELFORMAT_ARGB8888),

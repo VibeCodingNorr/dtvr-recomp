@@ -26,8 +26,8 @@ no overall completion percentage is claimed.
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
 | Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites, and the slot machine with spinning reels, all at the original positions with art and text loaded from the installation. The drivers' vehicles are drawn from their SBS sets, and events, the yellow field and the solo opponent are announced in the original message window with the language texts. The menu window shows the original menus of the language file (turn menu `ONFIELD` before each human spin, Escape/Backspace `RIGHTBTN`, `MAIN1` via Hauptmenü): Würfeln, Karte einsetzen (card window with the original card pictures, a click plays a card) and Rallye beenden work; Zoom, Übersicht, Umfeld, Statistik and the main menu entries besides quitting are not built yet. The town dialog ESTATES opens when a human player stops in a town (tabs Kaufen / Verkaufen / Karte, a click on a row buys or sells, Escape ends the turn). Driving is still keyboard-driven; the remaining dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
-| Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
-| Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
+| Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. F8 controls set/volume; remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
+| Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and F8 selection. | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
 | Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes. Driver names come from the language file at run time. Not yet: saving/loading from the program's interface, autosave rotation. | [AI](src/ai.cpp), [saves](docs/save-format.md), [architecture](docs/architecture.md) |
@@ -143,7 +143,8 @@ with working Tk support; CLI use does not require Tk.
 
 The repository provides the native source and installer. You supply your own
 original CD image; neither the ISO nor original game data is distributed here.
-Requires Python 3, CMake, a C++17 compiler, pkg-config, SDL2 and SDL2_ttf development files.
+Requires Python 3, CMake, a C++17 compiler, pkg-config, SDL2, SDL2_ttf,
+libvorbisfile and json-c >= 0.15 development files.
 Install a complete Arial or Liberation Sans font family for text in the game
 window. The installer checks all four faces and SDL2_ttf before building.
 
@@ -174,9 +175,9 @@ translation is not implemented. See [installer details and updates](docs/install
 
 For the known mixed-mode image, installation also converts six recovered audio
 regions to Ogg Vorbis in `data/music/` (requires FFmpeg/libvorbis and ffprobe).
-Original track IDs and playback triggers still need reconstruction; the viewer
-does not yet play music. The intended native game plays local Ogg assets in place
-of original CD playback. See [CD audio and playback plan](docs/cd-audio.md).
+Original CD track IDs remain unverified. These six recordings alone do not supply
+a complete soundtrack. Build a complete Ogg pack with a supplied SoundFont for
+[native playback and F8 selection](docs/native-music.md).
 
 Read-only preflight and later installation verification are available separately:
 
@@ -186,6 +187,10 @@ python3 tools/installation_manifest.py /path/to/installation
 ```
 
 ## How to play
+
+**F8** opens music controls from the game/title/options menus: Up/Down selects a
+complete installed Klangset, Left/Right adjusts volume, Space toggles music and
+Escape returns. Set changes apply at the next piece; settings persist locally.
 
 Run the installed `play` launcher without arguments (or use **Spiel starten** in
 the installer) for the game window with its title menu. `play --game` also opens
@@ -205,8 +210,8 @@ properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it and
 **Ctrl+1–8** plays a property card (Kaufen, Gold, Platin, Mieten, Nimm,
 Abkaufen, Kredit, Verkaufen) whose mode lasts until the turn ends. Status
 (including cash) is shown in the window title, the log and your hand in the
-terminal. The other card effects, card fields, computer players, saves,
-multiplayer and native music playback are not implemented yet.
+terminal. The game-window controls and current reconstruction gaps are documented
+in the status table; multiplayer remains planned. Ogg music is available in `--game`.
 
 1. Have your own supported original ISO and install the dependencies listed above.
 2. Build an installation in a new directory outside this checkout:

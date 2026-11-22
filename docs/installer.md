@@ -23,7 +23,8 @@ process group; normal interruption cleans staging. Closing an active window
 offers to cancel and waits for cleanup. After success, start the native prototype
 or open its installation folder.
 
-Prerequisites must already be installed. The GUI identifies missing tools/SDL2/SDL2_ttf
+Prerequisites must already be installed. The GUI identifies missing tools/SDL2/SDL2_ttf,
+libvorbisfile and json-c >= 0.15 development files,
 and a complete Arial or Liberation Sans font family for game text;
 it does not install system packages, download media or ask for root. Without Tk
 or a graphical session, use the CLI:
@@ -63,8 +64,9 @@ program is needed. Installation never modifies the source ISO.
 CD audio import additionally requires FFmpeg with `libvorbis` and `ffprobe`.
 Converted files and provenance go into `data/music/`. See [CD audio](cd-audio.md)
 for the provisional segment layout and the native playback integration plan.
-The current viewer does not yet play music. The intended game uses these local
-Ogg assets through the recovered original music cues, without a mounted disc.
+The game window plays complete installed Ogg packs through recovered music cues,
+without a mounted disc. The six provisional CD recordings alone remain incomplete;
+see [native music](native-music.md).
 
 Pass `--soundfont /path/to/bank.sf2` to additionally render a complete 25-cue Ogg
 pack. `--music-style classic|dry`, `--music-pack-id` and `--music-pack-name`

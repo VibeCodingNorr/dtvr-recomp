@@ -1,8 +1,8 @@
 # Original music control and Ogg cue mapping
 
-Status: static executable analysis and reproducible audio/MIDI comparison. No
-runtime playback or installer synthesis is implemented here. Research is isolated
-from the engine/refactoring files. Original bytes, note sequences, recordings and
+Status: static executable analysis and reproducible audio/MIDI comparison. Native
+playback details are specified by [native music](native-music.md), and
+installer synthesis is implemented by the soundtrack builder. Original bytes, note sequences, recordings and
 disassembly are not included in this document or repository.
 
 Input executable SHA-256:
@@ -141,8 +141,8 @@ the user can render original MIDI sources with a selected synthesizer and suppli
 SoundFont. [FluidSynth's file renderer](https://www.fluidsynth.org/api/FileRenderer.html)
 supports offline MIDI-to-audio rendering; its
 [SoundFont requirements](https://www.fluidsynth.org/wiki/GettingStarted/) are SF2/SF3.
-The offline renderer and installer option are now implemented; see
-[soundtrack preparation](soundtracks.md). Native playback/menu selection remain pending.
+The offline renderer, installer option and native playback/F8 selection are now
+implemented; see [soundtrack preparation](soundtracks.md) and [native music](native-music.md).
 
 | Soundtrack option | Proposed construction | Limitation |
 | --- | --- | --- |
@@ -169,17 +169,16 @@ verified timeline mapping when resuming mid-piece; do not reuse raw time offsets
 across a shorter CD recording and a full MIDI rendering. Decode/seek/volume stay
 local to each client and must not advance gameplay or the network turn state.
 
-## Remaining work before playback integration
+## Remaining fidelity work
 
 - Validate candidate matches by listening and compare intro timing with original
   presentation; recover exact end/tail boundaries if reliable disc metadata appears.
-- Trace all event meanings and nested interruption behavior. The two saved
+- Validate all animation boundaries and nested interruption behavior. The two saved
   positions in the original are not a demonstrated arbitrary-depth audio stack.
 - Recover the sequencer position units and original timing around short cues.
-- Implement and verify offline rendering as a separate installer stage, then a
-  complete installed cue catalog and native streaming playback.
-- Test natural end vs cancellation, background progression, temporary cues,
-  focus suspension and menu settings with generated audio fixtures first.
+- Add overlapping synth tails and finish the original explicit background-return callers.
+- Listening checks and physical-device validation complement the implemented
+  generated-tone tests of completion, cancellation, progression, pause and selection.
 
 API interpretation references: Microsoft's
 [MCI completion notification](https://learn.microsoft.com/en-us/windows/win32/multimedia/mm-mcinotify)

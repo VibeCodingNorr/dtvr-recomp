@@ -18,7 +18,8 @@ Users launch the setup, select their own ISO and an installation destination,
 and click **Installieren und kompilieren**. Compilation and verification happen
 automatically. Explicit local updates retain user files and a complete previous
 installation; see [updates](installer.md#updating-a-local-installation).
-Python/Tk is included; CMake, a C++17 compiler, pkg-config, SDL2 and SDL2_ttf
+Python/Tk is included; CMake, a C++17 compiler, pkg-config, SDL2, SDL2_ttf,
+libvorbisfile and json-c >= 0.15
 development files must be available on the host. Audio conversion also needs
 FFmpeg/ffprobe; SoundFont rendering needs FluidSynth. Preflight identifies missing
 dependencies. The package does not install system packages or require root.
