@@ -35,6 +35,7 @@ std::string Settings::encode() const {
     o << "[Display]\n";
     o << "Fullscreen=" << int(fullscreen) << '\n';
     o << "IntegerScale=" << int(integerScale) << '\n';
+    o << "TextSmoothing=" << textSmoothing << '\n';
     o << "[Extensions]\n";
     o << "ComputerExtraCards=" << int(computerExtraCards) << '\n';
     return o.str();
@@ -56,6 +57,7 @@ Settings Settings::decode(const std::string& text) {
         if (name == "Rounds") { s.rounds = v; continue; } // the window checks 0..300 itself
         if (name == "Fullscreen") { s.fullscreen = v != 0; continue; }
         if (name == "IntegerScale") { s.integerScale = v != 0; continue; }
+        if (name == "TextSmoothing") { s.textSmoothing = v >= 0 && v <= 2 ? v : 1; continue; }
         if (name == "ComputerExtraCards") { s.computerExtraCards = v != 0; continue; }
         for (int i = 0; i < kCount; ++i)
             if (name == key(i) && v >= 0 && v < states(i)) s.value[size_t(i)] = v;

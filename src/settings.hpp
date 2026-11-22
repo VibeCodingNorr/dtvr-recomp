@@ -30,6 +30,9 @@ struct Settings {
     // and whole-number scaling of the canvas with black borders.
     bool fullscreen = false;
     bool integerScale = true;
+    // Text smoothing (recomb only): 0 Original (no anti-aliasing, as GDI on 256 colours),
+    // 1 smoothed at canvas size (scaled like the art), 2 smoothed at screen resolution.
+    int textSmoothing = 1;
 
     static const char* key(int index);       // profile key ("Wave", "Midi", ...)
     static const char* switchName(int index); // picture name ("fx", "midi", ...)

@@ -8,6 +8,7 @@
 #include "sb_button.hpp"
 #include "sdl_assets.hpp"
 #include "settings.hpp"
+#include "text.hpp"
 
 #include <SDL.h>
 
@@ -19,12 +20,16 @@ namespace dtvr {
 
 class OptionsView {
 public:
-    OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
+    OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
+                TextRenderer& text);
     // seg1:ADEE copies the values to DS:9478, but nothing reads the copy back.
     void open(const Settings& settings);
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     const Settings& settings() const { return settings_; }
+    // Recomb addition (not in rally.exe): the text smoothing between stop and star,
+    // cycled by a click; F12 changes it everywhere (game window) and updates the copy.
+    void setTextSmoothing(int mode) { settings_.textSmoothing = mode; }
 
     // Toggled: a switch changed (seg1:B2E2 ff. apply it at once); Close: star, stop,
     // F10 and the cancel of an SBBUTTON all run seg1:B539, which keeps the values.
@@ -36,10 +41,12 @@ public:
 
 private:
     SDL_Texture* bitmap(const std::filesystem::path& relative);
+    SDL_Rect smoothingRect() const;
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     ScreenLayout layout_;
+    TextRenderer& text_;
     SetupGeometry geometry_;
     std::map<std::string, Texture> cache_;
     Settings settings_;

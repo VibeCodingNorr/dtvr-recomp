@@ -192,6 +192,11 @@ int main() {
         CHECK(r.rounds == 99);
         r.rounds = 250;
         CHECK(Settings::decode(r.encode()).rounds == 250 && Settings::decode("[Default]\nRounds=12\n").rounds == 12);
+        // [Display] TextSmoothing (round 110): 0..2, default and bad values 1.
+        CHECK(r.textSmoothing == 1 && Settings::decode("TextSmoothing=2\n").textSmoothing == 2);
+        CHECK(Settings::decode("TextSmoothing=0\n").textSmoothing == 0 && Settings::decode("TextSmoothing=5\n").textSmoothing == 1);
+        r.textSmoothing = 0;
+        CHECK(Settings::decode(r.encode()).textSmoothing == 0);
     }
     CHECK(Settings::decode("Pause=3\n").pause == 3 && Settings::decode("Pause=9\n").pause == 0);
     CHECK(Settings::decode("Views=7\nMidi=x\nWave=0\n").value[Settings::Views] == 1);

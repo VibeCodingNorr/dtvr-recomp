@@ -53,7 +53,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       setup_(renderer, root, layout, text_),
       stages_(renderer, root, layout, texts_, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
-      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
+      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout, text_),
       finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
       balance_(renderer, root, layout.width, layout.height),
       stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_),
@@ -63,6 +63,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
+    text_.setSmoothing(settings_.textSmoothing);
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
     // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
     loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
@@ -287,6 +288,7 @@ bool GameScreen::vehicleMoving(int player) const {
 
 void GameScreen::applySettings(const Settings& settings) {
     settings_ = settings;
+    text_.setSmoothing(settings_.textSmoothing);
     worldSeason_ = -1; // reload the world with or without the Views tiles
     std::string error;
     if (!saveSettings(defaultSettingsFile(), settings_, error)) std::cerr << "Optionen: " << error << "\n";

@@ -130,7 +130,15 @@ Candidate enhancements, in order of usefulness:
 
 1. Pixel-aligned rendering and optional integer scaling with letterboxing. Scale
    text independently so it stays legible. Translate pointer coordinates through
-   the same camera transform used for rendering.
+   the same camera transform used for rendering. *Implemented:* `[Display] TextSmoothing` (F12)
+   0 Original (TTF solid, no anti-aliasing, as GDI text on 256 colours), 1
+   anti-aliased at canvas size (default), 2 anti-aliased at the output resolution:
+   `TextRenderer` rasterises at the renderer's logical-size scale and draws into
+   the canvas rectangle, positioned by the canvas-size extent so layout and line
+   breaks do not change. The options window shows it as a labelled line between
+   stop and star (a click cycles it). Neither F11 nor F12 is used by rally.exe:
+   the main window handles the keys of seg4:0259 and SBBUTTON forwards only
+   F1–F10.
 2. Optional subtle water highlights, weather overlays and a CRT/scanline preset.
    Isolate scene effects from interface text. Bloom, strong smoothing and distortion
    should never be required to read the original pixel art.

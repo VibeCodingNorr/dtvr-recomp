@@ -32,6 +32,12 @@ public:
     TextRenderer(const TextRenderer&) = delete;
     TextRenderer& operator=(const TextRenderer&) = delete;
     bool available() const { return available_; }
+    // 0 Original: no anti-aliasing; 1 anti-aliased at canvas size (default); 2 anti-aliased
+    // at the output resolution: glyphs are rasterised at the renderer's scale and drawn
+    // into the same canvas rectangle, so layout and line breaks stay those of the canvas.
+    enum Smoothing { Original = 0, Canvas = 1, Screen = 2 };
+    void setSmoothing(int mode) { smoothing_ = mode >= Original && mode <= Screen ? mode : Canvas; }
+    int smoothing() const { return smoothing_; }
     const std::string& fontDescription() const { return description_; }
     // Draws one line of UTF-8 text inside `rect` (top-aligned, no clipping, as DT_NOCLIP).
     void draw(SDL_Renderer* renderer, const std::string& text, const ScreenRect& rect, const TextStyle& style);
@@ -44,6 +50,7 @@ private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
     bool available_ = false;
+    int smoothing_ = Canvas;
     std::string description_;
 };
 

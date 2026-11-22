@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "options_view.hpp"
 
+#include <algorithm>
+
 namespace fs = std::filesystem;
 
 namespace dtvr {
@@ -12,8 +14,15 @@ SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
 
 } // namespace
 
-OptionsView::OptionsView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout)
-    : renderer_(renderer), root_(root), layout_(layout), geometry_(setupGeometry(layout.width)) {}
+OptionsView::OptionsView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
+                         TextRenderer& text)
+    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.width)) {}
+
+SDL_Rect OptionsView::smoothingRect() const {
+    const SDL_Rect stop = rect(geometry_.stop), star = rect(geometry_.start);
+    const int x = stop.x + stop.w + 24, h = std::max(20, star.h / 3);
+    return SDL_Rect{x, star.y + (star.h - h) / 2, star.x - 24 - x, h};
+}
 
 SDL_Texture* OptionsView::bitmap(const fs::path& relative) {
     const std::string key = relative.generic_string();
@@ -44,6 +53,15 @@ void OptionsView::open(const Settings& settings) {
 OptionsView::Result OptionsView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
     SbButtonGroup::Input in;
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+        const SDL_Rect extra = smoothingRect();
+        const SDL_Point at{event.button.x, event.button.y};
+        if (SDL_PointInRect(&at, &extra)) { // recomb: Original -> canvas -> screen
+            settings_.textSmoothing = (settings_.textSmoothing + 1) % 3;
+            sound_ = 2;
+            return Result::Toggled;
+        }
+    }
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)
         in = buttons_.mouseDown(event.button.x, event.button.y);
     else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
@@ -80,6 +98,12 @@ void OptionsView::draw() {
         }
     }
     buttons_.drawFocus(renderer_);
+    // Recomb addition: the text smoothing as a label in the dialog colour (0x45).
+    static const char* const kModes[3] = {"Original", "Bildgr\u00f6\u00dfe", "Bildschirmaufl\u00f6sung"};
+    const SDL_Rect extra = smoothingRect();
+    text_.draw(renderer_, std::string("Schrift: ") + kModes[settings_.textSmoothing % 3] + " (Erg\u00e4nzung, F12)",
+               ScreenRect{extra.x, extra.y, extra.w, extra.h},
+               TextStyle{std::max(12, extra.h * 2 / 3), true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
 }
 
 } // namespace dtvr

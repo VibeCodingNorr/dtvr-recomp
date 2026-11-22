@@ -365,7 +365,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         SaveView& saveDialog = screen.saveDialog();
         if (screen.title()) { // nothing of the game runs behind the title
-            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.options().isOpen()
+            if (!menu.isOpen() && !saveDialog.isOpen() && !screen.setup().isOpen() && !screen.stages().isOpen() && !screen.options().isOpen()
                 && !screen.pictureShown() && !screen.messages().open())
                 openTitle();
         } else if (play.game().humansLeft() && play.game().turnSerial() != autosaved
@@ -480,6 +480,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 else
                     std::cerr << "Vollbild: " << SDL_GetError() << "\n";
                 heldArrow = SDLK_UNKNOWN;
+                continue;
+            }
+            if (event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym == SDLK_F12) {
+                Settings s = screen.settings(); // text smoothing (recomb, [Display] TextSmoothing)
+                s.textSmoothing = (s.textSmoothing + 1) % 3;
+                screen.applySettings(s);
+                screen.options().setTextSmoothing(s.textSmoothing);
+                static const char* const kModes[3] = {"Original", "Bildgröße", "Bildschirmauflösung"};
+                std::cout << "Schriftglättung: " << kModes[s.textSmoothing] << "\n";
                 continue;
             }
             if (screen.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))

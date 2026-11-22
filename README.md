@@ -33,7 +33,7 @@ no overall completion percentage is claimed.
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn. Driver names come from the language file at run time. Not yet: the computer answer to investment offers (they decline). | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
-| Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); shaders, smoothing filters, separately scaled text and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
+| Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
 Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/formats.md)):
@@ -167,7 +167,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 96. The extension switch "Computer spielen alle Karten" in the player setup (click or F9).
 97. Statistics sorted as rally.exe and Windows 3.x lstrcmp do.
 98. The stage count window after the player setup, with a slider (recomb addition).
-99. *Next:* remaining presentation details (compare windows with rally.exe).
+99. Text smoothing in three modes (F12): Original, canvas size, screen resolution.
+100. *Next:* remaining presentation details (compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

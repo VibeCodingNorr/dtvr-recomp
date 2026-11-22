@@ -98,14 +98,27 @@ void TextRenderer::draw(SDL_Renderer* renderer, const std::string& text, const S
     if (!available_ || text.empty()) return;
     TTF_Font* font = impl_->font((style.serif ? 4 : 0) + (style.bold ? 1 : 0) + (style.italic ? 2 : 0), style.pixelHeight);
     if (!font) return;
+    // Screen: rasterise at the renderer's scale (SDL_RenderSetLogicalSize), place by the
+    // canvas-size extent so that positions match the other modes.
+    float sx = 1, sy = 1;
+    SDL_RenderGetScale(renderer, &sx, &sy);
+    const float scale = std::min(sx, sy);
+    TTF_Font* fine = nullptr;
+    if (smoothing_ == Screen && scale > 1.01f) {
+        const int height = int(style.pixelHeight * scale + 0.5f);
+        fine = impl_->font((style.serif ? 4 : 0) + (style.bold ? 1 : 0) + (style.italic ? 2 : 0), height);
+    }
+    int width = 0, lineHeight = 0;
+    TTF_SizeUTF8(font, text.c_str(), &width, &lineHeight);
     auto blit = [&](SDL_Color colour, int dx, int dy) {
-        SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text.c_str(), colour);
+        SDL_Surface* surface = smoothing_ == Original ? TTF_RenderUTF8_Solid(font, text.c_str(), colour)
+                               : TTF_RenderUTF8_Blended(fine ? fine : font, text.c_str(), colour);
         if (!surface) return;
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-        const int x = style.center ? rect.x + (rect.w - surface->w) / 2
-                      : style.right ? rect.x + rect.w - surface->w : rect.x;
-        const SDL_Rect target{x + dx, rect.y + dy, surface->w, surface->h};
-        SDL_RenderCopy(renderer, texture, nullptr, &target);
+        const int x = style.center ? rect.x + (rect.w - width) / 2 : style.right ? rect.x + rect.w - width : rect.x;
+        const SDL_FRect target{float(x + dx), float(rect.y + dy), fine ? surface->w / scale : float(surface->w),
+                               fine ? surface->h / scale : float(surface->h)};
+        SDL_RenderCopyF(renderer, texture, nullptr, &target);
         SDL_DestroyTexture(texture);
         SDL_FreeSurface(surface);
     };
