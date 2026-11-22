@@ -32,7 +32,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                        const Board& board, const std::vector<Town>& towns, const Game& game,
                        std::map<int, std::string> texts)
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
-      texts_(std::move(texts)) {
+      texts_(std::move(texts)), slot_(renderer, root) {
+    seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames of the panel (seg6:406D looks them up by name in the loaded files).
     const fs::path file = findCaseInsensitive(root_, fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
@@ -183,6 +184,12 @@ void GameScreen::draw() {
     drawMap();
     drawPortrait();
     drawPlayerInfo();
+    const Uint32 now = SDL_GetTicks();
+    if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
+        seenSpin_ = game_.spinSerial();
+        slot_.start(game_.lastReels(), now);
+    }
+    slot_.draw(layout_.map, now);
 }
 
 int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
@@ -207,9 +214,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         play.printLog(std::cout);
         SDL_SetWindowTitle(window.get(), play.title().c_str());
     };
+    if (options.rollAtStart && play.game().roll()) report();
     report();
     bool running = true;
-    while (running) {
+    for (int frame = 1; running; ++frame) {
         if (play.update(SDL_GetTicks())) report();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -221,7 +229,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
         SDL_RenderClear(renderer.get());
         screen.draw();
-        if (!options.screenshot.empty()) {
+        const bool last = options.smokeTest && frame >= options.frames;
+        if (!options.screenshot.empty() && (last || !options.smokeTest)) {
             Surface shot(SDL_CreateRGBSurfaceWithFormat(0, layout.width, layout.height, 32, SDL_PIXELFORMAT_ARGB8888),
                          SDL_FreeSurface);
             if (!shot || SDL_RenderReadPixels(renderer.get(), nullptr, SDL_PIXELFORMAT_ARGB8888, shot->pixels,
@@ -230,7 +239,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 throw std::runtime_error(SDL_GetError());
         }
         SDL_RenderPresent(renderer.get());
-        if (options.smokeTest) break;
+        if (last) break;
         SDL_Delay(16);
     }
     return 0;

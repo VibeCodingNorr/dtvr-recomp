@@ -952,6 +952,51 @@ Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
 Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
 shows while the player stands on the reached field (phase Arrived).
 
+### Slot machine and animations (round 23)
+
+- **Animation definitions** (data segment, e.g. DS:2398): u16 delay in ticks,
+  u8 (0), u8 frame count n, then n far pointers to frame names (SBS, looked up
+  by seg6:406D). In the file image the segment word of each far pointer holds
+  the NE fixup chain. **Animation records** of 0x40 bytes (table DS:30,
+  allocated at seg2:6D2F): +0 definition, +4 follow-up definition, +8 tick
+  countdown, +0xA repetitions, +0xC frame index, +0xE callback, +0x12 argument,
+  +0x14/+0x16 position, +0x1A target DIB. seg2:6DCB advances all records once
+  per call: when the countdown expires the next frame follows; after the last
+  frame the repetitions count down, then the follow-up definition or callback.
+- **Slot window** seg2:6426(reels, maximum, …): loads `bmp\slot%i.bmp` (DS:2E80)
+  and `sbs\slot%i.sbs` (DS:2E8E; only slot3–5 exist, the common frames come from
+  `slot0.sbs`, loaded at start, DS:02B1), creates `SLOT` as a child of the map
+  window (DS:A6F0) centred at its bottom: x = client width / 2 − bitmap width / 2,
+  y = client height − bitmap height (seg2:6528). The paint (seg2:6C2B) only blits
+  the slot DIB; palette entries 10–153 come from the slot bitmap (seg2:6C63).
+  Computers pull the lever by posting 0x7EF.
+- **Reels** seg2:776A: value random(max) + 1 in DS:9584[i]; record 3 + i spins
+  with DS:2398 (`drehung1`–`4`, two ticks each) for (i + 3) · 2 turns, then
+  ends with DS:2E3C[value] (`walze_<v>h`, `walze_<v>`, four ticks each).
+  Positions by number of reels (seg2:7674 tables):
+
+  | Reels | Reel frames (x, y) | Sum tens / units (seg2:7C1E) |
+  | --- | --- | --- |
+  | 1 | (150, 146) | (144, 210), (166, 210) |
+  | 2 | (108, 204), (240, 204) | (168, 204), (190, 204) |
+  | 3 | (122, 178), (198, 162), (274, 178) | (192, 208), (214, 208) |
+  | 4 | (166, 212), (200, 160), (252, 160), (286, 212) | (220, 212), (242, 212) |
+  | 5 | (174, 154), (222, 118), (270, 154), (246, 204), (196, 204) | (216, 164), (238, 164) |
+
+  The stop callback seg2:7C0A shows the sum of the reels stopped so far as
+  `count_<d>` (definitions DS:2486 + 16·d, table DS:2E58). seg2:7EC2 finally sets
+  DS:A778 to the sum. Reels 3–5 add gear animations (`slt5anl*`, `slt5anr*`,
+  `slt5anu*` at (122, 82), (256, 56), …).
+- **Timers**: the game timer is 50 ms (seg5:01EB → seg5:02CF); others run every
+  1000 ms (seg2:3AF0) and 80 ms (seg2:8018). The slot loop (seg2:65C4) advances
+  the animations once per pass and synchronises with the game loop (seg2:1C37).
+
+Rebuilt in `src/slot_view.cpp`: housing, spinning and stopping reels and the sum
+display, started for every spin of the game (`Game::lastReels`). Assumptions:
+one animation tick is the 50 ms game timer; the window stays one second after the
+last reel. Not yet: the lever animation (`SLTHAD*`), the gear animations of 3–5
+reels and pulling the lever with the mouse.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

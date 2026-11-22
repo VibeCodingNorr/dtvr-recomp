@@ -77,7 +77,7 @@ bool Game::playCard(int handSlot, int target) {
     case CardKind::Movement: {
         const CardMove move = cardMove(type);
         int allowance = move.fields;
-        if (move.reels) for (int v : spinReels(rng_, move.reels, move.maximum)) allowance += v;
+        if (move.reels) allowance += spin(move.reels, move.maximum);
         counter_ = MoveCounter(allowance);
         phase_ = Phase::Move;
         messages_.push_back(std::to_string(allowance) + " Felder");
@@ -134,7 +134,7 @@ bool Game::playCard(int handSlot, int target) {
     default: { // status cards: flag on the target, then a normal one-reel spin
         players_[size_t(victim)].flags |= cardStatusFlag(kind);
         int sum = 0;
-        for (int v : spinReels(rng_, 1, 5)) sum += v;
+        sum = spin(1, 5);
         counter_ = MoveCounter(sum);
         phase_ = Phase::Move;
         messages_.push_back("wuerfelt " + std::to_string(sum));

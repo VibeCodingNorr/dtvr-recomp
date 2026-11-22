@@ -146,7 +146,7 @@ bool Game::roll() {
     if (phase_ != Phase::Roll || (computerControls() && !aiActing_)) return false;
     declineInvestment();
     int sum = 0;
-    for (int v : spinReels(rng_, 1, 5)) sum += v;
+    sum = spin(1, 5);
     counter_ = MoveCounter(sum);
     phase_ = Phase::Move;
     messages_.push_back(playerName(current_) + " wuerfelt " + std::to_string(sum));
@@ -245,6 +245,14 @@ void Game::arrive() {
         break;
     default: break;
     }
+}
+
+int Game::spin(int reels, int maximum) {
+    lastReels_ = spinReels(rng_, reels, maximum);
+    ++spinSerial_;
+    int sum = 0;
+    for (int v : lastReels_) sum += v;
+    return sum;
 }
 
 void Game::giveYellowCard() {

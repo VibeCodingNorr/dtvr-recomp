@@ -7,6 +7,7 @@
 #include "layout.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
+#include "slot_view.hpp"
 #include "text.hpp"
 
 #include <filesystem>
@@ -43,11 +44,15 @@ private:
     std::map<std::string, Texture> art_;
     Texture world_{nullptr, SDL_DestroyTexture};
     int worldSeason_ = -1;
+    SlotView slot_;
+    int seenSpin_ = 0;
 };
 
 struct GameWindowOptions {
     int canvasWidth = 0;          // 0: the largest canvas that fits the screen (seg5:1227)
-    bool smokeTest = false;       // draw one frame and exit
+    bool smokeTest = false;       // draw `frames` frames and exit
+    int frames = 1;
+    bool rollAtStart = false;     // spin at once (tests of the slot machine)
     std::string screenshot;       // BMP of the first frame
 };
 

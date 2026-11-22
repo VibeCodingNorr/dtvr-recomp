@@ -24,7 +24,7 @@ no overall completion percentage is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; viewport and palette cycling still open. | [World map](src/worldmap.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites at the original positions, all art and text loaded from the installation. Still keyboard-driven with provisional player markers; menus, slot machine, messages and dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites, and the slot machine with spinning reels, all at the original positions with art and text loaded from the installation. Still keyboard-driven with provisional player markers; messages, menu, dialogs and vehicles follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
@@ -73,7 +73,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     portrait and player info panel at the original positions for 640/800/1024.
 22. Player info panel contents (month, cash, destination, digits, field kind) with
     Arial/Liberation Sans text and the original digit sprites.
-23. *Next:* the menus, the slot machine and messages.
+23. Slot machine over the map with spinning and stopping reels and the sum
+    display at the original positions; animation format decoded.
+24. *Next:* messages (SUBTITLE / INFO), the menu and the vehicles.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

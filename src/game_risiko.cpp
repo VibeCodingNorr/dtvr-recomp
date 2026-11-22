@@ -8,7 +8,7 @@ namespace dtvr {
 void Game::startRisiko() {
     // seg2:6426(1, 5, 0): one reel; the result becomes DS:A778.
     int sum = 0;
-    for (int v : spinReels(rng_, 1, 5)) sum += v;
+    sum = spin(1, 5);
     risiko_.steps = sum;
     phase_ = Phase::Risiko;
     messages_.push_back("Risiko: " + std::to_string(sum) + " Felder - druecken, wenn das Licht leuchtet");

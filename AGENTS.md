@@ -104,7 +104,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/layout.{hpp,cpp}`: original window geometry; `src/panel.{hpp,cpp}`: player info panel
   contents (both no SDL).
 - `src/sdl_assets.{hpp,cpp}`: BMP/world loading and case-insensitive paths; `src/text.{hpp,cpp}`:
-  GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`).
+  GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`);
+  `src/slot_view.{hpp,cpp}`: the slot machine over the map.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
@@ -180,8 +181,8 @@ LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
 Next: continue the game window as in the original (agreed with the user: it must
-look like rally.exe; `--game`, src/game_screen.cpp): menus, slot machine, messages,
-dialogs and vehicles, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
+look like rally.exe; `--game`, src/game_screen.cpp): messages, menu, dialogs and
+vehicles, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
 state changes. The viewer is a debugging aid only; put effort into the simulation.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

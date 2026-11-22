@@ -206,6 +206,14 @@ int main() {
         CHECK(g->phase() != Game::Phase::Risiko && ticks > 8);
     } else CHECK(false);
 
+    // The slot machine presentation sees the reels of every spin (lastReels, spinSerial).
+    {
+        Game g(board, towns, 1, 0, 9, 1, nullptr, nullptr, false);
+        const int serial = g.spinSerial();
+        CHECK(g.roll() && g.spinSerial() == serial + 1 && g.lastReels().size() == 1);
+        CHECK(g.lastReels()[0] == g.allowance() && g.allowance() >= 1 && g.allowance() <= 6);
+    }
+
     // Investments need an offer.
     Game plain(board, towns, 1, 0, 1);
     CHECK(plain.investmentOffer() == EventKind::None && !plain.invest(1000));

@@ -141,7 +141,7 @@ static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, const 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
-    int humans = 2, computers = 0, rounds = 99, resolution = 0;
+    int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
     int month = 2, roll = 0;
     unsigned seed = 1;
     View view = View::Overview;
@@ -175,6 +175,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--play") { play = true; view = View::World; }
         else if (arg == "--game") { gameWindow = true; view = View::World; }
         else if (arg == "--resolution" && i + 1 < argc) resolution = std::stoi(argv[++i]);
+        else if (arg == "--frames" && i + 1 < argc) frames = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
         else if (arg == "--computers" && i + 1 < argc) computers = std::stoi(argv[++i]);
@@ -213,6 +214,8 @@ static int run(int argc, char** argv) {
         dtvr::GameWindowOptions options;
         options.canvasWidth = resolution;
         options.smokeTest = smoke;
+        options.frames = frames;
+        options.rollAtStart = rollAtStart;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);
         SDL_Quit();

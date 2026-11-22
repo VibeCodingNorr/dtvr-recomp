@@ -59,6 +59,10 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    // Presentation: reel values of the last slot machine spin and a counter that
+    // changes with every spin (not part of the saved state).
+    const std::vector<int>& lastReels() const { return lastReels_; }
+    int spinSerial() const { return spinSerial_; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
     // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
     // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),
@@ -145,6 +149,7 @@ private:
     void playTschuess(int target); // seg3:28ED
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
+    int spin(int reels, int maximum);       // seg2:6426 / 776A: sum of the reels
     void startRisiko();                     // game_risiko.cpp
     void startRisikoLevel(int level);
     void finishRisiko();
@@ -178,6 +183,8 @@ private:
     bool yellowPending_ = false;            // yellow field waits for a discard
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
+    std::vector<int> lastReels_;            // DS:9584 (presentation only)
+    int spinSerial_ = 0;
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
