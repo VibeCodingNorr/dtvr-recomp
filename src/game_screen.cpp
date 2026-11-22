@@ -155,13 +155,14 @@ void GameScreen::eventFocus(int cellX, int cellY) {
 void GameScreen::startEventScene(const EventScene& scene, int cellX, int cellY, Uint32 now) {
     if (!sceneFrames_.count(scene.file)) loadSprites(fs::path("sbs") / scene.file, sceneFrames_[scene.file]);
     scene_ = &scene;
-    sceneX_ = cellX * WorldMap::kTile + scene.dx;
-    sceneY_ = cellY * WorldMap::kTile + scene.dy;
+    scenePoints_ = eventScenePositions(scene, cellX, cellY);
     sceneStart_ = now;
 }
 
 bool GameScreen::eventSceneActive(Uint32 now) const {
-    return scene_ && int((now - sceneStart_) / kSceneStepMs) < eventScenePasses(*scene_);
+    if (!scene_) return false;
+    const Uint32 length = Uint32(scene_->waitBefore + eventScenePasses(*scene_) * int(kSceneStepMs) + scene_->waitAfter);
+    return now - sceneStart_ < length;
 }
 
 void GameScreen::advanceVehicles(Uint32 now) {
@@ -370,13 +371,17 @@ void GameScreen::drawMap() {
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
-        const int pass = int((SDL_GetTicks() - sceneStart_) / kSceneStepMs);
+        const int elapsed = int(SDL_GetTicks() - sceneStart_) - scene_->waitBefore;
+        const int pass = elapsed / int(kSceneStepMs);
         const auto& frames = sceneFrames_[scene_->file];
-        if (const auto it = frames.find(upperAscii(eventSceneFrame(*scene_, pass))); it != frames.end() && it->second) {
+        const auto it = elapsed >= 0 ? frames.find(upperAscii(eventSceneFrame(*scene_, pass))) : frames.end();
+        if (it != frames.end() && it->second) {
             int w = 0, h = 0;
             SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
-            const SDL_Rect box{target.x + (sceneX_ - origin.x) * z, target.y + (sceneY_ - origin.y) * z, w * z, h * z};
-            SDL_RenderCopy(renderer_, it->second.get(), nullptr, &box);
+            for (const ScenePoint& at : scenePoints_) {
+                const SDL_Rect box{target.x + (at.x - origin.x) * z, target.y + (at.y - origin.y) * z, w * z, h * z};
+                SDL_RenderCopy(renderer_, it->second.get(), nullptr, &box);
+            }
         }
     }
     SDL_RenderSetClipRect(renderer_, nullptr);

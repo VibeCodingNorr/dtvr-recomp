@@ -176,7 +176,7 @@ private:
     struct EventFocus { bool active = false, zoomed = false; TilePoint saved{}; bool savedSet = false; int x = -1, y = -1; };
     EventFocus focus_;
     const EventScene* scene_ = nullptr;
-    int sceneX_ = 0, sceneY_ = 0;
+    std::vector<ScenePoint> scenePoints_;
     Uint32 sceneStart_ = 0;
     std::map<std::string, std::map<std::string, Texture>> sceneFrames_; // per SBS file
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick

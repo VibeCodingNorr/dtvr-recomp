@@ -1415,8 +1415,17 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   place table (DS:69F0) · 16 + (0xD, 0x11). **Rockfall** seg8:5A76: `stein.sbs`
   (DS:717F), 33 frames st01–st33 (delay 3, repetitions 0), place (DS:7170) · 16
   + (7, −0x17). Their WAV files `snd\e2`, `e4`, `e9` are not on this disc.
-- **Still open:** Erdbeben (equake.sbs BR01–BR15, its own loop with offset
-  tables, seg8:3C0B), and the multi-record scenes Regen (regen.sbs: R00, R01–R08,
+- **Earthquake** seg8:3C0B (round 71): DS:6AC4 selects one of twelve places
+  (stack tables: centre bp−0x66 / −0x7E = our quake places, crack A bp−0x96 /
+  −0xAE, crack B bp−0xC6 / −0xDE, B only at places 1, 6 and 11). seg2:6D1B(2)
+  allocates two records with the same definition (`equake.sbs` DS:6AC9, 18
+  frames BR01–BR15 + 3 × BR15, delay 5, repetitions 0) at (A + 1) · 16 and
+  (B + 1) · 16; its own loop draws A, and B where B's x ≠ 0, until A is freed.
+  seg6:0F60(0x7D0) before the loop and seg6:0F60(0x1F4) after it; seg6:0F60(n)
+  runs seg2:1C37 n >> 5 times (none in a game without humans) — **assumed** n
+  milliseconds. Then text 0x1451 + random(2) for the town on the centre cell
+  (seg8:41E6 ff.) and the damage. No shaking. WAV `snd\E5` is not on this disc.
+- **Still open:** the multi-record scenes Regen (regen.sbs: R00, R01–R08,
   R09–R20), Schnee (schnee.sbs SN01–SN46), Hochwasser (flood.sbs RG00–RG26),
   Dürre (sonne.sbs S01–S24, four definitions) and Nessie (nessie.sbs, N / NH,
   four definitions, three WAVs E12 / E12a / E12b). Definitions extracted with the

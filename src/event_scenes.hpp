@@ -15,7 +15,13 @@ struct EventScene {
     int delay = 1;                    // passes per frame (definition word +0)
     int repetitions = 1;              // record +0xA
     int dx = 0, dy = 0;               // added to the place's cell * 16
+    int waitBefore = 0, waitAfter = 0; // seg6:0F60(ms) around the loop (assumed ms)
+    bool quakeCracks = false;          // positions from the earthquake tables instead
 };
+
+struct ScenePoint { int x = 0, y = 0; };
+// World pixel positions of the scene's records for an event place (map cell).
+std::vector<ScenePoint> eventScenePositions(const EventScene& scene, int cellX, int cellY);
 
 // The animation of an event message text, nullptr when it has none (yet).
 const EventScene* eventSceneForNotice(int text);

@@ -28,6 +28,15 @@ int main() {
     CHECK(rock && std::strcmp(rock->file, "stein.sbs") == 0 && rock->frames.size() == 33 && rock->delay == 3);
     if (rock) CHECK(eventScenePasses(*rock) == 1 + 4 * 32 - 1); // one cycle, frames 1..32
     CHECK(eventSceneForNotice(5021) && eventSceneForNotice(5301) && eventSceneForNotice(5283));
+    const EventScene* quake = eventSceneForNotice(5202);
+    CHECK(quake && quake->quakeCracks && quake->waitBefore == 2000 && quake->waitAfter == 500);
+    if (quake) {
+        const auto one = eventScenePositions(*quake, 0xD3, 0xE0), two = eventScenePositions(*quake, 0x97, 0xCF);
+        CHECK(one.size() == 1 && one[0].x == 0xD5 * 16 && one[0].y == 0xE2 * 16);
+        CHECK(two.size() == 2 && two[1].x == 0x9D * 16 && two[1].y == 0xCB * 16);
+        CHECK(eventScenePositions(*quake, 1, 1).empty());
+    }
+    CHECK(eventScenePositions(*storm, 2, 3).size() == 1 && eventScenePositions(*storm, 2, 3)[0].x == 2 * 16 + 8);
     CHECK(eventSceneForNotice(600) == nullptr && eventSceneForNotice(5121) == nullptr);
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("event_scenes_test: OK");
