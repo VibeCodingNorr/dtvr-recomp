@@ -5,6 +5,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 namespace dtvr {
 
@@ -25,5 +26,10 @@ struct ScreenLayout {
 // that fits the screen (or the requested width) is used.
 ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth = 0);
 ScreenLayout layoutForCanvas(int canvasWidth); // 640, 800 or 1024
+
+// Card window seg3:0887: one button per occupied hand slot, the highest slot first,
+// in rows of a per-count column number, centred on the canvas.
+struct CardButton { int slot = 0; ScreenRect rect; };
+std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::array<bool, 8>& occupied);
 
 } // namespace dtvr

@@ -27,6 +27,14 @@ int main() {
     CHECK(layoutForScreen(1920, 1080).width == 1024 && layoutForScreen(1000, 700).width == 800);
     CHECK(layoutForScreen(700, 500).width == 640 && layoutForScreen(320, 200).width == 640);
     CHECK(layoutForScreen(1920, 1080, 800).width == 800);
+    // Card window: five cards at 640 in rows of three, the highest slot first.
+    std::array<bool, 8> hand{};
+    for (int s : {0, 2, 3, 6, 7}) hand[size_t(s)] = true;
+    const auto cards = cardWindowLayout(l640, hand);
+    CHECK(cards.size() == 5 && cards[0].slot == 7 && cards[4].slot == 0);
+    // width 3 * 92 - 10 = 266 -> left 187 -> 186 (even); height 2 * 127 - 10 = 244 -> top 118
+    CHECK(same(cards[0].rect, 186, 118, 82, 117) && cards[2].rect.x == 186 + 2 * 92 - 0 && cards[3].rect.y == 244); // 245 rounded down to even
+    CHECK(cardWindowLayout(l640, std::array<bool, 8>{}).empty());
     bool threw = false;
     try { layoutForCanvas(900); } catch (const std::invalid_argument&) { threw = true; }
     CHECK(threw);

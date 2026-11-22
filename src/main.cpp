@@ -141,6 +141,7 @@ static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, const 
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
     std::string menuName; // --game: open this menu resource at the start (screenshots)
+    bool openCards = false; // --game: open the card window at the start (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
     int month = 2, roll = 0;
@@ -153,7 +154,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--menu NAME] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--menu NAME] [--cards] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -178,6 +179,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--resolution" && i + 1 < argc) resolution = std::stoi(argv[++i]);
         else if (arg == "--frames" && i + 1 < argc) frames = std::stoi(argv[++i]);
         else if (arg == "--menu" && i + 1 < argc) menuName = argv[++i];
+        else if (arg == "--cards") openCards = true;
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
         else if (arg == "--computers" && i + 1 < argc) computers = std::stoi(argv[++i]);
@@ -219,6 +221,7 @@ static int run(int argc, char** argv) {
         options.frames = frames;
         options.rollAtStart = rollAtStart;
         options.openMenu = menuName;
+        options.openCards = openCards;
         options.screenshot = screenshot.string();
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);
         SDL_Quit();

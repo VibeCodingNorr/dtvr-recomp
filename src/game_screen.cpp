@@ -34,7 +34,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                        std::map<int, std::string> texts)
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
-      menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }) {
+      menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
+      cards_(renderer, root, layout) {
     seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
@@ -213,6 +214,7 @@ void GameScreen::draw() {
         slot_.start(game_.lastReels(), now);
     }
     slot_.draw(layout_.map, now);
+    cards_.draw();
     menu_.draw();
     messages_.draw(game_);
 }
@@ -252,17 +254,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         else menu.open(name, std::move(items));
     };
     // The turn menu ONFIELD opens for a human player before the spin (seg2:0864 ->
-    // seg2:068F). It stays away after "Karte einsetzen" until the turn state changes.
+    // seg2:068F) while no other window is open.
     auto turnState = [&] {
         const Game& g = play.game();
         const int p = g.currentPlayer();
         return std::array<int, 4>{p, int(g.phase()), g.spinSerial(), p >= 0 ? g.handCount(p) : 0};
     };
-    std::array<int, 4> cardWindowState{-2, 0, 0, 0};
+    CardView& cards = screen.cards();
+    std::array<int, 4> cardWindowState{-2, 0, 0, 0}; // turn state when the card window opened
     auto turnMenuDue = [&] {
         const Game& g = play.game();
-        return g.phase() == Game::Phase::Roll && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer())
-            && turnState() != cardWindowState;
+        return g.phase() == Game::Phase::Roll && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer());
     };
     bool running = true;
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
@@ -271,7 +273,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         case 1030: if (play.game().roll()) report(); break;     // Würfeln: seg2:6426(1, 5, 1)
         case 1031:                                               // Karte einsetzen
             if (!play.game().openCardWindow()) { openMenu("ONFIELD"); break; } // blocked: menu stays
-            cardWindowState = turnState(); // no card window yet: the digit keys play a hand card
+            if (cards.open(play.game())) cardWindowState = turnState(); // seg3:0887(2)
             break;
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
@@ -279,15 +281,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
     };
     if (!options.openMenu.empty()) openMenu(options.openMenu);
+    if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
     for (int frame = 1; running; ++frame) {
         for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
         // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
-        const bool modal = screen.messages().open() || menu.isOpen();
+        // A played card changes the turn state and closes the card window.
+        if (cards.isOpen() && turnState() != cardWindowState) cards.close();
+        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen();
         if (!modal && play.update(SDL_GetTicks())) report();
-        if (!screen.messages().open() && !menu.isOpen() && turnMenuDue() && !options.rollAtStart)
-            openMenu("ONFIELD");
+        if (!modal && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
@@ -299,6 +303,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (menu.isOpen()) {
                 if (const int id = menu.handle(event)) command(id);
                 continue;
+            }
+            if (cards.isOpen()) { // the card buttons; Escape or the right button closes the window
+                if (click && event.button.button == SDL_BUTTON_LEFT) {
+                    const int slot = cards.slotAt(event.button.x, event.button.y);
+                    if (slot >= 0 && play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
+                    continue;
+                }
+                if (click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }
+                if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) { cards.close(); continue; }
             }
             if (event.type != SDL_KEYDOWN) continue;
             const SDL_Keycode key = event.key.keysym.sym;

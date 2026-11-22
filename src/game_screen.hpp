@@ -7,6 +7,7 @@
 #include "layout.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
+#include "card_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
@@ -26,6 +27,7 @@ public:
     void draw();
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
+    CardView& cards() { return cards_; }
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
 
@@ -52,6 +54,7 @@ private:
     SlotView slot_;
     MessageView messages_;
     MenuView menu_;
+    CardView cards_;
     int seenSpin_ = 0;
 };
 
@@ -61,6 +64,7 @@ struct GameWindowOptions {
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)
     std::string openMenu;         // tests: open this menu resource at the start (e.g. RIGHTBTN)
+    bool openCards = false;       // tests: open the card window at the start
     std::string screenshot;       // BMP of the first frame
 };
 

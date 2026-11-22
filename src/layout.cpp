@@ -52,4 +52,27 @@ ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWid
     return layoutForCanvas(chosen);
 }
 
+std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::array<bool, 8>& occupied) {
+    // seg3:089B: card size by seg6:12FA (0 = 1024, 1 = 800, 2 = 640) and columns /
+    // rows by the number of cards; 10 pixels between cards.
+    static constexpr int kWidth[3] = {0x82, 0x66, 0x52}, kHeight[3] = {0xBB, 0x91, 0x75};
+    static constexpr int kColumns[9] = {0, 1, 2, 3, 4, 3, 3, 4, 4}, kRows[9] = {0, 1, 1, 1, 1, 2, 2, 2, 2};
+    const int res = layout.width == 1024 ? 0 : layout.width == 800 ? 1 : 2;
+    int count = 0;
+    for (bool o : occupied) count += o;
+    std::vector<CardButton> out;
+    if (count == 0) return out; // seg3:0922: no window
+    const int w = kWidth[res], h = kHeight[res];
+    const int left = (layout.width - (kColumns[count] * (w + 10) - 10)) / 2;
+    const int top = (layout.height - (kRows[count] * (h + 10) - 10)) / 2;
+    int x = left, y = top, column = 0;
+    for (int slot = 7; slot >= 0; --slot) { // seg3:09AE
+        if (!occupied[size_t(slot)]) continue;
+        out.push_back({slot, ScreenRect{x & ~1, y & ~1, w, h}});
+        if (kColumns[count] - 1 <= column) { column = 0; x = left; y += h + 10; } // seg3:0A41
+        else { ++column; x += w + 10; }
+    }
+    return out;
+}
+
 } // namespace dtvr

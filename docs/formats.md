@@ -1125,10 +1125,31 @@ own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
 Rebuilt in `src/ne_strings.cpp` (readNeMenu) and `src/menu_view.cpp`; flow in
 `src/game_screen.cpp`. Simplifications: ONFIELD opens whenever a human player is
 in the spin phase and no window is open (also after RIGHTBTN Zurück, which in the
-original only closes); without a card window, "Karte einsetzen" closes the menu
-and the digit keys play a hand card; Rallye beenden quits without seg4:0EDF;
+original only closes); "Karte einsetzen" opens the card window (round 29);
+Rallye beenden quits without seg4:0EDF;
 Zoom, Übersicht, Umfeld, Statistik and MAIN1 entries besides 1064 / 1065 do
 nothing yet; the keys `1`–`4` are not passed on while a menu is open.
+
+### Card window (round 29)
+
+- **Opening** seg3:0887(category) after "Karte einsetzen": DS:18 = category
+  (2 before the spin), hand count seg2:3C00 = 0 → nothing opens (seg3:0922).
+- **Layout** seg3:089B: card size by seg6:12FA (1024 / 800 / 640): 130 × 187,
+  102 × 145, 82 × 117; columns by the number of cards n = 1…8: 1, 2, 3, 4, 3,
+  3, 4, 4, rows 1 (n ≤ 4) or 2; 10 pixels apart; the block is centred on the
+  canvas. Slots 7 down to 0 (hand bytes at player record +0x24, 0xFF empty)
+  fill the rows left to right; positions are rounded down to even (`& 0xFFFE`).
+- **Buttons** seg3:0603(type, x, y): CreateWindow class `SBBUTTON` (DS:3140;
+  registered outside rally.exe, presumably by `sbtimer.dll`), style 0x54010000
+  (child, visible, clip siblings, tab stop), parent the canvas; the picture is
+  `%s\%d\%c\%dcard_%.2d.bmp` (DS:3127, seg3:0488): `bmp/<n>/<language>/<n>card_<type + 1>.bmp`,
+  which matches the card sizes. The handle is kept per card type (DS:9EDA, 7
+  bytes per type, +5). The focus goes to the buttons in slot order 0…7.
+- **Unknown:** the button behaviour of SBBUTTON (focus look, keys, how the window
+  closes without playing). Rebuilt (`src/layout.cpp` cardWindowLayout,
+  `src/card_view.cpp`): a left click plays the card through the same path as
+  the digit keys (target `T`, nail direction by arrow key); Escape or the right
+  button close the window (assumption); a played card closes it.
 
 ### SBS: remaining hypotheses
 
