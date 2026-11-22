@@ -1082,13 +1082,16 @@ reels and pulling the lever with the mouse.
   y · 16, +0x3C / +0x3E = field; all other writers keep multiples of 16 at rest and
   drive decisions happen when (x & 15) = 0. seg2:1846 enters the vehicle into the
   sprite list (45 entries of 0x1A bytes, seg2:3D9C: +4 x, +6 y) at x = +0x16,
-  y = +0x18 − height (+0x2E) + 2; seg2:1A91 draws a frame with its top-left corner
-  at that point minus the map origin (DS:956A / 9568 · 16), and the map tiles use
-  the same mapping (seg6:2857, seg6:2C0A). **Open:** taken literally, a car stands
-  one cell right of and half a cell below its field (vertical frames are opaque in
-  columns 16–31, horizontal ones in rows 7–25), although europe.pit marks the road
-  and the field (bit 0x01) on the field's own cell (e.g. London (86, 96)). A
-  further offset in the path from the sprite list to the window has not been found.
+  y = +0x18 − +0x2E + 2; seg2:1A91 draws a frame with its top-left corner at that
+  point minus the map origin (DS:956A / 9568 · 16), and the map tiles use the same
+  mapping (seg6:2857, seg6:2C0A). *Resolved in round 84:* seg2:3EB0, which draws
+  the list, first subtracts 0x10 from every entry's x, y, right and bottom
+  (seg2:3F21–3F45), so a car's frame starts at the field cell · 16 + (−16, −14):
+  vertical frames (opaque columns 16–31) cover the cell's column, horizontal ones
+  (opaque rows 7–25) its row. +0x2E is not a height but the boat counter of the
+  vehicle state +0x2D (0 on land, up to 0x18 at sea; round 75): a boat is drawn
+  up to 24 pixels higher. Event animation records go through the same list
+  (seg8:6E0F → seg2:3D9C) and are moved by (−16, −16) as well.
 
 Rebuilt in `src/game_screen.cpp`: the vehicles of all drivers in play with the
 facing of their last step; the current driver's car animates while driving.
@@ -1107,8 +1110,8 @@ draws in the same order (whole computer games compared before and after the
 split: identical). The game window takes the next stage when the car has
 reached its field. The stage state (remaining route) is not saved; the save
 format and rules revision are unchanged.
-Assumption until the offset is traced: frames are centred on the field cell
-(−16, −8), which puts the cars on the road in all four facings.
+The former assumption (−16, −8) is replaced by the traced offset (−16, −14) of
+round 84.
 
 ### Messages (round 25)
 

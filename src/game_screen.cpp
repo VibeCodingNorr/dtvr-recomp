@@ -386,11 +386,10 @@ void GameScreen::drawMap() {
     SDL_UpdateTexture(viewTexture_.get(), nullptr, viewRgb_->pixels, viewRgb_->pitch);
     SDL_RenderCopy(renderer_, viewTexture_.get(), nullptr, &target);
     // Vehicles (seg2:1846): frame of the facing's animation (table DS:1994, mode 1:
-    // <letter>UP / R / DOWN / L 1-4, delay 4 ticks). The code read so far puts the
-    // frame's top-left corner at (field * 16, field * 16 + 2 - height) minus the map
-    // origin (seg2:1A91), which leaves the car one cell right of and half a cell
-    // below the road; the frames are therefore centred on the field cell here
-    // (-16, -8) until the missing offset is traced (docs/formats.md, round 24).
+    // <letter>UP / R / DOWN / L 1-4, delay 4 ticks), entered into the sprite list at
+    // (+0x16, +0x18 - +0x2E + 2) (+0x2E: the boat counter, 0 on land); seg2:3EB0
+    // moves every sprite by (-16, -16) before seg2:1A91 draws it minus the origin.
+    constexpr int kSpriteShift = 16; // seg2:3F21 ff.
     static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
     const Uint32 tick = SDL_GetTicks() / SlotView::kTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
@@ -407,7 +406,8 @@ void GameScreen::drawMap() {
         if (!vehicle) continue;
         int w = 0, h = 0;
         SDL_QueryTexture(vehicle, nullptr, nullptr, &w, &h);
-        const SDL_Rect box{target.x + (at.x - origin.x - 16) * z, target.y + (at.y - origin.y - 8) * z, w * z, h * z};
+        const SDL_Rect box{target.x + (at.x - origin.x - kSpriteShift) * z,
+                           target.y + (at.y + 2 - origin.y - kSpriteShift) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
     if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
@@ -419,7 +419,9 @@ void GameScreen::drawMap() {
             int w = 0, h = 0;
             SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
             for (const ScenePoint& at : step.at) {
-                const SDL_Rect box{target.x + (at.x - origin.x) * z, target.y + (at.y - origin.y) * z, w * z, h * z};
+                // The records go through the same sprite list: (-16, -16) as well.
+                const SDL_Rect box{target.x + (at.x - kSpriteShift - origin.x) * z,
+                                   target.y + (at.y - kSpriteShift - origin.y) * z, w * z, h * z};
                 SDL_RenderCopy(renderer_, it->second.get(), nullptr, &box);
             }
         }
