@@ -157,7 +157,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 86. Main menu in the game: Mitspieler hands drivers to the computer or back, Neues Spiel returns to the title.
 87. Sights: with the option Views the vehicle stops at the 40 view points, Enter shows picture and text.
 88. Subtitles: with the option Subtitle (or without audio) the voices of destination search, year balance and victory show their texts, timed by sync.dat.
-89. *Next:* remaining presentation details (compare windows with rally.exe).
+89. Intro: before the title the club scene with door, show master, speaker, hat and Fate, lightning, club photo and newspaper (`[Setup] ShowIntro`, `--intro` / `--no-intro`).
+90. *Next:* remaining presentation details (compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

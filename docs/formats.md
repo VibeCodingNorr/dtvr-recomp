@@ -1952,12 +1952,61 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
 
+### Intro (round 89)
+
+- **Start:** seg5:0174 reads `[Setup] ShowIntro` (DS:101 / 10B, default 1) and
+  runs seg7:0000 before the title. Window class INTRO (DS:1262), 0x1F0 × 0x178,
+  child of the canvas DS:40, with a 480 × 360 DIB; with subtitles on it is moved
+  up 22 px (seg7:0476, seg6:160B(hwnd, 0, −22)).
+- **WM_CREATE** seg7:2176: backdrop `butt\club.bmp` (DS:1388) and the SBS files of
+  the table DS:1240 under `butt\sbs\intro` (zoom, paar2, redet, tuer, leute2, bild,
+  kopf, lampe, leute1, paar1, red_foot, fate, fate_hut, wall1, wall2, sm_rlyy).
+  club.bmp, clubfoto.bmp and `d\zeitung.bmp` share one palette.
+- **Input** seg7:2118: Escape, Space or Enter close the window once the first pass
+  ran (DS:1198); a click closes it with DS:B5E4 and DS:1198.
+- **Loop** seg7:04D6, one pass per 20 ms: pass counter + 1 (cap 30,000),
+  subtitle poll (see Subtitles), the state logic, then — while state < 11 or
+  pass < 105 — draw the records (seg2:74E4), step them (seg2:6DCB), show the DIB.
+  Records with a follow-up definition take it and clear +4 (seg2:6F01).
+- **Voice helpers:** seg1:3E64 playing while elapsed ms × 11 ≤ length (TimerCount
+  path); seg1:4071 the position lies in one of the ten talk intervals of sync.dat
+  +0x18; seg1:414C the cue at +0xCC is non-zero and below the position.
+- **Stamps:** seg7:1E3C keyed-blits every frame of a file into the backdrop (at
+  start paar2 (0x165, 0x9E), bild (0x19D, 0x3A), leute1 (0x81, 0xB0), paar1
+  (0x165, 0x9E)); seg7:1F52 one frame (tu00 at (0x22, 0x70) on entering state 7).
+- **States** (definitions in the data segment, e.g. DS:0614 = tu00 × 9, tu09–tu17,
+  delay 4): 0 door closed, after 250 passes the door opens; 90 passes later the
+  head kop appears, 10 passes later it speaks RALLY01b (frame reset while in a
+  talk interval); then the show master zooms in (zo00–zo17 moving from (0x41,
+  0x69) by y = p · 50 / 84 + 0x69, x = 0x41 − p) to TUERAUF1 / TUERZU, the picture
+  falls (pic23–29) and the lamp swings; state 7 RALLY02 with the speaker (rd),
+  8 RALLY04, 9 RALLY05 (talking resets the speaker to frame 2), 10 RALLY07a with
+  the wall pieces and the hat walking right to x 0x158, then left and up until
+  Fate (fate1) falls behind wall2; at the cue the show master rises (sm_rlyy1–5,
+  then 5/6). State 11 (all cheer): at pass 105 subtitles close, BLITZ01 plays,
+  the palette goes to white (seg5:3483: +0x1E per channel and 15 ms, entries
+  1–0xFE), the backdrop becomes `clubfoto.bmp`, all records are cleared, the
+  palette returns (seg5:3623: −0x1E per 15 ms); at pass 305 `butt\<lang>\zeitung.bmp`
+  is revealed by seg8:0E20 mode 4; at pass 555 the window closes.
+- **Wipe seg8:0E20** (hwnd, mode): modes 0–5 (table seg8:160F), > 5 picks
+  rand() % 5. Mode 4 reveals the 400 cells of a 20 × 20 grid: a random free cell
+  (two rand() % 20) whose row is at most i / 20 + 2, rectangle (x·W/20, y·H/20,
+  (x+1)·W/20, (y+1)·W/20) — the bottom uses the width; 20 ms before every 16th cell.
+- Record field +0x36 is cleared for records 2 and 5 when Fate falls; the drawing
+  code (seg2:74E4) does not read it (+0x2E..+0x35 is the dirty rectangle).
+- Rebuilt in `src/intro_script.cpp` (no SDL, tested; the definitions compared
+  with the data segment) and `src/intro_view.cpp` (8-bit scene composed in
+  software, palette fades on it). **Assumptions:** the wipe's rand() starts from
+  seed 1; the fade back steps each channel by 0x1E towards the bitmap colour; a
+  close stops the voice; the window is centred like the victory.
+
 ### Subtitles (round 88)
 
 - **sync.dat** (`dat\<lang>\sync.dat`, 29,120 bytes = 140 records of 0xD0, read to
   DS:9694): +0x00 WAV name (NUL-terminated within 0x14 bytes), +0x14 length in
-  bytes (uint32), +0x18..0x67 not used by the subtitle code (unknown), +0x68 ten
-  entries {uint16 string id, uint32 start, uint32 end}. The voices are 11,025 Hz
+  bytes (uint32), +0x18 ten talk intervals {start, end} (seg1:4071), +0x68 ten
+  entries {uint16 string id, uint32 start, uint32 end}, +0xCC a cue (seg1:414C;
+  the intro). The voices are 11,025 Hz
   8-bit mono (fmt of `zielsuch\part01a.wav`), so positions are bytes = samples.
   172 ids (40000–42306) are all present in rally_d.dat. Records cover the voice
   folders zielsuch (68), bilanz (58), intro (9) and sieg (1).
@@ -1982,7 +2031,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   after WaveMixConfigureInit fails) and for language letter E / e (seg5:21BA,
   which also turns the voice off).
 - Rebuilt in `src/voice_sync.cpp` (no SDL, tested) and `src/subtitle_view.cpp`
-  for ZIEL, BILANZ and Sieg (the intro is not rebuilt); forced on when the game
+  for ZIEL, BILANZ and Sieg (the intro since round 89); forced on when the game
   runs without audio. **Assumption:** the position uses the elapsed time (the
   TimerCount path) also with voice output.
 

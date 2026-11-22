@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "subtitle_view.hpp"
 
-#include <fstream>
-#include <iterator>
 
 namespace fs = std::filesystem;
 
@@ -10,13 +8,7 @@ namespace dtvr {
 
 SubtitleView::SubtitleView(SDL_Renderer* renderer, const fs::path& root, TextRenderer& text,
                            const std::map<int, std::string>& texts)
-    : renderer_(renderer), root_(root), text_(text), texts_(texts) {
-    if (const fs::path file = findCaseInsensitive(root, fs::path("dat") / "d" / "sync.dat"); !file.empty()) {
-        std::ifstream in(file, std::ios::binary);
-        const std::vector<uint8_t> data{std::istreambuf_iterator<char>(in), {}};
-        try { table_ = parseVoiceSync(data); } catch (const std::exception&) { table_.clear(); }
-    }
-}
+    : renderer_(renderer), root_(root), text_(text), texts_(texts), table_(loadVoiceSync(root)) {}
 
 void SubtitleView::voice(const std::string& file, const SDL_Rect& owner, Uint32 now) {
     if (!enabled_) return;

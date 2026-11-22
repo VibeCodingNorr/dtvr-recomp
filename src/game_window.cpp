@@ -217,7 +217,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         default: break; // Zoom, Übersicht, Umfeld, Statistik, Neues Spiel, Speichern ...: not built yet
         }
     };
-    if (options.title) openTitle();
+    // seg5:0174: [Setup] ShowIntro plays the intro (seg7:0000) before the title.
+    bool introShown = options.title && (options.intro || (!options.noIntro && screen.settings().showIntro != 0))
+                      && screen.startIntro(SDL_GetTicks());
+    if (options.title && !introShown) openTitle();
     if (options.openSetup) { screen.setTitle(true); menu.close(); command(1020); }
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
@@ -368,6 +371,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 screen.cardShop().open(g);
             }
         }
+        screen.intro().update(SDL_GetTicks());
+        if (introShown && !screen.intro().active()) { introShown = false; openTitle(); }
         // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
         screen.finish().update(SDL_GetTicks());
         // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
@@ -403,7 +408,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.announcement().active() || screen.cardShop().isOpen()
                            || screen.selectPlayer().isOpen() || screen.flight().isOpen()
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
-                           || screen.sight().isOpen();
+                           || screen.sight().isOpen() || screen.intro().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -438,6 +443,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (screen.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
                 continue; // the FLIC window runs modally (seg6:0FB4)
+            if (screen.intro().active()) { screen.intro().handle(event); continue; } // seg7:2118, modal
             if (screen.sight().isOpen()) { screen.sight().handle(event); continue; } // seg6:4DCB, modal
             if (screen.viewStopped() && event.type == SDL_KEYDOWN
                 && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER)) {

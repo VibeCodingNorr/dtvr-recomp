@@ -2,12 +2,15 @@
 #include "voice_sync.hpp"
 
 #include <cctype>
+#include <fstream>
+#include <iterator>
 #include <stdexcept>
 
 namespace dtvr {
 namespace {
 
-constexpr size_t kRecord = 0xD0, kName = 0x14, kLength = 0x14, kEntries = 0x68, kEntry = 10, kSlots = 10;
+constexpr size_t kRecord = 0xD0, kName = 0x14, kLength = 0x14, kTalk = 0x18, kEntries = 0x68, kEntry = 10, kSlots = 10,
+                 kCue = 0xCC;
 
 uint16_t u16(const std::vector<uint8_t>& d, size_t o) { return uint16_t(d[o] | d[o + 1] << 8); }
 uint32_t u32(const std::vector<uint8_t>& d, size_t o) { return uint32_t(u16(d, o)) | uint32_t(u16(d, o + 2)) << 16; }
@@ -35,10 +38,31 @@ std::vector<VoiceSyncRecord> parseVoiceSync(const std::vector<uint8_t>& data) {
         for (size_t i = 0; i < kSlots; ++i) {
             const size_t o = base + kEntries + i * kEntry;
             r.entries.push_back(VoiceSyncEntry{u16(data, o), u32(data, o + 2), u32(data, o + 6)});
+            const size_t t = base + kTalk + i * 8;
+            r.talk.push_back(VoiceSyncEntry{0, u32(data, t), u32(data, t + 4)});
         }
+        r.cue = u32(data, base + kCue);
         table.push_back(std::move(r));
     }
     return table;
+}
+
+std::vector<VoiceSyncRecord> loadVoiceSync(const std::filesystem::path& root) {
+    // Case-insensitive lookup of dat/d/sync.dat.
+    std::filesystem::path dir = root;
+    for (const char* part : {"dat", "d", "sync.dat"}) {
+        std::filesystem::path found;
+        std::error_code ec;
+        for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+            std::string n = entry.path().filename().string(), want = part;
+            if (sameName(n, want)) { found = entry.path(); break; }
+        }
+        if (found.empty()) return {};
+        dir = found;
+    }
+    std::ifstream in(dir, std::ios::binary);
+    const std::vector<uint8_t> data{std::istreambuf_iterator<char>(in), {}};
+    try { return parseVoiceSync(data); } catch (const std::exception&) { return {}; }
 }
 
 const VoiceSyncRecord* findVoiceSync(const std::vector<VoiceSyncRecord>& table, const std::string& name) {
@@ -47,9 +71,34 @@ const VoiceSyncRecord* findVoiceSync(const std::vector<VoiceSyncRecord>& table, 
     return nullptr;
 }
 
-uint16_t voiceSyncText(const VoiceSyncRecord& record, uint32_t elapsedMs) {
+namespace {
+// seg1:3F46: 0 once beyond the length.
+uint64_t position(const VoiceSyncRecord& record, uint32_t elapsedMs) {
     const uint64_t pos = uint64_t(elapsedMs) * 11; // seg1:3FCC: x * 11 by shifts
-    if (pos == 0 || pos > record.length) return 0;  // seg1:3FE4, seg1:421D
+    return pos > record.length ? 0 : pos;           // seg1:3FE4
+}
+} // namespace
+
+bool voiceSyncPlaying(const VoiceSyncRecord& record, uint32_t elapsedMs) {
+    return uint64_t(elapsedMs) * 11 <= record.length; // seg1:3EFC
+}
+
+bool voiceSyncTalking(const VoiceSyncRecord& record, uint32_t elapsedMs) {
+    const uint64_t pos = position(record, elapsedMs);
+    if (pos == 0) return false; // seg1:409F
+    for (const auto& t : record.talk)
+        if (t.start <= pos && pos <= t.end) return true;
+    return false;
+}
+
+bool voiceSyncCue(const VoiceSyncRecord& record, uint32_t elapsedMs) {
+    const uint64_t pos = position(record, elapsedMs);
+    return record.cue != 0 && record.cue < pos; // seg1:418F: 0 while cue >= position
+}
+
+uint16_t voiceSyncText(const VoiceSyncRecord& record, uint32_t elapsedMs) {
+    const uint64_t pos = position(record, elapsedMs);
+    if (pos == 0) return 0; // seg1:421D
     for (const auto& e : record.entries)            // seg1:4229: ten slots
         if (e.start <= pos && pos <= e.end) return e.text;
     return 0;

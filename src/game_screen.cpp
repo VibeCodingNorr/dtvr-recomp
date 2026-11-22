@@ -49,7 +49,8 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
       finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
       balance_(renderer, root, layout.width, layout.height),
-      stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_) {
+      stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_),
+      intro_(renderer, root, layout.width, layout.height) {
     stage_.setSubtitles(&subtitles_);
     balance_.setSubtitles(&subtitles_);
     seenSpin_ = game.spinSerial();
@@ -311,6 +312,11 @@ bool GameScreen::startBalance(Uint32 now) {
     return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.humansLeft(), sound_, now);
 }
 
+bool GameScreen::startIntro(Uint32 now) {
+    prepareSubtitles();
+    return intro_.start(sound_, &subtitles_, settings_.subtitle != 0 || sound_ == nullptr, now);
+}
+
 bool GameScreen::startVictory(Uint32 now) {
     if (!victory_.start(game_.ranking(), now)) return false;
     prepareSubtitles();
@@ -546,6 +552,13 @@ void GameScreen::drawPlayerInfo() {
 
 void GameScreen::draw() {
     if (sound_) sound_->setEnabled(settings_.value[Settings::Wave] != 0);
+    if (intro_.active()) { // INTRO over the empty canvas (seg7:0000 runs before the title)
+        SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+        SDL_RenderClear(renderer_);
+        intro_.draw();
+        subtitles_.draw();
+        return;
+    }
     if (!picture_.empty()) {
         if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / picture_))
             SDL_RenderCopy(renderer_, t, nullptr, nullptr);

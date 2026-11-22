@@ -26,6 +26,7 @@
 #include "balance_view.hpp"
 #include "stage_view.hpp"
 #include "subtitle_view.hpp"
+#include "intro_view.hpp"
 #include "save_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
@@ -89,6 +90,9 @@ public:
     bool startAnnouncement(int mode, int variant, Uint32 now);
     bool startBalance(Uint32 now);
     bool startVictory(Uint32 now);
+    // seg5:0174 -> seg7:0000 before the title with [Setup] ShowIntro.
+    bool startIntro(Uint32 now);
+    IntroView& intro() { return intro_; }
     // Starts the finish sequence for a destination field and driver.
     bool startFinish(int field, int player, Uint32 now);
     OptionsView& options() { return options_; }
@@ -184,6 +188,7 @@ private:
     BalanceView balance_;
     StageView stage_;
     SubtitleView subtitles_; // after texts_ and text_
+    IntroView intro_;
     void prepareSubtitles();
     int seenSpin_ = 0;
     SoundPlayer* sound_ = nullptr;
@@ -240,6 +245,8 @@ struct GameWindowOptions {
     bool nails = false;           // tests: open the Nägel direction choice
     bool invest = false;          // tests: open the investment offer
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
+    bool intro = false;           // play the intro before the title even with ShowIntro=0
+    bool noIntro = false;         // skip the intro (seg7:0000) before the title
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame
