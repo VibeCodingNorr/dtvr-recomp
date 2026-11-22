@@ -47,6 +47,8 @@ def build(python_runtime, appimagetool, runtime, output, arch):
     output = validate_output(output)
     if output.exists():
         raise ValueError("Choose a new package output directory")
+    if not shutil.which("rsvg-convert"):
+        raise ValueError("Packaging requires rsvg-convert to export our own installer icon")
     python_runtime = python_runtime.resolve()
     if not (python_runtime / "bin/python3").is_file() or (python_runtime / "pyvenv.cfg").exists():
         raise ValueError("Provide a complete relocatable Python/Tk prefix, not a virtualenv")
@@ -80,12 +82,14 @@ def build(python_runtime, appimagetool, runtime, output, arch):
             raise ValueError("Python runtime failed the relocation/Tk import check")
         shutil.copy2(source / "packaging/AppRun", appdir / "AppRun")
         (appdir / "AppRun").chmod(0o755)
-        for name in ("dtvr-recomb-setup.svg", ".DirIcon"):
-            shutil.copy2(source / "assets/branding/icon.svg", appdir / name)
+        subprocess.run(["rsvg-convert", "-w", "256", "-h", "256",
+                        str(source / "assets/branding/icon.svg"), "-o",
+                        str(appdir / "dtvr-recomb-setup.png")], check=True)
+        shutil.copy2(appdir / "dtvr-recomb-setup.png", appdir / ".DirIcon")
         (appdir / "dtvr-recomb-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"
             f"Name=DTVR Recomb Setup {version}\nExec=AppRun\nIcon=dtvr-recomb-setup\n"
-            "Terminal=false\nCategories=Game;Utility;\n")
+            "Terminal=false\nCategories=Utility;\n")
         metadata = {"project_version": version, "architecture": arch,
                     "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip(),
                     "appimagetool_sha256": digest(appimagetool), "runtime_sha256": digest(runtime)}

@@ -40,7 +40,8 @@ relocatable Python distribution with working Tk, the official
 [appimagetool](https://github.com/AppImage/appimagetool) and its matching
 [type-2 runtime](https://github.com/AppImage/type2-runtime). Verify downloaded
 checksums against their release metadata. Extract appimagetool to use its AppRun
-without requiring FUSE. The builder never downloads dependencies implicitly.
+without requiring FUSE. Packaging also needs `rsvg-convert` to export our own
+icon as PNG outside the checkout. The builder never downloads dependencies implicitly.
 Preserve all runtime third-party licenses and check redistribution terms.
 
 ```sh
