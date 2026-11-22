@@ -126,6 +126,30 @@ void GameScreen::centreOnPlayer() {
     originSet_ = true;
 }
 
+void GameScreen::eventFocus(int cellX, int cellY) {
+    const int p = game_.currentPlayer();
+    if (cellX < 0 || cellY < 0) {
+        if (!focus_.active) return;
+        if (focus_.zoomed && p >= 0) zoom_[size_t(p)] = false; // seg6:2E54(1) when it was raised
+        origin_ = focus_.saved;                                  // DS:956A / 9568 restored
+        originSet_ = focus_.savedSet;
+        focus_ = EventFocus{};
+        return;
+    }
+    if (focus_.active && focus_.x == cellX && focus_.y == cellY) return;
+    if (!focus_.active) {
+        focus_.active = true;
+        focus_.saved = origin_;
+        focus_.savedSet = originSet_;
+        focus_.zoomed = p >= 0 && !zoom_[size_t(p)];
+        if (focus_.zoomed) zoom_[size_t(p)] = true;              // seg6:2E54(2): zoom 1
+    }
+    focus_.x = cellX;
+    focus_.y = cellY;
+    origin_ = centredOrigin(cellX * WorldMap::kTile, cellY * WorldMap::kTile, viewSize()); // seg6:3064(x << 4, y << 4)
+    originSet_ = true;
+}
+
 void GameScreen::advanceVehicles(Uint32 now) {
     constexpr int kTickMs = 50, kPixelsPerTick = 2 << 1;
     const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;

@@ -27,6 +27,7 @@ public:
     // The front message asks Yes / No (buttons 4, MB_YESNO).
     bool question() const { return !queue_.empty() && queue_.front().buttons == 4; }
     int frontText() const { return queue_.empty() ? 0 : queue_.front().text; }
+    const Notice* front() const { return queue_.empty() ? nullptr : &queue_.front(); }
     // seg6:5492 for a question: arrows choose, Return / space keep the choice, Escape /
     // Backspace answer No, a click on a button answers it. 6 Yes, 7 No, 0 still open.
     // The caller dismisses the message.

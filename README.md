@@ -136,7 +136,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 65. Obstacle question: Yes / No message window with the card picture before a clearing card is used.
 66. Quit question (text 700, Yes / No) for Rallye beenden and the key Q.
 67. Map scrolling as rally.exe: centring on turn, spin, Space and zoom; edge jumps while driving.
-68. *Next:* centring on event places and the remaining messages of the turn.
+68. Event places: the map zooms in on the place of an event while its message is open.
+69. *Next:* the event animations on the map (sturm.sbs and the other event sets with their sounds).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

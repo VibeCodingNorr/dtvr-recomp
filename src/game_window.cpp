@@ -256,6 +256,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 screen.messages().push(std::move(n));
             }
+        { // event places: the view zooms in on the place while its message is open
+            const Notice* front = screen.messages().front();
+            if (front && front->focusX >= 0) screen.eventFocus(front->focusX, front->focusY);
+            else screen.eventFocus(-1, -1);
+        }
         // The original plays a field's sounds when the vehicle is on it: cues wait while the
         // drawn car still drives there.
         for (const SoundCue& c : play.game().takeSounds())

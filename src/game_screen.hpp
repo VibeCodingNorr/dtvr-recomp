@@ -92,6 +92,9 @@ public:
     void advanceVehicles(Uint32 now);
     // seg2:3216: centre the map on the current player (Space, zoom, turn start, spin).
     void centreOnPlayer();
+    // Event places (seg8 handlers): zoom in (seg6:2E54(2)), centre on the cell and
+    // restore zoom and origin afterwards (seg8:1E17 ff.). `focus` < 0 ends it.
+    void eventFocus(int cellX, int cellY);
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,
@@ -166,6 +169,8 @@ private:
     TilePoint origin_{};          // DS:956A / 9568 outside Umfeld
     bool originSet_ = false;
     int seenTurn_ = -1, seenCentreSpin_ = -1;
+    struct EventFocus { bool active = false, zoomed = false; TilePoint saved{}; bool savedSet = false; int x = -1, y = -1; };
+    EventFocus focus_;
     Uint32 carry_ = 0;                              // milliseconds not yet spent on a tick
 };
 

@@ -1371,8 +1371,20 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `GameScreen::advanceVehicles` / `centreOnPlayer`: centring at a player change,
   a spin, Space, zoom and when a vehicle is placed without driving (Tschüss,
   Flugzeug); the edge check every movement tick of the current vehicle.
-  **Not rebuilt:** centring on event places; the vehicle rectangle is taken as
-  its 16 × 16 field cell.
+  The vehicle rectangle is taken as its 16 × 16 field cell.
+- **Event places** (round 68): every event handler saves DS:956A / 9568, raises
+  the zoom with seg6:2E54(2) (remembering whether it changed), centres on the
+  place with seg6:3064(x << 4, y << 4) and plays its animation on the map (e.g.
+  Sturm: `sbs\sturm.sbs` frames ST1–ST6 and `snd\E1`, seg8:1D00 ff.); after the
+  message the zoom is lowered again when it was raised and the origin restored
+  (seg8:1E17–1E35). Places: Sturm / Dürre / Hochwasser the damaged town's cell
+  (town record +0 / +2, seg8:1CA0 / 2581 / 4B6B), Nessie, Erdbeben and Vulkan
+  their place tables (seg8:3259, 4009 with DS:6AC4, 3A84 with DS:69F0), Regen /
+  Schnee / Steinschlag the obstacle cell (seg8:44E9 / 55FA / 5DA1), Räuber the
+  victim (seg8:2238 → seg2:3216). Rebuilt: `Notice::focusX / focusY` from
+  `src/game_events.cpp`; while such a message is open `GameScreen::eventFocus`
+  zooms in and centres, then restores. **Not rebuilt:** the event animations
+  and their sounds; Nessie's second centring during its animation (seg8:33B5).
 
 ### Stage end (round 43)
 

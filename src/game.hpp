@@ -38,6 +38,9 @@ struct Notice {
     // `cardPicture` >= 0 replaces the showmaster with that card type's picture.
     int buttons = 0;
     int cardPicture = -1;
+    // Event place (map cell) the view zooms in on and centres while the message is
+    // open (seg6:2E54(2), seg6:3064); -1: none. Cosmetic only.
+    int focusX = -1, focusY = -1;
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
@@ -229,6 +232,13 @@ private:
     static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
+    // A notice whose message centres the zoomed view on a map cell (event places).
+    void eventNotice(int text, std::vector<NoticeArg> args, int cellX, int cellY) {
+        Notice n{text, std::move(args)};
+        n.focusX = cellX;
+        n.focusY = cellY;
+        notices_.push_back(std::move(n));
+    }
     double propertyPrice(const Economy::PropertyRef& p) const;
     void startRisiko();                     // game_risiko.cpp
     void startRisikoLevel(int level);

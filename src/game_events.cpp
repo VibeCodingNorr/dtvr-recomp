@@ -53,7 +53,8 @@ void Game::applyEvent(EventKind kind) {
         if (victim < 0) { messages_.push_back("Ereignis Raeuber: niemand ist reich genug"); return; }
         const double loss = economy_.money(victim).cash * 0.25; // DS:8766
         economy_.addMoney(victim, -loss);
-        notice(5021 + rng_.random(2), {moneyArg(loss)});
+        const Field& at = board_.fields[size_t(players_[size_t(victim)].field)]; // seg8:2238 -> seg2:3216
+        eventNotice(5021 + rng_.random(2), {moneyArg(loss)}, at.x, at.y);
         char text[96];
         std::snprintf(text, sizeof text, "%.0f", loss);
         messages_.push_back("Ereignis Raeuber: " + playerName(victim) + " verliert " + text);
@@ -79,7 +80,7 @@ void Game::applyEvent(EventKind kind) {
         const LinkRef link = linkAtCell(board_, c.x, c.y);
         const int n = activePlayerCount(players_);
         obstacles_.add({kRockfall, 4 * n, c.x, c.y, link.field, link.dir});
-        notice(5081 + rng_.random(2));
+        eventNotice(5081 + rng_.random(2), {}, c.x, c.y); // seg8:5DA1
         messages_.push_back("Ereignis Steinschlag bei (" + std::to_string(c.x) + "," + std::to_string(c.y) + ")");
         return;
     }
@@ -90,26 +91,31 @@ void Game::applyEvent(EventKind kind) {
         for (size_t t = 0; t < towns_.size(); ++t) owned[t] = economy_.townHasOwner(int(t));
         const int category = kind == EventKind::Storm ? 4 : kind == EventKind::Drought ? 3 : 1;
         const int town = pickDamageTown(towns_, owned, category, rng_);  // seg8:6C77
-        notice((kind == EventKind::Storm ? 5041 : kind == EventKind::Drought ? 5141 : 5241) + rng_.random(2),
-               {townArg(town)});
+        // seg8:1CED / 25A4 / 4BC3: the town's cell.
+        const int tx = town >= 0 ? towns_[size_t(town)].x : -1, ty = town >= 0 ? towns_[size_t(town)].y : -1;
+        eventNotice((kind == EventKind::Storm ? 5041 : kind == EventKind::Drought ? 5141 : 5241) + rng_.random(2),
+                    {townArg(town)}, tx, ty);
         if (town >= 0) damageTown(town, 37); // Versicherung
         return;
     }
     case EventKind::Nessie: {
-        const int town = townAtCell(towns_, nextNessiePlace(places_));
-        notice(5101 + rng_.random(2), {townArg(town)});
+        const Cell place = nextNessiePlace(places_);
+        const int town = townAtCell(towns_, place);
+        eventNotice(5101 + rng_.random(2), {townArg(town)}, place.x, place.y); // seg8:3259
         if (town >= 0) damageTown(town, 39); // only the Nessie card protects
         return;
     }
     case EventKind::Earthquake: {
-        const int town = townAtCell(towns_, nextQuakePlace(places_));
-        notice(5201 + rng_.random(2), {townArg(town)});
+        const Cell place = nextQuakePlace(places_);
+        const int town = townAtCell(towns_, place);
+        eventNotice(5201 + rng_.random(2), {townArg(town)}, place.x, place.y); // seg8:4023
         if (town >= 0) damageTown(town, 37);
         return;
     }
     case EventKind::Volcano: {
-        const int town = townAtCell(towns_, nextVolcanoPlace(places_));
-        notice((places_.volcano == 0 ? 5281 : 5301) + rng_.random(2)); // DS:69F0: Etna / Hekla
+        const Cell place = nextVolcanoPlace(places_);
+        const int town = townAtCell(towns_, place);
+        eventNotice((places_.volcano == 0 ? 5281 : 5301) + rng_.random(2), {}, place.x, place.y); // DS:69F0, seg8:3AA0
         rng_.random(2);
         if (town >= 0) damageTown(town, 37);
         return;
@@ -125,7 +131,7 @@ void Game::placeObstacle(uint16_t type, int durationFactor) {
         const ObstacleSpot spot = pickObstacleSpot(board_, players_, eventPlayer_, destination_, routeMask(), rng_,
                                                    map_, props_);
         if (spot.field < 0) continue;
-        notice((type == kRain ? 5121 : 5481) + rng_.random(2));
+        eventNotice((type == kRain ? 5121 : 5481) + rng_.random(2), {}, spot.x, spot.y); // seg8:44E9 / 55FA
         obstacles_.add({type, durationFactor * activePlayerCount(players_), spot.x, spot.y, spot.field, spot.dir});
         messages_.push_back("Ereignis " + std::string(type == kRain ? "Regen" : "Schnee") + ": Strasse bei ("
                             + std::to_string(spot.x) + "," + std::to_string(spot.y) + ") gesperrt");
