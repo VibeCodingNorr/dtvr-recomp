@@ -1208,6 +1208,37 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   to count − 7), above the top the list goes back by seven; a tab selects the
   first visible row (seg1:543E / 5475).
 
+### Save dialog (round 33)
+
+- **Call:** MAIN1 "Spiel speichern" (1062, seg4:07B8) closes the menu, calls
+  seg8:B157(1), then seg5:607B(−1) and reopens ONFIELD (seg2:068F).
+- **Window** seg8:B157: WinG bitmap, sprites `%s\ls.sbs` (DS:8081; frames KO_Z,
+  KO_ZI, 558 × 42), class TEMP, 0x22E × 0x1CE (558 × 462) at a computed position
+  (assumed centred). DS:A052 = 1 save, 0 load.
+- **Paint** seg8:BA8A: KO_Z header at (0, 0), title text 800 "Spielstand
+  speichern" / 801 "Spielstand laden" in Arial 22 weight 600 at (10, 10), colour
+  0xFF, shadow 1. Slots 0–8 (seg8:B746): KO_ZI for the chosen slot DS:A7B8, KO_Z
+  otherwise, at (slot + 1) · 42; text = profile section `Save`, key `Slot%d`,
+  default `leer` (GetPrivateProfileString, DS:80C0 / 80D0 / 80D7) in Arial 13
+  weight 400 at (15, slot · 42 + 52), colour 0xFF chosen, 0x45 otherwise. Footer
+  KO_Z at y = 420 with text 116 (Nein) from x = 30 and text 114 (Ok) right-aligned
+  to x = 528 at y = 428; the highlighted button DS:8D64 (7 Nein, 6 Ok) in 0xFF.
+- **Input** seg8:B578: Left → Nein, Right → Ok, Up / Down move the slot within
+  0–8, Enter acts (Nein closes), Escape and Backspace close; a right click sends
+  Backspace (seg8:B349).
+- **Saving** seg8:B413: file `%s\slot%d` (DS:80B5) in the save directory DS:7E
+  and the description `"%Fs (%d) - %Fs"` (DS:809F): text 301 + month % 12, year
+  + 1, and the names of the players in play joined by " - " (seg8:BD58; at most
+  79 characters, cut with "..."), written with seg5:2366 to section `Save`
+  (DS:80C0), key `slot%d`.
+- **Rebuilt** (`src/save_slots.cpp`, `src/save_view.cpp`): the same dialog and
+  descriptions, but the slots are the native save format (docs/save-format.md)
+  in `$XDG_DATA_HOME/dtvr-recomb/saves` (`slot<n>.sav`, descriptions in
+  `saves.ini`); original save files are neither read nor written. The initial
+  footer button (Ok) is an assumption, and so is the mouse mapping (a click on a
+  slot chooses it, on the footer's left / right half acts as Nein / Ok). The
+  default word `leer` is a literal of rally.exe, not a language text.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

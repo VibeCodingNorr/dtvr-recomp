@@ -9,6 +9,7 @@
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
 #include "estates_view.hpp"
+#include "save_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
@@ -30,6 +31,9 @@ public:
     MenuView& menu() { return menu_; }
     CardView& cards() { return cards_; }
     EstatesView& estates() { return estates_; }
+    SaveView& saveDialog() { return save_; }
+    const SaveSlots& saveSlots() const { return slots_; }
+    const std::map<int, std::string>& texts() const { return texts_; }
     std::vector<EstateRow> estateRows() const;
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
@@ -41,7 +45,10 @@ public:
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
     SDL_Texture* sprite(const std::string& name);            // SBS frame by name (any loaded file)
-    void loadSprites(const std::filesystem::path& relative);
+    using SpriteSet = std::map<std::string, Texture>;
+    void loadSprites(const std::filesystem::path& relative, SpriteSet& into);
+    void loadSprites(const std::filesystem::path& relative) { loadSprites(relative, sprites_); }
+    static SDL_Texture* find(const SpriteSet& set, const std::string& name);
     void drawMap();
     void drawPortrait();
     void drawPlayerInfo();
@@ -55,6 +62,8 @@ private:
     std::map<int, std::string> texts_;   // language file, UTF-8
     TextRenderer text_;
     std::map<std::string, Texture> sprites_;
+    SpriteSet buySprites_;   // sbs/buy.sbs of the town dialog (seg1:4C45)
+    SpriteSet lsSprites_;    // sbs/ls.sbs of the save dialog (seg8:B1CE)
     std::map<std::string, Texture> art_;
     Texture world_{nullptr, SDL_DestroyTexture};
     int worldSeason_ = -1;
@@ -63,6 +72,8 @@ private:
     MenuView menu_;
     CardView cards_;
     EstatesView estates_;
+    SaveSlots slots_;
+    SaveView save_;
     int seenSpin_ = 0;
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
@@ -78,6 +89,7 @@ struct GameWindowOptions {
     std::string openMenu;         // tests: open this menu resource at the start (e.g. RIGHTBTN)
     bool openCards = false;       // tests: open the card window at the start
     bool holdRight = false;       // tests: the right arrow key is held from the start
+    bool openSave = false;        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame
 };

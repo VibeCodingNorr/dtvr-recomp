@@ -36,7 +36,13 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
       cards_(renderer, root, layout),
-      estates_(renderer, layout, texts_, text_, [this](const std::string& name) { return sprite(name); }) {
+      estates_(renderer, layout, texts_, text_,
+               [this](const std::string& name) {
+                   SDL_Texture* t = find(buySprites_, name);
+                   return t ? t : sprite(name);
+               }),
+      slots_(defaultSaveDirectory()),
+      save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -44,13 +50,19 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     // set of the resolution and the vehicles of the drivers in play (<letter>.sbs).
     loadSprites(fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
     loadSprites(fs::path("sbs") / "assorted.sbs"); // MENUN / MENUG of the menu window
-    loadSprites(fs::path("sbs") / "buy.sbs");      // town dialog (DS:3FCC, seg1:4C45)
+    loadSprites(fs::path("sbs") / "buy.sbs", buySprites_); // town dialog (DS:3FCC, seg1:4C45)
+    loadSprites(fs::path("sbs") / "ls.sbs", lsSprites_);   // save dialog (DS:8081)
     for (int p = 0; p < kPlayerSlots; ++p)
         if (game_.players()[size_t(p)].status)
             loadSprites(fs::path("sbs") / (std::string(1, char(std::tolower(kPortraitLetters[p]))) + ".sbs"));
 }
 
-void GameScreen::loadSprites(const fs::path& relative) {
+SDL_Texture* GameScreen::find(const SpriteSet& set, const std::string& name) {
+    auto it = set.find(upper(name));
+    return it == set.end() ? nullptr : it->second.get();
+}
+
+void GameScreen::loadSprites(const fs::path& relative, SpriteSet& into) {
     const fs::path file = findCaseInsensitive(root_, relative);
     const fs::path paletteFile = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / "info.bmp");
     if (file.empty() || paletteFile.empty()) { std::cerr << "SBS fehlt: " << relative.string() << "\n"; return; }
@@ -64,13 +76,12 @@ void GameScreen::loadSprites(const fs::path& relative) {
             std::copy_n(&frame.pixels[size_t(y) * frame.width], frame.width,
                         static_cast<uint8_t*>(surface->pixels) + y * surface->pitch);
         SDL_SetColorKey(surface.get(), SDL_TRUE, 0); // index 0 is transparent for SBS frames
-        sprites_.emplace(upper(frame.name), Texture(SDL_CreateTextureFromSurface(renderer_, surface.get()), SDL_DestroyTexture));
+        into.emplace(upper(frame.name), Texture(SDL_CreateTextureFromSurface(renderer_, surface.get()), SDL_DestroyTexture));
     }
 }
 
 SDL_Texture* GameScreen::sprite(const std::string& name) {
-    auto it = sprites_.find(upper(name)); // rally.exe asks for "zahl_0", the file holds "ZAHL_0"
-    return it == sprites_.end() ? nullptr : it->second.get();
+    return find(sprites_, name); // rally.exe asks for "zahl_0", the file holds "ZAHL_0"
 }
 
 SDL_Texture* GameScreen::art(const fs::path& relative) {
@@ -267,6 +278,7 @@ void GameScreen::draw() {
         estates_.draw(estateRows(), letters);
     }
     cards_.draw();
+    save_.draw(slots_);
     menu_.draw();
     messages_.draw(game_);
 }
@@ -333,10 +345,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             break;
         case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
         case 1064: running = false; break;                       // Rallye beenden (seg4:0EDF)
+        case 1062: screen.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
         default: break; // Zoom, Übersicht, Umfeld, Statistik, Neues Spiel, Speichern ...: not built yet
         }
     };
     if (!options.openMenu.empty()) openMenu(options.openMenu);
+    if (options.openSave) screen.saveDialog().open(true);
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
     if (options.rollAtStart && play.game().roll()) report();
     report();
@@ -362,7 +376,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             else if (moving) {} // the dialog opens when the car has arrived
             else if (!estates.isOpen() || estates.town() != town) estates.open(town);
         }
-        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen();
+        SaveView& saveDialog = screen.saveDialog();
+        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -380,6 +395,19 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (menu.isOpen()) {
                 if (const int id = menu.handle(event)) command(id);
+                continue;
+            }
+            if (saveDialog.isOpen()) { // seg8:B2F0: modal until Ok or Nein
+                const SaveView::Result r = saveDialog.handle(event);
+                if (r == SaveView::Result::Confirm) {
+                    std::string error;
+                    const int slot = saveDialog.slot();
+                    if (screen.saveSlots().save(slot, play.game(), saveDescription(play.game(), screen.texts()), error))
+                        std::cout << "Gespeichert: " << screen.saveSlots().file(slot).string() << "\n";
+                    else
+                        std::cerr << "Speichern fehlgeschlagen: " << error << "\n";
+                }
+                if (r != SaveView::Result::None) saveDialog.close();
                 continue;
             }
             if (cards.isOpen()) { // the card buttons; Escape or the right button closes the window

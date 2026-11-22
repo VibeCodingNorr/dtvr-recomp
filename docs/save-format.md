@@ -52,3 +52,14 @@ the target and renames it, so an interrupted write never replaces a good save.
 The format version changes when the layout changes; the rule revision records
 which reconstruction round produced the state. Older rule revisions are accepted
 as long as the layout matches; a save from a newer revision is refused.
+
+Rule revisions with a changed sequence of random draws: 25 (East opening text),
+26 (texts of the blocked card window and of the investment offer). A save of an
+older revision loads, but continues with the current rules.
+
+## Save slots
+
+The game window's save dialog (round 33) writes slot `n` (0–8) to
+`slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomb/saves` (default
+`~/.local/share/dtvr-recomb/saves`), and its description to `saves.ini` in the
+same directory (`[Save]`, one `Slot<n>=<description>` line per slot).

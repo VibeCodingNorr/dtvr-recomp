@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Save format: exact round trip, identical continuation, rejected input.
 #include "save.hpp"
+#include "save_slots.hpp"
 
 #include <cstdio>
 #include <filesystem>
+#include <map>
 
 using namespace dtvr;
 
@@ -118,6 +120,19 @@ int main() {
     CHECK(writeSaveFile(path, saved, error) && readSaveFile(path, text, error) && text == saved);
     CHECK(!std::filesystem::exists(path + ".tmp"));
     CHECK(!readSaveFile((dir / "missing.sav").string(), text, error));
+
+    // Save slots (round 33): description as seg8:B413, slot files and the index.
+    const std::map<int, std::string> texts{{301, "Januar"}, {302, "Februar"}};
+    const std::string description = saveDescription(a, texts);
+    CHECK(description.find(" (") != std::string::npos && description.find(a.playerName(0)) != std::string::npos);
+    const SaveSlots slots(dir / "slots");
+    CHECK(slots.description(3).empty());
+    CHECK(slots.save(3, a, description, error) && slots.description(3) == description);
+    CHECK(slots.save(5, b, "zweiter\nStand", error) && slots.description(5) == "zweiter Stand");
+    CHECK(slots.description(3) == description && slots.description(4).empty());
+    Game c(board, towns, 1, 0, 7, 1);
+    CHECK(slots.load(3, c, error) && SaveCodec::encode(c) == SaveCodec::encode(a));
+    CHECK(!slots.load(4, c, error) && !slots.save(9, a, "x", error));
     std::filesystem::remove_all(dir);
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
