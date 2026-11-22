@@ -552,7 +552,7 @@ and Nessie), Nebel (text 5180, not in the tables).
   +6/+8 cell, +0xA duration, +0xC saved map value, +0xE layer, +0xF double.
   seg8:67F8 adds an entry (an obstacle on the same cell is removed first, then
   the first free slot is used). Types: 0x4 Steinschlag, 0x8 Schnee, 0x10 Regen,
-  0x900 Nägel (card), 0x400/0x800 (seg8:7311/7343, open). The events write the
+  0x900 Nägel (card), 0x400/0x800 investments (round 13). The events write the
   tiles 0x826 / 0x20F / 0x836 into layer 1 and give that tile flag 0x20 through
   seg2:3305 (which writes `pit[0x1000 + tile]`), so a vehicle entering the cell
   runs seg2:2404 (round 11). There, obstacle types 4/8/16 can be cleared with card
@@ -587,8 +587,51 @@ Rebuilt in `src/obstacles.cpp`, `src/events.cpp`, `src/economy.cpp` and
 cards, rockfall cells, the six damage events and the protection cards. In the
 field graph an obstacle blocks the link that contains its cell. Simplifications:
 cards are used automatically (the original asks humans); random events can be
-switched off as a variant. Open: the professor, Nebel, the Nägel card's direction
-dialog, obstacle types 0x400/0x800.
+switched off as a variant. Open: Nebel (the professor, the Nägel direction and
+the types 0x400/0x800 follow in round 13).
+
+### Professor, football club and further cards (round 13)
+
+- **Investment events**: the event tables' entries 6F71 and 6F98 both call
+  seg8:6FBF with flag 1 (Professor, texts 5320 ff.) or 0 (Fussballclub, texts
+  5400 ff.); the former names ProfessorGood/Bad were wrong. The offer goes to the
+  player whose turn starts (DS:94E2) only if the cash exceeds 10,000 (DS:8776).
+  The dialog changes the amount in steps of 1,000 (DS:877E) up to the cash. On
+  confirmation an obstacle-table entry is added: type 0x400 (Professor, DS:9222
+  set) or 0x800, duration = active players (seg2:0368), cell 0/0, layer byte
+  +0xE = player, double +0xF = amount; the amount is subtracted at once
+  (seg2:5A47).
+- **Payout** on expiry (seg8:62FB → 652C for 0x400, 6394 for 0x800):
+  `random(3) == 0` loses the money (texts 5381/5441 + random(2)), otherwise
+  amount × 2.0 (DS:876E) is added (texts 5341/5421 + random(2)).
+- **Erdbeben** (card 17, seg3:1BDE): text via seg2:B74D (random(2)), town of the
+  player's field (seg2:276B, 0xFF = none), then seg8:4F1B(town, 38 Versicherung)
+  and nextPlayer.
+- **Nägel** (card 18, seg3:1C96 / 2096): the player chooses a direction with a
+  road; the obstacle (type 0x900, duration 4n) lies two cells away. The turn
+  continues (no nextPlayer).
+- **Punch** (card 20, seg3:2D17): for the first other active player standing on
+  the same field (+0x3C), the start direction comes from the table {2, 3, 0, 1}
+  indexed by the puncher's vehicle facing (frame byte +2, seg2:2AF6 / DS:1994:
+  1 up … 4 left), i.e. the opposite direction. Four times: the link in the current
+  direction is taken if it exists and the target field is not masked (DS:A10F);
+  otherwise the direction turns clockwise, skipping the puncher's own facing.
+  Then nextPlayer.
+- **Konferenz** (card 21, seg3:2F5F): every other active player gets the
+  current player's position (+0x16/+0x18, field +0x3C, +0x2D, frame +0x20,
+  +0x1E = 0); if that player carries Dr. Drago, seg2:9C97 places him anew.
+- **Flugzeug** (card 27, seg3:31D5): a window (resource 0x3381) chooses a target
+  town; the flight ends with the town's field action.
+- **Verdoppeln** (card 40, seg3:3FBB): sets DS:2EB0 = 1; the card handler at
+  seg3:0E83 then skips removing the next card (seg2:3C62) and clears the flag.
+  seg2:0CE8 clears it at every player change.
+
+Rebuilt in `src/events.cpp` (`investmentPayout`), `src/game_cards.cpp` and
+`src/game_events.cpp`. Simplifications: Punch uses the direction of the
+player's last step as facing (right before the first move); the viewer invests
+half the cash rounded to 1,000 with I and flies to the current destination with
+Flugzeug. Open: property cards 1–8 (town dialog modes), Steuerlos, Tschüss,
+Risiko, card fields, Nebel, computer players.
 
 ### SBS: remaining hypotheses
 

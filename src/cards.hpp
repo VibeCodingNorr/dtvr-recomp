@@ -43,6 +43,7 @@ enum class CardKind {
     Movement, Fiskus, Konto, Schulden, Zero, // movement and money cards
     Zucker, Blockieren, Schlafen,            // status cards
     Weihnachten, HauAb,                      // Dr. Drago / gift cards (round 10)
+    Erdbeben, Naegel, Punch, Konferenz, Flugzeug, Verdoppeln, // round 13
     Unsupported,
 };
 CardKind cardKind(int type);

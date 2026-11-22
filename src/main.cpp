@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
-#include "game.hpp"
+#include "play_view.hpp"
 #include "rules.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
@@ -265,63 +265,35 @@ static int run(int argc, char** argv) {
                   << " moegliche Zielfelder\n";
     };
     if (rollAtStart && !play && view == View::World && !board.fields.empty()) rollDie();
-    // Hotseat game from the recovered rules (src/game.cpp).
-    std::unique_ptr<dtvr::WorldMap> playMap;          // kept alive for the game (barriers, robbers)
-    std::unique_ptr<dtvr::TileProperties> playProps;
-    std::unique_ptr<dtvr::Game> game;
-    int cardTarget = -1; // chosen with T when three or more players take part
+    // Hotseat game from the recovered rules (src/game.cpp), shown by src/play_view.cpp.
+    std::unique_ptr<dtvr::PlayView> playView;
     auto report = [&] {
-        if (!game) return;
-        for (const auto& m : game->messages()) std::cout << m << "\n";
-        static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende"};
-        const int p = game->currentPlayer();
-        const std::string status = "DTVR Recomb | Spieler " + std::to_string(p + 1) + " | Monat "
-            + std::to_string(game->calendar().month % 12 + 1) + " | Schritte " + std::to_string(game->stepsTaken())
-            + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
-            + " | Etappen " + std::to_string(game->remainingStages()) + " | Geld "
-            + std::to_string(int64_t(game->cash(p)))
-            + (game->eastOpen() ? " | Osten offen" : "")
-            + (game->drago().holder >= 0 ? " | Dr. Drago bei " + std::to_string(game->drago().holder + 1) : "")
-            + (cardTarget >= 0 ? " | Ziel-Spieler "
-            + std::to_string(cardTarget + 1) : "") + " | " + phases[int(game->phase())];
-        SDL_SetWindowTitle(window.get(), status.c_str());
-        const int town = game->townAt(game->playerField(p));
-        if (game->phase() == dtvr::Game::Phase::Arrived && town >= 0) {
-            // Town dialog subset: entries with price and owner (keys 1-9, 0 buy).
-            for (int e = 0; e < 10; ++e) {
-                if (!game->economy().entryExists(town, e)) continue;
-                const auto owner = game->economy().town(town).entries[size_t(e)].owner;
-                std::cout << "  [" << (e + 1) % 10 << "] " << dtvr::oemToUtf8(towns[size_t(town)].entries[size_t(e)].name)
-                          << " " << int64_t(game->economy().price(town, e, dtvr::BuyMode::Normal)) << " "
-                          << (owner == dtvr::kNoOwner ? std::string("frei") : "Spieler " + std::to_string(owner + 1))
-                          << "\n";
-            }
-        }
-        if (game->phase() == dtvr::Game::Phase::Roll) {
-            std::cout << "Hand Spieler " << p + 1 << ":";
-            for (int i = 0; i < 8; ++i)
-                if (game->hand(p)[size_t(i)] != dtvr::Deck::kTaken)
-                    std::cout << " [" << i + 1 << "] " << game->cardName(game->hand(p)[size_t(i)]);
-            std::cout << "\n";
-        }
+        if (!playView) return;
+        playView->printLog(std::cout);
+        SDL_SetWindowTitle(window.get(), playView->title().c_str());
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
-        playMap = std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map"));
-        playProps = std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit"));
-        game = std::make_unique<dtvr::Game>(board, towns, humans, rounds, uint16_t(seed), 1,
-                                            playMap.get(), playProps.get());
+        playView = std::make_unique<dtvr::PlayView>(
+            board, towns, std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map")),
+            std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), humans, rounds,
+            uint16_t(seed));
         graph = true;
     }
     load();
     report();
-    if (game && rollAtStart) { game->roll(); report(); }
+    if (playView && rollAtStart) { playView->game().roll(); report(); }
     bool running = true;
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) fit();
+            if (event.type == SDL_KEYDOWN && playView
+                && playView->handleKey(event.key.keysym.sym, event.key.keysym.mod)) {
+                report();
+                continue;
+            }
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                 case SDLK_ESCAPE: running = false; break;
@@ -333,43 +305,10 @@ static int run(int argc, char** argv) {
                 case SDLK_v: if (view == View::World) { views = !views; load(); } break;
                 case SDLK_g: graph = !graph; break;
                 case SDLK_w:
-                    if (game) { game->roll(); report(); }
-                    else if (view == View::World && !board.fields.empty()) rollDie();
+                    if (view == View::World && !board.fields.empty()) rollDie();
                     break;
-                case SDLK_RETURN: if (game) { game->endTurn(); report(); } break;
-                case SDLK_t:
-                    if (game) {
-                        // Next active player other than the current one as card target.
-                        for (int i = 1; i <= dtvr::kPlayerSlots; ++i) {
-                            const int c = (cardTarget < 0 ? game->currentPlayer() : cardTarget) + i;
-                            const int candidate = c % dtvr::kPlayerSlots;
-                            if (game->players()[size_t(candidate)].status && candidate != game->currentPlayer()) {
-                                cardTarget = candidate;
-                                break;
-                            }
-                        }
-                        report();
-                    }
-                    break;
-                case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4: case SDLK_5:
-                case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: case SDLK_0:
-                    if (game) {
-                        const int digit = event.key.keysym.sym == SDLK_0 ? 9 : int(event.key.keysym.sym - SDLK_1);
-                        const bool shift = event.key.keysym.mod & KMOD_SHIFT;
-                        if (game->phase() == dtvr::Game::Phase::Arrived)
-                            shift ? game->sellProperty(digit) : game->buyProperty(digit);
-                        else game->playCard(digit, cardTarget);
-                        report();
-                    }
-                    break;
-                case SDLK_UP: if (game) { game->step(dtvr::Direction::Up); report(); } break;
-                case SDLK_DOWN: if (game) { game->step(dtvr::Direction::Down); report(); } break;
-                case SDLK_RIGHT:
-                    if (game) { game->step(dtvr::Direction::Right); report(); } else step(1);
-                    break;
-                case SDLK_LEFT:
-                    if (game) { game->step(dtvr::Direction::Left); report(); } else step(-1);
-                    break;
+                case SDLK_RIGHT: step(1); break;
+                case SDLK_LEFT: step(-1); break;
                 default: break;
                 }
             }
@@ -459,30 +398,8 @@ static int run(int argc, char** argv) {
                     SDL_RenderDrawRectF(renderer.get(), &box);
                 }
             };
-            if (game) {
-                // Stage origin (white), destination (yellow), players (coloured, current larger).
-                static const SDL_Color colours[8] = {{255, 60, 60, 255}, {60, 160, 255, 255}, {60, 220, 60, 255},
-                    {255, 160, 0, 255}, {200, 60, 255, 255}, {0, 230, 230, 255}, {255, 255, 255, 255}, {120, 120, 120, 255}};
-                mark(game->origin(), {255, 255, 255, 255}, r * 1.6f);
-                for (const auto& o : game->obstacles().slots()) { // road obstacles (rain, snow, rockfall)
-                    if (!o.type) continue;
-                    const SDL_FRect box{x + o.x * cell, y + o.y * cell, cell, cell};
-                    SDL_SetRenderDrawColor(renderer.get(), 255, 0, 0, 255);
-                    SDL_RenderFillRectF(renderer.get(), &box);
-                }
-                if (game->drago().holder >= 0)
-                    mark(game->playerField(game->drago().holder), {200, 0, 255, 255}, r * 2.4f);
-                if (game->destination() >= 0) mark(game->destination(), {255, 230, 0, 255}, r * 2.0f);
-                for (int p = 0; p < dtvr::kPlayerSlots; ++p) {
-                    if (!game->players()[size_t(p)].status) continue;
-                    const auto& f = board.fields[size_t(game->playerField(p))];
-                    const SDL_Color c = colours[p];
-                    const float size = (p == game->currentPlayer() ? 0.9f : 0.5f) * r;
-                    const SDL_FRect box{x + (f.x + 0.5f) * cell - size + p, y + (f.y + 0.5f) * cell - size + p,
-                                        2 * size, 2 * size};
-                    SDL_SetRenderDrawColor(renderer.get(), c.r, c.g, c.b, 255);
-                    SDL_RenderFillRectF(renderer.get(), &box);
-                }
+            if (playView) {
+                playView->draw(renderer.get(), x, y, zoom);
             } else {
                 for (int t : targets) mark(t, {0, 255, 0, 255}, r);
                 if (roll > 0 || graph) mark(startField, {255, 255, 255, 255}, r * 1.5f);

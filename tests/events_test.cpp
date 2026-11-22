@@ -74,6 +74,16 @@ int main() {
     players[4].field = 1;                                           // no right-hand link
     CHECK(robberyVictim(players, line, cash, 1.0, sea) == -1);
 
+    // Investments: 1/3 lost, otherwise twice the sum.
+    int lost = 0, doubled = 0;
+    MsRandom inv(9);
+    for (int i = 0; i < 300; ++i) {
+        const double p = investmentPayout(1000, inv);
+        CHECK(p == 0 || p == 2000);
+        (p == 0 ? lost : doubled)++;
+    }
+    CHECK(lost > 60 && lost < 140 && doubled > 160);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("events_test: OK");
     return failures != 0;

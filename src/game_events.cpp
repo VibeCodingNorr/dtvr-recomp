@@ -6,8 +6,9 @@
 
 namespace dtvr {
 
-void Game::eventTick() {
+void Game::eventTick(int player) {
     // seg8:1624, called inside nextPlayer after the month bookkeeping.
+    eventPlayer_ = player;
     ++events_.turns;                                   // DS:A0FE
     if (events_.hold > 0) --events_.hold;              // DS:A111
     const int season = seasonForMonth(calendar_.month);
@@ -57,6 +58,17 @@ void Game::applyEvent(EventKind kind) {
         messages_.push_back(text);
         return;
     }
+    case EventKind::Professor:
+    case EventKind::FootballClub: // seg8:6FBF: offered to the player whose turn starts
+        if (economy_.money(eventPlayer_).cash > 10000.0) {         // DS:8776
+            offer_ = kind;
+            messages_.push_back("Ereignis " + eventName(kind) + ": Spieler " + std::to_string(eventPlayer_ + 1)
+                                + " kann investieren (I)");
+        } else {
+            messages_.push_back("Ereignis " + eventName(kind) + ": Spieler " + std::to_string(eventPlayer_ + 1)
+                                + " hat nicht genug Geld");
+        }
+        return;
     case EventKind::Rain: placeObstacle(kRain, 3); return;     // seg8:42B0
     case EventKind::Snow: placeObstacle(kSnow, 3); return;     // seg8:535E
     case EventKind::Rockfall: {                                // seg8:5A76
@@ -106,7 +118,7 @@ void Game::applyEvent(EventKind kind) {
 
 void Game::placeObstacle(uint16_t type, int durationFactor) {
     for (int attempt = 0; attempt < 10; ++attempt) { // seg8:4460: up to ten tries
-        const ObstacleSpot spot = pickObstacleSpot(board_, players_, current_, destination_, routeMask(), rng_,
+        const ObstacleSpot spot = pickObstacleSpot(board_, players_, eventPlayer_, destination_, routeMask(), rng_,
                                                    map_, props_);
         if (spot.field < 0) continue;
         rng_.random(2);

@@ -9,6 +9,7 @@
 #include "obstacles.hpp"
 #include "rules.hpp"
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -34,10 +35,17 @@ public:
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
-    // Play hand slot 0..7 before spinning. Movement, money (Fiskus, Konto, Schulden,
-    // Zero) and status cards (Zucker, Blockieren, Schlafen) are rebuilt; `target`
-    // is only needed with three or more players (seg2:51EA).
+    // Play hand slot 0..7 before spinning (game_cards.cpp). `target` depends on the
+    // card: the target player for Fiskus/Schulden/Zucker/Blockieren/Schlafen (only
+    // needed with three or more players, seg2:51EA), the direction 1..4 for Nägel,
+    // the town index for Flugzeug; ignored otherwise.
     bool playCard(int handSlot, int target = -1);
+    // Professor / football club offer (seg8:6FBF): invest a multiple of 1,000 up to
+    // the cash, or decline. Spinning or playing a card declines.
+    EventKind investmentOffer() const { return offer_; }
+    bool invest(int amount);
+    void declineInvestment();
+    int fieldOfTown(int town) const;
     // Sell an own entry of the town the player stopped in (seg1:832A, full value).
     bool sellProperty(int entry);
     const Hand& hand(int player) const { return hands_[size_t(player)]; }
@@ -83,8 +91,9 @@ private:
     void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
     bool playWeihnachten();      // seg3:1156
     void playHauAb();            // seg3:3EFB
+    void playPunch();            // seg3:2D17 (game_cards.cpp)
     // game_events.cpp
-    void eventTick();            // seg8:1624 after every player change
+    void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
     void applyEvent(EventKind kind);
     void placeObstacle(uint16_t type, int durationFactor);   // rain / snow (seg8:5F43)
     void damageTown(int town, int protectionCard);          // seg8:4F1B
@@ -104,6 +113,10 @@ private:
     EventPlaces places_;
     ObstacleTable obstacles_;
     bool randomEvents_ = true;
+    EventKind offer_ = EventKind::None;     // pending professor / football offer
+    int eventPlayer_ = 0;                   // DS:94E2 while the event trigger runs
+    bool doubleNext_ = false;               // DS:2EB0 (Verdoppeln)
+    std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113
     int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)

@@ -98,68 +98,6 @@ std::vector<int> Game::activePlayers() const {
     return active;
 }
 
-bool Game::playCard(int handSlot, int target) {
-    messages_.clear();
-    if (phase_ != Phase::Roll || handSlot < 0 || handSlot >= 8) return false;
-    auto& slot = hands_[size_t(current_)][size_t(handSlot)];
-    const int type = deck_.typeOfSlot(slot);
-    if (type < 0) return false;
-    const std::string who = "Spieler " + std::to_string(current_ + 1);
-    const std::string card = cardTypes()[size_t(type)].name;
-    if (players_[size_t(current_)].flags & kFlagCardsBlocked) {
-        messages_.push_back(who + ": Karten blockiert (Text 1020)");
-        return false;
-    }
-    const CardKind kind = cardKind(type);
-    if (kind == CardKind::Unsupported) {
-        messages_.push_back("Karte " + card + ": Wirkung noch nicht nachgebaut");
-        return false;
-    }
-    int victim = -1;
-    if (cardNeedsTarget(kind)) {
-        victim = resolveTarget(players_, current_, target);
-        if (victim < 0) {
-            messages_.push_back("Karte " + card + ": Zielspieler waehlen");
-            return false;
-        }
-    }
-    if (kind == CardKind::Schulden && !economy_.passDebt(current_, victim)) {
-        messages_.push_back("Karte " + card + ": nur mit negativem Kontostand");
-        return false;
-    }
-    slot = Deck::kTaken;
-    const std::string target_name = victim >= 0 ? " auf Spieler " + std::to_string(victim + 1) : "";
-    messages_.push_back(who + " spielt " + card + target_name);
-    switch (kind) {
-    case CardKind::Movement: {
-        const CardMove move = cardMove(type);
-        int allowance = move.fields;
-        if (move.reels) for (int v : spinReels(rng_, move.reels, move.maximum)) allowance += v;
-        counter_ = MoveCounter(allowance);
-        phase_ = Phase::Move;
-        messages_.push_back(std::to_string(allowance) + " Felder");
-        return true;
-    }
-    case CardKind::Fiskus: messages_.push_back("Steuer " + money(-economy_.fiskus(victim))); break;
-    case CardKind::Konto: economy_.balanceAccounts(activePlayers()); break;
-    case CardKind::Zero: economy_.zero(current_); break;
-    case CardKind::Schulden: break; // applied above
-    case CardKind::Weihnachten: playWeihnachten(); return true; // ends the turn itself
-    case CardKind::HauAb: playHauAb(); return true;
-    default: { // status cards: flag on the target, then a normal one-reel spin
-        players_[size_t(victim)].flags |= cardStatusFlag(kind);
-        int sum = 0;
-        for (int v : spinReels(rng_, 1, 5)) sum += v;
-        counter_ = MoveCounter(sum);
-        phase_ = Phase::Move;
-        messages_.push_back("wuerfelt " + std::to_string(sum));
-        return true;
-    }
-    }
-    advanceTurn(); // money cards: the handler calls nextPlayer (seg2:06FC)
-    return true;
-}
-
 bool Game::sellProperty(int entry) {
     messages_.clear();
     if (phase_ != Phase::Arrived) return false;
@@ -173,6 +111,7 @@ bool Game::sellProperty(int entry) {
 bool Game::roll() {
     messages_.clear();
     if (phase_ != Phase::Roll) return false;
+    declineInvestment();
     int sum = 0;
     for (int v : spinReels(rng_, 1, 5)) sum += v;
     counter_ = MoveCounter(sum);
@@ -205,6 +144,7 @@ bool Game::step(Direction d) {
     }
     if (!counter_.step(d, true)) return false;
     p.field = next;
+    lastDirection_[size_t(current_)] = int(d);
     // seg2:B290 when the vehicle stops on a field: Dr. Drago changes hands.
     if (counter_.taken() == counter_.allowance()) {
         const int before = drago_.holder;
@@ -285,16 +225,25 @@ bool Game::endTurn() {
 }
 
 void Game::advanceTurn() {
-    for (const auto& gone : obstacles_.tick()) // seg8:61FE before the player loop (seg2:071B)
-        if (gone.type) messages_.push_back("Hindernis bei (" + std::to_string(gone.x) + "," + std::to_string(gone.y)
-                                           + ") ist weg");
+    doubleNext_ = false;
+    declineInvestment();
+    for (const auto& gone : obstacles_.tick()) { // seg8:61FE before the player loop (seg2:071B)
+        if (gone.type == kProfessorInvestment || gone.type == kFootballInvestment) {
+            const double payout = investmentPayout(gone.amount, rng_); // seg8:652C / 6394
+            economy_.addMoney(gone.player, payout);
+            messages_.push_back("Investition von Spieler " + std::to_string(gone.player + 1)
+                                + (payout > 0 ? ": doppelt zurueck!" : ": verloren"));
+            continue;
+        }
+        messages_.push_back("Hindernis bei (" + std::to_string(gone.x) + "," + std::to_string(gone.y) + ") ist weg");
+    }
     TurnHooks hooks;
     hooks.chargeCredits = [this] { economy_.chargeCredits(activePlayers()); };
     hooks.settleMonth = [this] { economy_.settleMonth(); };
     hooks.clearCredits = [this] { economy_.clearCredits(); };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
-    hooks.afterPlayerChange = [this](int) { eventTick(); };
+    hooks.afterPlayerChange = [this](int player) { eventTick(player); };
     const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
     for (int p : change.satOut) messages_.push_back("Spieler " + std::to_string(p + 1) + " setzt aus");
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));

@@ -20,8 +20,10 @@ cards plus money and status cards (src/cards.cpp) and the property economy with
 selling and credit (src/economy.cpp); Dr. Drago with his actions (src/drago.cpp,
 src/game_drago.cpp); the event trigger, event tables, Eastern Europe and robbers
 (src/events.cpp, src/game_events.cpp); road obstacles and property damage with
-the passive cards (src/obstacles.cpp). No professor, remaining card effects, card
-fields, AI, save support,
+the passive cards (src/obstacles.cpp); professor / football investments and the
+cards Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln (src/game_cards.cpp).
+The SDL play mode lives in src/play_view.cpp. No property cards, Steuerlos,
+Tschüss, Risiko, card fields, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -86,6 +88,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/worldmap.{hpp,cpp}`: europe.map cells, season table, SBB tile split and
   map composition following rally.exe (no SDL).
 - `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules.
+- `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
+  SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
   step counter, field distances and routes as in rally.exe (no SDL).
 - `src/board.{hpp,cpp}`: europe.inf, europe.str field graph and lists, town records,
@@ -158,8 +162,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace the professor event, the remaining cards (Nägel, Konferenz, Tschüss, Punch,
-Erdbeben, Risiko, Flugzeug, property cards) and the card field dialog; then
-computer players.
+Trace the property cards (town dialog modes), Steuerlos, Tschüss, Risiko and the
+card field dialog; then computer players.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

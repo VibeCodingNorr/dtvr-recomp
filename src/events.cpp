@@ -10,12 +10,12 @@ using E = EventKind;
 // Far-pointer tables built on the stack at seg8:181F-1ADC.
 constexpr std::array<std::array<EventKind, 16>, 4> kTables = {{
     {E::Rain, E::Rain, E::Rain, E::Rain, E::Storm, E::Storm, E::Storm, E::Storm,
-     E::Snow, E::Snow, E::Snow, E::Snow, E::Rockfall, E::Rockfall, E::ProfessorGood, E::ProfessorGood},
+     E::Snow, E::Snow, E::Snow, E::Snow, E::Rockfall, E::Rockfall, E::Professor, E::Professor},
     {E::Rain, E::Rain, E::Robbers, E::Robbers, E::Robbers, E::Rockfall, E::Rockfall, E::Snow,
-     E::Snow, E::ProfessorGood, E::ProfessorGood, E::ProfessorBad, E::Flood, E::Flood, E::Earthquake, E::Earthquake},
+     E::Snow, E::Professor, E::Professor, E::FootballClub, E::Flood, E::Flood, E::Earthquake, E::Earthquake},
     {E::Rain, E::Rain, E::Robbers, E::Robbers, E::Rockfall, E::Rockfall, E::Snow, E::Snow,
      E::Drought, E::Drought, E::Flood, E::Flood, E::Earthquake, E::Nessie, E::Storm, E::Storm},
-    {E::Rain, E::Rockfall, E::Snow, E::Robbers, E::Robbers, E::Storm, E::Drought, E::ProfessorGood,
+    {E::Rain, E::Rockfall, E::Snow, E::Robbers, E::Robbers, E::Storm, E::Drought, E::Professor,
      E::Flood, E::Flood, E::Earthquake, E::Earthquake, E::Nessie, E::Nessie, E::Robbers, E::Volcano},
 }};
 
@@ -35,8 +35,8 @@ std::string eventName(EventKind kind) {
     case E::Drought: return "Duerre";
     case E::Nessie: return "Nessie";
     case E::Volcano: return "Vulkan";
-    case E::ProfessorGood: return "Professor (seg8:6FBF(1))";
-    case E::ProfessorBad: return "Professor (seg8:6FBF(0))";
+    case E::Professor: return "Professor";
+    case E::FootballClub: return "Fussballclub";
     }
     return "?";
 }
@@ -77,6 +77,12 @@ int pickDamageTown(const std::vector<Town>& towns, const std::vector<uint8_t>& o
             if (hasCategory(t)) list.push_back(int(t));
     if (list.empty()) return -1;
     return list[size_t(rng.random(int(list.size()) - 1))];
+}
+
+double investmentPayout(double amount, MsRandom& rng) {
+    const bool lost = rng.random(3) == 0;
+    rng.random(2);
+    return lost ? 0.0 : amount * 2.0;
 }
 
 int nextEventCountdown(int activePlayers, int year, MsRandom& rng) {

@@ -13,7 +13,7 @@ namespace dtvr {
 // Random events and the opening of Eastern Europe (round 11, docs/formats.md).
 enum class EventKind {
     None, OpenEast, Rain, Storm, Snow, Rockfall, Robbers, Flood, Earthquake, Drought, Nessie,
-    Volcano, ProfessorGood, ProfessorBad,
+    Volcano, Professor, FootballClub,
 };
 std::string eventName(EventKind kind);
 
@@ -67,5 +67,9 @@ Cell nextRockfallCell(EventPlaces& p);   // 11 road cells at seg8:5A76..
 int pickDamageTown(const std::vector<Town>& towns, const std::vector<uint8_t>& ownedAny,
                    int category, MsRandom& rng);
 int townAtCell(const std::vector<Town>& towns, Cell c);
+
+// seg8:652C / 6394 on expiry of an investment: random(3) == 0 loses it,
+// otherwise twice the sum (DS:876E) is paid; a text random(2) follows either way.
+double investmentPayout(double amount, MsRandom& rng);
 
 } // namespace dtvr

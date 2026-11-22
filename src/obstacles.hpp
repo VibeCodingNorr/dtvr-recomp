@@ -14,6 +14,9 @@ namespace dtvr {
 // tile flag 0x20 (seg2:3305), so a vehicle entering the cell runs seg2:2404.
 enum ObstacleType : uint16_t {
     kRockfall = 0x4, kSnow = 0x8, kRain = 0x10, kNails = 0x900,
+    // Not road obstacles: delayed investment results that use the same table
+    // (seg8:7311 / 7343, paid out on expiry by seg8:652C / 6394).
+    kProfessorInvestment = 0x400, kFootballInvestment = 0x800,
 };
 
 struct Obstacle {
@@ -22,6 +25,8 @@ struct Obstacle {
     int x = 0, y = 0;   // map cell
     int field = -1;     // link the cell lies on: field and direction (1..4)
     int dir = 0;
+    int player = -1;    // investments: investor (stored in the layer byte +0xE)
+    double amount = 0;  // investments: invested sum (+0xF)
 };
 
 // Card type that clears an obstacle (seg2:2455 / 252A via seg3:0D26): Schneepflug

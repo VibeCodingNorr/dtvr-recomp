@@ -55,6 +55,12 @@ CardKind cardKind(int type) {
     case 16: return CardKind::Schlafen;   // seg3:1B0A, flag 0x04
     case 0: return CardKind::Weihnachten; // seg3:1156
     case 35: return CardKind::HauAb;      // seg3:3EFB
+    case 17: return CardKind::Erdbeben;   // seg3:1BDE
+    case 18: return CardKind::Naegel;     // seg3:1C96
+    case 20: return CardKind::Punch;      // seg3:2D17
+    case 21: return CardKind::Konferenz;  // seg3:2F5F
+    case 27: return CardKind::Flugzeug;   // seg3:31D5
+    case 40: return CardKind::Verdoppeln; // seg3:3FBB
     default: return CardKind::Unsupported;
     }
 }
