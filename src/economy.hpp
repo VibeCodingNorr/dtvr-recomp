@@ -55,8 +55,21 @@ public:
     double price(int town, int entry, BuyMode mode) const;
     // seg1:7DC5 without a factor pointer. Returns false when the preconditions fail.
     bool buy(int player, int town, int entry, BuyMode mode);
+    // seg1:832A: sell an own, not rented entry; payout = value, x1.5 with the card
+    // Verkaufen (DS:869E). The entry becomes free.
+    bool sell(int player, int town, int entry, bool withCard);
     // seg1:85F9: monthly income, burdens, rent expiry and property values.
     void settleMonth();
+    // Year end (seg2:0784): seg1:8AA7 charges every positive credit debt before the
+    // settlement; seg1:8B41 clears the debts afterwards.
+    void chargeCredits(const std::vector<int>& activePlayers);
+    void clearCredits();
+
+    // Money cards (seg3 handlers; each ends the turn afterwards).
+    double fiskus(int target);                       // 14AD: (cash + property) * 0.1
+    double balanceAccounts(const std::vector<int>& activePlayers); // 15B0 Konto: average
+    void zero(int player);                           // 18EA: cash = 0
+    bool passDebt(int player, int target);           // 1790 Schulden: only if cash < 0
 
 private:
     void updateWholeOwner(int town); // seg1:7CF6

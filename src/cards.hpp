@@ -36,6 +36,18 @@ struct CardMove {
 // result with all zero.
 CardMove cardMove(int type);
 
+// Rebuilt card effects (round 9). Money cards end the turn (their handlers call
+// nextPlayer, seg2:06FC); status cards set a flag on the target and then post
+// WM_COMMAND 0x2710, i.e. a normal spin with one reel (seg4:0A27).
+enum class CardKind {
+    Movement, Fiskus, Konto, Schulden, Zero, // movement and money cards
+    Zucker, Blockieren, Schlafen,            // status cards
+    Unsupported,
+};
+CardKind cardKind(int type);
+bool cardNeedsTarget(CardKind kind);        // target chosen by seg2:51EA
+uint16_t cardStatusFlag(CardKind kind);      // bit set in the target's +0x40 flags
+
 // The event card deck (seg3:0000, seg3:01AD, seg3:0206, seg3:032D). Slots hold
 // card types; `order` holds slot indices or 0xFF once taken. Taken cards never
 // return to the deck.

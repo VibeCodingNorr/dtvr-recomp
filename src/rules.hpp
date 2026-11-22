@@ -134,6 +134,12 @@ struct TurnChange {
 // (seg2:089D) and the search continues. Flag bit 0 (seg2:C00C) is not modelled.
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng);
 
+// Target player of a card (seg2:51EA): with one active player the first active
+// slot, with two the other active player, otherwise the requested active
+// player other than `current` (chosen in a dialog); -1 if that is not valid.
+int resolveTarget(const std::vector<PlayerSlot>& players, int current, int requested);
+constexpr uint16_t kFlagCardsBlocked = 0x08; // checked at seg2:0B29, texts 1020-1022
+
 // Start field: first kind-6 field whose town name equals `name` ignoring ASCII case
 // (seg2:0000 with DS:1A00 = "LONDON", compared by _fstricmp seg10:22CA).
 int startField(const Board& board, const std::vector<Town>& towns, const std::string& name = "LONDON");

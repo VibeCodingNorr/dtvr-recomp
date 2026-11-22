@@ -88,7 +88,7 @@ int main() {
         if (type < 0) continue;
         const CardMove m = cardMove(type);
         if ((m.reels || m.fields) && moveSlot < 0) moveSlot = i;
-        if (!m.reels && !m.fields && otherSlot < 0) otherSlot = i;
+        if (cardKind(type) == CardKind::Unsupported && otherSlot < 0) otherSlot = i;
     }
     CHECK(cardGame.deck().remaining() == 199 - 8);
     if (otherSlot >= 0) CHECK(!cardGame.playCard(otherSlot) && cardGame.phase() == Game::Phase::Roll);
@@ -135,6 +135,21 @@ int main() {
         CHECK(!shop.buyProperty(0));
         CHECK(shop.economy().town(0).entries[0].owner == 0);
     }
+
+    // Money and status cards with targets (two players: target is automatic).
+    {
+        std::vector<PlayerSlot> three(8);
+        three[0].status = three[2].status = three[5].status = 1;
+        CHECK(resolveTarget(three, 0, 2) == 2 && resolveTarget(three, 0, 0) == -1);
+        CHECK(resolveTarget(three, 0, 1) == -1 && resolveTarget(three, 0, -1) == -1);
+        three[5].status = 0;
+        CHECK(resolveTarget(three, 0, -1) == 2);                   // two players: the other
+        three[2].status = 0;
+        CHECK(resolveTarget(three, 0, -1) == 0);                   // one player: first active
+    }
+    CHECK(cardKind(9) == CardKind::Fiskus && cardKind(16) == CardKind::Schlafen);
+    CHECK(cardKind(26) == CardKind::Unsupported && cardStatusFlag(CardKind::Zucker) == 0x02);
+    CHECK(cardNeedsTarget(CardKind::Fiskus) && !cardNeedsTarget(CardKind::Konto));
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");

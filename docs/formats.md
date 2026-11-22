@@ -386,9 +386,47 @@ Rebuilt in `src/economy.cpp` and wired into the game: starting cash, purchases
 in all modes above (the game exposes the normal purchase after stopping in a
 town), whole-town bonus, monthly settlement, rent expiry.
 
-Open: how a burden arises, the use of player +0x4A, Kredit repayment at the
-year end, selling (card Verkaufen), the entry category and +0x20 word, whether
-visitors pay anything to owners, and the rest of the town dialog.
+Open: how a burden arises, the use of player +0x4A, the entry category and
++0x20 word, whether visitors pay anything to owners, and the rest of the town
+dialog.
+
+### Selling, credit and card effects (round 9)
+
+- **Selling** seg1:832A(player, town, entry, factor*): only an own entry that is
+  not rented (landlord byte 0xFF). The entry becomes free and the player gets
+  the value, × 1.5 (DS:869E) while DS:3FC6 = 2 (card Verkaufen); with a factor
+  pointer the value × factor.
+- **Year end** (seg2:0784–07E6, when month mod 12 = 11): seg1:2A30 message,
+  seg1:8AA7 subtracts every positive credit debt (+0x51A) from cash, seg1:85F9
+  monthly settlement, year + 1, inflation, seg8:88C6 year-end window (consumes at
+  least one `rand()` % 7 at seg8:88DF; not modelled, so random sequences diverge
+  after a year end), seg1:8BC6 resets yearly counters (+0x62..+0x6C),
+  seg1:8B41 clears the credit debts.
+- **Card target** seg2:51EA(current): one active player → the first active
+  slot, two → the other one, more → a selection dialog.
+- **Money cards** (each handler calls nextPlayer seg2:06FC afterwards, so the
+  card replaces the turn):
+  - Fiskus (seg3:14AD): target pays (cash + property value +0x5A) × 0.1 (DS:8636).
+  - Konto (seg3:15B0): with more than one active player every cash balance is set
+    to the average of all active players.
+  - Schulden (seg3:1790): only if the player's cash is negative; the target
+    takes the negative amount, the player's cash becomes 0.
+  - Zero (seg3:18EA): the player's own cash becomes 0.
+- **Status cards** set a bit in the target's +0x40 flags and then post
+  WM_COMMAND 0x2710 (one-reel spin, seg4:0A27), so the player still moves:
+  Zucker (seg3:19E5) bit 0x02 and Schlafen (seg3:1B0A) bit 0x04 → sit out once
+  (texts 1000–1002, 1010–1012; `random(2)` yields 0..2); Blockieren (seg3:1AB9)
+  bit 0x08 → the target cannot use cards (checked at seg2:0B29, texts 1020–1022),
+  cleared when that player's turn ends; Steuerlos (seg3:1994) bit 0x20 → the
+  target's vehicle is driven by the computer routine seg5:A1CD for a turn (not
+  rebuilt, depends on the computer player). Tschüss sets bit 0x10 (seg3:2B88,
+  meaning open).
+
+Rebuilt: selling at full value from the town, credit charge and clearing at the
+year end, target resolution, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen
+and Blockieren. Open: the remaining 23 card types, Steuerlos (needs the
+computer player), the year-end window's random calls, what happens with a
+negative balance.
 
 ### SBS: remaining hypotheses
 
@@ -430,8 +468,10 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
    hotseat game (`--play`) assembles all rules so far.
 7. Event card deck, shuffle, hands, yellow field and movement cards rebuilt.
 8. Property economy: starting cash, town state, purchases in eight modes, whole-
-   town bonus and monthly income rebuilt. Next: selling, credit repayment,
-   remaining card effects, card fields and computer players.
+   town bonus and monthly income rebuilt.
+9. Selling, credit at the year end, card targets and 7 more card effects (money
+   and status cards) rebuilt. Next: remaining card effects, card fields and
+   computer players.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

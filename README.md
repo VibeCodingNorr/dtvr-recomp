@@ -26,7 +26,7 @@ no overall completion percentage is claimed.
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws and the 11 movement cards are playable; properties can be bought in towns (starting cash 30,000, monthly income, whole-town bonus). The other 30 card effects, selling, credit repayment, card fields and computer players are still open. | [Game](src/game.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#properties-and-money-round-8) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 18 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren); properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end). The other 23 card effects, card fields and computer players are still open. | [Game](src/game.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#selling-credit-and-card-effects-round-9) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -46,8 +46,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
    movement cards (2–5 Walzen, 1 oder 2, 1–6 Felder).
 8. Properties: town state, purchases (normal, discount, rent, take, buy-out,
    credit), whole-town bonus and monthly income; starting cash 30,000.
-9. *Next:* selling, credit repayment, remaining card effects, card fields and
-   computer players.
+9. Selling, credit at the year end, card targets, money and status cards
+   (Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren).
+10. *Next:* remaining card effects, card fields and computer players.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -95,11 +96,12 @@ Start it with `play --play --players 2` (1–8 players, `--rounds N` stages,
 `--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
-hand slot (movement cards only). After stopping in a town the terminal lists
-its properties; **1–9, 0** buy entry 1–10. Status (including cash) is shown in
-the window title, the log and your hand in the terminal. Most card effects,
-selling, card fields, computer players, saves, multiplayer and native music
-playback are not implemented yet.
+hand slot (18 of 41 card types are rebuilt; with three or more players **T**
+chooses the target). After stopping in a town the terminal lists its
+properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it. Status
+(including cash) is shown in the window title, the log and your hand in the
+terminal. The other card effects, card fields, computer players, saves,
+multiplayer and native music playback are not implemented yet.
 
 1. Have your own supported original ISO and install the dependencies listed above.
 2. Build an installation in a new directory outside this checkout:
@@ -131,7 +133,8 @@ ISO after installation; subsequent launches use the installed local data.
 | Right click | World view: choose the start field and print its field action |
 | W / arrows / Enter | With `--play`: spin, drive one field, end the turn |
 | 1–8 | With `--play`: play the hand card in that slot instead of spinning |
-| 1–9, 0 | With `--play`, after stopping in a town: buy property 1–10 |
+| 1–9, 0 | With `--play`, after stopping in a town: buy property 1–10 (with Shift: sell) |
+| T | With `--play`: choose the card target player (three or more players) |
 | Escape | Exit |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.

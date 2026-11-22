@@ -29,8 +29,12 @@ public:
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
-    // Play hand slot 0..7 instead of spinning; only movement cards are rebuilt.
-    bool playCard(int handSlot);
+    // Play hand slot 0..7 before spinning. Movement, money (Fiskus, Konto, Schulden,
+    // Zero) and status cards (Zucker, Blockieren, Schlafen) are rebuilt; `target`
+    // is only needed with three or more players (seg2:51EA).
+    bool playCard(int handSlot, int target = -1);
+    // Sell an own entry of the town the player stopped in (seg1:832A, full value).
+    bool sellProperty(int entry);
     const Hand& hand(int player) const { return hands_[size_t(player)]; }
     const Deck& deck() const { return deck_; }
     std::string cardName(int deckSlot) const;
@@ -57,6 +61,8 @@ public:
 
 private:
     void arrive();
+    void advanceTurn();          // nextPlayer plus month/year bookkeeping
+    std::vector<int> activePlayers() const;
 
     const Board& board_;
     const std::vector<Town>& towns_;

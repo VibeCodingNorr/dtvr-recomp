@@ -16,8 +16,8 @@ are reconstructed as tested rules; a move preview exists in the world view. The
 arrival condition and the money, inflation and destination rules of field kinds
 are rebuilt. Player change, months, destinations and stages complete a playable
 hotseat rally (`--play`, src/game.cpp) with the event card deck and movement
-cards (src/cards.cpp) and the property economy (src/economy.cpp). No other card
-effects, selling, AI, save support,
+cards plus money and status cards (src/cards.cpp) and the property economy with
+selling and credit (src/economy.cpp). No other card effects, card fields, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -142,7 +142,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace selling, credit repayment, the remaining card effects and the card field
-dialog; then computer players.
+Trace the remaining card effects (property cards in the town dialog, Tschüss,
+Punch, Erdbeben, Nessie …) and the card field dialog; then computer players.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

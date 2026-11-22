@@ -42,6 +42,35 @@ CardMove cardMove(int type) {
     return m;
 }
 
+CardKind cardKind(int type) {
+    const CardMove m = cardMove(type);
+    if (m.reels || m.fields) return CardKind::Movement;
+    switch (type) {
+    case 9: return CardKind::Fiskus;      // handler seg3:14AD
+    case 10: return CardKind::Konto;      // seg3:15B0
+    case 11: return CardKind::Schulden;   // seg3:1790
+    case 12: return CardKind::Zero;       // seg3:18EA
+    case 14: return CardKind::Zucker;     // seg3:19E5, flag 0x02
+    case 15: return CardKind::Blockieren; // seg3:1AB9, flag 0x08
+    case 16: return CardKind::Schlafen;   // seg3:1B0A, flag 0x04
+    default: return CardKind::Unsupported;
+    }
+}
+
+bool cardNeedsTarget(CardKind kind) {
+    return kind == CardKind::Fiskus || kind == CardKind::Schulden || kind == CardKind::Zucker
+        || kind == CardKind::Blockieren || kind == CardKind::Schlafen;
+}
+
+uint16_t cardStatusFlag(CardKind kind) {
+    switch (kind) {
+    case CardKind::Zucker: return 0x02;
+    case CardKind::Blockieren: return 0x08;
+    case CardKind::Schlafen: return 0x04;
+    default: return 0;
+    }
+}
+
 Deck::Deck() {
     for (int t = 0; t < kCardTypes; ++t)
         for (int c = 0; c < cardTypes()[size_t(t)].copies; ++c) slots_.push_back(uint8_t(t));

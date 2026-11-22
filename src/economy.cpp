@@ -90,6 +90,54 @@ bool Economy::buy(int player, int town, int entry, BuyMode mode) {
     return true;
 }
 
+bool Economy::sell(int player, int town, int entry, bool withCard) {
+    if (player < 0 || size_t(player) >= money_.size() || !entryExists(town, entry)) return false;
+    PropertyState& p = states_[size_t(town)].entries[size_t(entry)];
+    if (p.owner != uint8_t(player) || p.landlord != kNoOwner) return false;
+    p.owner = kNoOwner;
+    money_[size_t(player)].cash += value(town, entry) * (withCard ? 1.5 : 1.0);
+    updateWholeOwner(town);
+    return true;
+}
+
+void Economy::chargeCredits(const std::vector<int>& activePlayers) {
+    for (int p : activePlayers) {
+        PlayerMoney& m = money_[size_t(p)];
+        if (m.creditDebt > 0) m.cash -= m.creditDebt;
+    }
+}
+
+void Economy::clearCredits() {
+    for (auto& m : money_)
+        if (m.creditDebt > 0) m.creditDebt = 0;
+}
+
+double Economy::fiskus(int target) {
+    PlayerMoney& m = money_[size_t(target)];
+    const double tax = (m.cash + m.propertyValue) * 0.1; // DS:8636
+    m.cash -= tax;
+    return tax;
+}
+
+double Economy::balanceAccounts(const std::vector<int>& activePlayers) {
+    if (activePlayers.size() <= 1) return activePlayers.empty() ? 0 : money_[size_t(activePlayers[0])].cash;
+    double sum = 0;
+    for (int p : activePlayers) sum += money_[size_t(p)].cash;
+    const double average = sum / double(activePlayers.size());
+    for (int p : activePlayers) money_[size_t(p)].cash = average;
+    return average;
+}
+
+void Economy::zero(int player) { money_[size_t(player)].cash = 0; }
+
+bool Economy::passDebt(int player, int target) {
+    PlayerMoney& m = money_[size_t(player)];
+    if (m.cash >= 0) return false;
+    money_[size_t(target)].cash += m.cash; // target takes the negative balance
+    m.cash = 0;
+    return true;
+}
+
 void Economy::updateWholeOwner(int town) {
     TownState& t = states_[size_t(town)];
     t.wholeOwner = kNoOwner;

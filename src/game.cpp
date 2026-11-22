@@ -76,24 +76,80 @@ std::string Game::cardName(int deckSlot) const {
     return type < 0 ? "-" : cardTypes()[size_t(type)].name;
 }
 
-bool Game::playCard(int handSlot) {
+std::vector<int> Game::activePlayers() const {
+    std::vector<int> active;
+    for (int p = 0; p < kPlayerSlots; ++p)
+        if (players_[size_t(p)].status) active.push_back(p);
+    return active;
+}
+
+bool Game::playCard(int handSlot, int target) {
     messages_.clear();
     if (phase_ != Phase::Roll || handSlot < 0 || handSlot >= 8) return false;
     auto& slot = hands_[size_t(current_)][size_t(handSlot)];
     const int type = deck_.typeOfSlot(slot);
     if (type < 0) return false;
-    const CardMove move = cardMove(type);
-    if (!move.reels && !move.fields) {
-        messages_.push_back(std::string("Karte ") + cardTypes()[size_t(type)].name + ": Wirkung noch nicht nachgebaut");
+    const std::string who = "Spieler " + std::to_string(current_ + 1);
+    const std::string card = cardTypes()[size_t(type)].name;
+    if (players_[size_t(current_)].flags & kFlagCardsBlocked) {
+        messages_.push_back(who + ": Karten blockiert (Text 1020)");
         return false;
     }
-    int allowance = move.fields;
-    if (move.reels) for (int v : spinReels(rng_, move.reels, move.maximum)) allowance += v;
-    counter_ = MoveCounter(allowance);
-    phase_ = Phase::Move;
-    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " spielt " + cardTypes()[size_t(type)].name
-                        + ": " + std::to_string(allowance) + " Felder");
+    const CardKind kind = cardKind(type);
+    if (kind == CardKind::Unsupported) {
+        messages_.push_back("Karte " + card + ": Wirkung noch nicht nachgebaut");
+        return false;
+    }
+    int victim = -1;
+    if (cardNeedsTarget(kind)) {
+        victim = resolveTarget(players_, current_, target);
+        if (victim < 0) {
+            messages_.push_back("Karte " + card + ": Zielspieler waehlen");
+            return false;
+        }
+    }
+    if (kind == CardKind::Schulden && !economy_.passDebt(current_, victim)) {
+        messages_.push_back("Karte " + card + ": nur mit negativem Kontostand");
+        return false;
+    }
     slot = Deck::kTaken;
+    const std::string target_name = victim >= 0 ? " auf Spieler " + std::to_string(victim + 1) : "";
+    messages_.push_back(who + " spielt " + card + target_name);
+    switch (kind) {
+    case CardKind::Movement: {
+        const CardMove move = cardMove(type);
+        int allowance = move.fields;
+        if (move.reels) for (int v : spinReels(rng_, move.reels, move.maximum)) allowance += v;
+        counter_ = MoveCounter(allowance);
+        phase_ = Phase::Move;
+        messages_.push_back(std::to_string(allowance) + " Felder");
+        return true;
+    }
+    case CardKind::Fiskus: messages_.push_back("Steuer " + money(-economy_.fiskus(victim))); break;
+    case CardKind::Konto: economy_.balanceAccounts(activePlayers()); break;
+    case CardKind::Zero: economy_.zero(current_); break;
+    case CardKind::Schulden: break; // applied above
+    default: { // status cards: flag on the target, then a normal one-reel spin
+        players_[size_t(victim)].flags |= cardStatusFlag(kind);
+        int sum = 0;
+        for (int v : spinReels(rng_, 1, 5)) sum += v;
+        counter_ = MoveCounter(sum);
+        phase_ = Phase::Move;
+        messages_.push_back("wuerfelt " + std::to_string(sum));
+        return true;
+    }
+    }
+    advanceTurn(); // money cards: the handler calls nextPlayer (seg2:06FC)
+    return true;
+}
+
+bool Game::sellProperty(int entry) {
+    messages_.clear();
+    if (phase_ != Phase::Arrived) return false;
+    const int town = townAt(players_[size_t(current_)].field);
+    if (town < 0 || !economy_.sell(current_, town, entry, false)) return false;
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " verkauft "
+                        + oemToUtf8(towns_[size_t(town)].entries[size_t(entry)].name));
     return true;
 }
 
@@ -177,17 +233,28 @@ void Game::arrive() {
 bool Game::endTurn() {
     messages_.clear();
     if (phase_ != Phase::Arrived) return false;
+    advanceTurn();
+    return true;
+}
+
+void Game::advanceTurn() {
+    const int firstMonth = calendar_.month;
     const auto change = nextPlayer(players_, current_, calendar_, rng_);
-    // seg1:85F9 runs once per month advance (seg2:0795 / 07DC).
-    for (int m = 0; m < change.monthsAdvanced; ++m) economy_.settleMonth();
+    // Per month advance (seg2:0784-07EB): at a year end credits are charged before
+    // the settlement (seg1:8AA7) and cleared afterwards (seg1:8B41).
+    for (int m = 0; m < change.monthsAdvanced; ++m) {
+        const bool yearEnd = unsigned(firstMonth + m) % 12 == 11;
+        if (yearEnd) economy_.chargeCredits(activePlayers());
+        economy_.settleMonth();
+        if (yearEnd) economy_.clearCredits();
+    }
     for (int p : change.satOut) messages_.push_back("Spieler " + std::to_string(p + 1) + " setzt aus");
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
-    if (change.player < 0) { phase_ = Phase::GameOver; return true; }
+    if (change.player < 0) { phase_ = Phase::GameOver; return; }
     current_ = change.player;
     phase_ = Phase::Roll;
     messages_.push_back("Spieler " + std::to_string(current_ + 1) + " ist dran (Monat "
                         + std::to_string(calendar_.month % 12 + 1) + ")");
-    return true;
 }
 
 } // namespace dtvr

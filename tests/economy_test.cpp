@@ -71,6 +71,37 @@ int main() {
     CHECK(!eco.buy(1, 1, 0, BuyMode::BuyFromPlayer));             // own entry
     CHECK(!eco.buy(-1, 0, 0, BuyMode::Normal) && !eco.buy(3, 0, 0, BuyMode::Normal));
 
+    // Selling: own, not rented entries; x1.5 with the card.
+    Economy sale(towns, 2);
+    sale.addMoney(0, 100000);
+    CHECK(sale.buy(0, 0, 1, BuyMode::Normal));
+    CHECK(!sale.sell(1, 0, 1, false) && !sale.sell(0, 0, 0, false));
+    const double c0 = sale.money(0).cash;
+    CHECK(sale.sell(0, 0, 1, true) && sale.money(0).cash == c0 + 30000 && sale.town(0).entries[1].owner == kNoOwner);
+    CHECK(sale.buy(0, 0, 1, BuyMode::Normal) && sale.sell(0, 0, 1, false) && sale.money(0).cash == c0 + 30000);
+    CHECK(sale.buy(1, 0, 1, BuyMode::Normal) && sale.buy(0, 0, 1, BuyMode::Rent));
+    CHECK(!sale.sell(0, 0, 1, false) && !sale.sell(1, 0, 1, false)); // rented out
+
+    // Credit charged at the year end, then cleared.
+    Economy credit(towns, 2);
+    CHECK(credit.buy(1, 1, 0, BuyMode::Credit));
+    credit.chargeCredits({0, 1});
+    CHECK(credit.money(1).cash == 30000 - 50000 && credit.money(1).creditDebt == 50000);
+    credit.clearCredits();
+    CHECK(credit.money(1).creditDebt == 0);
+
+    // Money cards.
+    Economy cards(towns, 3);
+    cards.addMoney(0, 60000);                                     // 90000, 30000, 30000
+    CHECK(cards.balanceAccounts({0, 1, 2}) == 50000 && cards.money(1).cash == 50000);
+    CHECK(cards.balanceAccounts({1}) == 50000);                   // one player: unchanged
+    CHECK(cards.fiskus(2) == 5000 && cards.money(2).cash == 45000);
+    CHECK(!cards.passDebt(0, 1));                                 // only with negative cash
+    cards.addMoney(0, -80000);                                    // -30000
+    CHECK(cards.passDebt(0, 1) && cards.money(0).cash == 0 && cards.money(1).cash == 20000);
+    cards.zero(1);
+    CHECK(cards.money(1).cash == 0);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("economy_test: OK");
     return failures != 0;

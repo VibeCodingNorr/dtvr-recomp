@@ -146,6 +146,19 @@ int firstActivePlayer(const std::vector<PlayerSlot>& players) {
     return 0;
 }
 
+int resolveTarget(const std::vector<PlayerSlot>& players, int current, int requested) {
+    const int active = activePlayerCount(players);
+    if (active == 1) return firstActivePlayer(players);
+    if (active == 2) {
+        for (int p = 0; p < kPlayerSlots && size_t(p) < players.size(); ++p)
+            if (players[size_t(p)].status && p != current) return p;
+        return -1;
+    }
+    if (requested < 0 || requested >= kPlayerSlots || size_t(requested) >= players.size()) return -1;
+    if (requested == current || !players[size_t(requested)].status) return -1;
+    return requested;
+}
+
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng) {
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
