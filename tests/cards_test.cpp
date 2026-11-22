@@ -48,6 +48,25 @@ int main() {
 
     CHECK(startingCards(0) == 3 && startingCards(1) == 1 && startingCards(8) == 8 && startingCards(12) == 8);
 
+    // Returned cards fill the deck cyclically from DS:9C94 = 0.
+    {
+        Deck d;
+        const int a = d.take(), b = d.take();
+        CHECK(d.remaining() == d.size() - 2 && d.slotAt(0) == Deck::kTaken);
+        d.giveBack(b);
+        CHECK(d.slotAt(0) == b && d.returnPointer() == 1 && d.remaining() == d.size() - 1);
+        d.giveBack(a);
+        CHECK(d.slotAt(1) == a && d.remaining() == d.size());
+        // Shop offers: one per type, the first remaining position; 41 types initially.
+        auto offers = cardShopOffers(d);
+        CHECK(offers.size() == size_t(kCardTypes) && offers[0].type == 0 && offers[1].type == 1);
+        CHECK(d.typeOfSlot(d.slotAt(offers[5].position)) == 5);
+        // Swap to the draw position, then draw it.
+        d.swapWithPointer(offers[5].position);
+        CHECK(d.typeOfSlot(d.take()) == 5);
+        CHECK(cardBuyPrice(1) == 150000 && cardSellPrice(1) == 75000 && cardBuyPrice(99) == 0);
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("cards_test: OK");
     return failures != 0;

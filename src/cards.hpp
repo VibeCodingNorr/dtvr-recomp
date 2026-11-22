@@ -17,7 +17,7 @@ namespace dtvr {
 struct CardType {
     uint8_t category;     // 1, 2 or 4 (meaning open)
     uint8_t copies;       // copies in the deck
-    double value;         // usage open (candidate: price / computer evaluation)
+    double value;         // card field price (seg3:4121); half of it when sold
     uint8_t handlerSegment;
     uint16_t handlerOffset;
     const char* name;
@@ -67,12 +67,28 @@ public:
     int take();
     int typeOfSlot(int slot) const;          // seg3:0DCE; -1 for kTaken
     int remaining() const;
+    // seg3:03B5: a used or sold card goes back at the return position DS:9C94,
+    // which advances cyclically like the draw pointer.
+    void giveBack(int slot);
+    int returnPointer() const { return returnPointer_; }
+    int slotAt(int position) const { return order_[size_t(position)]; }
+    // seg3:59AA: swap the given deck position with the draw position.
+    void swapWithPointer(int position);
 
 private:
     std::vector<uint8_t> slots_;   // DS:9EDA, card type per slot (7-byte records in the original)
     std::vector<uint8_t> order_;   // DS:9572
     int pointer_ = 0;              // DS:94FA
+    int returnPointer_ = 0;        // DS:9C94
 };
+
+// Card field shop (seg3:4437, list seg3:5813(0)): for every card type in table
+// order the first deck position still holding a card of that type.
+struct CardOffer { int position; int type; };
+std::vector<CardOffer> cardShopOffers(const Deck& deck);
+// Buying costs the card value (DS:2EB4 via seg3:4121), selling returns half (DS:8646).
+double cardBuyPrice(int type);
+double cardSellPrice(int type);
 
 // A player's hand: 8 slots at player +0x24, 0xFF = empty (seg3:0286).
 using Hand = std::array<uint8_t, 8>;

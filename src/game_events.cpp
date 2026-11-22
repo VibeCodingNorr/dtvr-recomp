@@ -141,7 +141,7 @@ void Game::damageTown(int town, int protectionCard) {
     for (int p = 0; p < kPlayerSlots; ++p) insured[size_t(p)] = findCard(p, protectionCard) >= 0;
     const auto used = economy_.damageTown(town, insured);
     for (int p = 0; p < kPlayerSlots; ++p)
-        if (used[size_t(p)]) hands_[size_t(p)][size_t(findCard(p, protectionCard))] = Deck::kTaken; // seg2:3C62
+        if (used[size_t(p)]) discard(p, findCard(p, protectionCard)); // seg8:4F6C -> seg2:3C62
     messages_.push_back("Schaden in " + oemToUtf8(towns_[size_t(town)].name)
                         + ": unversicherte Grundstuecke gehen verloren");
 }

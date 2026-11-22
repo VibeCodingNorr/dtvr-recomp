@@ -63,7 +63,7 @@ void Game::dragoAct(int player) {
         auto& slot = hands_[size_t(player)][size_t(index)];
         if (slot == Deck::kTaken) break; // the chosen slot may be empty
         messages_.push_back(who + "zerreisst die Karte " + cardName(slot));
-        slot = Deck::kTaken;
+        discard(player, index); // seg2:BE3A -> seg2:3C62
         pickText(rng_, 8);
         break;
     }

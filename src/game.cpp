@@ -143,7 +143,7 @@ bool Game::step(Direction d) {
         }
         messages_.push_back("Spieler " + std::to_string(current_ + 1) + " raeumt das Hindernis mit "
                             + cardName(hands_[size_t(current_)][size_t(slot)]));
-        hands_[size_t(current_)][size_t(slot)] = Deck::kTaken; // seg3:0E11
+        discard(current_, slot);                                // seg3:0E11 -> seg2:3C62
         obstacles_.remove(o);                                   // seg8:697C
     }
     if (!counter_.step(d, true)) return false;
@@ -192,8 +192,8 @@ void Game::arrive() {
         dragoAct(current_);
         break;
     }
-    case 5:
-        messages_.push_back(who + ": Kartenfeld (noch nicht nachgebaut)");
+    case 5: // seg2:15AE -> seg3:4437: card shop until the turn ends
+        messages_.push_back(who + ": Kartenfeld - Karten kaufen (Wert) oder verkaufen (halber Wert)");
         dragoAct(current_);
         break;
     case 4:

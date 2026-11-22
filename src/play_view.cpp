@@ -43,7 +43,15 @@ void PlayView::printLog(std::ostream& out) const {
                 << (owner == kNoOwner ? std::string("frei") : "Spieler " + std::to_string(owner + 1)) << "\n";
         }
     }
-    if (g.phase() == Game::Phase::Roll || (g.phase() == Game::Phase::Arrived && town >= 0)) {
+    if (g.atCardField()) { // card shop: PgUp / PgDn choose, B buys, Shift+1-8 sells
+        const auto offers = g.cardOffers();
+        out << "Kartenfeld (Bild auf/ab waehlen, B kaufen, Shift+1-8 verkaufen):\n";
+        for (size_t i = 0; i < offers.size(); ++i)
+            out << (int(i) == offerCursor_ ? " >" : "  ") << cardTypes()[size_t(offers[i].type)].name << " "
+                << int64_t(cardBuyPrice(offers[i].type)) << (i % 4 == 3 ? "\n" : "");
+        out << "\n";
+    }
+    if (g.phase() == Game::Phase::Roll || (g.phase() == Game::Phase::Arrived && (town >= 0 || g.atCardField()))) {
         out << "Hand Spieler " << p + 1 << (g.phase() == Game::Phase::Arrived ? " (Strg+Ziffer):" : ":");
         for (int i = 0; i < 8; ++i)
             if (g.hand(p)[size_t(i)] != Deck::kTaken) out << " [" << i + 1 << "] " << g.cardName(g.hand(p)[size_t(i)]);
@@ -63,6 +71,16 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     case SDLK_RETURN: g.endTurn(); return true;
     case SDLK_i: g.invest(std::max(1000, int(g.cash(g.currentPlayer()) / 2000) * 1000)); return true;
     case SDLK_n: g.declineInvestment(); return true;
+    case SDLK_PAGEUP: case SDLK_PAGEDOWN: {
+        const int n = int(g.cardOffers().size());
+        if (n > 0) offerCursor_ = (offerCursor_ + (key == SDLK_PAGEUP ? n - 1 : 1)) % n;
+        return true;
+    }
+    case SDLK_b: {
+        const auto offers = g.cardOffers();
+        if (offerCursor_ < int(offers.size())) g.buyCard(offers[size_t(offerCursor_)].type);
+        return true;
+    }
     case SDLK_t:
         for (int i = 1; i <= kPlayerSlots; ++i) { // next active player other than the current one
             const int candidate = ((cardTarget_ < 0 ? g.currentPlayer() : cardTarget_) + i) % kPlayerSlots;
@@ -77,7 +95,9 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     }
     if ((key >= SDLK_1 && key <= SDLK_9) || key == SDLK_0) {
         const int digit = key == SDLK_0 ? 9 : int(key - SDLK_1);
-        if (g.phase() == Game::Phase::Arrived) {
+        if (g.atCardField()) {
+            if ((mod & KMOD_SHIFT) && digit < 8) g.sellCard(digit);
+        } else if (g.phase() == Game::Phase::Arrived) {
             if (mod & KMOD_CTRL) { if (digit < 8) g.playCard(digit, cardTarget_); }
             else (mod & KMOD_SHIFT) ? g.sellProperty(digit) : g.buyProperty(digit);
         } else if (digit < 8) {

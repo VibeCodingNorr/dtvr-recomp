@@ -147,6 +147,26 @@ int main() {
         CHECK(f >= 3 && f <= 12);                     // x >= 30: the inflated cell misses x -20..20
     } else CHECK(false);
 
+    // Card field (kind 5): every field between London and Rom is a card shop.
+    {
+        Board shop = board;
+        for (int i = 1; i < 12; ++i) shop.fields[size_t(i)].kind = 5;
+        Game g(shop, towns, 1, 0, 3, 3);
+        g.setRandomEvents(false);
+        CHECK(!g.atCardField() && !g.buyCard(9));
+        driveRight(g);
+        CHECK(g.atCardField() && g.cardOffers().size() == size_t(kCardTypes));
+        const int before = g.handCount(0);
+        const double cash = g.cash(0);
+        CHECK(g.buyCard(29) && g.handCount(0) == before + 1 && g.cash(0) == cash - 10000); // 1 Feld
+        int slot = -1;
+        for (int s = 0; s < 8; ++s) if (g.deck().typeOfSlot(g.hand(0)[size_t(s)]) == 29) slot = s;
+        const int remaining = g.deck().remaining();
+        CHECK(slot >= 0 && g.sellCard(slot) && g.cash(0) == cash - 5000);
+        CHECK(g.deck().remaining() == remaining + 1 && g.handCount(0) == before);
+        CHECK(!g.buyCard(4) && g.cash(0) == cash - 5000); // Platin costs 500,000 > cash
+    }
+
     // Investments need an offer.
     Game plain(board, towns, 1, 0, 1);
     CHECK(plain.investmentOffer() == EventKind::None && !plain.invest(1000));

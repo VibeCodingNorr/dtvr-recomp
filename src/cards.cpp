@@ -107,6 +107,34 @@ int Deck::take() {
     return slot;
 }
 
+void Deck::giveBack(int slot) {
+    if (slot < 0 || slot >= size()) return;
+    order_[size_t(returnPointer_)] = uint8_t(slot);
+    returnPointer_ = returnPointer_ >= size() - 1 ? 0 : returnPointer_ + 1;
+}
+
+void Deck::swapWithPointer(int position) {
+    if (position < 0 || position >= size()) return;
+    std::swap(order_[size_t(position)], order_[size_t(pointer_)]);
+}
+
+std::vector<CardOffer> cardShopOffers(const Deck& deck) {
+    std::vector<CardOffer> offers;
+    for (int t = 0; t < kCardTypes; ++t)
+        for (int i = 0; i < deck.size(); ++i)
+            if (deck.slotAt(i) != Deck::kTaken && deck.typeOfSlot(deck.slotAt(i)) == t) {
+                offers.push_back({i, t});
+                break;
+            }
+    return offers;
+}
+
+double cardBuyPrice(int type) {
+    return type < 0 || type >= kCardTypes ? 0 : cardTypes()[size_t(type)].value;
+}
+
+double cardSellPrice(int type) { return cardBuyPrice(type) * 0.5; }
+
 int Deck::typeOfSlot(int slot) const {
     if (slot < 0 || slot >= size()) return -1;
     return slots_[size_t(slot)];

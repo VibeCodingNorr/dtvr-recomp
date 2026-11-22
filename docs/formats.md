@@ -230,7 +230,7 @@ Confirmed from code unless marked otherwise.
   | 2 | red | seg2:0F15 | money loss, see below; text 4101 + random(13) |
   | 3 | yellow | seg2:10A5 | next event card: seg3:032D cycles through the deck array DS:9572 (index DS:94FA, size DS:9C8C); picture `%s\%d\%c\%dcard_%.2d.bmp` (DS:1A2E) |
   | 4, 6 | white, striped | seg2:11A6 | town: if the field is the destination DS:A10D, reward 300,000 (DS:85EE) × inflation, or 100,000 (DS:85F6) when DS:A104 ≠ 0, then WM_COMMAND 0x424; otherwise the town dialog seg1:4BDD |
-  | 5 | violet | seg2:15AE | seg3:4437(0) (card dialog, not yet analysed) |
+  | 5 | violet | seg2:15AE | seg3:4437(0) card shop (round 15) |
 
 - **Money fields**: monthly ranges (month = DS:A100 mod 12) built on the stack
   at seg2:0BD7–0C4A. Blue uses factor 0.5 (DS:85DE), red 0.75 (DS:85E6), both
@@ -669,6 +669,30 @@ Rebuilt in `src/game_cards.cpp`, `src/game.cpp` and `src/rules.cpp`
 40 × 30 cells centred on the Tschüss target (a 640 × 480 view; the original uses
 the actual window and scroll position, so its random sequence can differ).
 Open: Steuerlos (computer players), Risiko (mini-game), card fields, Nebel.
+
+### Card fields and the deck return (round 15)
+
+- **Card shop** seg3:4437 (window procedure seg3:4640) opens on a violet field
+  (kind 5). Mode DS:9C82: 0 choose, 1 buy, 2 sell; selling is disabled while the
+  hand is empty (seg3:5231 sets DS:3FBA = 1).
+- **Offer list** seg3:5813(0): for each card type in table order, the first
+  deck position (DS:9572, size DS:9C8C) whose card has that type; taken positions
+  (0xFF) are skipped. seg3:5813(1) lists the own hand slots instead.
+- **Buying** seg3:47F1: allowed with fewer than 8 hand cards (seg2:3C00) and
+  cash (+0x42) ≥ the card value (DS:2EB4 via seg3:4121, no inflation). seg3:59AA
+  swaps the chosen deck position with the draw position DS:94FA, seg2:4327 draws
+  it (seg3:032D(1)) into the first free hand slot, seg2:5A47 pays the value.
+- **Selling** seg3:4912: value × 0.5 (DS:8646) is paid (seg2:59E6); the card
+  returns to the deck through seg3:03B5 and the hand slot is cleared.
+- **Deck return** seg3:03B5(slot): the card is written at the return position
+  DS:9C94, which advances cyclically (initially 0). seg2:3C62(player, hand slot)
+  uses it for every removed card: played cards (seg3:0E94), cleared obstacles
+  (seg2:245B / 2530 via seg3:0D26), used protection cards (seg8:4F6C) and cards
+  torn by Dr. Drago (seg2:BE3A). Correction to round 7: used cards are not lost.
+
+Rebuilt in `src/cards.cpp` (`Deck::giveBack`, `swapWithPointer`,
+`cardShopOffers`, prices) and `src/game_cards.cpp` (`buyCard`, `sellCard`,
+`discard`). The shop stays open until the turn ends.
 
 ### SBS: remaining hypotheses
 

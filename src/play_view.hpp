@@ -22,7 +22,8 @@ public:
     std::string title() const;
     // Messages of the last command, the town's properties after arriving and the hand.
     void printLog(std::ostream& out) const;
-    // Returns true when the key belongs to the game (W, Enter, T, I, N, digits, arrows).
+    // Returns true when the key belongs to the game (W, Enter, T, I, N, B, PgUp/PgDn,
+    // digits, arrows).
     bool handleKey(SDL_Keycode key, Uint16 mod);
     // Origin, destination, obstacles, Dr. Drago and the players on the world view.
     void draw(SDL_Renderer* renderer, float x, float y, float zoom) const;
@@ -35,6 +36,7 @@ private:
     std::unique_ptr<Game> game_;
     int cardTarget_ = -1;                     // T: target player with three or more players
     int pendingNails_ = -1;                   // hand slot waiting for a direction key
+    int offerCursor_ = 0;                     // card field: selected offer (PgUp / PgDn)
 };
 
 } // namespace dtvr

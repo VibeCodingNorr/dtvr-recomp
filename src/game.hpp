@@ -46,6 +46,12 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.
+    bool atCardField() const;
+    int handCount(int player) const; // seg2:3C00
+    std::vector<CardOffer> cardOffers() const;
+    bool buyCard(int type);
+    bool sellCard(int handSlot);
     // DS:3FC6 town dialog mode set by property cards 1-8 (card type + 1), 0xFF = none.
     int propertyMode() const { return propertyMode_; }
     // Visible map area in cells (seg2:46C8 uses the window); Tschüss avoids it.
@@ -90,7 +96,6 @@ private:
     void arrive();
     void advanceTurn();          // nextPlayer plus month/year bookkeeping
     std::vector<int> activePlayers() const;
-    int handCount(int player) const;
     // game_drago.cpp
     void dragoAct(int player);   // seg2:B58C after field actions and sit-outs
     void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
@@ -98,6 +103,7 @@ private:
     void playHauAb();            // seg3:3EFB
     void playPunch();            // seg3:2D17 (game_cards.cpp)
     void playTschuess(int target); // seg3:28ED
+    void discard(int player, int handSlot); // seg2:3C62: back to the deck
     // game_events.cpp
     void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
     void applyEvent(EventKind kind);

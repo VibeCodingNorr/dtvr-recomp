@@ -70,7 +70,7 @@ bool Game::playCard(int handSlot, int target) {
     declineInvestment();
     // seg3:0E83: with Verdoppeln active the card stays in the hand.
     if (doubleNext_ && kind != CardKind::Verdoppeln) doubleNext_ = false;
-    else slot = Deck::kTaken;
+    else discard(current_, handSlot); // seg2:3C62
     messages_.push_back(who + " spielt " + card + (victim >= 0 ? " auf Spieler " + std::to_string(victim + 1) : ""));
     switch (kind) {
     case CardKind::Movement: {
@@ -166,6 +166,53 @@ void Game::playPunch() {
         return;
     }
     messages_.push_back("Punch: niemand auf diesem Feld");
+}
+
+void Game::discard(int player, int handSlot) {
+    auto& slot = hands_[size_t(player)][size_t(handSlot)];
+    if (slot == Deck::kTaken) return;
+    deck_.giveBack(slot); // seg3:03B5
+    slot = Deck::kTaken;
+}
+
+bool Game::atCardField() const {
+    return phase_ == Phase::Arrived && board_.fields[size_t(players_[size_t(current_)].field)].kind == 5;
+}
+
+std::vector<CardOffer> Game::cardOffers() const {
+    return atCardField() ? cardShopOffers(deck_) : std::vector<CardOffer>{};
+}
+
+bool Game::buyCard(int type) {
+    // seg3:47F1: fewer than 8 cards and cash >= value; the card is swapped to the
+    // draw position (seg3:59AA) and drawn into the first free slot (seg2:4327).
+    messages_.clear();
+    if (!atCardField()) return false;
+    for (const CardOffer& o : cardShopOffers(deck_)) {
+        if (o.type != type) continue;
+        if (handCount(current_) >= 8 || cash(current_) < cardBuyPrice(type)) {
+            messages_.push_back("Karte zu teuer oder Hand voll");
+            return false;
+        }
+        deck_.swapWithPointer(o.position);
+        addToHand(hands_[size_t(current_)], deck_.take());
+        economy_.addMoney(current_, -cardBuyPrice(type)); // seg2:5A47
+        messages_.push_back("Spieler " + std::to_string(current_ + 1) + " kauft die Karte " + cardTypes()[size_t(type)].name);
+        return true;
+    }
+    return false;
+}
+
+bool Game::sellCard(int handSlot) {
+    // seg3:4912: half the value (DS:8646); the card returns to the deck.
+    messages_.clear();
+    if (!atCardField() || handSlot < 0 || handSlot >= 8) return false;
+    const int type = deck_.typeOfSlot(hands_[size_t(current_)][size_t(handSlot)]);
+    if (type < 0) return false;
+    discard(current_, handSlot);
+    economy_.addMoney(current_, cardSellPrice(type)); // seg2:59E6
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " verkauft die Karte " + cardTypes()[size_t(type)].name);
+    return true;
 }
 
 void Game::playTschuess(int target) {
