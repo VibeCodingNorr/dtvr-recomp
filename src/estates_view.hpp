@@ -39,7 +39,8 @@ public:
 
     struct Action {
         enum class Kind { None, Tab, Row, Cards, Close } kind = Kind::None;
-        int entry = -1; // Row: the property entry
+        int entry = -1;     // Row: the property entry
+        bool sound = false; // Close: Plopp02 first (the header's close item, seg1:54F8)
     };
     // `rows` are the current contents (estateRows of this town and tab).
     Action handle(const SDL_Event& event, const std::vector<EstateRow>& rows);
@@ -57,6 +58,7 @@ private:
     SpriteLookup sprite_;
     int town_ = -1;
     EstatesTab tab_ = EstatesTab::None; // DS:3FC2 / DS:3FBC
+    int focus_ = 0; // DS:3FB6: header focus 0 Kaufen, 1 Verkaufen, 2 Karte, 3 close; -1 = 0xFF
     int selected_ = -1;                 // DS:3FBE, index into the rows
     int scroll_ = 0;                    // DS:8C4C, first visible row
     bool statistics_ = false;

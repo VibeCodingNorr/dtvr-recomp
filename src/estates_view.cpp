@@ -24,6 +24,7 @@ EstatesView::EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout,
 void EstatesView::openStatistics(int player) {
     open(-1);
     statistics_ = true;
+    focus_ = -1;
     player_ = player;
     category_ = 0; // seg1:4F59
     sort_ = 0;
@@ -33,6 +34,7 @@ void EstatesView::open(int town) {
     statistics_ = false;
     town_ = town;
     tab_ = EstatesTab::None;
+    focus_ = 0; // seg1:4CEB
     selected_ = -1;
     scroll_ = 0;
 }
@@ -69,13 +71,31 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
             action.entry = rows[size_t(row)].entry;
         }
     };
-    if (event.type == SDL_MOUSEMOTION) {
-        const int row = rowAt(event.motion.x, event.motion.y, count);
-        if (row >= 0) selected_ = row;
-    } else if (event.type == SDL_MOUSEWHEEL) {
+    // seg1:537F: Escape / Backspace (and the right button, which sends VK_BACK,
+    // seg1:5365) leave an active tab with Plopp02 and give its header item the
+    // focus again; without a tab they close the dialog (the stop then ends the turn).
+    auto cancel = [&] {
+        if (tab_ != EstatesTab::None && !statistics_) {
+            focus_ = tab_ == EstatesTab::Buy ? 0 : 1; // DS:3FB6 = DS:3FBC
+            tab_ = EstatesTab::None;
+            selected_ = -1;
+            action.kind = Action::Kind::Tab;
+        } else {
+            action.kind = Action::Kind::Close;
+        }
+    };
+    auto selectTab = [&](EstatesTab tab) { // seg1:543E / 5475: the tab selects the first visible row
+        tab_ = tab;
+        focus_ = -1;
+        selected_ = count > 0 ? std::min(scroll_, count - 1) : -1;
+        action.kind = Action::Kind::Tab;
+    };
+    // No WM_MOUSEMOVE handler (seg1:5D4A). The wheel is a recomb addition where the
+    // original has arrow buttons to page: the statistics (PFEIL1 / PFEIL2).
+    if (event.type == SDL_MOUSEWHEEL && statistics_) {
         scroll_ = std::max(0, std::min(std::max(0, count - kVisibleRows), scroll_ - event.wheel.y));
     } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
-        action.kind = Action::Kind::Close;
+        cancel();
     } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const SDL_Rect b = box();
         const int x = event.button.x - b.x, y = event.button.y - b.y;
@@ -89,25 +109,36 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
             action.kind = Action::Kind::Tab;
         } else if (x >= 0 && x < b.w && y >= 0 && y < kRow) { // header tabs
             if (x >= kTabX[2]) action.kind = Action::Kind::Cards;
-            else { // seg1:543E / 5475: the tab selects the first visible row
-                tab_ = x >= kTabX[1] ? EstatesTab::Sell : EstatesTab::Buy;
-                selected_ = count > 0 ? std::min(scroll_, count - 1) : -1;
-                action.kind = Action::Kind::Tab;
-            }
+            else selectTab(x >= kTabX[1] ? EstatesTab::Sell : EstatesTab::Buy);
         } else if (const int row = rowAt(event.button.x, event.button.y, count); row >= 0) {
             if (!statistics_) rowAction(row);
             else selected_ = row;
         }
-    } else if (event.type == SDL_KEYDOWN && count > 0) {
-        switch (event.key.keysym.sym) {
-        case SDLK_DOWN: selected_ = selected_ < 0 ? 0 : std::min(count - 1, selected_ + 1); keepVisible(count); break;
-        case SDLK_UP: selected_ = selected_ <= 0 ? 0 : selected_ - 1; keepVisible(count); break;
-        case SDLK_RETURN: case SDLK_KP_ENTER: if (selected_ >= 0 && selected_ < count) rowAction(selected_); break;
-        case SDLK_ESCAPE: action.kind = Action::Kind::Close; break;
-        default: break;
+    } else if (event.type == SDL_KEYDOWN) { // seg1:5BE5
+        const SDL_Keycode k = event.key.keysym.sym;
+        const bool enter = k == SDLK_RETURN || k == SDLK_KP_ENTER;
+        if (k == SDLK_ESCAPE || k == SDLK_BACKSPACE) {
+            cancel();
+        } else if (statistics_) { // seg1:5963 / 5AA0: bit 0x10 stops at the ends
+            if (count > 0 && k == SDLK_DOWN) { selected_ = selected_ < 0 ? 0 : std::min(count - 1, selected_ + 1); keepVisible(count); }
+            if (count > 0 && k == SDLK_UP) { selected_ = selected_ <= 0 ? 0 : selected_ - 1; keepVisible(count); }
+        } else if (tab_ != EstatesTab::None) { // seg1:5942 / 5A7F: up / down wrap around
+            if (count > 0 && (k == SDLK_UP || k == SDLK_DOWN)) {
+                const int from = selected_ < 0 ? 0 : selected_;
+                selected_ = (from + count + (k == SDLK_UP ? -1 : 1)) % count;
+                keepVisible(count);
+            }
+            if (enter && selected_ >= 0 && selected_ < count) rowAction(selected_);
+        } else { // the header: left / right move the focus over four items (seg1:58EF / 591B)
+            if (k == SDLK_LEFT) focus_ = focus_ > 0 ? focus_ - 1 : 3;
+            if (k == SDLK_RIGHT) focus_ = focus_ >= 3 || focus_ < 0 ? 0 : focus_ + 1;
+            if (enter) { // seg1:5406
+                if (focus_ == 0) selectTab(EstatesTab::Buy);
+                else if (focus_ == 1) selectTab(EstatesTab::Sell);
+                else if (focus_ == 2) action.kind = Action::Kind::Cards;
+                else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
+            }
         }
-    } else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
-        action.kind = Action::Kind::Close;
     }
     return action;
 }
@@ -129,9 +160,12 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
     for (int i = 0; i < 3 && !statistics_; ++i) {
         const auto it = texts_.find(321 + i); // LoadString 0x141-0x143: Kaufen, Verkaufen, Karte
         const std::string label = it == texts_.end() ? std::string() : it->second;
+        // seg1:738C: with a header focus the focused item is white, the others 0x45;
+        // otherwise the active tab is yellow (pressed items 0x43 are not tracked).
         const bool active = (i == 0 && tab_ == EstatesTab::Buy) || (i == 1 && tab_ == EstatesTab::Sell);
+        const SDL_Color colour = focus_ >= 0 ? (i == focus_ ? kWhite : kBrown) : active ? kYellow : kBrown;
         text_.draw(renderer_, label, ScreenRect{b.x + kTabX[i], b.y + 10, 140, kRow},
-                   TextStyle{20, false, false, false, false, 0, active ? kYellow : kBrown});
+                   TextStyle{20, false, false, false, false, 0, colour});
     }
     // Rows seg1:65A7 / 6163: strip GR_Z (selected GR_ZI), owner icon at x 0, texts in
     // Arial 18 weight 400 from x 0x54 + 10, y + 10.

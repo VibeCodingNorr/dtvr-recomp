@@ -1368,9 +1368,23 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - Rebuilt (`src/estates.cpp` contents, `src/estates_view.cpp` drawing; flow in
   `src/game_screen.cpp`): the dialog opens when a human player stops in a town.
   A click on a tab selects Kaufen / Verkaufen, Karte opens the card window, a
-  click (or Enter) on an enabled row buys / sells it. **Assumptions:** Escape or
-  the right button close the dialog and end the turn; the arrow keys and the
-  mouse wheel move the selection / scroll; the pressed-tab colours, the category
+  click (or Enter) on an enabled row buys / sells it.
+  **Input** (round 93, procedure seg1:5334, dispatch seg1:5D4A / 5BE5): no
+  WM_MOUSEMOVE handler. Without a tab the header has a keyboard focus DS:3FB6
+  (0 at the stop, seg1:4CEB): left / right step it over four items with wrap-around
+  (seg1:58EF / 591B), Enter (seg1:5406) selects Kaufen, Verkaufen, Karte or item 3,
+  which closes the dialog with Plopp02 (seg1:54F8; Zaehler2 instead while DS:3FB8 =
+  3). With a focus the focused tab text is white (0xFF; 0x43 while pressed), the
+  others 0x45 (seg1:738C); a selected tab clears it. With a tab, up / down move the
+  row with wrap-around (seg1:5942 / 5A7F; the statistics stop at the ends).
+  Escape / Backspace and the right button (seg1:5365 sends VK_BACK) leave an
+  active tab with Plopp02 and give it the header focus again (seg1:53BE),
+  otherwise close the dialog (seg1:5391). The stop waits for the dialog
+  (seg1:4DBC, seg6:0FB4 on DS:44); afterwards Dr. Drago acts and nextPlayer ends
+  the turn (seg2:15A6, 161D). The mouse wheel scrolls only the statistics (recomb
+  addition where the original has the PFEIL page buttons). **Assumptions:** the
+  meaning of DS:3FB8 = 3 and the click area of header item 3 are not traced; the
+  pressed-tab colours, the category
   icons and the statistics variant (ZW_Z rows, PFEIL1 / PFEIL2 page buttons,
   seg1:7506, paging by seven at seg1:59C7 / 5B15) are not drawn yet; the card
   modes Abkaufen / Kredit use the checks of the economy. Scrolling follows

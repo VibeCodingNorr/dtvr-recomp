@@ -756,14 +756,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     if (g.openCardWindow() && cards.open(g, 1)) cardWindowState = turnState();
                 } else if (action.kind == Kind::Close && estates.statistics()) {
                     estates.close();
-                } else if (action.kind == Kind::Close) { // leaving the town ends the turn
+                } else if (action.kind == Kind::Close) { // leaving the town ends the turn (seg1:4DBC, seg2:161D)
+                    if (action.sound) sound.play(2, 2); // seg1:54F8
                     estates.close();
                     g.endTurn();
                     report();
                 }
-                if (event.type != SDL_KEYDOWN || action.kind != Kind::None) continue;
-                const SDL_Keycode k = event.key.keysym.sym;
-                if (k == SDLK_UP || k == SDLK_DOWN || k == SDLK_RETURN || k == SDLK_KP_ENTER) continue;
+                continue; // ESTATES has the focus (seg1:4D79): keys and clicks stay with it
             }
             if (click && event.button.button == SDL_BUTTON_LEFT && !modal && !moving && !screen.title()) {
                 // seg6:1798 -> seg4:0F52: a click on the map opens the steering cross there.
