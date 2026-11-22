@@ -120,6 +120,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
   `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
+  `src/stages_view.{hpp,cpp}`: the stage count window TEMP with the slider;
   `src/overview_view.{hpp,cpp}`: the overview map; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;

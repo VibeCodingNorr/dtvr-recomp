@@ -165,7 +165,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 94. Option Animationen: the 51 kinds of ambient map animations (windmills, animals, smoke …) with their sounds.
 95. Forced sale after an arrival in debt (statistics in sale mode, computers by their original plan).
 96. The extension switch "Computer spielen alle Karten" in the player setup (click or F9).
-97. *Next:* remaining presentation details (compare windows with rally.exe).
+97. Statistics sorted as rally.exe and Windows 3.x lstrcmp do.
+98. The stage count window after the player setup, with a slider (recomb addition).
+99. *Next:* remaining presentation details (compare windows with rally.exe).
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

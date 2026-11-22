@@ -150,6 +150,7 @@ static int run(int argc, char** argv) {
     bool intro = false, noIntro = false; // --game: force or skip the intro before the title
     bool computerCards = false;          // --game: computers also play the cards rally.exe never picks
     bool openSetup = false;      // --game: open the player setup (screenshots)
+    bool openStages = false;     // --game: open the stage count window (screenshots)
     bool openOverview = false;   // --game: open Übersicht (screenshots)
     bool openSurroundings = false; // --game: start Umfeld (tests)
     bool zoomIn = false;           // --game: zoom in (screenshots)
@@ -213,6 +214,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--no-intro") noIntro = true;
         else if (arg == "--computer-cards") computerCards = true;
         else if (arg == "--setup") openSetup = true;
+        else if (arg == "--stages") openStages = true;
         else if (arg == "--overview") openOverview = true;
         else if (arg == "--surroundings") openSurroundings = true;
         else if (arg == "--zoom") zoomIn = true;
@@ -276,6 +278,7 @@ static int run(int argc, char** argv) {
         options.openStatistics = openStatistics;
         options.loadSlot = loadSlot;
         options.openSetup = openSetup;
+        options.openStages = openStages;
         options.openOverview = openOverview;
         options.openSurroundings = openSurroundings;
         options.zoom = zoomIn;
@@ -296,7 +299,7 @@ static int run(int argc, char** argv) {
         options.computerExtraCards = computerCards;
         // The title menu comes first unless a test option asks for a specific state.
         options.title = !noTitle && loadSlot < 0 && menuName.empty() && !openCards && !holdRight && !openSave
-                        && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup
+                        && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup && !openStages
                         && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !announce && !cardShop && !selectPlayer && !flight && !nails && !invest;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();

@@ -14,7 +14,9 @@ PlayView::PlayView(const Board& board, const std::vector<Town>& towns, std::uniq
       game_(std::make_unique<Game>(board, towns, slots, rounds, seed, 1, map_.get(), props_.get())), rounds_(rounds) {}
 
 bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
-                       const std::array<std::string, kPlayerSlots>& names, uint16_t seed, std::string& error) {
+                       const std::array<std::string, kPlayerSlots>& names, uint16_t seed, std::string& error,
+                       int rounds) {
+    if (rounds > 0) rounds_ = rounds;
     Game fresh(board_, towns_, slots, rounds_, seed, 1, map_.get(), props_.get());
     fresh.setPlayerNames(names);
     if (!SaveCodec::decode(*game_, SaveCodec::encode(fresh), error)) return false;

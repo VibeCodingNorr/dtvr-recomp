@@ -51,6 +51,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       slots_(defaultSaveDirectory()),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
       setup_(renderer, root, layout, text_),
+      stages_(renderer, root, layout, texts_, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
       finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
@@ -632,6 +633,10 @@ void GameScreen::draw() {
     if (title_) {
         if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp"))
             SDL_RenderCopy(renderer_, t, nullptr, nullptr);
+        if (stages_.isOpen()) { // TEMP after PLAYER (seg4:0E54), a child of the canvas
+            stages_.draw();
+            return;
+        }
         save_.draw(slots_);
         menu_.draw();
         messages_.draw(game_); // the quit question (seg4:0EDF) also opens over the title

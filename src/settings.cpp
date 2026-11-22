@@ -30,6 +30,8 @@ std::string Settings::encode() const {
     o << "Subtitle=" << subtitle << '\n';
     o << "Pause=" << pause << '\n';
     o << "ShowIntro=" << showIntro << '\n';
+    o << "[Default]\n";
+    o << "Rounds=" << rounds << '\n';
     o << "[Display]\n";
     o << "Fullscreen=" << int(fullscreen) << '\n';
     o << "IntegerScale=" << int(integerScale) << '\n';
@@ -51,6 +53,7 @@ Settings Settings::decode(const std::string& text) {
         if (name == "Subtitle") { s.subtitle = v != 0; continue; }
         if (name == "ShowIntro") { s.showIntro = v != 0; continue; }
         if (name == "Pause") { s.pause = v >= 0 && v <= 3 ? v : 0; continue; } // seg6:0D89
+        if (name == "Rounds") { s.rounds = v; continue; } // the window checks 0..300 itself
         if (name == "Fullscreen") { s.fullscreen = v != 0; continue; }
         if (name == "IntegerScale") { s.integerScale = v != 0; continue; }
         if (name == "ComputerExtraCards") { s.computerExtraCards = v != 0; continue; }

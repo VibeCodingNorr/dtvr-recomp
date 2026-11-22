@@ -20,6 +20,8 @@ struct Settings {
     // [Extensions] (recomb only): ComputerExtraCards lets computers also play the
     // cards rally.exe's scores never pick (applied to new games, saved with them).
     bool computerExtraCards = false;
+    // [Default] Rounds (seg8:099B / 0A6A): the stage count the window TEMP offers and keeps.
+    int rounds = 99;
     // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of
     // seg6:0EE0 are multiplied by 1.0 / 1.5 / 2.0 / 3.0 (DS:858E).
     int pause = 0;

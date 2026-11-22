@@ -186,6 +186,13 @@ int main() {
     const Settings back = loadSettings(settingsFile);
     CHECK(back.value == settings.value && back.subtitle == 0 && back.pause == 0 && back.showIntro == 1);
     CHECK(Settings::decode("[Setup]\nShowIntro=0\n").showIntro == 0);
+    // [Default] Rounds (round 108, window TEMP): default 99, kept through encode / decode.
+    {
+        Settings r;
+        CHECK(r.rounds == 99);
+        r.rounds = 250;
+        CHECK(Settings::decode(r.encode()).rounds == 250 && Settings::decode("[Default]\nRounds=12\n").rounds == 12);
+    }
     CHECK(Settings::decode("Pause=3\n").pause == 3 && Settings::decode("Pause=9\n").pause == 0);
     CHECK(Settings::decode("Views=7\nMidi=x\nWave=0\n").value[Settings::Views] == 1);
     CHECK(Settings::decode("Wave=0\n").value[Settings::Wave] == 0 && loadSettings(dir / "none.ini").value[0] == 1);

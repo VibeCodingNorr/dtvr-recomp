@@ -32,6 +32,7 @@
 #include "options_view.hpp"
 #include "overview_view.hpp"
 #include "setup_view.hpp"
+#include "stages_view.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"
@@ -83,6 +84,7 @@ public:
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
+    StagesView& stages() { return stages_; }
     OverviewView& overview() { return overview_; }
     FinishView& finish() { return finish_; }
     VictoryView& victory() { return victory_; }
@@ -192,6 +194,7 @@ private:
     SaveSlots slots_;
     SaveView save_;
     SetupView setup_;
+    StagesView stages_;
     OverviewView overview_;
     Settings settings_;
     OptionsView options_;
@@ -242,6 +245,7 @@ struct GameWindowOptions {
     bool openSave = false;
     bool openStatistics = false;  // tests: open Statistik at the start
     bool openSetup = false;       // tests: open the player setup at the start
+    bool openStages = false;      // tests: open the stage count window at the start
     bool openOverview = false;    // tests: open Übersicht at the start
     bool openSurroundings = false; // tests: start Umfeld
     bool zoom = false;            // tests: zoom in for the current player

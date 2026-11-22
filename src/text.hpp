@@ -22,6 +22,7 @@ struct TextStyle {
     bool right = false;     // DT_RIGHT (format 0x102)
     int shadow = 0;         // seg2:314A: first in palette colour 0, moved up-left by this
     SDL_Color color{255, 255, 255, 255};
+    bool serif = false;     // Times New Roman (SBINPUT, seg1:1D04) instead of Arial
 };
 
 class TextRenderer {

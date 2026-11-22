@@ -167,6 +167,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         quitReopensMain = reopenMain;
         menu.close();
     };
+    // A new game between PLAYER and TEMP (seg4:0DA9): the setup's slots, names and seed.
+    std::array<uint8_t, kPlayerSlots> pendingStatus{};
+    std::array<std::string, kPlayerSlots> pendingNames;
+    uint16_t pendingSeed = 0;
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
@@ -240,6 +244,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                       && screen.startIntro(SDL_GetTicks());
     if (options.title && !introShown) openTitle();
     if (options.openSetup) { screen.setTitle(true); menu.close(); command(1020); }
+    if (options.openStages) { screen.setTitle(true); menu.close(); screen.stages().open(screen.settings().rounds); }
     if (!options.openMenu.empty()) openMenu(options.openMenu);
     if (options.openSave) screen.saveDialog().open(true);
     if (options.openOverview) screen.overview().open();
@@ -596,14 +601,28 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (screen.overview().isOpen()) { screen.overview().handle(event); continue; }
             if (screen.handleSurroundings(event)) continue;
+            if (screen.stages().isOpen()) { // seg8:08D6, modal (seg6:0FB4)
+                const StagesView::Result r = screen.stages().handle(event);
+                if (const int fx = screen.stages().takeSound(); fx >= 0) sound.play(2, fx);
+                if (r == StagesView::Result::Accept) {
+                    Settings s = screen.settings(); // seg8:0A6A: [Default] Rounds
+                    s.rounds = screen.stages().stages();
+                    screen.applySettings(s);
+                    std::string error;
+                    if (play.newGame(pendingStatus, pendingNames, pendingSeed, error, s.rounds)) {
+                        play.game().setComputerExtraCards(screen.settings().computerExtraCards);
+                        startGame(true);
+                    } else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
+                }
+                continue;
+            }
             if (screen.setup().isOpen()) { // seg1:0A60
                 const SetupView::Result r = screen.setup().handle(event);
                 if (const int fx = screen.setup().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r == SetupView::Result::Start) {
-                    std::string error;
-                    const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
-                    const auto status = screen.setup().status();
-                    const auto names = screen.setup().names();
+                    pendingSeed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
+                    pendingStatus = screen.setup().status();
+                    pendingNames = screen.setup().names();
                     // The extension's switch is kept in [Extensions] like the original's profile values.
                     if (screen.setup().extraCards() != screen.settings().computerExtraCards) {
                         Settings s = screen.settings();
@@ -611,11 +630,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                         screen.applySettings(s);
                     }
                     screen.setup().close();
-                    if (play.newGame(status, names, seed, error)) {
-                        play.game().setComputerExtraCards(screen.settings().computerExtraCards);
-                        startGame(true);
-                    }
-                    else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
+                    screen.stages().open(screen.settings().rounds); // seg4:0E54: TEMP, not in the demo
                 } else if (r == SetupView::Result::Cancel) {
                     screen.setup().close();
                     openTitle();

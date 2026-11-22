@@ -2251,8 +2251,10 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 
 ### Player setup (round 36)
 
-- **Neues Spiel** seg4:0DA9(0): seg8:0747 (an intro window TEMP, only without the
-  demo flag), seg2:0000 and the window PLAYER (seg1:02BD, procedure seg1:0A60)
+- **Neues Spiel** seg4:0DA9(0): DS:A104 = DS:A106 = 99 (seg4:0E23), seg2:0000
+  with the window PLAYER (seg1:02BD, procedure seg1:0A60), then — only without the
+  demo flag — the stage count window TEMP seg8:0747 (seg4:0E54, see "Stage count
+  window"). PLAYER lies
   over the canvas: background `%s\%d\pl_menu\menu.bmp` (640 × 480 at 640);
   buttons (class SBBUTTON) with ids 0x1392 + slot showing
   `%s\%d\pl_menu\%c%d.bmp` (driver letter of seg2:2D43, status 0 free / 1 human /
@@ -2274,8 +2276,40 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg1:02A9 with the time) and hands it over into the running Game object
   through the save codec. **Assumptions:** the look of SBINPUT (drawn by its
   DLL): Arial weight 600 at two thirds of the field height in colour 0x45 with a
-  bar as caret; a disabled star is drawn unchanged; Escape cancels. The intro
-  window seg8:0747 and the profile values [Player] P0–P7 are not rebuilt.
+  bar as caret; a disabled star is drawn unchanged; Escape cancels. The profile
+  values [Player] P0–P7 are not rebuilt.
+- **SBINPUT** (round 108): the class lives in rally.exe (registered at seg1:0E57,
+  procedure seg1:1C71). WM_CREATE: Times New Roman (DS:32D2), height −20 / −17 /
+  −15 by seg6:12FA, weight 600, *italic*, family 0x20 (seg1:1D04); length limit
+  0x13 (window word +0xC). WM_PAINT: TextOut at (0, 0), transparent, no text
+  colour (black), caret after the text. WM_CHAR accepts IsCharAlphaNumeric or a
+  space while below the limit (seg1:1F31). WM_KEYDOWN: Backspace deletes, Tab and
+  Enter move the focus to the next / previous SB control (ids 0x1388–0x1770,
+  sound 8), Left / Right / Up / Down move the caret, and only Enter is posted on
+  to the parent (seg1:2190); other keys do nothing. The names in PLAYER are still
+  drawn with the earlier assumption (Arial, colour 0x45).
+
+### Stage count window (round 108)
+
+- seg8:0747 registers class TEMP (procedure seg8:08D6), loads
+  `%s\%d\p1.bmp` (DS:180A, paper) and `%s\%d\sm.bmp` (DS:1817, portrait) and
+  creates a child of the canvas DS:40 at (0, 0), 0x186 wide and sm height + 0x24
+  high; it runs modally (seg6:0FB4).
+- WM_CREATE: an SBINPUT field (id 0x139C) at seg6:1140(8) (640: (185, 60)),
+  0xBE × 0x5A; its text is GetPrivateProfileInt("Default", "Rounds", 99), 99 when
+  outside 0..300; it gets the focus.
+- WM_PAINT: p1.bmp at (0, 0), sm.bmp at (10, 10) (client rect inflated by −10),
+  text 810 "Wieviele Etappen wollt Ihr spielen (max. 300)?" right of it (left +
+  sm width + 10) with seg6:04F9(18 / 16 / 14, weight 600), DT_WORDBREAK |
+  DT_NOCLIP, colour 0x45.
+- WM_KEYDOWN (only Enter arrives from SBINPUT) and WM_LBUTTONDOWN on the window
+  (seg8:0A0D): GetWindowText(…, 5), atoi; ≤ 0 or > 300 plays Zaehler2 and the
+  window stays, otherwise [Default] Rounds is written, DS:A104 = DS:A106 = the
+  count and the window is destroyed. There is no cancel.
+- **Rebuilt** `src/stages_view.cpp` (profile value in `[Default] Rounds` of
+  settings.ini). **Recomb addition** (not in rally.exe, always shown, as the user
+  asked): a slider 1–300 on a 40 pixel taller window cut from the same paper;
+  field and slider follow each other.
 
 ### Title menu and autosave (round 35)
 
