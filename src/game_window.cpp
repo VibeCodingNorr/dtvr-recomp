@@ -531,12 +531,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (screen.victory().closes(event, SDL_GetTicks())) screen.victory().stop();
                 continue;
             }
-            if (screen.finish().active()) { // assumption: a key or click cuts the sequence short
-                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.finish().stop();
+            if (screen.finish().active()) { // ZIEL seg7:50D6: DS:A29C = 0 ends the loop seg7:3536..3677
+                const SDL_Keycode k = event.type == SDL_KEYDOWN ? event.key.keysym.sym : SDLK_UNKNOWN;
+                if (k == SDLK_ESCAPE || k == SDLK_SPACE || k == SDLK_RETURN || k == SDLK_KP_ENTER
+                    || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)) {
+                    sound.stop(0); // seg5:607B(-1)
+                    screen.finish().stop();
+                }
                 continue;
             }
-            if (screen.pictureShown()) { // a key or a click closes it (assumption)
-                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) {
+            if (screen.pictureShown()) { // PICT seg6:0C8E: WM_KEYDOWN and WM_LBUTTONDOWN destroy it
+                if (event.type == SDL_KEYDOWN
+                    || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)) {
                     screen.closePicture();
                     if (screen.title()) openTitle();
                 }
@@ -545,8 +551,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (screen.options().isOpen()) {
                 const OptionsView::Result r = screen.options().handle(event);
                 if (const int fx = screen.options().takeSound(); fx >= 0) sound.play(2, fx);
-                if (r == OptionsView::Result::Accept) screen.applySettings(screen.options().settings());
-                if (r != OptionsView::Result::None) {
+                if (r != OptionsView::Result::None) screen.applySettings(screen.options().settings());
+                if (r == OptionsView::Result::Close) {
                     screen.options().close();
                     if (screen.title()) openTitle();
                 }

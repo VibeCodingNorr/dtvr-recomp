@@ -50,14 +50,16 @@ OptionsView::Result OptionsView::handle(const SDL_Event& event) {
         in = buttons_.mouseUp(event.button.x, event.button.y);
     else if (event.type == SDL_KEYDOWN) {
         const SDL_Keycode key = event.key.keysym.sym;
-        if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return Result::Accept; // assumption: Return accepts
-        in = buttons_.key(key, event.key.keysym.mod, false);
+        if (key >= SDLK_F1 && key <= SDLK_F8) in.id = int(key - SDLK_F1); // seg1:B60A: WM_COMMAND 0x1392 + n
+        else if (key == SDLK_F10) in.id = kStar;                         // seg1:B5F5: WM_COMMAND 0x139A
+        else in = buttons_.key(key, event.key.keysym.mod, false);
     }
     sound_ = in.sound;
-    if (in.cancel) return Result::Cancel;
-    if (in.id == kStar) return Result::Accept;
-    if (in.id == kStop) return Result::Cancel;
-    if (in.id >= 0) settings_.toggle(in.id);
+    if (in.cancel || in.id == kStar || in.id == kStop) return Result::Close; // seg1:B5D4 / B5E2 -> B539
+    if (in.id >= 0) {
+        settings_.toggle(in.id);
+        return Result::Toggled;
+    }
     return Result::None;
 }
 

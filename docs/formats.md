@@ -1575,8 +1575,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/finish_view.cpp`, name mapping `finishPhotoName` in
   `src/board.cpp`): the scene and its animation when a destination is reached
   and the car has arrived. **Assumptions:** the window is centred on the canvas
-  with a black frame, records draw with their top-left corner at the position,
-  a key or click ends the sequence early.
+  with a black frame, records draw with their top-left corner at the position.
+  **Input** (round 94): the window ZIEL (seg7:50D6) takes Escape, Space, Enter
+  and the left button: seg5:607B(−1) and DS:A29C = 0 end the loop seg7:3536..3677
+  (set to 1 on its first pass, seg7:35F0); the window is destroyed with the clean-up
+  at seg7:3680. The loop also ends when record 8 has left (x < −0xA0, seg7:3546).
 
 ### Destination announcement (round 49)
 
@@ -1809,7 +1812,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   after 2 s × the pause factor (the original wait is not traced).
 - **Credits** (1026, seg4:070C): seg6:0A4D(…, "Credits.bmp" DS:9A, 1) shows
   `butt/<n>/Credits.bmp` in a window PICT over the canvas and waits (seg6:0FB4);
-  rebuilt with a key or click closing it (assumption).
+  any key or a left click closes it (round 94, PICT dispatch seg6:0C8E → seg6:0B80;
+  other buttons go to DefWindowProc).
 
 ### Options (round 39)
 
@@ -1830,8 +1834,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/settings.cpp`, `src/options_view.cpp`): the window, the
   switches (joy with three states) and the settings in
   `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (`[Setup]`, the original keys).
-  Applied so far: Views (tile 0x33 on the map) and Wave (round 40). **Assumptions:** a click toggles a
-  switch, star / Enter keep, stop / Escape discard. Not applied yet: the sound
+  Applied so far: Views (tile 0x33 on the map) and Wave (round 40).
+  **Input** (round 94, dispatch seg1:B677): WM_COMMAND 0x1392–0x1399 toggle the
+  switches at once (seg1:B2E2 ff.; Wave without a device DS:954E only plays sound 7
+  on channel 0); 0x139A star, 0x139B stop and 0xFFFF (Escape / Backspace on a
+  focused SBBUTTON) all run seg1:B539, which closes the window and keeps the
+  values — the copy at DS:9478 (seg1:ADEE) is never read back. WM_KEYDOWN
+  (seg1:B629): F1–F8 send 0x1392 + n, F10 sends 0x139A. There is no mouse handler
+  of its own (the switches are SBBUTTONs). Rebuilt in `src/options_view.cpp`; the
+  former assumptions (Return accepts, stop / Escape discard) are removed.
+  Not applied yet: the sound
   settings, TimeOut, Animations, Colorcycle (waves and seasons) and Joystick.
 
 ### Übersicht and Umfeld (round 37)

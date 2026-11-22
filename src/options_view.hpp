@@ -20,13 +20,15 @@ namespace dtvr {
 class OptionsView {
 public:
     OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
-    // seg1:ADEE keeps a copy of the values (DS:9478) for stop.
+    // seg1:ADEE copies the values to DS:9478, but nothing reads the copy back.
     void open(const Settings& settings);
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     const Settings& settings() const { return settings_; }
 
-    enum class Result { None, Accept, Cancel };
+    // Toggled: a switch changed (seg1:B2E2 ff. apply it at once); Close: star, stop,
+    // F10 and the cancel of an SBBUTTON all run seg1:B539, which keeps the values.
+    enum class Result { None, Toggled, Close };
     Result handle(const SDL_Event& event);
     // The SBBUTTON sound of the last handled event for channel 2, -1 none.
     int takeSound() { const int s = sound_; sound_ = -1; return s; }
