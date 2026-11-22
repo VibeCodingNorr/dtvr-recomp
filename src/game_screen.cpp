@@ -5,6 +5,7 @@
 #include "panel.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
+#include "music_menu.hpp"
 
 #include <algorithm>
 #include <array>
@@ -47,7 +48,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       setup_(renderer, root, layout, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
       settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout),
-      finish_(renderer, root, layout.width, layout.height) {
+      finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height) {
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
@@ -169,6 +170,13 @@ bool GameScreen::startFinish(int field, int player, Uint32 now) {
     if (!finish_.start(kPortraitLetters[player], towns_[size_t(town)].name, now)) return false;
     // seg7:2C48: butt/snd/z.wav (seg1:3579)
     if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
+    return true;
+}
+
+bool GameScreen::startVictory(Uint32 now) {
+    if (!victory_.start(game_.ranking(), now)) return false;
+    // seg7:7BAB: "%s\%c\VOICE\SIEG\SIEG.WAV" (seg1:3579)
+    if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
     return true;
 }
 
@@ -398,6 +406,7 @@ void GameScreen::draw() {
     }
     overview_.draw(game_);
     finish_.draw(SDL_GetTicks());
+    victory_.draw(SDL_GetTicks());
     cards_.draw();
     save_.draw(slots_);
     menu_.draw();
@@ -437,7 +446,18 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
     }
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
+    std::vector<std::string> musicIssues;
+    auto musicPacks = discoverMusicPacks(root.parent_path() / "music/packs", musicIssues);
+    for (const auto& issue : musicIssues) std::cerr << "Klangset: " << issue << "\n";
+    const fs::path musicConfig = defaultSettingsFile().parent_path() / "music.ini";
+    MusicPlayer music(std::move(musicPacks), loadMusicPreferences(musicConfig));
+    int musicEnabled = screen.settings().value[Settings::Midi];
+    music.setEnabled(musicEnabled != 0);
+    music.interrupt(options.title ? "i" : "a1");
+    MusicMenu musicMenu(renderer.get(), layout.width, layout.height, music, musicConfig, std::move(musicIssues));
+    // Declare the audio device after the decoder so it closes before the decoder.
     SoundPlayer sound(root); // WaveMix (seg1:2C9B)
+    sound.setMusic(&music.stream());
     screen.setSound(&sound);
     auto report = [&] {
         play.printLog(std::cout);
@@ -471,6 +491,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int autosaved = -1; // turn serial of the last autosave
     std::vector<SoundCue> pendingSounds;
     int finishSeen = play.game().finishSerial();
+    bool victoryShown = false;
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -486,6 +507,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     auto startGame = [&] {
         autosaved = -1; // the first turn of a started or loaded game is saved too
         screen.setTitle(false);
+        music.interrupt("a1"); // seg4:0E8A, starting/loading a game
         screen.loadDriverSprites();
         report();
     };
@@ -550,6 +572,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.zoom) screen.toggleZoom();
     if (options.openOptions) screen.options().open(screen.settings());
     if (options.demo) { menu.close(); command(1024); }
+    if (options.victory) { music.interrupt("s"); screen.startVictory(SDL_GetTicks()); }
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
@@ -558,10 +581,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     SDL_Keycode heldArrow = options.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
     auto isArrow = [](SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT; };
     for (int frame = 1; running; ++frame) {
+        if (screen.settings().value[Settings::Midi] != musicEnabled) {
+            musicEnabled = screen.settings().value[Settings::Midi];
+            music.setEnabled(musicEnabled != 0);
+        }
+        if (!screen.title()) music.turn(play.game().eventClock().turns);
+        music.tick();
+        for (const auto& cue : play.game().takeMusic()) if (!screen.title()) music.interrupt(cue);
         screen.advanceVehicles(SDL_GetTicks());
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         if (!screen.title())
-            for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
+            for (Notice& n : play.game().takeNotices()) {
+                if (const auto cue = musicForNotice(n.text); !cue.empty()) music.interrupt(cue);
+                screen.messages().push(std::move(n));
+            }
         // The original plays a field's sounds when the vehicle is on it: cues wait while the
         // drawn car still drives there.
         for (const SoundCue& c : play.game().takeSounds())
@@ -612,13 +645,22 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
         screen.finish().update(SDL_GetTicks());
+        // After the Master-Rallye: the victory (seg7:71C4), then the title (WM_COMMAND 0x424).
+        screen.victory().update(SDL_GetTicks());
+        if (!screen.title() && play.game().phase() == Game::Phase::GameOver && !screen.finish().active()
+            && !screen.messages().open()) {
+            if (!victoryShown) { music.interrupt("s"); victoryShown = screen.startVictory(SDL_GetTicks()) || true; }
+            else if (!screen.victory().active()) { victoryShown = false; openTitle(); }
+        }
         if (!screen.title() && play.game().finishSerial() != finishSeen && !moving) {
             finishSeen = play.game().finishSerial();
+            music.interrupt(play.game().finishMusic());
             screen.startFinish(play.game().finishField(), play.game().finishPlayer(), SDL_GetTicks());
         }
-        const bool modal = screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
+        const bool modal = musicMenu.open() || screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
-                           || screen.surroundings() || screen.options().isOpen() || screen.finish().active();
+                           || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
+                           || screen.victory().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -628,6 +670,24 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
+            if (event.type == SDL_WINDOWEVENT) {
+                if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) music.setFocused(false);
+                if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) music.setFocused(true);
+            }
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8) {
+                if (!event.key.repeat) musicMenu.toggle();
+                heldArrow = SDLK_UNKNOWN;
+                continue;
+            }
+            if (musicMenu.open()) {
+                if (musicMenu.handle(event)) {
+                    Settings settings = screen.settings();
+                    settings.value[Settings::Midi] = music.enabled();
+                    screen.applySettings(settings);
+                    musicEnabled = settings.value[Settings::Midi];
+                }
+                continue;
+            }
             if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
             if (screen.messages().open()) {
@@ -647,6 +707,10 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 screen.messages().clear();
                 menu.close();
                 openTitle();
+                continue;
+            }
+            if (screen.victory().active()) { // Enter closes it (seg7:7D57 sends VK_RETURN after 5000 passes)
+                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) screen.victory().stop();
                 continue;
             }
             if (screen.finish().active()) { // assumption: a key or click cuts the sequence short
@@ -756,6 +820,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
         SDL_RenderClear(renderer.get());
         screen.draw();
+        musicMenu.draw(screen.textRenderer());
         const bool last = options.smokeTest && frame >= options.frames;
         if (!options.screenshot.empty() && (last || !options.smokeTest)) {
             Surface shot(SDL_CreateRGBSurfaceWithFormat(0, layout.width, layout.height, 32, SDL_PIXELFORMAT_ARGB8888),

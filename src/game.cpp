@@ -125,6 +125,20 @@ int Game::handCount(int player) const { // seg2:3C00
     return n;
 }
 
+std::vector<int> Game::ranking() const {
+    std::vector<int> order = activePlayers();
+    auto worth = [&](int p) { return economy_.money(p).cash + economy_.money(p).propertyValue; };
+    for (bool swapped = true; swapped && order.size() > 1;) { // seg1:8F64
+        swapped = false;
+        for (size_t i = 1; i < order.size(); ++i)
+            if (worth(order[i]) > worth(order[i - 1])) {
+                std::swap(order[i], order[i - 1]);
+                swapped = true;
+            }
+    }
+    return order;
+}
+
 std::vector<int> Game::activePlayers() const {
     std::vector<int> active;
     for (int p = 0; p < kPlayerSlots; ++p)
@@ -230,7 +244,7 @@ void Game::arrive() {
     case 6:
         if (field == destination_) {
             const auto r = reachDestination(remaining_, calendar_.inflation);
-            if (!r.gameOver) rng_.random(1); // seg2:12D8: music Z1 / Z2 before the finish (seg7:2628)
+            finishMusic_ = r.gameOver || rng_.random(1) == 0 ? "z1" : "z2"; // seg2:11C5/12D8
             ++finishSerial_;
             finishField_ = field;
             finishPlayer_ = current_;
@@ -365,8 +379,10 @@ void Game::advanceTurn() {
     phase_ = Phase::Roll;
     messages_.push_back(playerName(current_) + " ist dran (Monat "
                         + std::to_string(calendar_.month % 12 + 1) + ")");
-    if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) // seg2:049F
+    if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) { // seg2:049F
+        music_.push_back("f" + std::to_string(drago_.form + 1)); // seg2:B3F6/B429/B442
         messages_.push_back("Dr. Drago wechselt in Form " + std::to_string(drago_.form + 1));
+    }
 }
 
 } // namespace dtvr

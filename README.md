@@ -109,7 +109,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     of the original cannot be reproduced.
 45. Finish sequence ZIEL at each destination: town photo, banner, band, crowd and the
     driver's car with the original animations and sound.
-46. *Next:* the victory and year balance shows (SIEG, BILANZ).
+46. Victory sequence SIEG after the Master-Rallye: podium with the three best drivers
+    by cash and property value, crowd, band and speaker.
+47. *Next:* the year balance show (BILANZ) and the stage announcement.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

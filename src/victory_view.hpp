@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// The victory sequence SIEG of rally.exe (seg7:71C4 -> seg7:7250(first, second,
+// third); round 46): butt/Sieg.bmp with the banner s_bann_d.bmp, the crowd, band
+// and speaker of butt/sbs/sieg and intro, the winner's car, the winner animated
+// and the second and third places standing. Evidence in docs/formats.md
+// "Victory sequence".
+#pragma once
+
+#include "sdl_assets.hpp"
+
+#include <SDL.h>
+
+#include <filesystem>
+#include <map>
+#include <string>
+#include <vector>
+
+namespace dtvr {
+
+class VictoryView {
+public:
+    VictoryView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
+    // `ranking` lists slots best first (seg1:8EE1); false when the pictures are missing.
+    bool start(const std::vector<int>& ranking, Uint32 now);
+    bool active() const { return active_; }
+    void stop() { active_ = false; }
+    void update(Uint32 now); // ends after 5000 passes (seg7:7D4E sends Enter)
+    void draw(Uint32 now);
+
+private:
+    SDL_Renderer* renderer_;
+    std::filesystem::path root_;
+    int canvasWidth_, canvasHeight_;
+    Texture background_{nullptr, SDL_DestroyTexture};
+    std::map<std::string, Texture> frames_;
+    struct Place { std::string name; int x, y; };
+    std::vector<Place> places_; // second and third place (standing frames)
+    int winner_ = -1;  // slot
+    int winnerY_ = 0;  // 0xCA - height of its first frame
+    Uint32 started_ = 0;
+    bool active_ = false;
+};
+
+} // namespace dtvr

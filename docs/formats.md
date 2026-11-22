@@ -1291,6 +1291,34 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   clearing the credits; rules revision 28). The show itself (show master,
   voices, per-player results) is not rebuilt yet.
 
+### Victory sequence (round 46)
+
+- **seg7:71C4** after the Master-Rallye: music "S" (DS:5E9A), the ranking
+  seg1:8EE1 into DS:957A–957C (slots by cash + property value, +0x42 + +0x5A,
+  sorted with adjacent swaps until none happens, highest first; one player in
+  play: seg2:1A41), then seg7:7250(first + 1, second + 1, third + 1) with 0 for
+  missing places (fewer than three / two players).
+- **seg7:7250:** own window class, window SIEG (0x1F0 × 0x178); in WM_CREATE
+  (seg7:7E7E) `%s\Sieg.bmp` (butt) and, for the language letters d / D, the
+  banner `%s\s_bann_d.bmp` with colour key 0xFF at (3, 133); the files of
+  DS:5E6A: sieg\many-l, many-r, konfetti, hutman, kapelle, zoepfe, intro\redet
+  and `x_winner.sbs` with the letters of the three places, plus the winner's
+  `ziel\%cZielCar.sbs`; the voice `%s\%c\VOICE\SIEG\SIEG.WAV`.
+- **Records:** DS:557A many-l (0, 147), 5618 many-r (311, 144, delay 3), 56A8
+  konfetti (365, 200), 5518 hutman (305, 195), 5828 car CAR1 (405, 260), 5724
+  kapelle (8, 198), 57C6 zoepfe (298, 289), the winner (record 9: definition
+  DS:5D6C[slot + 1], x = 0xE4 − DS:5D8E[slot + 1], y = 0xCA − height of its first
+  frame) and DS:4800 redet (39, 239, start frame 1, delay 3). The second and
+  third places are drawn as `<L>W00` (DS:5D9C) into the scene, centred at x 0xB9 /
+  0x10F with their feet at y 0xDC / 0xE3 (seg7:79CB / 7A6C, seg7:1F52).
+- **Loop** seg7:7BCD: 20 ms per pass like the finish; after 5000 passes the
+  window gets VK_RETURN (seg7:7D57) and closes; then WM_COMMAND 0x424 ends the
+  game. No random numbers.
+- **Rebuilt** (`src/victory_view.cpp`, shared records in `src/scene.cpp`,
+  `Game::ranking`): the scene after the finish of the Master-Rallye, then the
+  title. **Assumptions:** centred window with a black frame; a key or click
+  closes it like Enter.
+
 ### Sounds (round 40)
 
 - **Table** seg1:2E90 ff. (locals [bp−0x12E] − 4 · n): sound n opens

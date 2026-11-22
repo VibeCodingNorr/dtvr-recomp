@@ -156,6 +156,13 @@ int main() {
         CHECK(statisticsRows(shop, 1, 0, 0).empty());
     }
 
+    // Ranking (round 46, seg1:8EE1): cash + property value, slot order on a tie.
+    {
+        Game rank(board, towns, 3, 1, 4, 1, nullptr, nullptr, false);
+        const auto r = rank.ranking();
+        CHECK(r.size() == 3 && r[0] == 0 && r[1] == 1 && r[2] == 2); // all equal at the start
+    }
+
     // Money and status cards with targets (two players: target is automatic).
     {
         std::vector<PlayerSlot> three(8);

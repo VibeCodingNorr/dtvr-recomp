@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "finish_view.hpp"
 
+#include "scene.hpp"
+
 #include <cctype>
 #include <vector>
 
@@ -11,16 +13,11 @@ namespace {
 
 constexpr int kWidth = 480, kHeight = 360;    // ziel.bmp and the scene DIB
 constexpr int kWindowW = 0x1F0, kWindowH = 0x178; // CreateWindow seg7:2658
-constexpr Uint32 kStepMs = 20;                // seg6:0CDF(20) per loop (seg7:35DC)
 
 // Animation records set up at seg7:2C55 ff. (DS:30 + 0x40 · i): position, start
 // frame (+0xC), delay in steps and the frames of the definition.
-struct Record {
-    int x, y, first, delay;
-    std::vector<const char*> frames;
-};
-const std::vector<Record>& records() {
-    static const std::vector<Record> kRecords = {
+const std::vector<SceneRecord>& records() {
+    static const std::vector<SceneRecord> kRecords = {
         {209, 182, 0, 4, {"pauke00", "pauke01", "pauke02", "pauke03", "pauke00", "pauke01", "pauke02", "pauke03",
                           "pauke00", "pauke01", "pauke02", "pauke03"}}, // DS:4594
         {339, 221, 1, 4, {"duo00", "duo01", "duo02", "duo03", "duo04", "duo05", "duo06", "duo07", "duo08", "duo09",
@@ -58,14 +55,6 @@ constexpr size_t kCar = 8;
 const char* const kFiles[] = {"pauke.sbs", "duo.sbs", "floete.sbs", "tuba.sbs", "genie.sbs", "happy.sbs",
                               "paar.sbs", "jazz.sbs", "hut.sbs", "ballon.sbs", "frau.sbs", "winken.sbs",
                               "zoepfe.sbs", "pfahl.sbs", "lampe.sbs"};
-
-// Copies `src` into `dst` at (x, y), leaving out palette index 0xFF (seg2:9497 / seg7:1CE0).
-void blitKeyed(SDL_Surface* src, SDL_Surface* dst, int x, int y) {
-    if (!src || !dst || src->format->BitsPerPixel != 8) return;
-    SDL_SetColorKey(src, SDL_TRUE, 0xFF);
-    SDL_Rect to{x, y, src->w, src->h};
-    SDL_BlitSurface(src, nullptr, dst, &to);
-}
 
 // seg7:1CE0: copies `src` into `dst` at (x, y) only where `dst` holds index 0xFF
 // (the white sky of ziel.bmp; the trees in front stay).
@@ -112,7 +101,7 @@ bool FinishView::start(char driverLetter, const std::string& oemTownName, Uint32
     return active_;
 }
 
-int FinishView::steps(Uint32 now) const { return int((now - started_) / kStepMs); }
+int FinishView::steps(Uint32 now) const { return int((now - started_) / kSceneStepMs); }
 
 void FinishView::update(Uint32 now) {
     if (active_ && records()[kCar].x - 2 * steps(now) < -160) active_ = false; // 0xFF60
@@ -131,16 +120,9 @@ void FinishView::draw(Uint32 now) {
     SDL_RenderSetClipRect(renderer_, &area);
     const int t = steps(now);
     for (size_t i = 0; i < records().size(); ++i) { // seg2:74E4 draws the records in order
-        const Record& r = records()[i];
-        const size_t n = r.frames.size();
-        const char* name = r.frames[(size_t(r.first) + size_t(t / r.delay)) % n]; // seg2:6DCB
-        auto it = frames_.find(upperAscii(name));
-        if (it == frames_.end() || !it->second) continue;
-        int w = 0, h = 0;
-        SDL_QueryTexture(it->second.get(), nullptr, nullptr, &w, &h);
+        const SceneRecord& r = records()[i];
         const int x = i == kCar ? r.x - 2 * t : r.x; // seg7:3564
-        const SDL_Rect dst{ox + x, oy + r.y, w, h};
-        SDL_RenderCopy(renderer_, it->second.get(), nullptr, &dst);
+        drawSceneFrame(renderer_, frames_, sceneFrame(r, t), ox + x, oy + r.y);
     }
     SDL_RenderSetClipRect(renderer_, nullptr);
 }

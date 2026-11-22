@@ -89,6 +89,7 @@ public:
         for (Notice& n : other.takeNotices()) notices_.push_back(std::move(n));
     }
     std::vector<SoundCue> takeSounds() { std::vector<SoundCue> s; s.swap(sounds_); return s; }
+    std::vector<std::string> takeMusic() { std::vector<std::string> cues; cues.swap(music_); return cues; }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
@@ -173,6 +174,11 @@ public:
     int balanceSerial() const { return balanceSerial_; }
     // Reached destinations (the finish sequence seg7:2628; not saved): count, field, driver.
     int finishSerial() const { return finishSerial_; }
+    const std::string& finishMusic() const { return finishMusic_; }
+    // seg1:8EE1: the slots in play by cash + property value (+0x42 + +0x5A), highest
+    // first; equal values keep slot order (bubble sort with adjacent swaps). With
+    // one player in play just that player (seg2:1A41).
+    std::vector<int> ranking() const;
     int finishField() const { return finishField_; }
     int finishPlayer() const { return finishPlayer_; }
     int balanceChoice() const { return balanceChoice_; }
@@ -261,6 +267,8 @@ private:
     int totalStages_ = 0;
     int balanceSerial_ = 0, balanceChoice_ = 0;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;
+    std::string finishMusic_ = "z1"; // cosmetic; reuses the existing draw, no new RNG call
+    std::vector<std::string> music_; // transient presentation commands, never saved
     std::vector<std::string> messages_;
 };
 
