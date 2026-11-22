@@ -299,8 +299,48 @@ property economy, sit-out flags set by cards, opening capital, computer
 players. A scripted run on the original data (3 players, 2 stages) finished
 after 82 turns at month 27 with inflation 1.092.
 
-Open: event card deck shuffling and effects, the card field dialog, the town
-dialog and property economics, opening capital, computer player behaviour.
+### Event cards (round 7)
+
+- **Definitions** at DS:2EB2: 41 records of 14 bytes, terminated by 0xFF: byte
+  category (1, 2 or 4; meaning open), byte copies, double value (meaning open),
+  far pointer to the card handler (data-segment relocations: segment 3, card 26
+  in segment 7). 199 copies in total.
+- **Names**: the code builds `1card_%.2d` from type + 1 (DS:3282) and looks the
+  frame up in `bcards.sbs`; the frame pictures and the help texts 11001 ff. of
+  `rally_d.dat` give the names (type 0 Weihnachten … 16 Schlafen … 22–25 2–5
+  Walzen, 28 1 oder 2, 29–34 1–6 Felder … 40 Verdoppeln; full table in
+  `src/cards.cpp`). Text IDs drift by one from 11039 on, so names are matched
+  through the pictures.
+- **Deck** (seg3:0000): one 7-byte slot per copy at DS:9EDA (type in byte 0) in
+  type order; the order array DS:9572 starts as 0…n−1 (seg3:01AD) and is shuffled
+  by seg3:0206 with n · 10 swaps of `rand() % n` pairs (note: `rand`, not
+  `random`). seg3:032D(take): with take ≠ 0 it returns the slot at the pointer
+  DS:94FA, marks it 0xFF and advances cyclically; with take = 0 it only peeks.
+  Nothing writes slots back, so played cards do not return.
+- **Hands**: 8 slots at player +0x24 (0xFF empty). A new game deals
+  `[Setup] defaultCards` cards to each active player (seg3:0286; read at
+  seg2:02C8 with default 1, 0 → 3, more than 8 → 8).
+- **Yellow field** (seg2:10A5): peeks the top card; if the slot is taken nothing
+  happens, otherwise the card dialog (seg3:0887, text 403 when the hand is full:
+  "Du mußt erst eine Karte ablegen …", text 4201 "… bekommst Du natürlich auch
+  eine Karte!") hands it to the player; computer players choose via seg5:7CD2 →
+  seg3:4161.
+- **Movement cards** (handlers verified): 2–5 Walzen post WM_COMMAND
+  0x2711–0x2714 (2–5 reels, maximum 5), 1 oder 2 posts 0x2715 (1 reel, maximum 1),
+  1–6 Felder call seg2:7F14(n). This confirms the round-4 reading of the command IDs.
+- **Texts**: `tools/ne_strings.py` dumps the RT_STRING resources of
+  `dat/d/rally_d.dat` (631 strings), e.g. 1000/1001 sit-out texts (engine
+  damage, sugar in the tank), 1010 Schlafen, 4001 ff. blue, 4101 ff. red, 4201 ff.
+  yellow field.
+
+Rebuilt: deck, shuffle, draw, hands, starting cards, yellow field and playing
+movement cards before the spin (src/cards.cpp, src/game.cpp). Assumed, not yet
+traced: when a card may be played, and the order of random calls at game
+start (shuffle, deal, destination).
+
+Open: the effects of the other 30 cards (money, property, blocking, sit-out
+flags), card categories and values, the card field (kind 5) dialog, discarding,
+the town dialog and property economics, opening capital, computer players.
 
 ### SBS: remaining hypotheses
 
@@ -339,8 +379,9 @@ does not reconstruct the viewport, sprites on the map, routes or game rules.
 5. Turn: direction input, arrival condition and the field dispatch recovered;
    money fields, inflation and destination reward rebuilt.
 6. Player change, months, start, destinations and stages recovered; a playable
-   hotseat game (`--play`) assembles all rules so far. Next: event cards, card
-   fields, town dialog and property economy.
+   hotseat game (`--play`) assembles all rules so far.
+7. Event card deck, shuffle, hands, yellow field and movement cards rebuilt.
+   Next: remaining card effects, card fields, town dialog and property economy.
 
 Native rendering, input, timing and audio can use SDL and Linux libraries.
 The choice between translating executable routines and manually reconstructing

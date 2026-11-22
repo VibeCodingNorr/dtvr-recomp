@@ -80,6 +80,43 @@ int main() {
     CHECK(stages.remainingStages() == 0 && stages.phase() != Game::Phase::GameOver);
     CHECK(stages.origin() == 12 && stages.destination() == 0);
 
+    // Cards: a movement card from the starting hand replaces the spin.
+    Game cardGame(board, towns, 1, 0, 1, 8);
+    int moveSlot = -1, otherSlot = -1;
+    for (int i = 0; i < 8; ++i) {
+        const int type = cardGame.deck().typeOfSlot(cardGame.hand(0)[size_t(i)]);
+        if (type < 0) continue;
+        const CardMove m = cardMove(type);
+        if ((m.reels || m.fields) && moveSlot < 0) moveSlot = i;
+        if (!m.reels && !m.fields && otherSlot < 0) otherSlot = i;
+    }
+    CHECK(cardGame.deck().remaining() == 199 - 8);
+    if (otherSlot >= 0) CHECK(!cardGame.playCard(otherSlot) && cardGame.phase() == Game::Phase::Roll);
+    if (moveSlot >= 0) {
+        const int type = cardGame.deck().typeOfSlot(cardGame.hand(0)[size_t(moveSlot)]);
+        CHECK(cardGame.playCard(moveSlot) && cardGame.phase() == Game::Phase::Move);
+        CHECK(cardGame.hand(0)[size_t(moveSlot)] == Deck::kTaken);
+        const CardMove m = cardMove(type);
+        if (m.fields) CHECK(cardGame.allowance() == m.fields);
+        else CHECK(cardGame.allowance() >= m.reels && cardGame.allowance() <= m.reels * (m.maximum + 1));
+        CHECK(!cardGame.roll() && !cardGame.playCard(moveSlot));
+    }
+    CHECK(!cardGame.playCard(-1) && !cardGame.playCard(8));
+
+    // Yellow fields hand out the top card of the deck.
+    Board yellow = board;
+    for (int i = 1; i < 12; ++i) yellow.fields[size_t(i)].kind = 3;
+    Game yellowGame(yellow, towns, 1, 0, 2, 1);
+    auto held = [&] { int n = 0; for (auto s : yellowGame.hand(0)) n += s != Deck::kTaken; return n; };
+    CHECK(held() == 1);
+    const int top = yellowGame.deck().peek();
+    yellowGame.roll();
+    while (yellowGame.phase() == Game::Phase::Move) yellowGame.step(Direction::Right);
+    CHECK(held() == 2 && yellowGame.deck().remaining() == 199 - 2);
+    bool hasTop = false;
+    for (auto s : yellowGame.hand(0)) hasTop |= s == top;
+    CHECK(hasTop);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");
     return failures != 0;

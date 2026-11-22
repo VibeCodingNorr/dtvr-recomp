@@ -2,6 +2,7 @@
 #pragma once
 
 #include "board.hpp"
+#include "cards.hpp"
 #include "rules.hpp"
 
 #include <string>
@@ -12,18 +13,26 @@ namespace dtvr {
 // SDL-independent hotseat game assembled from the rules recovered from rally.exe.
 // Simplification: vehicles move field to field along the graph instead of the
 // original pixel driving (each graph link is a drivable road, see docs/formats.md).
-// Event cards, card fields, the town dialog and the opening capital are not
-// reconstructed yet; money is tracked as the change since the start.
+// Card fields, the town dialog, non-movement card effects and the opening
+// capital are not reconstructed yet; money is tracked as the change since the start.
+// Assumptions (not yet traced): cards are played before spinning, and the start
+// order of random calls is shuffle, deal, destination.
 class Game {
 public:
     enum class Phase { Roll, Move, Arrived, GameOver };
 
-    Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed);
+    Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
+         int defaultCards = 1);
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
+    // Play hand slot 0..7 instead of spinning; only movement cards are rebuilt.
+    bool playCard(int handSlot);
+    const Hand& hand(int player) const { return hands_[size_t(player)]; }
+    const Deck& deck() const { return deck_; }
+    std::string cardName(int deckSlot) const;
 
     Phase phase() const { return phase_; }
     int currentPlayer() const { return current_; }
@@ -48,6 +57,8 @@ private:
     MsRandom rng_;
     std::vector<PlayerSlot> players_;
     std::vector<double> money_;
+    Deck deck_;
+    std::vector<Hand> hands_;
     Calendar calendar_;
     MoveCounter counter_{0};
     Phase phase_ = Phase::Roll;

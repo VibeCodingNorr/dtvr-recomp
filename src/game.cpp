@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "game.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <stdexcept>
 
@@ -15,7 +16,8 @@ std::string money(double v) {
 
 } // namespace
 
-Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed)
+Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int rounds, uint16_t seed,
+           int defaultCards)
     : board_(board), towns_(towns), rng_(seed) {
     if (humans < 1 || humans > kPlayerSlots) throw std::invalid_argument("1 bis 8 Spieler");
     players_.resize(kPlayerSlots);
@@ -28,6 +30,13 @@ Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int r
     }
     remaining_ = rounds;
     current_ = firstActivePlayer(players_);
+    // Deck (seg3:0000/01AD) and starting hands (seg3:0286, [Setup] defaultCards).
+    deck_.shuffle(rng_);
+    hands_.assign(kPlayerSlots, emptyHand());
+    const int deal = startingCards(defaultCards);
+    for (int p = 0; p < kPlayerSlots; ++p)
+        if (players_[size_t(p)].status)
+            for (int c = 0; c < deal; ++c) addToHand(hands_[size_t(p)], deck_.take());
     // New game: route mask 0x4000 (seg4:0E0B); first destination drawn from the start.
     destination_ = chooseDestination(board_, players_, origin_, origin_, 0x4000, rng_);
     messages_.push_back("Start in " + townName(origin_) + ", Ziel " + townName(destination_));
@@ -39,6 +48,32 @@ std::string Game::townName(int field) const {
     for (const Town& t : towns_)
         if (t.x == f.x && t.y == f.y) return oemToUtf8(t.name);
     return "Feld " + std::to_string(field);
+}
+
+std::string Game::cardName(int deckSlot) const {
+    const int type = deck_.typeOfSlot(deckSlot);
+    return type < 0 ? "-" : cardTypes()[size_t(type)].name;
+}
+
+bool Game::playCard(int handSlot) {
+    messages_.clear();
+    if (phase_ != Phase::Roll || handSlot < 0 || handSlot >= 8) return false;
+    auto& slot = hands_[size_t(current_)][size_t(handSlot)];
+    const int type = deck_.typeOfSlot(slot);
+    if (type < 0) return false;
+    const CardMove move = cardMove(type);
+    if (!move.reels && !move.fields) {
+        messages_.push_back(std::string("Karte ") + cardTypes()[size_t(type)].name + ": Wirkung noch nicht nachgebaut");
+        return false;
+    }
+    int allowance = move.fields;
+    if (move.reels) for (int v : spinReels(rng_, move.reels, move.maximum)) allowance += v;
+    counter_ = MoveCounter(allowance);
+    phase_ = Phase::Move;
+    messages_.push_back("Spieler " + std::to_string(current_ + 1) + " spielt " + cardTypes()[size_t(type)].name
+                        + ": " + std::to_string(allowance) + " Felder");
+    slot = Deck::kTaken;
+    return true;
 }
 
 bool Game::roll() {
@@ -60,7 +95,8 @@ bool Game::step(Direction d) {
     if (next == Field::kNone) return false;
     if (!counter_.step(d, true)) return false;
     p.field = next;
-    if (counter_.taken() == counter_.allowance()) arrive();
+    // Field-to-field movement keeps the vehicle grid-aligned; no dialog is modelled.
+    if (arrivalTriggers(next, 0, 0, counter_.taken(), counter_.allowance(), false)) arrive();
     return true;
 }
 
@@ -79,7 +115,19 @@ void Game::arrive() {
                             + " (Text " + std::to_string(e.textId) + ")");
         break;
     }
-    case 3: messages_.push_back(who + ": Ereigniskarte (noch nicht nachgebaut)"); break;
+    case 3: {
+        // seg2:10A5: top card of the deck (seg3:032D(0)); nothing if it is taken.
+        if (deck_.peek() == Deck::kTaken) break;
+        Hand& hand = hands_[size_t(current_)];
+        if (std::find(hand.begin(), hand.end(), Deck::kTaken) == hand.end()) {
+            messages_.push_back(who + ": Hand voll - erst eine Karte ablegen (Text 403)");
+            break;
+        }
+        const int slot = deck_.take();
+        addToHand(hand, slot);
+        messages_.push_back(who + " bekommt die Karte " + cardName(slot));
+        break;
+    }
     case 5: messages_.push_back(who + ": Kartenfeld (noch nicht nachgebaut)"); break;
     case 4:
     case 6:

@@ -25,7 +25,7 @@ no overall completion percentage is claimed.
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view. Direction input and end of a move still open. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event cards, card fields, town dialog, opening capital and computer players still open. | [Game](src/game.cpp), [evidence](docs/formats.md#players-months-and-stages-round-6) |
+| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws and the 11 movement cards are playable; the other 30 card effects, card fields, town dialog, opening capital and computer players are still open. | [Game](src/game.cpp), [cards](src/cards.cpp), [evidence](docs/formats.md#event-cards-round-7) |
 | AI, saves and hotseat | ⬜ Planned | Build on the authoritative simulation, explicit actions and versioned game state. | [Architecture](docs/architecture.md) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
 | Modern controls and usability | ⬜ Planned | Rebinding, controllers, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
@@ -41,7 +41,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 5. Turn: arrow-key input, arrival only after the full allowance, field kinds
    (blue money, red cost, yellow event card, towns, card field), inflation.
 6. Players, months, destinations and stages; first playable hotseat rally (`--play`).
-7. *Next:* event cards, card fields, town dialog and property economy.
+7. Event cards: 41 types, 199-card deck with original shuffle, hands, yellow field,
+   movement cards (2–5 Walzen, 1 oder 2, 1–6 Felder).
+8. *Next:* remaining card effects, card fields, town dialog and property economy.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -88,9 +90,11 @@ The current build is an **inspection viewer with a first playable hotseat rally*
 Start it with `play --play --players 2` (1–8 players, `--rounds N` stages,
 `--seed N` for a reproducible game): press **W** to spin, the **arrow keys** to
 drive field by field (the opposite direction takes a step back) and **Enter** to
-end the turn after arriving. Status is shown in the window title and the log in
-the terminal. Event cards, card fields, the town dialog, computer players,
-saves, multiplayer and native music playback are not implemented yet.
+end the turn after arriving. Before spinning, **1–8** plays the card in that
+hand slot (movement cards only). Status is shown in the window title, the log
+and your hand in the terminal. Most card effects, card fields, the town
+dialog, computer players, saves, multiplayer and native music playback are not
+implemented yet.
 
 1. Have your own supported original ISO and install the dependencies listed above.
 2. Build an installation in a new directory outside this checkout:
@@ -121,6 +125,7 @@ ISO after installation; subsequent launches use the installed local data.
 | W | World view: spin the slot machine (1 reel, 1–6) and mark fields a move of exactly that many steps can end on |
 | Right click | World view: choose the start field and print its field action |
 | W / arrows / Enter | With `--play`: spin, drive one field, end the turn |
+| 1–8 | With `--play`: play the hand card in that slot instead of spinning |
 | Escape | Exit |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
@@ -168,7 +173,8 @@ NE segments, imported modules and the entry point. It never executes Windows cod
 
 `tools/ne_disasm.py` disassembles the NE code segments with `objdump` (binutils)
 and annotates relocations and imported functions. Its output contains game code;
-write it to a private directory outside the checkout.
+write it to a private directory outside the checkout. `tools/ne_strings.py`
+dumps the string resources of `dat/d/rally_d.dat` (original text: keep private too).
 
 Run `python3 tools/check_repository.py` to check the tracked source distribution.
 CI checks for bundled media/binaries and machine-specific data paths. See the

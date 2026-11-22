@@ -159,7 +159,7 @@ static int run(int argc, char** argv) {
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
                          "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
                          "W: Wuerfeln (Automat, 1 Walze) | Rechtsklick: Startfeld waehlen\n"
-                         "--play: W wuerfeln, Pfeiltasten ein Feld fahren, Enter Zug beenden\n"
+                         "--play: W wuerfeln, 1-8 Handkarte spielen, Pfeiltasten ein Feld fahren, Enter Zug beenden\n"
                          "Ziehen mit linker Maustaste: Verschieben | R: Einpassen | Esc: Ende\n";
             return 0;
         } else if ((arg == "--data" || arg == "--screenshot") && i + 1 < argc) {
@@ -272,6 +272,13 @@ static int run(int argc, char** argv) {
             + "/" + std::to_string(game->allowance()) + " | Ziel " + game->townName(game->destination())
             + " | Etappen " + std::to_string(game->remainingStages()) + " | " + phases[int(game->phase())];
         SDL_SetWindowTitle(window.get(), status.c_str());
+        if (game->phase() == dtvr::Game::Phase::Roll) {
+            std::cout << "Hand Spieler " << p + 1 << ":";
+            for (int i = 0; i < 8; ++i)
+                if (game->hand(p)[size_t(i)] != dtvr::Deck::kTaken)
+                    std::cout << " [" << i + 1 << "] " << game->cardName(game->hand(p)[size_t(i)]);
+            std::cout << "\n";
+        }
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
@@ -302,6 +309,10 @@ static int run(int argc, char** argv) {
                     else if (view == View::World && !board.fields.empty()) rollDie();
                     break;
                 case SDLK_RETURN: if (game) { game->endTurn(); report(); } break;
+                case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
+                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8:
+                    if (game) { game->playCard(int(event.key.keysym.sym - SDLK_1)); report(); }
+                    break;
                 case SDLK_UP: if (game) { game->step(dtvr::Direction::Up); report(); } break;
                 case SDLK_DOWN: if (game) { game->step(dtvr::Direction::Down); report(); } break;
                 case SDLK_RIGHT:

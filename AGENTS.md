@@ -15,7 +15,8 @@ overlay. Movement counting, the slot machine and the original random generator
 are reconstructed as tested rules; a move preview exists in the world view. The
 arrival condition and the money, inflation and destination rules of field kinds
 are rebuilt. Player change, months, destinations and stages complete a playable
-hotseat rally (`--play`, src/game.cpp). No event cards, town economy, AI, save support,
+hotseat rally (`--play`, src/game.cpp) with the event card deck and movement
+cards (src/cards.cpp). No other card effects, town economy, AI, save support,
 SBS animation playback or executable translation have been implemented.
 
 ## Source-only distribution and user input
@@ -80,6 +81,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   OEM code page 850 conversion (no SDL).
 - `tests/*_test.cpp`: synthetic and malformed-input tests (ctest).
 - `tools/ne.py`, `tools/ne_disasm.py`: NE parser and annotated objdump disassembly.
+- `tools/ne_strings.py`: RT_STRING dump of NE resources (e.g. rally_d.dat); output stays private.
+- `src/cards.{hpp,cpp}`: card table, deck, shuffle, hands, movement cards (no SDL).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
 - `tools/check_repository.py`: tracked source/media/path distribution checks.
@@ -95,6 +98,24 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `README.md`: setup, controls, limitations and verification commands.
 
 ## Reconstruction discipline
+
+### Code structure and engineering rules
+
+- A file containing code must not exceed **1000 lines**. Split growing files by
+  coherent responsibility before reaching the limit, with small modules and clear
+  interfaces. Do not split arbitrarily by line number or hide code in include fragments.
+- Exceed the limit only when a technical constraint makes a meaningful split
+  impossible. Document the concrete reason and the affected file; convenience or
+  postponing refactoring is not an exception. The repository check must record any
+  necessary exception with its justification.
+- Keep format parsing, simulation, presentation, audio and installer work separate.
+  Prefer focused functions, descriptive names, explicit ownership and narrow APIs.
+- Use RAII for C++ resources, validate binary bounds and command preconditions, and
+  handle failures explicitly. Avoid hidden mutable globals and duplicated rules.
+- Add focused tests for behavior and edge cases; run the checks appropriate to the
+  change. Keep implementation and technical documentation consistent.
+
+### Evidence and original behavior
 
 - Keep confirmed facts separate from hypotheses. Record evidence as file offsets,
   field sizes, executable addresses or reproducible commands where available.
@@ -119,7 +140,7 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Trace event cards (deck, shuffling, effects), the card field dialog and the town
-dialog with its property economy; then computer players.
+Trace the remaining card effects, the card field dialog and the town dialog with
+its property economy; then computer players.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.
