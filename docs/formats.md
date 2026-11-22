@@ -1392,6 +1392,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   eight channels mixed with SDL audio (a new sound replaces the channel's),
   played only with Wave on; wired so far: menu sounds, the slot machine, money
   fields, the two sit-outs and blocked cards. Music (snd/midi) is not played.
+- **Round 50:** the town dialog (procedure seg1:5337): Plopp02 for the tabs
+  Kaufen / Verkaufen / Karte (seg1:5436 / 546D / 54B2); a purchase or sale is
+  tried for the clicked row (seg1:5583 → seg1:7DC5 / 832A) and sounds Plopp02 when
+  it succeeds, Zaehler2 when it is refused (seg1:5598 / 55D0, 5633 / 566B), so a
+  grayed row now only sounds. The save dialog: Fate01 on channel 6 when saving
+  fails (seg8:B4DC), Zaehler2 when loading fails (seg8:B3F9).
 - **Round 41:** driving: seg2:206B plays Carb01 when the steps taken equal the
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:

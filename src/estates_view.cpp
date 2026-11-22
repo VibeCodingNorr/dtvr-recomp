@@ -63,7 +63,8 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
     const int count = int(rows.size());
     auto rowAction = [&](int row) {
         selected_ = row;
-        if (tab_ != EstatesTab::None && !rows[size_t(row)].disabled) {
+        // seg1:5583: the purchase (sale) is tried for any row; a refused one only sounds.
+        if (tab_ != EstatesTab::None) {
             action.kind = Action::Kind::Row;
             action.entry = rows[size_t(row)].entry;
         }

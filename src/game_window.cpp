@@ -384,14 +384,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     std::string error;
                     saveDialog.close();
                     if (screen.saveSlots().load(saveDialog.slot(), play.game(), error)) startGame();
-                    else { std::cerr << "Laden fehlgeschlagen: " << error << "\n"; openTitle(); }
+                    else { // seg8:B3F9: Zaehler2
+                        sound.play(2, 7);
+                        std::cerr << "Laden fehlgeschlagen: " << error << "\n";
+                        openTitle();
+                    }
                     continue;
                 }
                 if (r == SaveView::Result::Close && screen.title()) { saveDialog.close(); openTitle(); continue; }
                 if (r == SaveView::Result::Confirm) {
                     std::string error;
                     const int slot = saveDialog.slot();
-                    if (screen.saveSlots().save(slot, play.game(), saveDescription(play.game(), screen.texts()), error))
+                    const bool saved = screen.saveSlots().save(slot, play.game(), saveDescription(play.game(), screen.texts()), error);
+                    if (!saved) sound.play(6, 17); // seg8:B4DC: Fate01 when saving fails
+                    if (saved)
                         std::cout << "Gespeichert: " << screen.saveSlots().file(slot).string() << "\n";
                     else
                         std::cerr << "Speichern fehlgeschlagen: " << error << "\n";
@@ -415,8 +421,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (action.kind == Kind::Row) {
                     const bool done = estates.tab() == EstatesTab::Sell ? g.sellProperty(action.entry)
                                                                         : g.buyProperty(action.entry);
+                    sound.play(2, done ? 2 : 7); // seg1:5598 / 55D0 (5633 / 566B): Plopp02 or Zaehler2
                     if (done) report();
+                } else if (action.kind == Kind::Tab) {
+                    sound.play(2, 2); // seg1:5436 / 546D: Plopp02
                 } else if (action.kind == Kind::Cards) { // the card window for property cards
+                    sound.play(2, 2); // seg1:54B2
                     if (g.openCardWindow() && cards.open(g)) cardWindowState = turnState();
                 } else if (action.kind == Kind::Close && estates.statistics()) {
                     estates.close();

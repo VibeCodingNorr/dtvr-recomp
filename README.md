@@ -116,7 +116,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 48. The game window's flow moved to its own module (src/game_window.cpp).
 49. Destination announcement ("Zielsuche") with the light searching the map and the
     original voices; the next destination is chosen as in the original (rules revision 30).
-50. *Next:* the remaining dialog sounds and subtitles.
+50. Sounds of the town and save dialogs.
+51. *Next:* subtitles of the voices and the card window's sounds.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
