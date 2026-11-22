@@ -70,8 +70,26 @@ SDL_Texture* SetupView::bitmap(const std::string& file) {
     return it->second.get();
 }
 
+SDL_Rect SetupView::extraRect() const {
+    const SDL_Rect stop = rect(geometry_.stop), star = rect(geometry_.start);
+    const int x = stop.x + stop.w + 24, h = std::max(20, star.h / 3);
+    return SDL_Rect{x, star.y + (star.h - h) / 2, star.x - 24 - x, h};
+}
+
 SetupView::Result SetupView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
+    // The recomb extension's switch (no counterpart in rally.exe).
+    const SDL_Rect extra = extraRect();
+    bool toggle = event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F9 && editing_ < 0;
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+        const SDL_Point at{event.button.x, event.button.y};
+        toggle = SDL_PointInRect(&at, &extra);
+    }
+    if (toggle) {
+        extraCards_ = !extraCards_;
+        sound_ = 2; // Plopp02 like a switch
+        return Result::None;
+    }
     SbButtonGroup::Input in;
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const int x = event.button.x, y = event.button.y;
@@ -146,6 +164,19 @@ void SetupView::draw() {
         text_.draw(renderer_, shown, ScreenRect{r.x + 4, r.y + r.h / 6, r.w - 8, r.h},
                    TextStyle{r.h * 2 / 3, true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
     }
+    // Recomb extension: a box and its label in the text colour of the dialogs (0x45).
+    const SDL_Rect extra = extraRect();
+    const int side = extra.h * 3 / 4;
+    const SDL_Rect box{extra.x, extra.y + (extra.h - side) / 2, side, side};
+    SDL_SetRenderDrawColor(renderer_, 67, 27, 0, 255);
+    SDL_RenderDrawRect(renderer_, &box);
+    if (extraCards_) {
+        const SDL_Rect fill{box.x + 3, box.y + 3, box.w - 6, box.h - 6};
+        SDL_RenderFillRect(renderer_, &fill);
+    }
+    text_.draw(renderer_, "Computer spielen alle Karten (Erg\u00e4nzung, F9)",
+               ScreenRect{box.x + side + 8, extra.y, extra.w - side - 8, extra.h},
+               TextStyle{std::max(12, extra.h * 2 / 3), true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
 }
 
 } // namespace dtvr

@@ -32,6 +32,11 @@ public:
     const std::array<uint8_t, kPlayerSlots>& status() const { return status_; }
     const std::array<std::string, kPlayerSlots>& names() const { return names_; }
 
+    // Recomb extension (not in rally.exe): "Computer spielen alle Karten"
+    // ([Extensions] ComputerExtraCards) between stop and star; a click or F9 (a key
+    // PLAYER does not use, seg1:0C7A) toggles it.
+    void setExtraCards(bool on) { extraCards_ = on; }
+    bool extraCards() const { return extraCards_; }
     enum class Result { None, Start, Cancel };
     Result handle(const SDL_Event& event);
     // The SBBUTTON sound of the last handled event for channel 2, -1 none.
@@ -54,6 +59,8 @@ private:
     int editing_ = -1; // name field with the keyboard focus
     SbButtonGroup buttons_; // ids: slot, kStar, kStop
     int sound_ = -1;
+    bool extraCards_ = false;
+    SDL_Rect extraRect() const;
     void stopEditing();
 };
 

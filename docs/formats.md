@@ -826,7 +826,9 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   wins: rally.exe's computers never play these cards from the hand (the Nägel
   window, seg3:1E5E, has no computer path either).
 - **Recomb extension** (not rally.exe; `[Extensions] ComputerExtraCards`,
-  `--computer-cards`, saved per game, off by default): computers may also play
+  `--computer-cards`, saved per game, off by default; since round 106 also a switch
+  "Computer spielen alle Karten" in the player setup between stop and star, toggled
+  by a click or F9 — PLAYER handles F1–F8 and F10 itself): computers may also play
   these cards. Nägel (round 98): when another active player trails at most 8
   fields (flag-1 distances to the destination), the nails go into the available
   direction (Game::nailsDirections) whose neighbour lies farthest from the

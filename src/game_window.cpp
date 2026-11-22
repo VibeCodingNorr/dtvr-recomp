@@ -178,6 +178,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 names[size_t(p)] = play.game().playerName(p);
             }
             screen.setup().open(status, names);
+            screen.setup().setExtraCards(screen.settings().computerExtraCards);
             break;
         }
         case 1021: screen.saveDialog().open(false); break;       // Spiel laden: seg8:B157(0)
@@ -603,6 +604,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
                     const auto status = screen.setup().status();
                     const auto names = screen.setup().names();
+                    // The extension's switch is kept in [Extensions] like the original's profile values.
+                    if (screen.setup().extraCards() != screen.settings().computerExtraCards) {
+                        Settings s = screen.settings();
+                        s.computerExtraCards = screen.setup().extraCards();
+                        screen.applySettings(s);
+                    }
                     screen.setup().close();
                     if (play.newGame(status, names, seed, error)) {
                         play.game().setComputerExtraCards(screen.settings().computerExtraCards);
