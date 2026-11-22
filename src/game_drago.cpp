@@ -85,7 +85,7 @@ void Game::dragoAct(int player) {
         break;
     }
     // seg2:BAB5 / BBB8 / BCE1 / BE51 / BEC7: "%s\%d\qp.bmp" replaces the showmaster.
-    for (size_t i = firstNotice; i < notices_.size(); ++i) notices_[i].drago = true;
+    for (size_t i = firstNotice; i < notices_.size(); ++i) notices_[i].picture = Notice::Picture::Drago;
     if (action == DragoAction::Block) notice(3351); // seg2:BFD6: text 3351, no picture (DS:3E2F "")
 }
 
@@ -114,6 +114,7 @@ bool Game::playWeihnachten() {
     } else if (handCount(current_) < 4 && deck_.peek() != Deck::kTaken) {
         notice(13006 + pickText(rng_, 3), {playerArg(current_)}); // seg3:1223
         const int slot = deck_.take(); // seg2:4327
+        notices_.back().cardPicture = deck_.typeOfSlot(slot); // seg3:126F: the gift's card picture
         addToHand(hands_[size_t(current_)], slot);
         sound(2, 19); // Hebel05 (seg3:1257)
         messages_.push_back(who + " bekommt zu Weihnachten die Karte " + cardName(slot));

@@ -43,7 +43,10 @@ struct Notice {
     int focusX = -1, focusY = -1;
     int variant = 0; // the scene start corner random(3) of seg8:517B (rain, snow, flood),
                      // Nessie's place index DS:680C
-    bool drago = false; // Dr. Drago's portrait bmp/<n>/qp.bmp instead of the showmaster (seg2:BAB5 ff.)
+    // The picture seg6:51EA shows instead of the showmaster: Dr. Drago bmp/<n>/qp.bmp
+    // (seg2:BAB5 ff.), butt/prof.bmp / fuss.bmp for investment results (seg8:65C0 /
+    // 6428); `cardPicture` takes precedence.
+    enum class Picture : uint8_t { Showmaster, Drago, Professor, Football } picture = Picture::Showmaster;
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.

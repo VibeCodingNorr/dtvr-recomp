@@ -45,7 +45,9 @@ MessageView::Geometry MessageView::geometry() {
         std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, n.cardPicture + 1);
         g.picture = bitmap(fs::path("bmp") / dir / "d" / name, g.pw, g.ph);
     }
-    if (!g.picture && n.drago) g.picture = bitmap(fs::path("bmp") / dir / "qp.bmp", g.pw, g.ph); // Dr. Drago
+    if (!g.picture && n.picture == Notice::Picture::Drago) g.picture = bitmap(fs::path("bmp") / dir / "qp.bmp", g.pw, g.ph);
+    if (!g.picture && n.picture == Notice::Picture::Professor) g.picture = bitmap(fs::path("butt") / "prof.bmp", g.pw, g.ph);
+    if (!g.picture && n.picture == Notice::Picture::Football) g.picture = bitmap(fs::path("butt") / "fuss.bmp", g.pw, g.ph);
     if (!g.picture) g.picture = bitmap(fs::path("bmp") / dir / "sm.bmp", g.pw, g.ph);
     // seg6:5213: width from element 5, height = picture + 0x24; centred on the canvas.
     const int w = layout_.elements[5][0], h = g.ph + 0x24;

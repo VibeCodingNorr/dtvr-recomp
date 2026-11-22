@@ -1150,8 +1150,15 @@ showmaster's other portraits.
   BBB8, BCE1, BE51, BEC7, C040) to seg6:51EA, so Dr. Drago's portrait replaces the
   showmaster. The block action seg2:BFB0 sets bit 0 and shows text 3351 (0xD17,
   no draw) with the empty picture DS:3E2F, i.e. the showmaster; the rebuild had
-  no message for it. Rebuilt with `Notice::drago` and `bmp/<n>/qp.bmp` in
+  no message for it. Rebuilt with `Notice::picture` and `bmp/<n>/qp.bmp` in
   `src/message_view.cpp`.
+- **Other message pictures** (round 77, all seg6:51EA calls preceded by a BMP
+  path): the investment results show `%s\prof.bmp` (DS:71A5 / 71B1, seg8:65C0 /
+  66AC) or `%s\fuss.bmp` (DS:718D / 7199, seg8:6428 / 6514) from the butt
+  directory; the Christmas card gift (seg3:126F, text 13006 ff.) shows the given
+  card's picture `%s\%d\%c\%dcard_%.2d.bmp`; the obstacle question uses the
+  clearing card (round 65). The `BB.bmp` calls at seg3:19FD / 1AD1 / 1B22 go to
+  seg2:51EA (target choice), not to the message window.
   Weihnachten (seg3): 13001 not December (seg3:1189), 13006 card (seg3:1223),
   13011 money (seg3:1292), three texts each.
 - **Turn start** of the next player: Zucker clears bit 1 and shows 1000 +
