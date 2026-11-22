@@ -19,6 +19,12 @@ uint16_t WorldMap::cell(int layer, int x, int y) const {
     return cells_[(size_t(layer) * kSize + y) * kSize + x];
 }
 
+void WorldMap::setTile(int layer, int x, int y, uint16_t tile) {
+    if (layer < 0 || layer >= kLayers || x < 0 || x >= kSize || y < 0 || y >= kSize) return;
+    uint16_t& c = cells_[(size_t(layer) * kSize + y) * kSize + x];
+    c = uint16_t((c & 0xF000) | (tile & kTileMask)); // seg6:27CB
+}
+
 int seasonForMonth(int month) {
     // Byte table built on the stack at seg5:187E..18A7, read as [bp-0xE + month % 12].
     static constexpr int table[12] = {3, 3, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3};
@@ -63,6 +69,26 @@ std::vector<uint8_t> renderWorld(const WorldMap& map, const std::vector<Tile>& t
         }
     }
     return out;
+}
+
+void renderCell(const WorldMap& map, const std::vector<Tile>& tiles, bool views, int x, int y, uint8_t* out,
+                int pitch, uint8_t background) {
+    constexpr int T = WorldMap::kTile;
+    for (int py = 0; py < T; ++py) std::fill_n(out + size_t(py) * size_t(pitch), T, background);
+    struct Pass { int layer; bool foreground; };
+    for (const Pass pass : {Pass{0, false}, Pass{1, false}, Pass{1, true}}) {
+        const uint16_t c = map.cell(pass.layer, x, y);
+        const unsigned index = c & WorldMap::kTileMask;
+        if (index == WorldMap::kEmptyTile || (!views && index == WorldMap::kViewTile)) continue;
+        if (bool(c & WorldMap::kForeground) != pass.foreground || index >= tiles.size()) continue;
+        const bool mirror = c & WorldMap::kMirror;
+        const auto& tile = tiles[index];
+        for (int py = 0; py < T; ++py)
+            for (int px = 0; px < T; ++px) {
+                const uint8_t p = tile[size_t(py) * T + (mirror ? T - 1 - px : px)];
+                if (p != 0) out[size_t(py) * size_t(pitch) + size_t(px)] = p;
+            }
+    }
 }
 
 } // namespace dtvr

@@ -27,6 +27,7 @@
 #include "stage_view.hpp"
 #include "subtitle_view.hpp"
 #include "intro_view.hpp"
+#include "ambient.hpp"
 #include "save_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
@@ -137,6 +138,14 @@ private:
     // seg3:2517: the 0x60 x 0x60 world pixels from (player - 0x28) for the Nägel compass.
     SDL_Texture* compassTexture();
     Texture compass_{nullptr, SDL_DestroyTexture};
+    // [Setup] Animations: the ambient map animations (seg8:83A0 from seg2:1C37), on a
+    // copy of the map with their own random numbers; cells are redrawn into world_.
+    void tickAmbient(bool views);
+    std::vector<Tile> tiles_;
+    std::unique_ptr<WorldMap> ambientMap_;
+    AmbientAnimations ambient_;
+    MsRandom ambientRng_{1};
+    Uint32 ambientLast_ = 0;
     using SpriteSet = std::map<std::string, Texture>;
     void loadSprites(const std::filesystem::path& relative, SpriteSet& into);
     void loadSprites(const std::filesystem::path& relative) { loadSprites(relative, sprites_); }

@@ -3,6 +3,8 @@
 // window share these helpers).
 #pragma once
 
+#include "worldmap.hpp"
+
 #include <SDL.h>
 
 #include <cstdint>
@@ -28,7 +30,9 @@ std::filesystem::path findCaseInsensitive(const std::filesystem::path& root, con
 // Composes europe.map from the season's SBB tiles as rally.exe does (loader
 // seg5:186A, cell lookup seg6:26B6, draw passes seg6:28D5); 8-bit with the SBB palette.
 // `seasons` false: [Setup] Colorcycle off fixes the tile directory to 1 (seg5:1929).
-Surface loadWorld(const std::filesystem::path& root, int month, bool views, bool seasons = true);
+// `tiles` (optional) receives the season's tiles for redrawing single cells.
+Surface loadWorld(const std::filesystem::path& root, int month, bool views, bool seasons = true,
+                  std::vector<Tile>* tiles = nullptr);
 
 // The frames of an SBS file as textures keyed by their upper-case names (rally.exe
 // looks frames up without regard to case, seg6:406D), colours from `palette`,

@@ -48,7 +48,7 @@ fs::path findCaseInsensitive(const fs::path& root, const fs::path& relative) {
     return current;
 }
 
-Surface loadWorld(const fs::path& root, int month, bool views, bool seasons) {
+Surface loadWorld(const fs::path& root, int month, bool views, bool seasons, std::vector<Tile>* tilesOut) {
     const int season = seasons ? seasonForMonth(month) : 1;
     std::vector<Tile> tiles;
     Surface palette(nullptr, SDL_FreeSurface);
@@ -73,6 +73,7 @@ Surface loadWorld(const fs::path& root, int month, bool views, bool seasons) {
         throw std::runtime_error(SDL_GetError());
     for (int y = 0; y < side; ++y)
         std::copy_n(&pixels[size_t(y) * side], side, static_cast<uint8_t*>(world->pixels) + y * world->pitch);
+    if (tilesOut) *tilesOut = std::move(tiles);
     return world;
 }
 

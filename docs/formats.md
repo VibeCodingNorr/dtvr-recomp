@@ -1902,11 +1902,31 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (seg1:B629): F1–F8 send 0x1392 + n, F10 sends 0x139A. There is no mouse handler
   of its own (the switches are SBBUTTONs). Rebuilt in `src/options_view.cpp`; the
   former assumptions (Return accepts, stop / Escape discard) are removed.
-  Applied by now (round 102): Wave, Midi, Views, Colorcycle (round 83), Joystick
-  (round 79), Voice and TimeOut (below). Not applied yet: Animations — seg8:83A0
-  returns at once without it (seg8:83B4); it ticks the object list DS:A05E inside
-  four event scenes (seg8:26DF, 4628, 4CD6, 5739) and draws random numbers there
-  (seg8:8465, 8590), which the simulation does not model yet.
+  Applied by now: Wave, Midi, Views, Colorcycle (round 83), Joystick (round 79),
+  Voice, TimeOut (round 102) and Animations (round 103, below).
+- **Animations** (round 103): ambient map animations. seg8:7CFB (called when the
+  map is set up) scans both layers of all 256 × 256 cells (x outer) for the first
+  tile of a definition in the far-pointer table DS:7B62 (51 definitions: +0 tile,
+  +2 layer, +4/+5 width/height in cells, +6 passes per frame, +7 repeats (0xFF
+  endless), +8 pause range, +0xA sound, +0xC sound chance, +0xD frames — the first
+  tile of each frame, 0-terminated, the cells of a frame row-major) and builds
+  records of 0x13 bytes (+0 definition, +4/+6 position, +8/+0xA its far corner,
+  +0xC pause, +0xE delay, +0xF repeats, +0x10 frame, +0x11 restart). seg8:7F7D
+  puts the records inside the view into the list DS:A05E (and resets frames).
+  seg8:83A0 (returns at once without DS:B5DA) advances each listed record: a pause
+  counts down; on a restart the sound plays on channel 6 when random(chance) = 0;
+  the delay counts down, then the next frame's tiles are written with seg6:273B
+  (keeping the flag bits 0xF000) and the cells redrawn (seg6:2C0A); after the last
+  frame a repeat starts it again, otherwise a pause random(range) follows.
+  seg8:83A0 runs from the idle pass seg2:1C37 (every wait of seg6:0EE0 / 0F60 and
+  the game loop, 20 ms plus drawing) and from the event scene passes (seg8:6E23)
+  and starts (seg8:26DF, 4628, 4CD6, 5739); its random numbers therefore depend
+  on how long the game waits and cannot be reproduced — the simulation keeps the
+  sequence of a game without animations. Rebuilt in `src/ambient.cpp` (table
+  generated from the data segment) and `GameScreen::tickAmbient`: all objects
+  advance every 20 ms on a copy of the map with their own random numbers.
+  **Simplifications:** objects outside the view advance too, and changing the view
+  does not reset their frames.
 - **Voice** (round 102): seg1:3579 always selects the sync.dat record but loads and
   plays the WAV only with a wave device (DS:9552) and [Setup] Voice (DS:B5D4),
   independent of Sound-F/X (seg1:3661); otherwise seg1:3E64's TimerCount path

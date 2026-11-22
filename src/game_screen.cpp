@@ -420,6 +420,28 @@ void GameScreen::cyclePalette(bool on) {
     SDL_SetPaletteColors(world_->format->palette, colors, 0x90, 10);
 }
 
+void GameScreen::tickAmbient(bool views) {
+    const Uint32 now = SDL_GetTicks();
+    // seg8:83B4: without [Setup] Animations nothing moves (the tiles keep their state).
+    if (!ambientMap_ || !world_ || settings_.value[Settings::Animations] == 0) { ambientLast_ = now; return; }
+    int passes = int((now - ambientLast_) / kVehicleTickMs); // one per idle pass of seg2:1C37
+    if (passes <= 0) return;
+    ambientLast_ += Uint32(passes) * kVehicleTickMs;
+    passes = std::min(passes, 10); // no long catch-up after a stall
+    std::vector<AmbientCell> changed;
+    std::vector<int> sounds;
+    for (int i = 0; i < passes; ++i) ambient_.tick(*ambientMap_, ambientRng_, changed, sounds);
+    if (!changed.empty() && SDL_LockSurface(world_.get()) == 0) {
+        auto* pixels = static_cast<uint8_t*>(world_->pixels);
+        for (const AmbientCell& c : changed)
+            renderCell(*ambientMap_, tiles_, views, c.x, c.y,
+                       pixels + size_t(c.y) * WorldMap::kTile * size_t(world_->pitch) + size_t(c.x) * WorldMap::kTile,
+                       world_->pitch);
+        SDL_UnlockSurface(world_.get());
+    }
+    if (sound_) for (int s : sounds) sound_->play(6, s); // seg8:848C: channel 6
+}
+
 SDL_Texture* GameScreen::compassTexture() {
     const int p = game_.currentPlayer();
     if (!world_ || p < 0) return nullptr;
@@ -446,7 +468,15 @@ void GameScreen::drawMap() {
     const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
     const int season = colorcycle ? seasonForMonth(game_.calendar().month) : 1;
     if (season != worldSeason_) {
-        world_ = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0, colorcycle); // Views
+        world_ = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0, colorcycle, &tiles_); // Views
+        // seg8:7CFB: the animated objects of the map (rebuilt with the season's tiles).
+        try {
+            ambientMap_ = std::make_unique<WorldMap>(readFile(findCaseInsensitive(root_, fs::path("map") / "europe.map")));
+            ambient_.build(*ambientMap_);
+        } catch (const std::exception&) {
+            ambientMap_.reset();
+        }
+        ambientLast_ = SDL_GetTicks();
         worldSeason_ = season;
         if (world_ && world_->format->palette && world_->format->palette->ncolors >= 0x9A)
             for (int i = 0; i < 10; ++i) cycleBase_[size_t(i)] = world_->format->palette->colors[0x90 + i];
@@ -454,6 +484,7 @@ void GameScreen::drawMap() {
     }
     if (!world_) return;
     cyclePalette(colorcycle);
+    tickAmbient(settings_.value[Settings::Views] != 0);
     const SDL_Point origin = viewOrigin();
     const int z = zoomFactor(); // the world area of the viewport is shown z times as large
     SDL_Rect source{origin.x, origin.y, layout_.viewport.w / z, layout_.viewport.h / z};

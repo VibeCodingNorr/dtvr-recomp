@@ -22,6 +22,9 @@ public:
 
     explicit WorldMap(const std::vector<uint8_t>& data); // throws on wrong size
     uint16_t cell(int layer, int x, int y) const;         // 0 outside the map, as in rally.exe
+    // seg6:273B: the tile number of a cell; the flag bits 0xF000 are kept. Ignored
+    // outside the map.
+    void setTile(int layer, int x, int y, uint16_t tile);
 
 private:
     std::vector<uint16_t> cells_;
@@ -42,5 +45,9 @@ std::vector<Tile> splitSbb(const uint8_t* pixels, int width, int height, int pit
 // Index 0 is transparent in every pass; uncovered pixels keep `background`.
 std::vector<uint8_t> renderWorld(const WorldMap& map, const std::vector<Tile>& tiles,
                                  bool views = true, uint8_t background = 0);
+// One cell with the same three passes into an index buffer of `pitch` bytes per row
+// whose (0, 0) is the cell's top-left pixel (seg6:2C0A redraws a cell).
+void renderCell(const WorldMap& map, const std::vector<Tile>& tiles, bool views, int x, int y, uint8_t* out,
+                int pitch, uint8_t background = 0);
 
 } // namespace dtvr
