@@ -82,7 +82,8 @@ python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analy
 ```
 
 Requires CMake, pkg-config, a C++17 compiler, SDL2 >= 2.0.10 development files and
-Python 3. The analysis script uses only the Python standard library.
+Python 3. Optional: SDL2_ttf with Arial or Liberation Sans for text in the game
+window (`--game`); without it the window is built without text. The analysis script uses only the Python standard library.
 Inspect externally stored screenshots when changing rendering. Some image viewers require conversion
 from BMP to PNG; Pillow is available on the current machine, but is not a build dependency.
 The dummy driver verifies rendering and file loading, not interactive desktop input.
@@ -95,9 +96,15 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   map composition following rally.exe (no SDL).
 - `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules.
 - `src/ai.{hpp,cpp}`: computer strategy tables, route planning and town plan (no SDL);
-  `src/save.{hpp,cpp}`: native versioned save format and atomic file writes (no SDL).
   `src/ai_cards.cpp` card choice, targets, card worth and card field; `src/game_ai.cpp`
   runs computer turns.
+- `src/game_risiko.cpp`: the Risiko card as a timed game phase.
+- `src/save.{hpp,cpp}`: native versioned save format and atomic file writes (no SDL).
+- `src/ne_strings.{hpp,cpp}`: RT_STRING reader for the language file and Windows-1252 conversion.
+- `src/layout.{hpp,cpp}`: original window geometry; `src/panel.{hpp,cpp}`: player info panel
+  contents (both no SDL).
+- `src/sdl_assets.{hpp,cpp}`: BMP/world loading and case-insensitive paths; `src/text.{hpp,cpp}`:
+  GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`).
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
@@ -173,8 +180,8 @@ LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
 Next: continue the game window as in the original (agreed with the user: it must
-look like rally.exe; `--game`, src/game_screen.cpp): panel contents, menus, slot
-machine, messages and dialogs, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
+look like rally.exe; `--game`, src/game_screen.cpp): menus, slot machine, messages,
+dialogs and vehicles, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
 state changes. The viewer is a debugging aid only; put effort into the simulation.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

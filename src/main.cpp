@@ -214,7 +214,7 @@ static int run(int argc, char** argv) {
         options.canvasWidth = resolution;
         options.smokeTest = smoke;
         options.screenshot = screenshot.string();
-        const int code = dtvr::runGameWindow(*game, root, board, options);
+        const int code = dtvr::runGameWindow(*game, root, board, towns, options);
         SDL_Quit();
         return code;
     }

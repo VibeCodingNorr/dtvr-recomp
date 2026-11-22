@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "game_screen.hpp"
 
+#include "ne_strings.hpp"
+#include "panel.hpp"
+#include "sbs.hpp"
 #include "worldmap.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <stdexcept>
 
@@ -17,11 +21,41 @@ constexpr char kPortraitLetters[8] = {'D', 'F', 'E', 'M', 'U', 'J', 'I', 'V'};
 
 SDL_Rect toSdl(const ScreenRect& r) { return {r.x, r.y, r.w, r.h}; }
 
+std::string upper(std::string s) {
+    for (char& c : s) c = char(std::toupper(static_cast<unsigned char>(c)));
+    return s;
+}
+
 } // namespace
 
 GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
-                       const Board& board, const Game& game)
-    : renderer_(renderer), root_(root), layout_(layout), board_(board), game_(game) {}
+                       const Board& board, const std::vector<Town>& towns, const Game& game,
+                       std::map<int, std::string> texts)
+    : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
+      texts_(std::move(texts)) {
+    std::cout << "Schrift: " << text_.fontDescription() << "\n";
+    // SBS frames of the panel (seg6:406D looks them up by name in the loaded files).
+    const fs::path file = findCaseInsensitive(root_, fs::path("sbs") / (std::to_string(layout_.artDir) + "_assort.sbs"));
+    const fs::path paletteFile = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / "info.bmp");
+    if (file.empty() || paletteFile.empty()) return;
+    const auto palette = loadBmp(paletteFile); // the game palette (identical in all bitmaps checked)
+    for (const SbsFrame& frame : parseSbs(readFile(file)).frames) {
+        Surface surface(SDL_CreateRGBSurfaceWithFormat(0, frame.width, frame.height, 8, SDL_PIXELFORMAT_INDEX8),
+                        SDL_FreeSurface);
+        if (!surface || !palette->format->palette) continue;
+        SDL_SetSurfacePalette(surface.get(), palette->format->palette);
+        for (int y = 0; y < frame.height; ++y)
+            std::copy_n(&frame.pixels[size_t(y) * frame.width], frame.width,
+                        static_cast<uint8_t*>(surface->pixels) + y * surface->pitch);
+        SDL_SetColorKey(surface.get(), SDL_TRUE, 0); // index 0 is transparent for SBS frames
+        sprites_.emplace(upper(frame.name), Texture(SDL_CreateTextureFromSurface(renderer_, surface.get()), SDL_DestroyTexture));
+    }
+}
+
+SDL_Texture* GameScreen::sprite(const std::string& name) {
+    auto it = sprites_.find(upper(name)); // rally.exe asks for "zahl_0", the file holds "ZAHL_0"
+    return it == sprites_.end() ? nullptr : it->second.get();
+}
 
 SDL_Texture* GameScreen::art(const fs::path& relative) {
     const std::string key = relative.generic_string();
@@ -100,11 +134,46 @@ void GameScreen::drawPortrait() {
 }
 
 void GameScreen::drawPlayerInfo() {
-    // PLINFO (seg5:6119) at table index 9 with the packed size of index 3: info.bmp.
+    // PLINFO (seg5:6119) at table index 9 with the packed size of index 3: info.bmp,
+    // then the slots of DS:3936 (seg5:61C5).
     SDL_Texture* info = art(fs::path("bmp") / std::to_string(layout_.artDir) / "info.bmp");
     if (!info) return;
-    const SDL_Rect target = toSdl(layout_.playerInfo());
+    const ScreenRect panel = layout_.playerInfo();
+    const SDL_Rect target = toSdl(panel);
     SDL_RenderCopy(renderer_, info, nullptr, &target);
+    const PlayerInfo pi = playerInfo(game_, board_, towns_, texts_);
+    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    static constexpr int kItalic[3] = {24, 19, 16}, kRegular[3] = {18, 15, 12}; // seg5:622F
+    auto slot = [&](int i) {
+        ScreenRect r = panelSlot(layout_, i);
+        r.x += panel.x;
+        r.y += panel.y;
+        return r;
+    };
+    const SDL_Color white{255, 255, 255, 255}, brown{67, 27, 0, 255}; // palette 0xFF and 0x45
+    TextStyle headline{kItalic[res], true, true, true, 2, white};      // slots 0, 1 (0x121, shadow 2)
+    TextStyle line{kRegular[res], true, false, false, 0, brown};       // slots 2, 4, 6
+    text_.draw(renderer_, pi.monthLine, slot(0), headline);
+    text_.draw(renderer_, pi.money, slot(1), headline);
+    text_.draw(renderer_, pi.destination, slot(2), line);
+    text_.draw(renderer_, pi.stepsLabel, slot(4), line);
+    text_.draw(renderer_, pi.fieldKind, slot(6), line);
+    auto digits = [&](const std::array<int, 2>& d, const ScreenRect& r) { // seg5:69DC: second at x + its width
+        SDL_Texture* tens = sprite("zahl_" + std::to_string(d[0]));
+        SDL_Texture* units = sprite("zahl_" + std::to_string(d[1]));
+        int w = 0, h = 0;
+        if (tens) { SDL_QueryTexture(tens, nullptr, nullptr, &w, &h); SDL_Rect t{r.x, r.y, w, h}; SDL_RenderCopy(renderer_, tens, nullptr, &t); }
+        if (units) { SDL_QueryTexture(units, nullptr, nullptr, &w, &h); SDL_Rect t{r.x + w, r.y, w, h}; SDL_RenderCopy(renderer_, units, nullptr, &t); }
+    };
+    digits(pi.distance, slot(3));
+    digits(pi.steps, slot(5));
+    if (SDL_Texture* icon = pi.fieldIcon.empty() ? nullptr : sprite(pi.fieldIcon)) {
+        int w = 0, h = 0;
+        SDL_QueryTexture(icon, nullptr, nullptr, &w, &h);
+        const ScreenRect r = slot(7);
+        const SDL_Rect t{r.x, r.y, w, h};
+        SDL_RenderCopy(renderer_, icon, nullptr, &t);
+    }
 }
 
 void GameScreen::draw() {
@@ -116,7 +185,8 @@ void GameScreen::draw() {
     drawPlayerInfo();
 }
 
-int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const GameWindowOptions& options) {
+int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
+                  const GameWindowOptions& options) {
     SDL_DisplayMode display{};
     if (SDL_GetDesktopDisplayMode(0, &display) != 0) display.w = 1024, display.h = 768;
     const ScreenLayout layout = layoutForScreen(display.w, display.h, options.canvasWidth);
@@ -128,7 +198,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer(
         SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
     if (!renderer) throw std::runtime_error(SDL_GetError());
-    GameScreen screen(renderer.get(), root, layout, board, play.game());
+    std::map<int, std::string> texts; // language file (texts in UTF-8)
+    const fs::path language = findCaseInsensitive(root, "dat/d/rally_d.dat");
+    if (!language.empty())
+        for (const auto& [id, raw] : readNeStrings(readFile(language))) texts.emplace(id, ansiToUtf8(raw));
+    GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
     auto report = [&] {
         play.printLog(std::cout);
         SDL_SetWindowTitle(window.get(), play.title().c_str());

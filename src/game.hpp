@@ -59,6 +59,7 @@ public:
     bool invest(int amount);
     void declineInvestment();
     int fieldOfTown(int town) const;
+    uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
     // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
     // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),
     // pressing while dark loses them all, stopping keeps them. The presentation

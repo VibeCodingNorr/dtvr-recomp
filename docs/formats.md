@@ -915,6 +915,43 @@ provisional squares until the vehicle sprites are placed. Not yet: the contents
 of PLINFO (texts), menus (MENU / SBBUTTON), slot machine (SLOT), messages
 (SUBTITLE / INFO), the dialogs and the map control (MCTRL).
 
+### Player info panel and text (round 22)
+
+- **Fonts** seg6:04F9(height, escapement, weight, italic) → CreateFont(−height,
+  0, escapement, 0, weight, italic, 0, 0, 0, 0, 0, 0, 0x20, "Arial" (DS:1643)).
+  PLINFO (seg5:6304) creates Arial weight 600 italic and upright with heights
+  {24, 19, 16} and {18, 15, 12} for 1024 / 800 / 640 (seg6:12FA returns 0, 1, 2).
+- **Text output** seg2:314A(dc, text, length, rect, format, shadow, colour):
+  transparent background; with shadow n > 0 the text is first drawn in
+  PALETTEINDEX(0) with the rectangle moved by −n, then in PALETTEINDEX(colour).
+  Colours used: 0xFF white, 0x45 dark brown (67, 27, 0) in the game palette.
+- **Slots** seg5:5F88(rect, &out, slot): table DS:3936 of (left, top, right,
+  bottom) per resolution and slot, 255 = client edge. Contents (seg5:61C5):
+
+  | Slot | Content | Font, colour, format |
+  | --- | --- | --- |
+  | 0 | text 301 + month % 12, `"%Fs (%d)"` with year + 1 | italic, 0xFF, shadow 2, centred (0x121) |
+  | 1 | cash, seg6:137F: `"$%li"`, '-' before '$', '.' every three digits | italic, 0xFF, shadow 2, centred |
+  | 2 | destination town, seg2:271C(DS:A10D), OemToAnsi | upright, 0x45 (0x100) |
+  | 3 | two SBS frames `zahl_N`: DS:22 at the player's field, 99 unreachable (seg5:6AB2) | |
+  | 4 | text 201 ("Züge") | upright, 0x45 |
+  | 5 | `zahl_N` of DS:A778 − DS:9D40 (9 9 for −1, 0 0 for 0) (seg5:697F) | |
+  | 6 | DS:B632, set on arrival (seg2:5ABC): the town name for kinds 4 and 6, else text 202 + kind; 19 characters | upright, 0x45 (0x120) |
+  | 7 | SBS frame by the field kind: 1 BLAU, 2 ROT, 3 GELB, 5 LILA | |
+
+  The units digit is drawn at x + the width of its own frame. The frames are in
+  `sbs/<n>_assort.sbs` with upper-case names (`ZAHL_0`); seg6:406D therefore
+  compares names without regard to case.
+- **Keys of the main window** seg4:0259 (virtual keys): Escape / Backspace open the
+  menu (seg5:5214, MENU 192 × 48 at (0, 0)), Enter seg2:0BC3, Space centres the
+  map on the current player (seg2:3216, 05A8), arrows set the steering direction
+  DS:A77A (1 up, 2 right, 3 down, 4 left), Insert / Delete seg6:2E54(3), keys 1–4
+  seg6:0DA0(key − 1), C seg2:7F72, Q seg4:0EDF.
+
+Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
+Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
+shows while the player stands on the reached field (phase Arrived).
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

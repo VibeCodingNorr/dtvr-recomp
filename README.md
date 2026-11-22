@@ -24,7 +24,7 @@ no overall completion percentage is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; viewport and palette cycling still open. | [World map](src/worldmap.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and player info frame at the original positions, all art loaded from the installation. Still keyboard-driven with provisional player markers; panel texts, menus, slot machine, messages and dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and the player info panel with its texts and digit sprites at the original positions, all art and text loaded from the installation. Still keyboard-driven with provisional player markers; menus, slot machine, messages and dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
@@ -71,7 +71,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     driver names from the language file.
 21. Game window frame as in the original (`--game`): canvas, map window,
     portrait and player info panel at the original positions for 640/800/1024.
-22. *Next:* the contents of the panels, the menus and the slot machine.
+22. Player info panel contents (month, cash, destination, digits, field kind) with
+    Arial/Liberation Sans text and the original digit sprites.
+23. *Next:* the menus, the slot machine and messages.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
@@ -103,6 +105,8 @@ with working Tk support; CLI use does not require Tk.
 The repository provides the native source and installer. You supply your own
 original CD image; neither the ISO nor original game data is distributed here.
 Requires Python 3, CMake, a C++17 compiler, pkg-config and SDL2 development files.
+Optional: SDL2_ttf and the font Arial or Liberation Sans (metrically compatible)
+for text in the game window; without SDL2_ttf the window has no text.
 
 The assistant checks prerequisites before importing data and reports missing
 packages/tools; it does not modify system packages or ask for root access.
@@ -203,7 +207,8 @@ Use `play --help` for the complete command-line options.
 
 ## Build and run
 
-Requires a C++17 compiler, CMake, pkg-config and SDL2 development files.
+Requires a C++17 compiler, CMake, pkg-config and SDL2 development files
+(optional: SDL2_ttf with Arial or Liberation Sans for text in the game window).
 Python 3 is used for the analysis tool. No Python packages are required.
 
 ```sh
