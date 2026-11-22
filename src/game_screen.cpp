@@ -245,13 +245,15 @@ void GameScreen::advanceVehicles(Uint32 now) {
             if (p == game_.currentPlayer() && originSet_ && moved)
                 edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
             // seg2:1DE2 / 1E35: a view point cell (bit 0x10) stops a human's vehicle with
-            // [Setup] Views like a field while no direction is held; computers drive on.
+            // [Setup] Views like a field unless the cell ahead in the driving direction
+            // (DS:A77A) has the properties exactly 0x20 (seg2:1E2D); computers drive on.
             const SDL_Point cell{at.x / WorldMap::kTile, at.y / WorldMap::kTile};
             if (moved && viewsOn && p == game_.currentPlayer() && !game_.isComputer(p) && at.x % WorldMap::kTile == 0
                 && at.y % WorldMap::kTile == 0 && (at.x != target.x || at.y != target.y)
                 && (game_.cellProperties(cell.x, cell.y) & TileProperties::kViewPoint)
                 && (cell.x != viewPassed_.x || cell.y != viewPassed_.y)) {
-                if (arrowHeld_) {
+                const int dx = (at.x > before.x) - (at.x < before.x), dy = (at.y > before.y) - (at.y < before.y);
+                if (game_.cellProperties(cell.x + dx, cell.y + dy) == 0x20) {
                     viewPassed_ = cell;
                 } else {
                     viewStop_ = true;

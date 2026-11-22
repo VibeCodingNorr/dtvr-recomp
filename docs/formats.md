@@ -827,8 +827,8 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   the card is not skipped. *Round 57:* seg3:1057 loads text 403 (0x193),
   formats it with the player name, shows it (seg6:51EA) and calls seg3:0887(0);
   the game window opens the card window after the message and drops the clicked
-  card (`Game::discardForCard`). **Assumption:** the window cannot be closed
-  without dropping a card (the cancel path of mode 0 is not traced).
+  card (`Game::discardForCard`). The window cannot be closed without dropping a
+  card: the cancel of mode 0 only plays sound 7 (seg4:0B47, round 93).
 - **Card field** state 12: seg5:7D85 sells every hand card without a worth
   (adding half its value), seg5:7E4F takes spare money (seg5:9A34) plus the
   sales, collects affordable offers with a worth, scores them worth +
@@ -1754,7 +1754,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/nails_view.cpp`): the window with the triangles, the arrow
   keys and text 510. **Not rebuilt / assumptions:** the paint of the window (the
   arrows are filled in the text colour, the compass interior stays empty), the
-  film; Escape / right button cancel; the window centred.
+  film; the window centred. **Deviation found in round 95** (rebuild pending): the
+  procedure (dispatch seg3:2769) has no Escape and no right button, so it cannot be
+  cancelled; an arrow key or a click on a triangle only selects an available
+  direction (DS:8C10, flags DS:320A–3210), Enter or a click inside the inflated
+  client rectangle (seg3:1FCC) confirms it (seg3:2096).
 - **Water case** (round 75, rules revision 32): player record +0x2D is the
   vehicle state — 0 land, 1 turning into a boat (+0x2E counts up to 0x18,
   seg2:1793), 2 boat, 3 turning back (seg2:17EE, back to 0 at +0x2E = 0) —
@@ -2129,8 +2133,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - Rebuilt in `src/sight_view.cpp`; the stop is presentation in
   `GameScreen::advanceVehicles`. **Input** (round 90, seg6:518B): WM_KEYDOWN and
   WM_LBUTTONDOWN destroy the window, other messages go to DefWindowProc; the
-  window is modal (seg6:0FB4 on DS:A04A). **Assumption:** a held arrow key passes
-  the point.
+  window is modal (seg6:0FB4 on DS:A04A).
+- **Passing** (round 95, seg2:1E08..1E31): at a view point a human's vehicle drives
+  on only when the cell ahead in the driving direction DS:A77A has the properties
+  exactly 0x20 (one of the 15 "open" road cells); computers always drive on
+  (seg2:5C02). Otherwise it stops like at a field (seg2:1E35); an arrow key starts
+  it again. Replaces the assumption that a held arrow key passes the point.
 
 ### Player setup (round 36)
 
@@ -2239,9 +2247,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/save_slots.cpp`, `src/save_view.cpp`): the same dialog and
   descriptions, but the slots are the native save format (docs/save-format.md)
   in `$XDG_DATA_HOME/dtvr-recomb/saves` (`slot<n>.sav`, descriptions in
-  `saves.ini`); original save files are neither read nor written. The initial
-  footer button (Ok) is an assumption, and so is the mouse mapping (a click on a
-  slot chooses it, on the footer's left / right half acts as Nein / Ok). The
+  `saves.ini`); original save files are neither read nor written. Confirmed in
+  round 95: the footer starts on Ok (DS:8D64 = 6, seg8:B253; Left sets 7 = Nein);
+  WM_LBUTTONDOWN (seg8:B8F6) only chooses a slot inside its rectangle
+  (seg8:BA3B), posts Escape for (0, 0x1A4)–(0x96, 0x1CE) and Enter for
+  (0x1CA, 0x1A4)–(0x22E, 0x1CE), which acts with the current footer choice;
+  WM_LBUTTONDBLCLK posts Enter (seg8:B335), WM_RBUTTONDOWN Backspace. The
   default word `leer` is a literal of rally.exe, not a language text.
 
 ### SBS: remaining hypotheses
