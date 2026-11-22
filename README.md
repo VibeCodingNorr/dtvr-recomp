@@ -124,7 +124,8 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
     Blockieren, Schlafen, Tschüss) in the game window.
 54. Flugzeug booking window with the original towns and the fog over Brussels.
 55. Nägel direction window: the four arrows of the original as click areas.
-56. *Next:* the remaining keyboard-only actions (investments, yellow field discard).
+56. Investment offer window (professor / football club) with Ja / Nein and the amount.
+57. *Next:* the yellow field discard with a full hand and the remaining keyboard-only actions.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;

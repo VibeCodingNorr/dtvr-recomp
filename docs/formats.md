@@ -1104,6 +1104,16 @@ showmaster's other portraits.
   creation, 5321 + random(2) (professor) or 5401 + random(2) (football club),
   i.e. only when the offer appears (cash > 10,000). Results: professor 5341 win
   (amount) / 5381 loss, football club 5421 win / 5441 loss.
+  *Round 56:* window TEMP 0x1BE × 0x8A (CreateWindow seg8:7027) on
+  `%s\unipaper.bmp` (butt) with `%s\prof.bmp` or `%s\fuss.bmp` (102 × 102);
+  click rectangles Ja (0x82, 0x5A)–(0xA0, 0x6E) and Nein (0x154, 0x5A)–(0x186,
+  0x6E) set DS:8D5A = 0 / 1 and post Return (seg8:70BB / 70FF); keys at seg8:73AB
+  (Backspace / Escape decline with sound 7, Return, arrows); text Arial 16 weight
+  600 colour 0x45, Ja / Nein texts 115 / 116; after Ja text 5390 and 5391 with
+  the amount in steps of 1,000 (DS:877E). Rebuilt in `src/invest_view.cpp`;
+  **assumptions:** picture at (10, 10), text right of it, arrows left / right
+  choose Ja / Nein and up / down change the amount (the exact key mapping of
+  seg8:73AB is not traced), the window centred; computers keep declining.
 - **Corrections:** the rebuild did not draw the random numbers of the blocked
   card window and of the investment offer before round 26.
 

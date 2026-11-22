@@ -4,6 +4,7 @@
 #include "game_screen.hpp"
 
 #include "board.hpp"
+#include "panel.hpp"
 #include "music_menu.hpp"
 #include "ne_strings.hpp"
 
@@ -193,6 +194,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.cardShop) screen.cardShop().open(play.game());
     if (options.nails) screen.nails().open();
+    if (options.invest) screen.invest().open(true, "Vera, ein verrückter Professor fragt Dich, ob Du in seine Forschungen investieren willst.", 50000);
     if (options.flight) screen.flight().open(play.game().eastOpen(), play.game().remainingStages() == 0);
     if (options.selectPlayer) {
         std::vector<int> others;
@@ -223,6 +225,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         if (!screen.title())
             for (Notice& n : play.game().takeNotices()) {
                 if (const auto cue = musicForNotice(n.text); !cue.empty()) music.interrupt(cue);
+                // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
+                // to the investment window, not to the message window.
+                const bool offerText = n.text == 5321 || n.text == 5322 || n.text == 5401 || n.text == 5402;
+                if (offerText && play.game().investmentOffer() != EventKind::None) {
+                    const auto t = screen.texts().find(n.text);
+                    const std::string offer = t == screen.texts().end() ? std::string() : formatNotice(t->second, n, play.game());
+                    const Game& g = play.game();
+                    screen.invest().open(g.investmentOffer() == EventKind::Professor, offer, g.cash(g.currentPlayer()));
+                    continue;
+                }
                 screen.messages().push(std::move(n));
             }
         // The original plays a field's sounds when the vehicle is on it: cues wait while the
@@ -318,7 +330,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.victory().active() || screen.balance().active()
                            || screen.announcement().active() || screen.cardShop().isOpen()
                            || screen.selectPlayer().isOpen() || screen.flight().isOpen()
-                           || screen.nails().isOpen();
+                           || screen.nails().isOpen() || screen.invest().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -445,6 +457,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                         std::cerr << "Speichern fehlgeschlagen: " << error << "\n";
                 }
                 if (r != SaveView::Result::None) saveDialog.close();
+                continue;
+            }
+            if (screen.invest().isOpen() && !screen.messages().open()) { // seg8:7098
+                const InvestView::Result r = screen.invest().handle(event);
+                if (r.sound >= 0) sound.play(0, r.sound);
+                if (r.done) {
+                    screen.invest().close();
+                    if (r.amount > 0 && play.game().invest(r.amount)) report();
+                    else { play.game().declineInvestment(); report(); }
+                }
                 continue;
             }
             if (screen.nails().isOpen()) { // seg3:1E5E

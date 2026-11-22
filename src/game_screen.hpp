@@ -12,6 +12,7 @@
 #include "select_player_view.hpp"
 #include "flight_view.hpp"
 #include "nails_view.hpp"
+#include "invest_view.hpp"
 #include "estates_view.hpp"
 #include "finish_view.hpp"
 #include "victory_view.hpp"
@@ -57,6 +58,7 @@ public:
     SelectPlayerView& selectPlayer() { return selectPlayer_; }
     FlightView& flight() { return flight_; }
     NailsView& nails() { return nails_; }
+    InvestView& invest() { return invest_; }
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
     SetupView& setup() { return setup_; }
@@ -131,6 +133,7 @@ private:
     SelectPlayerView selectPlayer_;
     FlightView flight_;
     NailsView nails_;
+    InvestView invest_;
     EstatesView estates_;
     SaveSlots slots_;
     SaveView save_;
@@ -180,6 +183,7 @@ struct GameWindowOptions {
     bool selectPlayer = false;    // tests: open the target choice for the other players
     bool flight = false;          // tests: open the Flugzeug booking
     bool nails = false;           // tests: open the Nägel direction choice
+    bool invest = false;          // tests: open the investment offer
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
