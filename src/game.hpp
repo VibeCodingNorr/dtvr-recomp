@@ -51,6 +51,9 @@ struct Notice {
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
 struct SoundCue { int channel = 0; int sound = 0; int loops = 0; };
+// A card film of the FLIC window (seg7:62AA): butt/flc/karte<film>.flc played `loops`
+// times with its sound butt/snd/<sound>.wav on channel 7; cosmetic, no rule effect.
+struct FilmCue { int film = 0; int loops = 1; const char* sound = ""; };
 
 class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
@@ -110,6 +113,7 @@ public:
         for (Notice& n : other.takeNotices()) notices_.push_back(std::move(n));
     }
     std::vector<SoundCue> takeSounds() { std::vector<SoundCue> s; s.swap(sounds_); return s; }
+    std::vector<FilmCue> takeFilms() { std::vector<FilmCue> f; f.swap(films_); return f; }
     std::vector<std::string> takeMusic() { std::vector<std::string> cues; cues.swap(music_); return cues; }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
@@ -297,6 +301,7 @@ private:
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
     std::vector<SoundCue> sounds_;
+    std::vector<FilmCue> films_;
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0

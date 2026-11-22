@@ -124,6 +124,7 @@ bool Game::playCard(int handSlot, int target) {
             messages_.push_back("Die Naegel fallen ins Wasser");
             return true;
         }
+        films_.push_back({1, 1, "Naegel.wav"}); // seg3:1DA9 / 1DCE after the direction window
         const Field& f = board_.fields[size_t(here)];
         static constexpr int dx[4] = {0, 2, 0, -2}, dy[4] = {-2, 0, 2, 0};
         const int x = f.x + dx[target - 1], y = f.y + dy[target - 1];
@@ -162,6 +163,8 @@ bool Game::playCard(int handSlot, int target) {
         return true;
     default: { // status cards: flag on the target, then a normal one-reel spin
         players_[size_t(victim)].flags |= cardStatusFlag(kind);
+        if (kind == CardKind::Zucker) films_.push_back({3, 1, "Zucker.wav"});    // seg3:1A25 / 1A72
+        if (kind == CardKind::Schlafen) films_.push_back({2, 10, "Sab.wav"});    // seg3:1B4A / 1B97: ten times
         int sum = 0;
         sum = spin(1, 5);
         messages_.push_back("wuerfelt " + std::to_string(sum));
@@ -174,6 +177,7 @@ bool Game::playCard(int handSlot, int target) {
 }
 
 void Game::playPunch() {
+    films_.push_back({4, 1, "Punch.wav"}); // seg3:2EC2 / 2F17
     // seg3:2D17: the first other active player on the same field is pushed up to
     // four fields against the puncher's driving direction (table at seg3:2D2B);
     // blocked directions turn clockwise, never into the puncher's own direction.

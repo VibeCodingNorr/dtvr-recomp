@@ -35,7 +35,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
       texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }),
+      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root),
       cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
@@ -550,6 +550,7 @@ void GameScreen::draw() {
     invest_.draw();
     save_.draw(slots_);
     mouseControl_.draw(game_.phase() == Game::Phase::Arrived); // M1 once the move is done (seg4:12FC)
+    film_.draw();
     menu_.draw();
     if (!eventSceneActive(SDL_GetTicks())) messages_.draw(game_); // seg8:6EF2 after the animation
 }

@@ -1810,6 +1810,28 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   otherwise the deepest depth. Rebuilt as `reachableSteps` (src/ai.cpp, tested)
   and `Game::startMove`; rules revision 33. seg5:607B(5) is not rebuilt.
 
+### Films (round 83)
+
+- **Files** `butt/flc/karte1.flc`–`karte4.flc`: Autodesk FLC (magic 0xAF12), 256 ×
+  192, 8 bit; 76 / 9 / 135 / 27 frames at 100 / 71 / 71 / 67 ms; frame chunks
+  (0xF1FA) with COLOR_256 (4), BYTE_RUN (15) in the first frame and DELTA_FLC (7)
+  after it, plus the ring frame.
+- **FLIC window** seg7:62AA(parent, x, y, file, loops): opens the film (seg7:51CB,
+  mmio), creates the class FLIC (procedure seg7:63E1) of the film's size at (x, y)
+  in the parent, starts a multimedia timer (timeSetEvent) and stores `loops` in
+  DS:8D46; after the last frame DS:8D48 counts a pass and at `loops` passes
+  WM_COMMAND 0x7EF goes to the parent (seg7:6619). The callers wait modally
+  (seg6:0FB4 on DS:A050), close it (seg7:63A3) and stop channel 7 (seg1:317D).
+- **Cards** (parent the canvas DS:40, x = y = 10, sound `%s\snd\<name>.wav` from
+  the butt directory on channel 7 before, seg1:2D40): Zucker karte3 + Zucker.wav
+  (seg3:1A25 / 1A72), Schlafen karte2 + Sab.wav ten times (seg3:1B4A / 1B97),
+  Nägel karte1 + Naegel.wav after the direction window (seg3:1DA9 / 1DCE), Punch
+  karte4 + Punch.wav (seg3:2EC2 / 2F17).
+- **Rebuilt** in `src/flc.cpp` (decoder for chunks 4, 7, 11, 12, 13, 15, 16; tested
+  with a synthetic film and malformed data; all four original films decode),
+  `src/film_view.cpp` and `Game::takeFilms`; films queue, play modally and swallow
+  input. The films are read at run time from the installation, not converted.
+
 ### Colour cycling (round 82)
 
 - **Timer** seg5:01EB: SetTimer(…, 0x32 = 50 ms, seg5:3BB9). Each tick rotates the

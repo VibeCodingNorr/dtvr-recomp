@@ -131,7 +131,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   button group (focus, press, disabled, keys) of the button windows; `src/map_scroll.{hpp,cpp}`
   (no SDL): centring, clamping and edge scrolling of the map origin; `src/event_scenes.{hpp,cpp}`
   (no SDL): event animation table and timing; `src/mouse_control_view.{hpp,cpp}`: the MCTRL
-  mouse steering cross; `src/controller.{hpp,cpp}`: game controllers as the original joystick;
+  mouse steering cross; `src/controller.{hpp,cpp}`: game controllers as the original joystick; `src/flc.{hpp,cpp}` (no SDL): FLC film decoder;
+  `src/film_view.{hpp,cpp}`: the FLIC window;
   `src/scene.{hpp,cpp}`: their animation records.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.

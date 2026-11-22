@@ -8,6 +8,7 @@
 #include "map_scroll.hpp"
 #include "event_scenes.hpp"
 #include "mouse_control_view.hpp"
+#include "film_view.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
 #include "card_view.hpp"
@@ -58,6 +59,8 @@ public:
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
     MouseControlView& mouseControl() { return mouseControl_; }
+    FilmView& film() { return film_; }
+    const std::filesystem::path& root() const { return root_; }
     const ScreenLayout& layout() const { return layout_; }
     CardView& cards() { return cards_; }
     CardShopView& cardShop() { return cardShop_; }
@@ -149,6 +152,7 @@ private:
     MessageView messages_;
     MenuView menu_;
     MouseControlView mouseControl_;
+    FilmView film_;
     CardView cards_;
     CardShopView cardShop_;
     SelectPlayerView selectPlayer_;
