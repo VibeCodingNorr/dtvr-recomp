@@ -865,6 +865,56 @@ resource table; the reader clips it at the block end, as a loaded resource ends
 there.
 Assumption: one pause unit of seg6:0CDF is 10 ms for the presentation timing.
 
+### Game window (round 21)
+
+- **Canvas size** seg5:1227: widths {640, 800, 1024} with heights {480, 600,
+  768}; a command-line index selects one, otherwise 1024 × 768, reduced until it
+  fits the screen (GETDEVICECAPS 8/10). The popup window `Rally` (seg5:1C06)
+  covers the screen; the child `Canvas` (seg8:0000) is centred and paints
+  `%s\%d\bk.bmp` (DS:17E2, the butt directory) with the art directory of
+  seg5:1827: 1 for 1024, 8 for 800, 6 for 640 wide.
+- **Map window** `Map` (seg6:1680): margin m = 16 (32 from 1024 wide); top-left
+  (m, m) = DS:9C84/9C86, bottom DS:9C8A = (height − m) & ~15, right DS:9C88 =
+  square. The drawn area DS:94DA..94E0 is (0, 0)..(size − 16): 432 × 432 at
+  640, 544 at 800, 688 at 1024. The window first clears its WinG bitmap
+  (PATBLT BLACKNESS, seg6:171E); tiles are 16 pixels at every resolution.
+- **Element table** seg6:1140(index, &a, &b), ten pairs per resolution:
+
+  | Index | User | 640 | 800 | 1024 |
+  | --- | --- | --- | --- | --- |
+  | 0, 1 | Tourism window (seg6:47DE / 4850) | (7, 5), (480, 100) | (30, 20), (600, 200) | (150, 50), (800, 250) |
+  | 2 | portrait position (seg2:2DAD) | (510, 16) | (635, 16) | (815, 32) |
+  | 3 | player info size, packed (seg5:60C6) | 138 × 135 | 176 × 160 | 220 × 200 |
+  | 4 | card window (seg3:0F2C) | (0, 140) | (0, 154) | (0, 215) |
+  | 5 | INFO window (seg6:5215) | (400, 360) | (500, 400) | (600, 550) |
+  | 6, 7 | not referenced | (50, 10), (10, 10) | (100, 20), (15, 15) | (200, 50), (20, 20) |
+  | 8 | name input (seg8:095B) | (185, 60) | (200, 70) | (220, 85) |
+  | 9 | player info position (seg5:60EA) | (481, 329) | (595, 416) | (764, 537) |
+
+  The packed sizes equal `bmp/<n>/info.bmp`.
+- **Portrait** `PORTRAIT` (seg2:2E38): `%s\%d\P%d\%cp` + `d.bmp` while the
+  slot carries Dr. Drago (DS:9CFD ≠ 0xFF and DS:9CFC = slot, seg2:2FCC) or
+  `.bmp`; %d after P is the status byte (P1 coloured humans, P2 metallic
+  computers), the letter comes from seg2:2D43: slots 0–7 → D F E M U J I V. The
+  window is moved to the bitmap size + 16 (seg2:2EEC). File names are matched
+  without regard to case (the disc stores `p1/dp.bmp`).
+- **Window classes** (registered at seg5:0448–0D30, procedure in brackets):
+  RALLY (seg4:0000), Map (seg6:1680), Canvas (seg8:0000), Tourism (seg6:4F5E),
+  MENU (seg5:52E7), PORTRAIT (seg2:2E38), SLOT (seg2:6855), PLINFO (seg5:61C5),
+  NICKNAME (seg2:3852), INFO (seg6:5492), PLAYER (seg1:0484), OPTION
+  (seg1:AD73), INTRO (seg7:20E8), ESTATES (seg1:5334), SELPLAYER (seg2:562C),
+  OUTLINE (seg1:A95E), ZIEL (seg7:4CDC), TITEL (seg8:048D), STAT (seg1:97F8),
+  FLIC (seg7:63E1), MCTRL (seg4:103B), SUBTITLE (seg6:661F), JOY (seg2:8D81),
+  BILANZ (seg8:992E), PICT (seg6:0B66).
+
+Rebuilt in `src/layout.cpp` (SDL-free geometry) and `src/game_screen.cpp`
+(`dtvr-recomb --game`): canvas background, map window with the black margin,
+portrait and the player info frame. Assumptions: the viewport is centred on the
+current player (the scrolling code is not traced yet); players are marked with
+provisional squares until the vehicle sprites are placed. Not yet: the contents
+of PLINFO (texts), menus (MENU / SBBUTTON), slot machine (SLOT), messages
+(SUBTITLE / INFO), the dialogs and the map control (MCTRL).
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

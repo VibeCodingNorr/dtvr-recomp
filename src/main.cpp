@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
+#include "game_screen.hpp"
 #include "ne_strings.hpp"
 #include "play_view.hpp"
 #include "rules.hpp"
 #include "sbs.hpp"
+#include "sdl_assets.hpp"
 #include "worldmap.hpp"
 
 #include <SDL.h>
@@ -22,8 +24,10 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-using Surface = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>;
-using Texture = std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>;
+using dtvr::Surface;
+using dtvr::Texture;
+using dtvr::loadBmp;
+using dtvr::readFile;
 
 static fs::path programDirectory(fs::path root) {
     if (fs::is_regular_file(root / "program/butt/1/map.bmp")) root /= "program";
@@ -33,12 +37,6 @@ static fs::path programDirectory(fs::path root) {
 }
 
 enum class View { Overview, Tiles, Sprites, World };
-
-static Surface loadBmp(const fs::path& path) {
-    Surface image(SDL_LoadBMP(path.c_str()), SDL_FreeSurface);
-    if (!image) throw std::runtime_error(path.string() + ": " + SDL_GetError());
-    return image;
-}
 
 static Surface loadTiles(const fs::path& path) {
     auto image = loadBmp(path);
@@ -57,12 +55,6 @@ static Surface loadTiles(const fs::path& path) {
             throw std::runtime_error(SDL_GetError());
     }
     return grid;
-}
-
-static std::vector<uint8_t> readFile(const fs::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) throw std::runtime_error("Nicht lesbar: " + path.string());
-    return {std::istreambuf_iterator<char>(in), {}};
 }
 
 // Lays out all SBS frames in rows. The palette comes from the overview BMP and
@@ -99,37 +91,12 @@ static Surface loadSprites(const fs::path& path, const SDL_Palette& palette) {
     return sheet;
 }
 
-// Composes europe.map from the season's SBB tiles as rally.exe does
-// (loader seg5:186A, cell lookup seg6:26B6, draw passes seg6:28D5).
+// Composed world map (src/sdl_assets.cpp) with the viewer's log line.
 static Surface loadWorld(const fs::path& root, int month, bool views, fs::path& shown) {
-    const int season = dtvr::seasonForMonth(month);
-    std::vector<dtvr::Tile> tiles;
-    Surface palette(nullptr, SDL_FreeSurface);
-    for (int part = 0;; ++part) {
-        std::ostringstream name;
-        name << "part" << std::setw(4) << std::setfill('0') << part << ".sbb";
-        const auto path = root / "map" / std::to_string(season) / name.str();
-        if (!fs::is_regular_file(path)) break; // the original also stops at the first missing part
-        auto strip = loadBmp(path);
-        if (strip->format->BitsPerPixel != 8 || !strip->format->palette || strip->h != 16 * 192)
-            throw std::runtime_error("Unerwartetes SBB-Format: " + path.string());
-        const auto part_tiles = dtvr::splitSbb(static_cast<const uint8_t*>(strip->pixels),
-                                               strip->w, strip->h, strip->pitch);
-        tiles.insert(tiles.end(), part_tiles.begin(), part_tiles.end());
-        if (!palette) palette = std::move(strip);
-    }
-    if (!palette) throw std::runtime_error("Keine SBB-Dateien fuer Jahreszeit " + std::to_string(season));
-    const dtvr::WorldMap map(readFile(root / "map/europe.map"));
-    const auto pixels = dtvr::renderWorld(map, tiles, views);
-    constexpr int side = dtvr::WorldMap::kSize * dtvr::WorldMap::kTile;
-    Surface world(SDL_CreateRGBSurfaceWithFormat(0, side, side, 8, SDL_PIXELFORMAT_INDEX8), SDL_FreeSurface);
-    if (!world || SDL_SetSurfacePalette(world.get(), palette->format->palette) != 0)
-        throw std::runtime_error(SDL_GetError());
-    for (int y = 0; y < side; ++y)
-        std::copy_n(&pixels[size_t(y) * side], side, static_cast<uint8_t*>(world->pixels) + y * world->pitch);
+    auto world = dtvr::loadWorld(root, month, views);
     shown = root / "map/europe.map";
-    std::cout << "Weltkarte: Monat " << month % 12 << ", map/" << season << ", "
-              << tiles.size() << " Bausteine, Views " << (views ? "an" : "aus") << "\n";
+    std::cout << "Weltkarte: Monat " << month % 12 << ", map/" << dtvr::seasonForMonth(month) << ", Views "
+              << (views ? "an" : "aus") << "\n";
     return world;
 }
 
@@ -143,10 +110,38 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
     return result;
 }
 
+// The game from the recovered rules with slots and driver names (viewer and game window).
+static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, const dtvr::Board& board,
+                                                    const std::vector<dtvr::Town>& towns, int humans, int computers,
+                                                    int rounds, unsigned seed) {
+    if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
+    std::unique_ptr<dtvr::PlayView> playView;
+    // Slots as [Player] P0..P7: humans first, then computers (status 2).
+    if (humans < 0 || computers < 0 || humans + computers < 1 || humans + computers > dtvr::kPlayerSlots)
+        throw std::runtime_error("--players und --computers: zusammen 1 bis 8");
+    std::array<uint8_t, dtvr::kPlayerSlots> slots{};
+    for (int p = 0; p < humans + computers; ++p) slots[size_t(p)] = p < humans ? 1 : 2;
+    playView = std::make_unique<dtvr::PlayView>(
+        board, towns, std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map")),
+        std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), slots, rounds,
+        uint16_t(seed));
+    // Driver names from the language file (texts 120-127), when present.
+    const auto language = root / "dat/d/rally_d.dat";
+    if (std::filesystem::exists(language)) {
+        const auto texts = dtvr::readNeStrings(readFile(language));
+        std::array<std::string, dtvr::kPlayerSlots> names;
+        for (int p = 0; p < dtvr::kPlayerSlots; ++p)
+            if (auto it = texts.find(dtvr::kDriverNameText + p); it != texts.end())
+                names[size_t(p)] = dtvr::ansiToUtf8(it->second);
+        playView->game().setPlayerNames(names);
+    }
+    return playView;
+}
+
 static int run(int argc, char** argv) {
     fs::path root, screenshot;
-    bool smoke = false, views = true, graph = false, rollAtStart = false, play = false;
-    int humans = 2, computers = 0, rounds = 99;
+    bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
+    int humans = 2, computers = 0, rounds = 99, resolution = 0;
     int month = 2, roll = 0;
     unsigned seed = 1;
     View view = View::Overview;
@@ -157,7 +152,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -178,6 +173,8 @@ static int run(int argc, char** argv) {
         else if (arg == "--graph") graph = true;
         else if (arg == "--roll") rollAtStart = true;
         else if (arg == "--play") { play = true; view = View::World; }
+        else if (arg == "--game") { gameWindow = true; view = View::World; }
+        else if (arg == "--resolution" && i + 1 < argc) resolution = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
         else if (arg == "--computers" && i + 1 < argc) computers = std::stoi(argv[++i]);
@@ -211,6 +208,16 @@ static int run(int argc, char** argv) {
     }
     if (!overview->format->palette) throw std::runtime_error("map.bmp hat keine Palette");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) throw std::runtime_error(SDL_GetError());
+    if (gameWindow) { // the game window as in rally.exe (src/game_screen.cpp)
+        auto game = makePlayView(root, board, towns, humans, computers, rounds, seed);
+        dtvr::GameWindowOptions options;
+        options.canvasWidth = resolution;
+        options.smokeTest = smoke;
+        options.screenshot = screenshot.string();
+        const int code = dtvr::runGameWindow(*game, root, board, options);
+        SDL_Quit();
+        return code;
+    }
     struct Quit { ~Quit() { SDL_Quit(); } } quit;
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -276,25 +283,7 @@ static int run(int argc, char** argv) {
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
-        // Slots as [Player] P0..P7: humans first, then computers (status 2).
-        if (humans < 0 || computers < 0 || humans + computers < 1 || humans + computers > dtvr::kPlayerSlots)
-            throw std::runtime_error("--players und --computers: zusammen 1 bis 8");
-        std::array<uint8_t, dtvr::kPlayerSlots> slots{};
-        for (int p = 0; p < humans + computers; ++p) slots[size_t(p)] = p < humans ? 1 : 2;
-        playView = std::make_unique<dtvr::PlayView>(
-            board, towns, std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map")),
-            std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), slots, rounds,
-            uint16_t(seed));
-        // Driver names from the language file (texts 120-127), when present.
-        const auto language = root / "dat/d/rally_d.dat";
-        if (std::filesystem::exists(language)) {
-            const auto texts = dtvr::readNeStrings(readFile(language));
-            std::array<std::string, dtvr::kPlayerSlots> names;
-            for (int p = 0; p < dtvr::kPlayerSlots; ++p)
-                if (auto it = texts.find(dtvr::kDriverNameText + p); it != texts.end())
-                    names[size_t(p)] = dtvr::ansiToUtf8(it->second);
-            playView->game().setPlayerNames(names);
-        }
+        playView = makePlayView(root, board, towns, humans, computers, rounds, seed);
         graph = true;
     }
     load();

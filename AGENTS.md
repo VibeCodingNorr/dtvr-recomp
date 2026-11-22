@@ -172,9 +172,9 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Next: the game window as in the original (agreed with the user: it must look like
-rally.exe); reconstruct layout, panels, dialogs and texts from the executable and
-load all art and text from the user's installation at run time. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
+Next: continue the game window as in the original (agreed with the user: it must
+look like rally.exe; `--game`, src/game_screen.cpp): panel contents, menus, slot
+machine, messages and dialogs, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
 state changes. The viewer is a debugging aid only; put effort into the simulation.
 Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
 manual reconstruction requires further executable analysis.

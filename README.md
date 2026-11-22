@@ -24,6 +24,7 @@ no overall completion percentage is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; viewport and palette cycling still open. | [World map](src/worldmap.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views. Full game interface remains to be built. | [SDL viewer](src/main.cpp) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`): canvas background, map window, driver portrait and player info frame at the original positions, all art loaded from the installation. Still keyboard-driven with provisional player markers; panel texts, menus, slot machine, messages and dialogs follow. | [Game window](src/game_screen.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | ⬜ Not implemented | Map original sound triggers to local assets; stream Ogg music without a disc. | [Playback plan](docs/cd-audio.md#native-playback-integration-next-work) |
 | Complete Ogg sound sets | ✅ Offline preparation implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog and verification. Runtime selection remains planned. | [Soundtrack builder](docs/soundtracks.md) |
@@ -68,8 +69,9 @@ Reconstruction rounds so far (evidence with addresses in [docs/formats.md](docs/
 19. Risiko, Nebel (unused in the original) and the single-player opponent.
 20. Player slots as in `[Player]` P0–P7, games of computers until stopped,
     driver names from the language file.
-21. *Next:* the game window as in the original (layout, panels, dialogs and
-    texts from the user's files), replacing the debugging viewer.
+21. Game window frame as in the original (`--game`): canvas, map window,
+    portrait and player info panel at the original positions for 640/800/1024.
+22. *Next:* the contents of the panels, the menus and the slot machine.
 
 Build flow: **user ISO → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
