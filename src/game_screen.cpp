@@ -32,7 +32,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                        const Board& board, const std::vector<Town>& towns, const Game& game,
                        std::map<int, std::string> texts)
     : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
-      texts_(std::move(texts)), slot_(renderer, root) {
+      texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_) {
     seenSpin_ = game.spinSerial();
     std::cout << "Schrift: " << text_.fontDescription() << "\n";
     // SBS frames (seg6:406D looks them up by name in all loaded files): the panel
@@ -210,6 +210,7 @@ void GameScreen::draw() {
         slot_.start(game_.lastReels(), now);
     }
     slot_.draw(layout_.map, now);
+    messages_.draw(game_);
 }
 
 int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
@@ -238,11 +239,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     report();
     bool running = true;
     for (int frame = 1; running; ++frame) {
-        if (play.update(SDL_GetTicks())) report();
+        for (Notice& n : play.game().takeNotices()) screen.messages().push(std::move(n));
+        // The message window is modal (seg6:0FB4): nothing else runs while it is open.
+        if (!screen.messages().open() && play.update(SDL_GetTicks())) report();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
-            if (event.type != SDL_KEYDOWN) continue;
+            const bool click = event.type == SDL_MOUSEBUTTONDOWN;
+            if (event.type != SDL_KEYDOWN && !click) continue;
+            if (screen.messages().open()) { screen.messages().dismiss(); continue; }
+            if (click) continue;
             if (event.key.keysym.sym == SDLK_ESCAPE) running = false;
             else if (play.handleKey(event.key.keysym.sym, event.key.keysym.mod)) report();
         }

@@ -7,6 +7,7 @@
 #include "layout.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
+#include "message_view.hpp"
 #include "slot_view.hpp"
 #include "text.hpp"
 
@@ -22,6 +23,7 @@ public:
                const Board& board, const std::vector<Town>& towns, const Game& game,
                std::map<int, std::string> texts);
     void draw();
+    MessageView& messages() { return messages_; }
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
 
@@ -46,6 +48,7 @@ private:
     Texture world_{nullptr, SDL_DestroyTexture};
     int worldSeason_ = -1;
     SlotView slot_;
+    MessageView messages_;
     int seenSpin_ = 0;
 };
 

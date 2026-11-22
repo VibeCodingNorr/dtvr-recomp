@@ -23,6 +23,19 @@ namespace dtvr {
 // Players start with 30,000 (seg2:033A).
 // Assumptions (not yet traced): cards are played before spinning, and the start
 // order of random calls is shuffle, deal, destination.
+// A message of the original: text number of the language file and its %Fs
+// arguments in order (a driver, an amount formatted by seg6:137F, or a name).
+struct NoticeArg {
+    enum class Kind { Player, Money, Text } kind = Kind::Text;
+    int player = -1;
+    double money = 0;
+    std::string text; // UTF-8
+};
+struct Notice {
+    int text = 0;
+    std::vector<NoticeArg> args;
+};
+
 class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
 public:
@@ -63,6 +76,9 @@ public:
     // changes with every spin (not part of the saved state).
     const std::vector<int>& lastReels() const { return lastReels_; }
     int spinSerial() const { return spinSerial_; }
+    // Messages for the presentation, in the order the original shows them; taking
+    // them clears the queue (not part of the saved state).
+    std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
@@ -152,6 +168,10 @@ private:
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
     int spin(int reels, int maximum);       // seg2:6426 / 776A: sum of the reels
+    void notice(int text, std::vector<NoticeArg> args = {}) { notices_.push_back({text, std::move(args)}); }
+    static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
+    static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
+    NoticeArg townArg(int town) const;
     void startRisiko();                     // game_risiko.cpp
     void startRisikoLevel(int level);
     void finishRisiko();
@@ -187,6 +207,7 @@ private:
     bool demoEnd_ = false;                  // DS:16
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     int spinSerial_ = 0;
+    std::vector<Notice> notices_;
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0

@@ -1022,6 +1022,36 @@ facing of their last step; the current driver's car animates while driving.
 Assumption until the offset is traced: frames are centred on the field cell
 (−16, −8), which puts the cars on the road in all four facings.
 
+### Messages (round 25)
+
+- **Message window** seg6:51EA (about 70 callers) creates `INFO` (procedure
+  seg6:5492) with the paper `%s\%d\p1.bmp` (DS:3ABC, butt directory) and the
+  showmaster `%s\%d\sm.bmp` (DS:3AC9, bmp directory). Size: width a of element 5
+  of seg6:1140 (400 / 500 / 600), height = showmaster height + 0x24; it is
+  centred on the canvas (seg6:5852 → seg6:0000) and modal (seg6:0FB4). DS:8C36
+  selects the buttons (0 none, 1 Yes / No with texts 114 ff., result DS:8C38);
+  a click or key closes it.
+- **Paint** seg6:59C6: the paper fills the client area, the showmaster at
+  (10, 10); the text goes into the client rectangle inflated by −10 with its left
+  edge moved past the showmaster, in Arial weight 600 at {18, 16, 14}
+  (1024 / 800 / 640, buttons + 5), palette colour 0x45, DT_WORDBREAK | DT_NOCLIP.
+- **Texts** are language texts chosen as base + random(n) and filled with
+  wsprintf (`%Fs` for driver names, amounts of seg6:137F and town names). Bases
+  found after the random draws (`add ax, base`): 961 solo opponent (seg2:021F),
+  4201 yellow field (random(13)), 5001 East opening (seg8:6C13), 5021 robbers
+  (amount), 5041 storm, 5141 drought, 5241 flood (town), 5081 rockfall, 5101
+  Nessie (town), 5121 rain, 5201 earthquake (town), 5281 Etna / 5301 Hekla (by
+  DS:69F0), 5321 professor, 5401 football club, 5481 snow; all with random(2)
+  except 4201. **Correction:** the East opening draws random(2) for its text
+  (seg8:6C13); the rebuild had skipped it, so random sequences after the
+  opening differed until round 25 (save rule revision 25).
+
+Rebuilt in `Game::takeNotices` (text number and arguments from the simulation),
+`formatNotice` (src/panel.cpp) and `src/message_view.cpp` (window, paper,
+showmaster, word-wrapped text). Not yet: the remaining callers (cards, Dr.
+Drago, town and card fields, investments), the button variants and the
+showmaster's other portraits.
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

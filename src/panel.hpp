@@ -30,6 +30,10 @@ struct PlayerInfo {
     std::string fieldIcon;   // slot 7: SBS frame BLAU / ROT / GELB / LILA for kinds 1, 2, 3, 5
 };
 
+// wsprintf of the language texts (seg6:51EA callers): %Fs / %s / %d take the next
+// argument (driver name, amount formatted as formatMoney, or text).
+std::string formatNotice(const std::string& pattern, const Notice& notice, const Game& game);
+
 // `texts` are the language strings (id -> UTF-8).
 PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<Town>& towns,
                       const std::map<int, std::string>& texts);

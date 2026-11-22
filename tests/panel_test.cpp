@@ -51,6 +51,23 @@ int main() {
         CHECK(pi.fieldKind == "Gewinn-Feld" && pi.fieldIcon == "BLAU");
     }
 
+    // Notices: the solo opponent (texts 961-963) and the yellow field card (4201-4214).
+    {
+        Game solo(b, towns, 1, 0, 2);
+        solo.setPlayerNames({"Anna", "Bert", "Carl", "Dora", "Emil", "Fred", "Gina", "Hugo"});
+        auto notes = solo.takeNotices();
+        CHECK(notes.size() == 1 && notes[0].text >= 961 && notes[0].text <= 963 && notes[0].args.size() == 2);
+        CHECK(solo.takeNotices().empty());
+        const std::string text = formatNotice("%Fs bekommt %Fs als Mitspieler (100%%), %d", notes[0], solo);
+        CHECK(text.rfind("Anna bekommt ", 0) == 0 && text.find(" als Mitspieler (100%), ") != std::string::npos);
+        Notice money{5021, {}};
+        NoticeArg m;
+        m.kind = NoticeArg::Kind::Money;
+        m.money = 7500;
+        money.args.push_back(m);
+        CHECK(formatNotice("Du verlierst %Fs!", money, solo) == "Du verlierst $7.500!");
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("panel_test: OK");
     return failures != 0;

@@ -103,8 +103,38 @@ void TextRenderer::draw(SDL_Renderer* renderer, const std::string& text, const S
     if (style.shadow) blit(SDL_Color{0, 0, 0, 255}, -style.shadow, -style.shadow);
     blit(style.color, 0, 0);
 }
+void TextRenderer::drawWrapped(SDL_Renderer* renderer, const std::string& text, const ScreenRect& rect,
+                               const TextStyle& style) {
+    if (!available_ || text.empty()) return;
+    TTF_Font* font = impl_->font((style.bold ? 1 : 0) + (style.italic ? 2 : 0), style.pixelHeight);
+    if (!font) return;
+    std::vector<std::string> lines;
+    std::string line, word;
+    auto fits = [&](const std::string& s) { int w = 0, h = 0; TTF_SizeUTF8(font, s.c_str(), &w, &h); return w <= rect.w; };
+    auto flushWord = [&] {
+        if (word.empty()) return;
+        const std::string candidate = line.empty() ? word : line + " " + word;
+        if (line.empty() || fits(candidate)) line = candidate;
+        else { lines.push_back(line); line = word; }
+        word.clear();
+    };
+    for (char c : text) {
+        if (c == ' ') flushWord();
+        else if (c == '\n') { flushWord(); lines.push_back(line); line.clear(); }
+        else if (c != '\r') word += c;
+    }
+    flushWord();
+    if (!line.empty()) lines.push_back(line);
+    const int step = TTF_FontLineSkip(font);
+    ScreenRect r = rect;
+    for (const auto& l : lines) {
+        draw(renderer, l, r, style);
+        r.y += step;
+    }
+}
 #else
 struct TextRenderer::Impl {};
+void TextRenderer::drawWrapped(SDL_Renderer*, const std::string&, const ScreenRect&, const TextStyle&) {}
 TextRenderer::TextRenderer() : description_("ohne SDL2_ttf gebaut: kein Text") {}
 TextRenderer::~TextRenderer() = default;
 void TextRenderer::draw(SDL_Renderer*, const std::string&, const ScreenRect&, const TextStyle&) {}

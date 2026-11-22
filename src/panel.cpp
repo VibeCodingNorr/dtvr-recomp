@@ -70,4 +70,27 @@ PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<To
     return info;
 }
 
+std::string formatNotice(const std::string& pattern, const Notice& notice, const Game& game) {
+    std::string out;
+    size_t next = 0;
+    auto arg = [&]() -> std::string {
+        if (next >= notice.args.size()) return {};
+        const NoticeArg& a = notice.args[next++];
+        switch (a.kind) {
+        case NoticeArg::Kind::Player: return game.playerName(a.player);
+        case NoticeArg::Kind::Money: return formatMoney(a.money);
+        case NoticeArg::Kind::Text: return a.text;
+        }
+        return {};
+    };
+    for (size_t i = 0; i < pattern.size(); ++i) {
+        if (pattern[i] != '%') { out += pattern[i]; continue; }
+        if (pattern.compare(i, 3, "%Fs") == 0) { out += arg(); i += 2; }
+        else if (pattern.compare(i, 2, "%s") == 0 || pattern.compare(i, 2, "%d") == 0) { out += arg(); i += 1; }
+        else if (pattern.compare(i, 2, "%%") == 0) { out += '%'; i += 1; }
+        else out += '%';
+    }
+    return out;
+}
+
 } // namespace dtvr

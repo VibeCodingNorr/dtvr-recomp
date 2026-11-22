@@ -57,7 +57,7 @@ Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<
         players_[size_t(slot)].status = 2;
         players_[size_t(slot)].field = origin_;
         messages_.push_back("Computergegner auf Platz " + std::to_string(slot + 1));
-        rng_.random(2);
+        notice(961 + rng_.random(2), {playerArg(human), playerArg(slot)});
     }
     remaining_ = rounds;
     current_ = firstActivePlayer(players_);
@@ -247,6 +247,12 @@ void Game::arrive() {
     }
 }
 
+NoticeArg Game::townArg(int town) const {
+    NoticeArg a;
+    if (town >= 0 && size_t(town) < towns_.size()) a.text = oemToUtf8(towns_[size_t(town)].name);
+    return a;
+}
+
 int Game::spin(int reels, int maximum) {
     lastReels_ = spinReels(rng_, reels, maximum);
     ++spinSerial_;
@@ -259,7 +265,7 @@ void Game::giveYellowCard() {
     const int slot = deck_.take();
     addToHand(hands_[size_t(current_)], slot);
     messages_.push_back(playerName(current_) + " bekommt die Karte " + cardName(slot));
-    rng_.random(13); // text 4201 + random(13), seg2:1127
+    notice(4201 + rng_.random(13), {playerArg(current_)}); // seg2:1127
     dragoAct(current_);
 }
 
