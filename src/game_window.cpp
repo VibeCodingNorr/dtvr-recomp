@@ -90,6 +90,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int balanceSeen = play.game().balanceSerial();
     int announceSeen = play.game().announceSerial();
     int shopSerial = -1;
+    int targetCardSlot = -1; // hand slot waiting for the target choice
     Uint32 messageShown = 0; // when the open message appeared (games of computers)
     auto openTitle = [&] { // seg8:03AB / 0DB0: TITEL and the menu MAIN
         screen.setTitle(true);
@@ -176,6 +177,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.balance) screen.startBalance(SDL_GetTicks());
     if (options.announce) screen.startAnnouncement(2, 3, SDL_GetTicks());
     if (options.cardShop) screen.cardShop().open(play.game());
+    if (options.selectPlayer) {
+        std::vector<int> others;
+        std::array<uint8_t, kPlayerSlots> status{};
+        for (int p = 0; p < kPlayerSlots; ++p) {
+            status[size_t(p)] = play.game().players()[size_t(p)].status;
+            if (status[size_t(p)] && p != play.game().currentPlayer()) others.push_back(p);
+        }
+        screen.selectPlayer().open(others, status);
+    }
     if (options.finish) screen.startFinish(play.game().destination(), play.game().currentPlayer(), SDL_GetTicks());
     if (options.openStatistics) screen.estates().openStatistics(play.game().currentPlayer());
     if (options.openCards && cards.open(play.game())) cardWindowState = turnState();
@@ -289,7 +299,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
                            || screen.victory().active() || screen.balance().active()
-                           || screen.announcement().active() || screen.cardShop().isOpen();
+                           || screen.announcement().active() || screen.cardShop().isOpen()
+                           || screen.selectPlayer().isOpen();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
@@ -418,10 +429,41 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (r != SaveView::Result::None) saveDialog.close();
                 continue;
             }
+            if (screen.selectPlayer().isOpen()) { // SELPLAYER (seg2:5386)
+                const int chosen = screen.selectPlayer().handle(event);
+                if (chosen >= 0) {
+                    screen.selectPlayer().close();
+                    if (play.game().playCard(targetCardSlot, chosen)) report();
+                } else if (chosen == -2) {
+                    screen.selectPlayer().close();
+                }
+                continue;
+            }
             if (cards.isOpen()) { // the card buttons; Escape or the right button closes the window
                 if (click && event.button.button == SDL_BUTTON_LEFT) {
                     const int slot = cards.slotAt(event.button.x, event.button.y);
-                    if (slot >= 0 && play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
+                    if (slot < 0) continue;
+                    // seg2:51EA: a card with a target asks for the player when more than one is
+                    // possible (excluded: the player; Tschüss excludes nobody, argument 0xFF).
+                    const Game& g = play.game();
+                    const CardKind kind = cardKind(g.deck().typeOfSlot(g.hand(g.currentPlayer())[size_t(slot)]));
+                    if (cardNeedsTarget(kind) || kind == CardKind::Tschuess) {
+                        std::vector<int> candidates;
+                        std::array<uint8_t, kPlayerSlots> status{};
+                        for (int p = 0; p < kPlayerSlots; ++p) {
+                            status[size_t(p)] = g.players()[size_t(p)].status;
+                            if (status[size_t(p)] && (kind == CardKind::Tschuess || p != g.currentPlayer()))
+                                candidates.push_back(p);
+                        }
+                        if (candidates.size() > 1) {
+                            targetCardSlot = slot;
+                            screen.selectPlayer().open(candidates, status);
+                            continue;
+                        }
+                        if (candidates.size() == 1 && play.game().playCard(slot, candidates.front())) report();
+                        continue;
+                    }
+                    if (play.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
                     continue;
                 }
                 if (click && event.button.button == SDL_BUTTON_RIGHT) { cards.close(); continue; }

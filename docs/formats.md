@@ -405,6 +405,16 @@ dialog.
   seg1:8B41 clears the credit debts.
 - **Card target** seg2:51EA(current): one active player → the first active
   slot, two → the other one, more → a selection dialog.
+  *Round 53:* argument 0xFE returns the last choice DS:8C04; 0xFF excludes
+  nobody (Tschüss). The dialog SELPLAYER (seg2:5386) has one button per
+  eligible slot with `%s\%d\pl_menu\%c%d.bmp` (letter, status), button size
+  0x74 / 0x5B / 0x49 for 1024 / 800 / 640 and extra height 0x14 / 0x10 / 0x0E;
+  window n · (size + 5) + 20 by extra + size + 30; buttons at y 5, the first
+  eligible slot at x (size + 5) · (n − 1) + 5 and each following one size + 5
+  further left (seg2:53BD ff.); button id 0x1392 + slot. Rebuilt in
+  `src/select_player_view.cpp` for the cards with a target in the game window
+  (background `%s\%d\p.bmp` (DS:1BA3) assumed; Escape or the right button
+  cancel, an assumption; the window centred).
 - **Money cards** (each handler calls nextPlayer seg2:06FC afterwards, so the
   card replaces the turn):
   - Fiskus (seg3:14AD): target pays (cash + property value +0x5A) × 0.1 (DS:8636).
