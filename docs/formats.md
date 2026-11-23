@@ -1071,6 +1071,25 @@ Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
 Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
 shows while the player stands on the reached field (phase Arrived).
 
+### Hand stack (round 114)
+
+- seg3:0EE8(mask) shows the current player's hand under the portrait: card size
+  130 × 187 / 102 × 145 / 82 × 117 by seg6:12FA (seg3:0EFC ff.), n = seg2:3C00;
+  the stack, card width + (n − 1) · 3 wide, is centred under the PORTRAIT window
+  (DS:3E, GetWindowRect mapped to the canvas), its first card at y = element 4
+  of seg6:1140 + (n − 1) · 3 (640: 140); every occupied slot in order becomes an
+  SBBUTTON (seg3:0603, id 0x1388 + slot) that is disabled at once
+  (EnableWindow FALSE), each next one 3 pixels right and 3 up — a display, not a
+  control. Called at every turn start (seg2:047D, also for computers), after the
+  card window (seg3:0EA7, seg4:0B1F / 0B63) and after card shop trades
+  (seg3:48BB / 48FE / 49D6); the card window removes it (seg3:0887 → 0AFB).
+  Rebuilt in `GameScreen::drawHandStack` from the current hand every frame.
+- **Turn menu order** (round 114): ONFIELD opens only after the events of
+  nextPlayer (seg8:1624) have shown; the slot machine and event animations are
+  modal. The game window therefore waits for messages and films the game queued
+  in the same frame (a computer's turn end raised a robbery after the window had
+  already taken the frame's messages, and the menu opened under its animation).
+
 ### Name plate (round 113)
 
 - seg2:3700 creates NICKNAME (procedure seg2:3852) as a child of the canvas
@@ -2030,7 +2049,10 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   the game loop, 20 ms plus drawing) and from the event scene passes (seg8:6E23)
   and starts (seg8:26DF, 4628, 4CD6, 5739); its random numbers therefore depend
   on how long the game waits and cannot be reproduced — the simulation keeps the
-  sequence of a game without animations. Rebuilt in `src/ambient.cpp` (table
+  sequence of a game without animations. *Round 114:* a record entering the
+  list gets pause random(+8), delay 0, the definition's repeats, frame 0xFF and
+  restart 1 (seg8:8277), so the objects start staggered (they all started
+  together after loading). Rebuilt in `src/ambient.cpp` (table
   generated from the data segment) and `GameScreen::tickAmbient`: all objects
   advance every 20 ms on a copy of the map with their own random numbers.
   **Simplifications:** objects outside the view advance too, and changing the view

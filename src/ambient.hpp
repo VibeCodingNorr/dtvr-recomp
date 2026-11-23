@@ -34,7 +34,10 @@ struct AmbientCell { int layer, x, y; };
 class AmbientAnimations {
 public:
     // seg8:7CFB: scan both layers of every cell (tile & 0xFFF).
-    void build(const WorldMap& map);
+    // seg8:7CFB; each record then starts as seg8:8277 sets it when it enters the
+    // visible list: pause random(range), delay 0, repeats of the definition, frame
+    // 0xFF, restart 1 (so the objects do not start together).
+    void build(const WorldMap& map, MsRandom& rng);
     size_t size() const { return objects_.size(); }
     // seg8:83A0, one pass: changes `map`, appends the changed cells and the sounds.
     void tick(WorldMap& map, MsRandom& rng, std::vector<AmbientCell>& changed, std::vector<int>& sounds);

@@ -62,7 +62,7 @@ const std::vector<AmbientDefinition>& ambientDefinitions() {
     return table;
 }
 
-void AmbientAnimations::build(const WorldMap& map) {
+void AmbientAnimations::build(const WorldMap& map, MsRandom& rng) {
     objects_.clear();
     for (int x = 0; x < WorldMap::kSize; ++x)       // seg8:7E2A: x outer, y inner
         for (int y = 0; y < WorldMap::kSize; ++y) {
@@ -74,6 +74,11 @@ void AmbientAnimations::build(const WorldMap& map) {
                     o.def = &d;
                     o.x = x;
                     o.y = y;
+                    o.countdown = rng.random(d.pause); // seg8:82DA: seg6:1343(+8)
+                    o.delay = 0;                        // seg8:8300
+                    o.repeats = d.repeats;              // seg8:8321
+                    o.frame = 0xFF;                     // seg8:8332
+                    o.restart = true;                   // seg8:8344
                     objects_.push_back(o);
                     break;
                 }

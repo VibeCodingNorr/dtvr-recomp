@@ -494,7 +494,7 @@ void GameScreen::drawMap() {
         // seg8:7CFB: the animated objects of the map (rebuilt with the season's tiles).
         try {
             ambientMap_ = std::make_unique<WorldMap>(readFile(findCaseInsensitive(root_, fs::path("map") / "europe.map")));
-            ambient_.build(*ambientMap_);
+            ambient_.build(*ambientMap_, ambientRng_);
         } catch (const std::exception&) {
             ambientMap_.reset();
         }
@@ -581,6 +581,7 @@ void GameScreen::drawPortrait() {
     const ScreenRect r = layout_.portrait();
     // The window is the bitmap plus 16: the 8-pixel border of seg6:1A68 (seg2:30B8).
     const SDL_Rect window{r.x, r.y, w + 16, h + 16};
+    portraitWindow_ = window;
     drawWindowBorder(renderer_, [this](const std::string& n) { return sprite(n); }, window, BorderSize::Thin);
     const SDL_Rect target{r.x + 8, r.y + 8, w, h};
     SDL_RenderCopy(renderer_, portrait, nullptr, &target);
@@ -600,6 +601,36 @@ void GameScreen::drawPortrait() {
     const int textH = text_.measure(game_.playerName(p), style).y;
     text_.draw(renderer_, game_.playerName(p), ScreenRect{nick.x, nick.y - 3 + (nick.h - textH) / 2, nick.w, textH},
                style);
+}
+
+void GameScreen::drawHandStack() {
+    // seg3:0EE8 (turn start seg2:047D; again after the card window and the card shop):
+    // every hand card as a disabled SBBUTTON with its picture, size 130 x 187 /
+    // 102 x 145 / 82 x 117 by seg6:12FA; the stack, card width + (n - 1) * 3 wide, is
+    // centred under the PORTRAIT window, starts at y = element 4 + (n - 1) * 3 and
+    // each further slot lies 3 pixels right and 3 up. The card window replaces it
+    // (seg3:0887 -> 0AFB). Earlier windows stay above later siblings, so slot order
+    // runs from the top card down.
+    if (cards_.isOpen() || portraitWindow_.w == 0) return;
+    const int p = game_.currentPlayer();
+    if (p < 0) return;
+    std::vector<int> types;
+    for (int s = 0; s < 8; ++s)
+        if (const int type = game_.deck().typeOfSlot(game_.hand(p)[size_t(s)]); type >= 0) types.push_back(type);
+    if (types.empty()) return;
+    static constexpr int kW[3] = {0x82, 0x66, 0x52}, kH[3] = {0xBB, 0x91, 0x75};
+    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int n = int(types.size()), w = kW[res], h = kH[res];
+    const int x0 = portraitWindow_.x + portraitWindow_.w / 2 - (w + (n - 1) * 3) / 2;
+    const int y0 = layout_.elements[4][1] + (n - 1) * 3;
+    for (int k = n - 1; k >= 0; --k) {
+        char name[32];
+        std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, types[size_t(k)] + 1);
+        SDL_Texture* card = art(fs::path("bmp") / std::to_string(layout_.artDir) / "d" / name);
+        if (!card) continue;
+        const SDL_Rect dst{x0 + 3 * k, y0 - 3 * k, w, h};
+        SDL_RenderCopy(renderer_, card, nullptr, &dst);
+    }
 }
 
 void GameScreen::drawPlayerInfo() {
@@ -687,6 +718,7 @@ void GameScreen::draw() {
         SDL_RenderCopy(renderer_, background, nullptr, nullptr);
     drawMap();
     drawPortrait();
+    drawHandStack();
     drawPlayerInfo();
     const Uint32 now = SDL_GetTicks();
     if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map

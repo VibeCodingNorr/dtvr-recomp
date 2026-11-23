@@ -449,7 +449,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.announcement().active() || screen.cardShop().isOpen()
                            || screen.selectPlayer().isOpen() || screen.flight().isOpen()
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
-                           || screen.sight().isOpen() || screen.intro().active();
+                           || screen.sight().isOpen() || screen.intro().active()
+                           // the slot machine and event animations run synchronously in rally.exe
+                           || screen.slotActive(SDL_GetTicks()) || screen.eventSceneActive(SDL_GetTicks());
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         // seg2:1618: after the field action (its message, town dialog, card dialog or card
         // shop run modally) the original checks the forced sale (seg1:4E39) and calls
@@ -474,7 +476,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         } else {
             timeLimitTick = SDL_GetTicks();
         }
-        if (!modal && !moving && turnMenuDue() && !options.rollAtStart) openMenu("ONFIELD");
+        // Events of nextPlayer (seg8:1624) run before the turn menu: wait for messages and
+        // films the game produced in this frame but the window has not taken yet.
+        if (!modal && !moving && turnMenuDue() && !options.rollAtStart && !play.game().hasNotices()
+            && pendingFilms.empty())
+            openMenu("ONFIELD");
         // A held arrow drives on field by field once the car has reached its field.
         if (!modal && !moving && heldArrow != SDLK_UNKNOWN && play.game().phase() == Game::Phase::Move
             && !play.game().isComputer(play.game().currentPlayer()) && play.handleKey(heldArrow, 0))

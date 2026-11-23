@@ -122,6 +122,8 @@ public:
     // Plays an event animation at a map cell (seg8:6E0F); the message waits for it.
     void startEventScene(const EventScene& scene, int cellX, int cellY, int corner, Uint32 now);
     bool eventSceneActive(Uint32 now) const;
+    // The slot machine is on the map (sliding in, turning, or sliding out; modal in rally.exe).
+    bool slotActive(Uint32 now) const { return slot_.active(now); }
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,
@@ -156,6 +158,8 @@ private:
     static SDL_Texture* find(const SpriteSet& set, const std::string& name);
     void drawMap();
     void drawPortrait();
+    void drawHandStack(); // seg3:0EE8: the hand under the portrait while the card window is closed
+    SDL_Rect portraitWindow_{}; // the PORTRAIT window of the last drawPortrait
     void drawPlayerInfo();
 
     SDL_Renderer* renderer_;

@@ -34,12 +34,21 @@ int main() {
     check(def && def->delay == 3 && def->repeats == 2 && def->pause == 10 && def->frames.size() == 7, "DS:7290");
     WorldMap map = mapWith(0, 10, 20, uint16_t(0x4000 | 0xAD5)); // mirrored: the flag stays
     AmbientAnimations a;
-    a.build(map);
-    check(a.size() == 1, "one object found");
     MsRandom rng(1);
+    MsRandom expected(1);
+    const int pause = expected.random(10); // seg8:8277: the start pause random(+8)
+    a.build(map, rng);
+    check(a.size() == 1, "one object found");
     std::vector<AmbientCell> changed;
     std::vector<int> sounds;
-    a.tick(map, rng, changed, sounds); // first pass: frame 1 at once
+    int passes = 0;
+    while (map.cell(0, 10, 20) != (0x4000 | 0xAD6) && passes < 100) {
+        changed.clear();
+        a.tick(map, rng, changed, sounds);
+        ++passes;
+    }
+    // pause passes, then frame 0 (0xFF + 1), three passes of delay, then frame 1.
+    check(passes == pause + 1 + 3 + 1, "the start waits for its random pause");
     check(changed.size() == 1 && changed[0].x == 10 && changed[0].y == 20, "the cell changes");
     check(map.cell(0, 10, 20) == (0x4000 | 0xAD6), "frame 1, flags kept");
     changed.clear();

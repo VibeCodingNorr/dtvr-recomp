@@ -151,6 +151,7 @@ public:
     std::vector<FilmCue> takeFilms() { std::vector<FilmCue> f; f.swap(films_); return f; }
     std::vector<std::string> takeMusic() { std::vector<std::string> cues; cues.swap(music_); return cues; }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
+    bool hasNotices() const { return !notices_.empty() || !films_.empty(); }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
