@@ -134,10 +134,11 @@ public:
     bool eventSceneActive(Uint32 now) const;
     // The slot machine is on the map (sliding in, turning, or sliding out; modal in rally.exe).
     bool slotActive(Uint32 now) const { return slot_.active(now); }
-    // Enter / Space in the slot window; the lever pull plays sound 2 on channel 1 (seg2:6A97).
+    // Enter / Space in the slot window; the lever pull and the stop of the turning reels
+    // play sound 2 on channel 1 (seg2:6A97, seg2:6AF7).
     bool slotKey(Uint32 now) {
         const int r = slot_.key(now);
-        if (r == 1 && sound_) sound_->play(1, 2);
+        if ((r == 1 || r == 3) && sound_) sound_->play(1, 2);
         return r != 0;
     }
     bool vehicleMoving(int player) const;

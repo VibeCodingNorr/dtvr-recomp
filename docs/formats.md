@@ -1247,10 +1247,43 @@ shows while the player stands on the reached field (phase Arrived).
   in seg2:1C37 for 20 ms (see "Tick length").
 
 Rebuilt in `src/slot_view.cpp`: housing, spinning and stopping reels and the sum
-display, started for every spin of the game (`Game::lastReels`). Assumptions:
-one animation tick is the 50 ms game timer; the window stays one second after the
-last reel. Not yet: the lever animation (`SLTHAD*`), the gear animations of 3–5
-reels and pulling the lever with the mouse.
+display, started for every spin of the game (`Game::lastReels`).
+
+**Slot gears and record timing (round 128):**
+
+- seg2:6DCB advances a record: `old = +8--; if (old > 0) skip; +8 = def.delay;
+  frame++` (`jg`), so a frame stays **delay + 1** passes; a new record (countdown
+  0) advances in its first pass. *Corrects* the earlier reading of delay passes
+  per frame: the lever (DS:2292, delay 2, 9 frames) ends after 25 passes (was 18),
+  a reel turn of `drehung1–4` takes 12 passes (was 8).
+- After the last frame: repetitions +0xA > 0 count down and the definition starts
+  again; at 0 the callback +0xE runs, then the follow-up +4 replaces the definition
+  or the record ends (def = 0). Records advance in index order: 0 lever, 2 sum,
+  3 + i reel i, 8–10 gears; the lever's callback seg2:7671 creates the reels and
+  gears, which advance in the same call.
+- Reel i: DS:2398 with (i + 3) · 2 repetitions (seg2:77E1), follow-up DS:2E3C[v]
+  (`walze_<v>h`, `walze_<v>`, delay 4), callback seg2:7C0A(i). The callback runs
+  when the turning ends (start + 9 + 12 · (i + 3) · 2 passes), before the faces.
+- Gears (seg2:78AB, after the reels' sound 5 on channel 3): five reels
+  `slt5anl3–1` (DS:20B2) at (0x7A, 0x52), `slt5anr1–6` (DS:20F8) at (0x100, 0x38),
+  `slt5anu1–6` (DS:214A) at (0x62, 0xC0); four reels `slt4anm1–3` (DS:2182) at
+  (0x8E, 0x6A) — delay written as 4, 100 repetitions; three reels
+  `slt3anm1–8, 8, 4–1` (DS:2208) at (0x62, 0x82), delay 5, no repetition (plays
+  once). Frames from `sbs/slot<n>.sbs`.
+- seg2:7C0A(i) adds the reel to the sum (record 2), raises the gears' delays by one
+  (five reels: DS:20B2 / 20F8 / 214A at seg2:7E3A; four: DS:2182), and for the last
+  reel (n − i − 1 = 0) stops channel 3 (with Wave), ends records 8–10, sets state 4
+  and calls seg2:7EC2.
+- seg2:6AA2 (a key in state 2, unless record 0 still plays DS:2292) sets the five
+  reels' repetitions +0xCA … +0x1CA to 0, state 3, and plays sound 2 on channel 1:
+  every reel ends its current turn, it does not stop at once (*corrects* the
+  earlier immediate faces).
+- seg2:74E4 restores the housing under each record before seg2:6F69 draws; ended
+  gears therefore vanish. **Assumption:** ended lever and reel records keep their
+  last frame (`slthad19`, `walze_<v>`), as before.
+
+Rebuilt in `src/slot_records.{hpp,cpp}` (no SDL, `tests/slot_records_test.cpp`), played
+from the lever pull by `SlotView`. Not yet: pulling the lever with the mouse.
 
 ### Vehicles on the map (round 24)
 

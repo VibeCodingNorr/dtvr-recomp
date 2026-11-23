@@ -170,11 +170,11 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     }
     // SLOT (seg2:6855) has the focus while it is on the map: Enter and Space stop the
     // reels or let it slide out (seg2:6B4A); other input waits (modal).
-    if (screen_.slotActive(SDL_GetTicks()) && !screen_.title()) {
+    if (screen_.slotActive(screen_.presentationNow()) && !screen_.title()) {
         if (event.type == SDL_KEYDOWN && !event.key.repeat
             && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER
                 || event.key.keysym.sym == SDLK_SPACE))
-            screen_.slotKey(SDL_GetTicks());
+            screen_.slotKey(screen_.presentationNow());
         if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) return;
     }
     if (screen_.overview().isOpen()) { screen_.overview().handle(event); return; }

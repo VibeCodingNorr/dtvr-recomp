@@ -104,8 +104,10 @@ void RecompMenu::build(bool inGame) {
     pages_.push_back(std::move(audio));
     pages_.push_back({"Spiel", {
         toggle("Zeitlimit", Field::TimeOut, "Begrenzte Zeit pro Zug (Option des Originals).", true),
-        choice("Animationstempo", Field::AnimationTempo, {"Original (1\u00d7)", "Schnell (2\u00d7)", "Sehr schnell (4\u00d7)"},
-               "Ereignis-Animationen und Fahrten. Meldungen, Zeitlimit, Musik und Sprache bleiben gleich."),
+        choice("Computerz\u00fcge", Field::ComputerTempo, {"Original (1\u00d7)", "Schnell (2\u00d7)", "Sehr schnell (4\u00d7)"},
+               "Solange ein Computer am Zug ist: Fahrt, Spielautomat, Ereignisse und Lesezeit seiner Meldungen."),
+        choice("Animationstempo", Field::AnimationTempo, {"Original (1\u00d7)", "Schnell (2\u00d7)"},
+               "Fahrten, Spielautomat und Ereignis-Animationen f\u00fcr alle. Zeitlimit, Musik und Sprache bleiben gleich."),
         choice("Wartezeit der Meldungen", Field::Pause, {"Normal", "1,5-fach", "2-fach", "3-fach"},
                "Wie lange Meldungen der Computer stehen bleiben (Tasten 1–4 des Originals)."),
         toggle("Intro beim Start", Field::ShowIntro, "Spielt das Intro vor dem Titelbild."),
@@ -172,7 +174,8 @@ int RecompMenu::fieldValue(Field f) const {
     case Field::Pause: return settings_.pause;
     case Field::ShowIntro: return settings_.showIntro;
     case Field::ExtraCards: return settings_.computerExtraCards;
-    case Field::AnimationTempo: return settings_.animationTempo == 4 ? 2 : settings_.animationTempo == 2 ? 1 : 0;
+    case Field::AnimationTempo: return settings_.animationTempo == 2 ? 1 : 0;
+    case Field::ComputerTempo: return settings_.computerTempo == 4 ? 2 : settings_.computerTempo == 2 ? 1 : 0;
     case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;
     }
     return 0;
@@ -195,7 +198,8 @@ void RecompMenu::setFieldValue(Field f, int v) {
     case Field::Pause: settings_.pause = v; break;
     case Field::ShowIntro: settings_.showIntro = v; break;
     case Field::ExtraCards: settings_.computerExtraCards = v != 0; break;
-    case Field::AnimationTempo: settings_.animationTempo = v == 2 ? 4 : v == 1 ? 2 : 1; break;
+    case Field::AnimationTempo: settings_.animationTempo = v == 1 ? 2 : 1; break;
+    case Field::ComputerTempo: settings_.computerTempo = v == 2 ? 4 : v == 1 ? 2 : 1; break;
     case Field::MusicPack: music_.pack = v; break;
     case Field::MusicVolume: music_.volume = std::clamp(v, 0, 100); break;
     case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;

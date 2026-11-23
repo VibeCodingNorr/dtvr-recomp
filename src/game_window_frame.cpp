@@ -134,7 +134,8 @@ void GameWindow::updateFrame(int frame) {
     const bool computerWaits = cur.currentPlayer() >= 0 && cur.isComputer(cur.currentPlayer());
     if (!screen_.title() && (computerWaits || !cur.humansLeft()) && screen_.messages().open()
         && !screen_.film().active()) {
-        const Uint32 wait = cur.demoEnding() ? 100 : Uint32(2500 * screen_.settings().pauseFactor());
+        const Uint32 wait = cur.demoEnding() ? 100 : Uint32(2500 * screen_.settings().pauseFactor())
+                                             / Uint32(screen_.settings().computerTempo); // recomp: Computerzüge
         // The wait starts with the window: an event's animation plays before it (seg8).
         if (screen_.eventSceneActive(screen_.presentationNow())) messageShown_ = 0;
         else if (messageShown_ == 0) messageShown_ = SDL_GetTicks();
@@ -199,7 +200,7 @@ void GameWindow::updateFrame(int frame) {
                        || screen_.nails().isOpen() || screen_.invest().isOpen() || screen_.film().active()
                        || screen_.sight().isOpen() || screen_.intro().active()
                        // the slot machine and event animations run synchronously in rally.exe
-                       || screen_.slotActive(SDL_GetTicks()) || screen_.eventSceneActive(screen_.presentationNow())
+                       || screen_.slotActive(screen_.presentationNow()) || screen_.eventSceneActive(screen_.presentationNow())
                        || screen_.risiko().blinking(SDL_GetTicks());
     if (!modal_ && !moving_ && play_.update(SDL_GetTicks(), true)) report();
     // seg2:1618: after the field action (its message, town dialog, card dialog or card

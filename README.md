@@ -325,10 +325,13 @@ the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTB
 keep the original Escape (Weiter spielen, Zurück).
 The options window has a recomp entry "Weitere Einstellungen" that opens the menu.
 
-**Animationstempo** (Spiel page, `[Extensions] AnimationTempo` 1 / 2 / 4): event
-animations and the vehicles' drive at 1×, 2× or 4×; messages keep their reading
-time, and the time limit, slot machine, Risiko, music, speech and films keep real
-time. Game outcomes do not depend on it ([handoff](docs/animation-tempo.md)).
+**Computerzüge** (Spiel page, `[Extensions] ComputerTempo` 1 / 2 / 4): while a computer
+is the current player, its drive, slot machine, event animations and the reading time
+of its messages run 2× or 4× faster, so humans wait less. **Animationstempo**
+(`AnimationTempo` 1 / 2) speeds the same presentation for everyone; 4× was removed
+because the car can no longer be steered well. The time limit, Risiko, music, speech
+and films keep real time; game outcomes do not depend on either
+([handoff](docs/animation-tempo.md)).
 
 **Audio** (also F8): Musik (the original MIDI switch), Klangset (installed complete
 Ogg sets; the change applies at the next piece), Musiklautstärke (slider, steps of

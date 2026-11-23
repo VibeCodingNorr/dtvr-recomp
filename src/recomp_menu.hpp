@@ -20,7 +20,7 @@ public:
     // Settings the entries edit (Settings fields; Original = a switch of the OPTION window)
     // and the local music preferences (music.ini).
     enum class Field { None, Fullscreen, IntegerScale, Widescreen, TextSmoothing, Views, Animations, Colorcycle,
-                       Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards, AnimationTempo,
+                       Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards, AnimationTempo, ComputerTempo,
                        MusicPack, MusicVolume, MusicPlaying, MusicNote };
 
     // The installed Ogg sound sets (renderings of the original MIDI music or CD audio)

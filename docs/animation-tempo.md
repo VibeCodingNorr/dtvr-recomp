@@ -9,7 +9,16 @@ The clock drives the event animations (`GameScreen::startEventScene` /
 animation; it stops while the recomp menu is open. Real time stays with input,
 the time limit, computer-message reading time, the slot machine, Risiko, the
 ambient map animations, palette cycling, music, speech, subtitles and films.
-Not yet: finish / victory / balance sequences (voiced), "Computerzüge schneller".
+Not yet: finish / victory / balance sequences (voiced).
+
+**Round 128 (user decision 2026-11-23):** 4× is removed from Animationstempo (the
+car can no longer be steered well; a stored 4 reads as 2). New **Computerzüge**
+(`[Extensions] ComputerTempo` 1 / 2 / 4): while a computer is the current player the
+clock runs at max(AnimationTempo, ComputerTempo), and the computer's message reading
+time (2500 ms × Pause factor, seg6:0FB4) is divided by it. The slot machine now
+follows the presentation clock too (its key timing uses the same clock). A
+two-computer game reached six turns instead of one in the same 900 frames at 4×, with
+an identical game log.
 The proposed levels and first implementation scope below remain design choices,
 not recovered original behavior.
 

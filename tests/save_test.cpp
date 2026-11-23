@@ -210,15 +210,17 @@ int main() {
     CHECK(Settings::decode("Wave=0\n").value[Settings::Wave] == 0 && loadSettings(dir / "none.ini").value[0] == 1);
     // [Display] (round 63): window by default, whole-number scaling on.
     CHECK(!back.fullscreen && back.integerScale && !back.widescreen); // widescreen is optional, off
-    CHECK(back.animationTempo == 1 && Settings::decode("AnimationTempo=4\n").animationTempo == 4
+    CHECK(back.animationTempo == 1 && back.computerTempo == 1 && Settings::decode("AnimationTempo=4\n").animationTempo == 2
+          && Settings::decode("ComputerTempo=4\n").computerTempo == 4 && Settings::decode("ComputerTempo=3\n").computerTempo == 1
           && Settings::decode("AnimationTempo=3\n").animationTempo == 1 && Settings::decode("AnimationTempo=2\n").animationTempo == 2);
     settings.fullscreen = true;
     settings.integerScale = false;
     settings.widescreen = true;
     settings.animationTempo = 2;
+    settings.computerTempo = 4;
     CHECK(saveSettings(settingsFile, settings, error));
     const Settings shown = loadSettings(settingsFile);
-    CHECK(shown.fullscreen && !shown.integerScale && shown.widescreen && shown.animationTempo == 2 && shown.value == settings.value);
+    CHECK(shown.fullscreen && !shown.integerScale && shown.widescreen && shown.animationTempo == 2 && shown.computerTempo == 4 && shown.value == settings.value);
     // The former name's user files are copied once into the new folders (round 126).
     {
         namespace fs = std::filesystem;

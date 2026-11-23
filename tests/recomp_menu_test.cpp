@@ -97,13 +97,16 @@ int main() {
     CHECK(m.isOpen() && m.page() == audio && m.inItems() && m.row() == 0);
     const int game = pageIndex(m, "Spiel");
     m.focusPage(game);
-    m.focusItem(1); // Animationstempo: 1x, 2x, 4x
+    m.focusItem(1); // Computerzüge: 1x, 2x, 4x
+    CHECK(m.settings().computerTempo == 1 && m.step(1) == Action::Changed && m.settings().computerTempo == 2);
+    CHECK(m.step(1) == Action::Changed && m.settings().computerTempo == 4 && m.step(1) == Action::Changed
+          && m.settings().computerTempo == 1 && m.step(-1) == Action::Changed && m.settings().computerTempo == 4);
+    m.focusItem(2); // Animationstempo: only 1x and 2x
     CHECK(m.settings().animationTempo == 1 && m.step(1) == Action::Changed && m.settings().animationTempo == 2);
-    CHECK(m.step(1) == Action::Changed && m.settings().animationTempo == 4 && m.step(1) == Action::Changed
-          && m.settings().animationTempo == 1 && m.step(-1) == Action::Changed && m.settings().animationTempo == 4);
-    m.focusItem(2); // Wartezeit: four steps, separate from the tempo
+    CHECK(m.step(1) == Action::Changed && m.settings().animationTempo == 1);
+    m.focusItem(3); // Wartezeit: four steps, separate from both tempos
     CHECK(m.step(-1) == Action::Changed && m.settings().pause == 3 && m.step(1) == Action::Changed && m.settings().pause == 0);
-    CHECK(m.settings().animationTempo == 4);
+    CHECK(m.settings().computerTempo == 4 && m.settings().animationTempo == 1);
 
     // The controls page has only info rows: no entry takes the focus.
     const int controls = pageIndex(m, "Steuerung");

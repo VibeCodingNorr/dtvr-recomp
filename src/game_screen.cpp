@@ -218,7 +218,11 @@ void GameScreen::layoutChanged() {
 }
 
 void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
-    if (clock_.rate() != settings_.animationTempo) clock_.setRate(settings_.animationTempo, realNow);
+    // While a computer is the current player its own tempo applies (if faster).
+    const int p = game_.currentPlayer();
+    const int rate = p >= 0 && game_.isComputer(p) ? std::max(settings_.animationTempo, settings_.computerTempo)
+                                                   : settings_.animationTempo;
+    if (clock_.rate() != rate) clock_.setRate(rate, realNow);
     clock_.setPaused(paused, realNow);
     clock_.update(realNow);
 }
@@ -758,32 +762,33 @@ void GameScreen::draw() {
     drawHandStack();
     drawPlayerInfo();
     const Uint32 now = SDL_GetTicks();
+    const Uint32 slotNow = presentationNow(); // the slot machine follows the tempo
     if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
         seenSpin_ = game_.spinSerial();
         const int p = game_.currentPlayer();
-        slot_.start(game_.lastReels(), now, p >= 0 && game_.isComputer(p));
+        slot_.start(game_.lastReels(), slotNow, p >= 0 && game_.isComputer(p));
         reelsPending_ = true; // the reels turn once the window has slid in
     }
-    if (reelsPending_ && slot_.running(now)) {
+    if (reelsPending_ && slot_.running(slotNow)) {
         reelsPending_ = false;
         if (sound_) sound_->play(3, 5, 0xFFFF); // Walze10 endless while the reels turn (seg2:78B1)
         reelsSounding_ = true;
     }
-    if (reelsSounding_ && slot_.stopped(now)) { // count-up: Zaehler1 (seg2:7C83), channel 3 flushed (7E74)
+    if (reelsSounding_ && slot_.stopped(slotNow)) { // count-up: Zaehler1 (seg2:7C83), channel 3 flushed (7E74)
         reelsSounding_ = false;
         if (sound_) {
             sound_->stop(3);
             sound_->play(4, 6);
         }
     }
-    slot_.draw(layout_.mapClient(), now); // a child of the map window: client coordinates
+    slot_.draw(layout_.mapClient(), slotNow); // a child of the map window: client coordinates
     if (estates_.isOpen()) {
         std::array<char, 8> letters{};
         for (size_t i = 0; i < 8; ++i) letters[i] = kPortraitLetters[i]; // seg2:2D43
         estates_.draw(estateRows(), letters);
     }
     // seg7:674D: the window follows the one-reel spin (seg2:6426).
-    if ((game_.phase() == Game::Phase::Risiko && slot_.stopped(now)) || risiko_.blinking(now))
+    if ((game_.phase() == Game::Phase::Risiko && slot_.stopped(slotNow)) || risiko_.blinking(now))
         risiko_.draw(game_.risiko().light, now);
     overview_.draw(game_);
     finish_.draw(SDL_GetTicks());
