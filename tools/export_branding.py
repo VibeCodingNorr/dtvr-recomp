@@ -28,6 +28,9 @@ def export(output):
         stage.mkdir()
         sources = REPO / "assets/branding"
         subprocess.run([renderer, str(sources / "logo.svg"), "-o", str(stage / "logo.png")], check=True)
+        if (sources / "logo-dark.svg").is_file():
+            subprocess.run([renderer, str(sources / "logo-dark.svg"), "-o",
+                            str(stage / "logo-dark.png")], check=True)
         icons = []
         for size in SIZES:
             path = stage / f"icon-{size}.png"

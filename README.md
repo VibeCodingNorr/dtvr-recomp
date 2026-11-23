@@ -1,6 +1,9 @@
 # DTVR Recomp
 
-![dtvr-recomp: a road forming an r between code brackets](assets/branding/logo.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-dark.svg">
+  <img src="assets/branding/logo.svg" alt="dtvr-recomp: a winding road, town tower and five-pip die" width="1200">
+</picture>
 
 Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
 Current project version: **0.0.1** ([release and AppImage policy](docs/releases.md)).
@@ -298,11 +301,11 @@ number of stages (1–300).
 | Key / input | Game window (as rally.exe unless marked) |
 | --- | --- |
 | Enter | Spin the slot machine, stop its reels / close it, confirm |
+| Slot machine: left click / right click | Like Enter (anywhere, the window captures the mouse) / like Escape |
+| Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
 | Escape | Recomp menu (pause, graphics, audio, game, controls; recomp) where rally.exe has no Escape action; in windows: back |
-| Slot machine: left click / right click | Like Enter (anywhere, the window captures the mouse) / like Escape |
-| Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |

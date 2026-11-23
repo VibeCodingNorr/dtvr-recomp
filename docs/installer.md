@@ -20,12 +20,26 @@ Classic/Dry styles remain optional. Then click **Installieren und kompilieren**.
 The assistant automatically configures CMake, compiles, tests, installs and
 verifies the result. No manual compiler invocation is needed.
 
-The approved design uses a dark project-branding sidebar, three visible phases
-(Vorbereiten / Installieren / Losspielen), light cards and a mint primary action.
-Music options expand only when needed. Progress/logs and successful completion
-have separate views; the log remains accessible from every phase. Cards reflow
-and the form scrolls on smaller windows. Existing import/update behavior stays in
-`installer_gui.py`; `installer_layout.py` and `installer_theme.py` own presentation.
+The approved **Moderne Rallye** design follows the road, tower and die logo:
+a larger transparent logo on the navy sidebar, warm cream content, green primary
+actions and amber waypoints. A dashed road joins the three phases (Vorbereiten /
+Installieren / Losspielen); completed phases have drawn checkmarks that do not
+depend on font glyph coverage. Installation type and data source share a compact
+row above the numbered source, destination and music cards.
+
+Music options expand only when needed. Installation has its own progress view
+with a collapsible, scrollable log; output is retained while collapsed. Errors
+and cancellation open the log. The footer log action remains available from
+every phase, and returning from the log preserves the completion view. The
+success screen shows a finish flag and **Bereit zur Rallye** with **Spiel starten**.
+The route represents phases; the backend's seven-stage bar reports progress.
+
+The default window is 1200 × 900, minimum 960 × 760. Cards reflow and the form
+scrolls on smaller windows; primary actions and diagnostics use separate footer
+rows. Fonts are selected case-insensitively, with a system-font fallback.
+Import/update behavior stays in `installer_gui.py`; `installer_layout.py` and
+`installer_theme.py` own presentation. Packaging renders the sidebar logo at
+264 × 88, including the transparent dark variant.
 
 The project-owned folder chooser supports typed paths, directory navigation,
 hidden folders and selecting the current folder. Its optional **Systemdialog**

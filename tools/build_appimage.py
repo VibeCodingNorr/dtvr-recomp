@@ -100,9 +100,12 @@ def build(python_runtime, appimagetool, runtime, output, arch):
                         str(source / "assets/branding/icon.svg"), "-o",
                         str(appdir / "dtvr-recomp-setup.png")], check=True)
         shutil.copy2(appdir / "dtvr-recomp-setup.png", appdir / ".DirIcon")
-        for name, width, height in (("logo", 224, 67), ("icon", 64, 64)):
+        for name, width, height in (("logo", 264, 88), ("icon", 64, 64)):
+            artwork = source / f"assets/branding/{name}-dark.svg"
+            if not artwork.is_file():
+                artwork = source / f"assets/branding/{name}.svg"
             subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height),
-                            str(source / f"assets/branding/{name}.svg"), "-o",
+                            str(artwork), "-o",
                             str(source / f"assets/branding/installer-{name}.png")], check=True)
         (appdir / "dtvr-recomp-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"

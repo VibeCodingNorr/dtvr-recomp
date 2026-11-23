@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from installer_checks import REPO
-from installer_theme import BODY, NAVY, INK, MUTED, MINT, WHITE, Card, branding_image, configure
+from installer_theme import BODY, NAVY, INK, MUTED, MINT, AMBER, WHITE, Card, branding_image, configure
 from project_version import read_version
 
 
@@ -15,7 +15,7 @@ class InstallerLayout:
         root = app.root
         self.family = configure(root)
         root.title(f"DTVR Recomp Setup · {read_version()}")
-        root.geometry("1180x900")
+        root.geometry("1200x900")
         root.minsize(960, 760)
         root.configure(bg=BODY)
         self.phase = "prepare"
@@ -26,9 +26,10 @@ class InstallerLayout:
         main.pack(side="left", fill="both", expand=True)
         header = ttk.Frame(main, padding=(32, 25, 32, 0))
         header.pack(fill="x")
-        ttk.Label(header, text="WILLKOMMEN ZURÜCK AM START", style="Eyebrow.TLabel").pack(anchor="w")
-        self.heading = tk.StringVar(value="Installation vorbereiten")
-        self.subtitle = tk.StringVar(value="Wähle deine Originaldaten. Der Installer erledigt Import und Build.")
+        self.eyebrow = tk.StringVar(value="DEIN START IN DIE RALLYE")
+        ttk.Label(header, textvariable=self.eyebrow, style="Eyebrow.TLabel").pack(anchor="w")
+        self.heading = tk.StringVar(value="Mach dich startklar.")
+        self.subtitle = tk.StringVar(value="Deine Originaldaten, dein Zielordner – den Rest übernehmen wir.")
         ttk.Label(header, textvariable=self.heading, style="Heading.TLabel").pack(anchor="w", pady=(8, 6))
         subtitle = ttk.Label(header, textvariable=self.subtitle, style="Subtitle.TLabel", wraplength=810)
         subtitle.pack(anchor="w")
@@ -68,15 +69,15 @@ class InstallerLayout:
             self.scrollbar.pack(side="right", fill="y", before=self.viewport)
 
     def _sidebar(self, root):
-        side = tk.Frame(root, bg=NAVY, width=244)
+        side = tk.Frame(root, bg=NAVY, width=280)
         side.pack(side="left", fill="y")
         side.pack_propagate(False)
-        self.nav = tk.Canvas(side, bg=NAVY, highlightthickness=0, height=500)
+        self.nav = tk.Canvas(side, bg=NAVY, highlightthickness=0, height=490)
         self.nav.pack(fill="x")
-        logo = branding_image(root, REPO, "logo", 224, 67)
+        logo = branding_image(root, REPO, "logo", 264, 88)
         if logo:
             self.images.append(logo)
-            self.nav.create_image(10, 38, image=logo, anchor="nw")
+            self.nav.create_image(8, 30, image=logo, anchor="nw")
         else:
             self.nav.create_text(26, 52, text="DTVR", fill="#f5edda", font=(self.family, 23, "bold"), anchor="nw")
             self.nav.create_text(28, 91, text="RECOMP", fill=MINT, font=(self.family, 12), anchor="nw")
@@ -84,37 +85,46 @@ class InstallerLayout:
         if icon:
             self.images.append(icon)
             root.iconphoto(True, icon)
-        self.nav.create_text(28, 151, text="DEIN WEG ZUM SPIEL", fill="#8ca1b8",
+        self.nav.create_text(28, 158, text="DEINE ROUTE ZUM SPIEL", fill="#a4b9ad",
                              font=(self.family, 9, "bold"), anchor="nw")
-        self.nav.create_line(43, 200, 43, 367, fill="#2c3b50", width=2)
-        self.nav.create_line(33, 476, 33, 451, 192, 451, 192, 420, fill="#253b51", width=3, smooth=True)
-        self.nav.create_oval(29, 472, 37, 480, fill=MINT, outline="")
-        self.nav.create_oval(188, 416, 196, 424, fill="#f3b64c", outline="")
         bottom = tk.Frame(side, bg=NAVY)
         bottom.pack(side="bottom", fill="x", padx=28, pady=30)
-        for label in ("Deine Kopie.", "Dein Linux-Spiel."):
+        for label in ("Originalspiel.", "Neuer Start."):
             tk.Label(bottom, text=label, bg=NAVY, fg="#f5edda", anchor="w",
                      font=(self.family, 13, "bold")).pack(fill="x")
         for label in ("Eigene Originaldaten erforderlich.", "Deine Daten bleiben lokal.", f"Setup {read_version()}"):
             tk.Label(bottom, text=label, bg=NAVY, fg="#91a3b8", anchor="w",
-                     font=(self.family, 9)).pack(fill="x", pady=(12 if label.startswith("Original") else 3, 0))
+                     font=(self.family, 9), wraplength=224, justify="left").pack(
+                         fill="x", pady=(12 if label.startswith("Eigene") else 3, 0))
 
     def step(self, active):
         self.nav.delete("step")
+        # The dashed route joins three real workflow phases; it is not a second
+        # progress estimate alongside the backend's seven-stage progress bar.
+        for index in range(2):
+            y = 218 + index * 88
+            route = (48, y, 48, y+26, 64 if index == 0 else 32, y+44, 48, y+62, 48, y+88)
+            self.nav.create_line(*route, fill="#294351", width=14, smooth=True, tags="step")
+            self.nav.create_line(*route, fill=MINT if index < active else "#7d938c",
+                                 width=2, dash=(4, 6), smooth=True, tags="step")
         for index, (title, subtitle) in enumerate((("Vorbereiten", "Quelle, Ziel und Musik"),
-                                                 ("Installieren", "Import und Build"), ("Losspielen", "Alles bereit"))):
-            y = 204 + index * 80
+                                                 ("Installieren", "Importieren und prüfen"), ("Losspielen", "Bereit für die Rallye"))):
+            y = 218 + index * 88
             current = index == active
-            if current:
-                self.nav.create_rectangle(14, y-25, 230, y+34, fill="#1a2d42", outline="", tags="step")
-            self.nav.create_oval(27, y-16, 59, y+16, fill=MINT if current else NAVY,
-                                 outline=MINT if current else "#415269", tags="step")
-            self.nav.create_text(43, y, text=str(index+1), fill=NAVY if current else "#91a2b7",
-                                 font=(self.family, 11, "bold"), tags="step")
-            self.nav.create_text(76, y-11, text=title, anchor="nw", fill="#f5edda" if current else "#9aabc0",
+            completed = index < active
+            color = MINT if current or completed else AMBER
+            self.nav.create_oval(29, y-19, 67, y+19, fill=color if current else NAVY,
+                                 outline=color, width=2, tags="step")
+            if completed:
+                self.nav.create_line(40, y, 46, y+6, 57, y-7, fill=color,
+                                     width=3, capstyle="round", joinstyle="round", tags="step")
+            else:
+                self.nav.create_text(48, y, text=str(index+1), fill=NAVY if current else color,
+                                     font=(self.family, 11, "bold"), tags="step")
+            self.nav.create_text(86, y-13, text=title, anchor="nw", fill="#fff8eb" if current else "#a9bbb1",
                                  font=(self.family, 12, "bold"), tags="step")
-            self.nav.create_text(76, y+11, text=subtitle, anchor="nw", fill="#a3b7ca" if current else "#687d95",
-                                 font=(self.family, 9), tags="step")
+            self.nav.create_text(86, y+12, text=subtitle, anchor="nw", fill="#a4b9ad" if current else "#82998b",
+                                 font=(self.family, 9), width=170, tags="step")
 
     def _footer(self, main):
         app = self.app
@@ -123,11 +133,14 @@ class InstallerLayout:
         ttk.Separator(bottom).pack(fill="x", pady=(0, 12))
         actions = ttk.Frame(bottom)
         actions.pack(fill="x")
-        ttk.Button(actions, text="Diagnose speichern", style="Quiet.TButton",
+        utilities = ttk.Frame(bottom)
+        utilities.pack(fill="x", pady=(10, 0))
+        ttk.Label(actions, text="Deine Daten bleiben lokal.", foreground=MUTED).pack(side="left")
+        ttk.Button(utilities, text="Diagnose speichern", style="Quiet.TButton",
                    command=app._export_diagnostic).pack(side="left")
-        ttk.Button(actions, text="Protokoll", style="Quiet.TButton", command=self.show_log).pack(side="left", padx=6)
-        self.close_button = ttk.Button(actions, text="Schließen", style="Quiet.TButton", command=app._close)
-        self.close_button.pack(side="left", padx=8)
+        ttk.Button(utilities, text="Protokoll", style="Quiet.TButton", command=self.show_log).pack(side="left", padx=6)
+        self.close_button = ttk.Button(utilities, text="Schließen", style="Quiet.TButton", command=app._close)
+        self.close_button.pack(side="right")
         self.primary = ttk.Frame(actions)
         self.primary.pack(side="right")
         app.check_button = ttk.Button(self.primary, text="Nur prüfen", command=lambda: app._begin(True))
@@ -159,8 +172,14 @@ class InstallerLayout:
 
     def _form(self):
         app = self.app
-        modes = ttk.Frame(self.prepare, padding=(4, 4), style="Card.TFrame")
-        modes.pack(anchor="w", pady=(0, 16))
+        choices = ttk.Frame(self.prepare)
+        choices.pack(fill="x", pady=(0, 12))
+        mode_group = ttk.Frame(choices)
+        mode_group.pack(side="left")
+        ttk.Label(mode_group, text="Installationsart", foreground=MUTED,
+                  font=(self.family, 9)).pack(anchor="w", pady=(0, 6))
+        modes = ttk.Frame(mode_group)
+        modes.pack(anchor="w")
         for label, value in (("Neu installieren", False), ("Aktualisieren", True)):
             choice = ttk.Radiobutton(modes, text=label, variable=app.update, value=value,
                                       command=app._mode_changed, style="Segment.TRadiobutton")
@@ -168,19 +187,23 @@ class InstallerLayout:
             app.controls.append(choice)
         app.iso_hint = tk.StringVar(value="Wähle deine eigene Original-ISO.")
         app.output_hint = tk.StringVar(value="Eine neue Installation wird hier angelegt.")
-        sources = ttk.Frame(self.prepare, padding=(4, 4), style="Card.TFrame")
-        sources.pack(anchor="w", pady=(0, 8))
+        source_group = ttk.Frame(choices)
+        source_group.pack(side="right")
+        ttk.Label(source_group, text="Datenquelle", foreground=MUTED,
+                  font=(self.family, 9)).pack(anchor="w", pady=(0, 6))
+        sources = ttk.Frame(source_group)
+        sources.pack(anchor="w")
         for label, value in (("Original-ISO", "iso"), ("Spielverzeichnis", "directory")):
             choice = ttk.Radiobutton(sources, text=label, variable=app.source_kind, value=value,
                                      command=app._source_changed, style="Segment.TRadiobutton")
             choice.pack(side="left")
             app.controls.append(choice)
-        self.path_row(self.card(self.prepare), "ORIGINALDATEN", app.iso, app._choose_iso, app.iso_hint, "Auswählen")
-        entry, _ = self.path_row(self.card(self.prepare), "ZIELORDNER", app.output, app._choose_output, app.output_hint, "Ordner wählen")
+        self.path_row(self.card(self.prepare), "01  /  DEINE ORIGINALDATEN", app.iso, app._choose_iso, app.iso_hint, "Auswählen")
+        entry, _ = self.path_row(self.card(self.prepare), "02  /  DEIN ZIELORDNER", app.output, app._choose_output, app.output_hint, "Ordner wählen")
         entry.bind("<FocusOut>", lambda e: app._mode_changed())
         music = self.card(self.prepare)
         music.columnconfigure(0, weight=1)
-        ttk.Label(music, text="Originalmusik", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(music, text="03  /  DEINE ORIGINALMUSIK", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
         self.music_button = ttk.Button(music, text="Anpassen  ▾", command=self.toggle_music)
         self.music_button.grid(row=0, column=1, sticky="e")
         app.controls.append(self.music_button)
@@ -230,19 +253,49 @@ class InstallerLayout:
         app = self.app
         self.activity = ttk.Frame(self.content)
         card = self.card(self.activity)
-        ttk.Label(card, textvariable=app.status, style="CardTitle.TLabel", wraplength=760).pack(fill="x", pady=(0, 14))
+        ttk.Label(card, text="DEIN SPIEL NIMMT FAHRT AUF", style="CardTitle.TLabel").pack(anchor="w", pady=(0, 12))
+        ttk.Label(card, textvariable=app.status, style="CardHeading.TLabel", wraplength=760).pack(fill="x", pady=(0, 18))
         app.progress = ttk.Progressbar(card, maximum=7)
-        app.progress.pack(fill="x", pady=(0, 16))
-        app.log = tk.Text(card, height=15, wrap="word", bg=NAVY, fg="#dce6ef", relief="flat",
+        app.progress.pack(fill="x", pady=(0, 18))
+        ttk.Label(card, text="Originaldaten übernehmen, das Spiel bauen und alles prüfen.\n"
+                  "Du kannst den Fortschritt hier verfolgen.", style="Card.TLabel", wraplength=730).pack(fill="x")
+        self.log_button = ttk.Button(card, text="Protokoll anzeigen  ▾", command=self.toggle_log)
+        self.log_button.pack(anchor="w", pady=(18, 0))
+        self.log_panel = ttk.Frame(card, style="Card.TFrame")
+        self.log_open = False
+        app.log = tk.Text(self.log_panel, height=13, wrap="word", bg=NAVY, fg="#e1eee3", relief="flat",
                            padx=16, pady=14, font="TkFixedFont", state="disabled")
-        app.log.pack(fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(self.log_panel, orient="vertical", command=app.log.yview)
+        app.log.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        app.log.pack(side="left", fill="both", expand=True)
         ttk.Label(self.activity, textvariable=app.detail, wraplength=760, foreground=MUTED).pack(fill="x", pady=(4, 12))
+
+    def toggle_log(self):
+        self.set_log_open(not self.log_open)
+
+    def set_log_open(self, visible):
+        self.log_open = visible
+        if visible:
+            self.log_panel.pack(fill="both", expand=True, pady=(14, 0))
+        else:
+            self.log_panel.pack_forget()
+        self.log_button.configure(text="Protokoll einklappen  ▴" if visible else "Protokoll anzeigen  ▾")
 
     def _completion(self):
         app = self.app
         self.complete = ttk.Frame(self.content)
         card = self.card(self.complete)
-        ttk.Label(card, text="✓  Alles bereit", style="CardTitle.TLabel").pack(anchor="w", pady=(8, 18))
+        flag = tk.Canvas(card, width=68, height=68, bg=WHITE, highlightthickness=0)
+        flag.pack(anchor="w", pady=(0, 14))
+        flag.create_oval(0, 0, 67, 67, fill="#edf3df", outline="")
+        flag.create_line(23, 51, 23, 17, fill=INK, width=3)
+        for row in range(3):
+            for column in range(4):
+                x, y = 25 + column * 6, 17 + row * 6
+                flag.create_rectangle(x, y, x+6, y+6, fill=INK if (row+column) % 2 == 0 else AMBER, outline="")
+        ttk.Label(card, text="ZIEL ERREICHT", style="CardTitle.TLabel").pack(anchor="w", pady=(0, 10))
+        ttk.Label(card, text="Deine Rallye kann beginnen.", style="CardHeading.TLabel").pack(anchor="w", pady=(0, 16))
         ttk.Label(card, textvariable=app.status, style="Card.TLabel", wraplength=740).pack(anchor="w")
         ttk.Label(card, textvariable=app.detail, style="Card.TLabel", wraplength=740).pack(anchor="w", pady=(14, 20))
         buttons = ttk.Frame(card, style="Card.TFrame")
@@ -254,7 +307,9 @@ class InstallerLayout:
         ttk.Button(self.complete, text="Protokoll ansehen", command=self.show_log).pack(anchor="w")
 
     def show_log(self):
-        self.return_phase = self.phase if self.phase in ("prepare", "complete") else "prepare"
+        if self.phase in ("prepare", "complete"):
+            self.return_phase = self.phase
+        self.set_log_open(True)
         self.show("working")
 
     def show(self, phase):
@@ -266,19 +321,23 @@ class InstallerLayout:
             button.pack_forget()
         if phase == "prepare":
             self.prepare.pack(fill="x")
-            self.heading.set("Installation vorbereiten")
-            self.subtitle.set("Wähle deine Originaldaten. Der Installer erledigt Import und Build.")
+            self.eyebrow.set("DEIN START IN DIE RALLYE")
+            self.heading.set("Mach dich startklar.")
+            self.subtitle.set("Deine Originaldaten, dein Zielordner – den Rest übernehmen wir.")
             self.app.check_button.pack(side="left", padx=(0, 10))
             self.app.install_button.pack(side="left")
             self.step(0)
         elif phase == "working":
             self.activity.pack(fill="x")
-            self.heading.set("Installation im Blick" if self.app.busy else "Installationsprotokoll")
-            self.subtitle.set("Fortschritt und Protokoll zeigen, was gerade passiert.")
+            self.eyebrow.set("ETAPPE 2  /  INSTALLIEREN" if self.app.busy else "DEINE INSTALLATION IM BLICK")
+            self.heading.set("Deine Rallye wird vorbereitet." if self.app.busy else "Dein Installationsprotokoll.")
+            self.subtitle.set("Wir bereiten dein Spiel für Linux vor." if self.app.busy
+                              else "Hier findest du die Details des letzten Laufs.")
             if self.app.busy:
                 self.return_phase = "prepare"
                 self.app.cancel_button.pack(side="right")
             else:
+                self.set_log_open(True)
                 self.return_button.pack(side="left", padx=(0, 10))
                 if self.app.installed:
                     self.app.launch_button.pack(side="left")
@@ -287,7 +346,8 @@ class InstallerLayout:
             self.step(2 if self.return_phase == "complete" else 1)
         else:
             self.complete.pack(fill="x")
-            self.heading.set("Bereit für die nächste Runde.")
+            self.eyebrow.set("ETAPPE 3  /  LOSSPIELEN")
+            self.heading.set("Bereit zur Rallye.")
             self.subtitle.set("Dein Spiel ist nativ unter Linux installiert.")
             self.more_button.pack(side="left", padx=(0, 10))
             self.app.launch_button.pack(side="left")

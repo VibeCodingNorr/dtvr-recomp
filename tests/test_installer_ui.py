@@ -251,6 +251,47 @@ class InstallerUiTests(unittest.TestCase):
         self.assertGreater(app.layout.viewport.winfo_height(), 100)
         self.assertTrue(app.layout.music_details.winfo_ismapped())
 
+    def test_collapsed_log_keeps_output_and_completion_return(self):
+        from installer_gui import InstallerWindow
+        app = InstallerWindow(self.root)
+        app.operation = "install"
+        app._set_busy(True)
+        app.layout.show("working")
+        self.assertFalse(app.layout.log_open)
+        app._append("First stage finished.\n")
+        app.layout.toggle_log()
+        self.root.update_idletasks()
+        self.assertTrue(app.log.winfo_ismapped())
+        self.assertIn("First stage finished.", app.log.get("1.0", "end"))
+        app.layout.toggle_log()
+        app._append("Second stage finished.\n")
+        app.layout.toggle_log()
+        self.assertIn("Second stage finished.", app.log.get("1.0", "end"))
+
+        app._set_busy(False)
+        app.installed = self.directory
+        app.layout.show("complete")
+        app.layout.show_log()
+        app.layout.show_log()  # revisiting the log must retain the completion page
+        self.assertEqual(app.layout.return_phase, "complete")
+        app.layout.return_button.invoke()
+        self.assertEqual(app.layout.phase, "complete")
+
+    def test_failure_opens_log_after_collapsed_installation(self):
+        from installer_gui import InstallerWindow
+        app = InstallerWindow(self.root)
+        app.operation = "install"
+        app._set_busy(True)
+        app.layout.show("working")
+        self.assertFalse(app.layout.log_open)
+        app.worker.events.put(("done", {"ok": False, "check": False,
+                               "cancelled": False, "error": "Synthetic build failure"}))
+        with patch("installer_gui.messagebox.showerror"):
+            app._poll()
+        self.assertFalse(app.busy)
+        self.assertTrue(app.layout.log_open)
+        self.assertIn("Synthetic build failure", app.log.get("1.0", "end"))
+
 
 if __name__ == "__main__":
     unittest.main()

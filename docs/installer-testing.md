@@ -65,7 +65,11 @@ xvfb-run -a env DTVR_TEST_GUI=1 python3 -m unittest discover -s tests -p 'test_i
 These checks are skipped by default to avoid opening windows during ordinary
 unit-test runs. Pure dependency, privacy and folder-listing tests run normally.
 The design checks additionally exercise expanded music controls, disabled input
-during installation, cancellation/return and the minimum window size. Check the
+during installation, cancellation/return, the minimum window size, output
+retention while logs are collapsed, automatic log opening on failure and repeated
+visits to the log from completion. Inspect prepare, progress (collapsed/expanded
+log), completion and minimum-size views with a scalable font as well as the
+fixed-font fallback. Preview captures stay outside the checkout. Check the
 packaged runtime as well as source execution when changing fonts or Tcl/Tk paths.
 
 ## Checking an actual AppImage without FUSE mounting
