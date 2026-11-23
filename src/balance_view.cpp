@@ -10,6 +10,12 @@ namespace {
 
 constexpr int kWidth = 480, kHeight = 360, kWindowW = 0x1F0, kWindowH = 0x178;
 constexpr int kVoiceChannel = 0;
+// Closing part (round 141): the lever DS:4A30 starts in the pass that finds Next_a_a
+// played out (seg8:943B) and advances in that pass, so pass t shows frame
+// 1 + t / 4 (delay 3, a frame stays delay + 1 passes). The state logic of pass q sees
+// the record after pass q - 1: frame 9 with countdown 1 in pass 35 plays Hebel01
+// through the voice path (seg8:94E7-9547), frame > 13 holds from pass 53 (seg8:959A).
+constexpr int kClosingHebelPass = 35, kClosingDrawPass = 53, kClosingFollowPass = 88;
 
 // Definitions of seg8:8A48 ff. (positions of records 0-2).
 const SceneRecord kSpeaking{79, 155, 0, 3, {"rd014", "rd012", "rd011", "rd012", "rd014", "rd012", "rd011", "rd012",
@@ -80,7 +86,9 @@ void BalanceView::escape(Uint32 now) {
     if (!active_) return;
     if (closingPart()) { active_ = false; return; } // seg8:984E
     if (sound_) sound_->stop(kVoiceChannel);        // seg8:925C: seg1:38B7
-    enter(Stage::Closing, now);
+    const bool pending = clicked_;                  // DS:8D5C survives the jump (seg8:9253)
+    enter(Stage::Closing, now);                     // Next_a_a starts (seg8:928A)
+    if (pending) active_ = false;                   // seg8:986C ends the first pass
 }
 
 void BalanceView::enter(Stage stage, Uint32 now) {
@@ -99,7 +107,7 @@ void BalanceView::enter(Stage stage, Uint32 now) {
         break;
     case Stage::Wait: break;
     case Stage::Closing: clicked_ = false; voice("next_a_a"); break;           // DS:7D85
-    case Stage::ClosingPull: if (sound_) sound_->play(2, 4); break;            // Hebel01 (DS:7DA5)
+    case Stage::ClosingPull: hebelPlayed_ = false; break;                      // Hebel01 follows (DS:7DA5)
     case Stage::ClosingResult: voice(std::string("pos_") + char(a + closing_)); break; // DS:7DB7, seg8:9616
     case Stage::ClosingWait: break;
     }
@@ -135,13 +143,28 @@ void BalanceView::update(Uint32 now) {
     case Stage::Closing: // seg8:943B: Next_a_a played out, the lever follows
         if (voiceDone(now, 1500)) enter(Stage::ClosingPull, now);
         break;
-    case Stage::ClosingPull:
-        if (now - stageStart_ >= Uint32(kPull.frames.size() * kPull.delay) * kSceneStepMs) enter(Stage::ClosingResult, now);
+    case Stage::ClosingPull: {
+        // seg8:94E7: Hebel01 (DS:7DA5) through seg1:3579, the voice path, so
+        // seg1:3E64 waits for it; seg8:956A: pos_ follows (and Game::yearBalance's
+        // closing rand() % 2 belongs here, seg8:9605) in the first pass from 53 on
+        // in which it has played out.
+        const int t = int((now - stageStart_) / kSceneStepMs);
+        if (!hebelPlayed_ && t >= kClosingHebelPass) {
+            hebelPlayed_ = true;
+            if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("snd") / "fx" / "hebel01.wav"));
+        }
+        const bool played = !sound_ || !sound_->busy(kVoiceChannel) || now - stageStart_ > 20000;
+        if (hebelPlayed_ && t >= kClosingDrawPass && played) enter(Stage::ClosingResult, now);
         break;
+    }
     case Stage::ClosingResult:
-        if (voiceDone(now, 1500)) enter(Stage::ClosingWait, now);
+        if (voiceDone(now, 1500)) { // the pass counter keeps running from the pos_ voice
+            const Uint32 start = stageStart_;
+            enter(Stage::ClosingWait, now);
+            stageStart_ = start;
+        }
         [[fallthrough]];
-    case Stage::ClosingWait: // seg8:9857: 500 passes without a human since the pos_ voice
+    case Stage::ClosingWait: // seg8:9857: 500 passes without a human since the pos_ voice (seg8:9656)
         if (!humans_ && now - stageStart_ >= 500 * kSceneStepMs) active_ = false;
         break;
     }
@@ -161,7 +184,10 @@ void BalanceView::draw(Uint32 now) {
     const SceneRecord& master = (stage_ == Stage::Pull || stage_ == Stage::ClosingPull) ? kPull
                                 : (stage_ == Stage::Wait || stage_ == Stage::ClosingWait) ? kHold
                                                                                          : kSpeaking;
-    drawSceneFrame(renderer_, frames_, sceneFrame(master, t), ox + master.x, oy + master.y);
+    const char* shown = sceneFrame(master, t);
+    if (stage_ == Stage::ClosingPull) // frame 1 + t / 4 of DS:4A30, then its follow-up DS:4968 (HEBEL03)
+        shown = t < kClosingFollowPass ? kPull.frames[size_t(1 + t / 4)] : "HEBEL03";
+    drawSceneFrame(renderer_, frames_, shown, ox + master.x, oy + master.y);
     drawSceneFrame(renderer_, frames_, sceneFrame(kFoot, t), ox + kFoot.x, oy + kFoot.y);
     if (stage_ != Stage::Pull && stage_ != Stage::ClosingPull) drawSceneFrame(renderer_, frames_, sceneFrame(kLever, t), ox + kLever.x, oy + kLever.y);
     SDL_RenderSetClipRect(renderer_, nullptr);

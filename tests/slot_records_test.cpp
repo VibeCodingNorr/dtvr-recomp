@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
 using namespace dtvr;
 
@@ -59,9 +60,19 @@ int main() {
               || shows(s, "slt5anr5") || shows(s, "slt5anr6"));
         const int last = passesUntil(s, [&] { return s.state() == 4; });
         CHECK(last == (9 + 12 * 14) - (9 + 12 * 6) - 1 && s.sum() == 17); // reel 4 ends at start + 177
-        for (const SlotFrame& f : s.frames()) CHECK(f.name.rfind("slt5an", 0) != 0); // gears gone
-        passesUntil(s, [] { return false; }, 20);
+        // seg2:7E7C ends records 8-10, but seg2:6F69 only skips them: each gear keeps the
+        // frame it drew in the previous pass (round 141; formerly taken to vanish).
+        auto gears = [&] {
+            std::vector<std::string> g;
+            for (const SlotFrame& f : s.frames()) if (f.name.rfind("slt5an", 0) == 0) g.push_back(f.name);
+            return g;
+        };
+        const std::vector<std::string> ended = gears();
+        CHECK(ended.size() == 3);
+        passesUntil(s, [] { return false; }, 200);
+        CHECK(gears() == ended);
         CHECK(shows(s, "walze_3") && shows(s, "count_1") && shows(s, "count_7")); // faces stay
+        CHECK(shows(s, "slthad19") && !shows(s, "drehung1") && !shows(s, "drehung4")); // the lever too
     }
     // Five reels: each stopped reel slows the gears by one pass per frame.
     {
@@ -78,16 +89,32 @@ int main() {
         }
         CHECK(changes == 12);
     }
-    // Three reels: slt3anm plays its 13 frames once (delay 5) and vanishes.
+    // Three reels: slt3anm plays its 13 frames once (delay 5); the record ends after
+    // 12 * 6 passes but its last frame slt3anm1 stays drawn (seg2:6F69 skips it).
     {
         SlotRecords s({1, 2, 3});
         s.pullLever();
         passesUntil(s, [&] { return s.reelsStarted(); });
-        const int gone = passesUntil(s, [&] {
-            for (const SlotFrame& f : s.frames()) if (f.name.rfind("slt3anm", 0) == 0) return false;
-            return true;
-        });
-        CHECK(gone == 12 * 6 - 1);
+        auto gear = [&] {
+            for (const SlotFrame& f : s.frames()) if (f.name.rfind("slt3anm", 0) == 0) return f.name;
+            return std::string();
+        };
+        const int last = passesUntil(s, [&] { return gear() == "slt3anm1"; });
+        // The start pass shows frame 1 (index 1); index 12 follows 11 * 6 passes later.
+        CHECK(last == 11 * 6 - 1);
+        passesUntil(s, [] { return false; }, 300);
+        CHECK(s.state() == 4 && gear() == "slt3anm1");
+    }
+    // Every record keeps the frame it last drew: after the count each reel shows its
+    // face walze_<v>, the lever slthad19, the sum its two digits, nothing else.
+    {
+        SlotRecords s({6, 2});
+        s.pullLever();
+        passesUntil(s, [&] { return s.state() == 4; });
+        passesUntil(s, [] { return false; }, 100);
+        const std::vector<SlotFrame> f = s.frames();
+        CHECK(f.size() == 5 && shows(s, "slthad19") && shows(s, "walze_6") && shows(s, "walze_2")
+              && shows(s, "count_0") && shows(s, "count_8"));
     }
     // seg2:6AA2: a key while the reels turn ends every reel's current turn.
     {

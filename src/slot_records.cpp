@@ -141,9 +141,8 @@ std::vector<SlotFrame> SlotRecords::frames() const {
     const int n = int(values_.size());
     for (size_t i = 0; i < records_.size(); ++i) {
         const Record& r = records_[i];
-        const bool gear = int(i) >= kFirstGear;
-        if (r.last.empty() || (gear && !r.def)) continue; // ended gears vanish (seg2:74E4)
-        out.push_back({r.last, r.x, r.y});
+        if (r.last.empty()) continue; // never drawn
+        out.push_back({r.last, r.x, r.y}); // ended records stay in the surface (seg2:6F69)
     }
     if (stoppedReels_ > 0 && n > 0) { // the sum display, record 2 (seg2:7C0A)
         out.push_back({"count_" + std::to_string(sum_ / 10 % 10), kCountX[n - 1][0], kCountY[n - 1]});

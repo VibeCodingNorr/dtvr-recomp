@@ -38,7 +38,9 @@ public:
     // part the show ends (seg8:986C).
     void click();
     // Escape or a right click clear DS:A6F2: the players' part jumps to the closing
-    // part (seg8:9253), the closing part ends (seg8:984E).
+    // part (seg8:9253), the closing part ends (seg8:984E). On that jump DS:8D5C is not
+    // cleared (only seg8:8E1A does), so a pending click ends the closing part after its
+    // first pass (seg8:986C).
     void escape(Uint32 now);
     void update(Uint32 now);
     void draw(Uint32 now);
@@ -65,6 +67,7 @@ private:
     bool skipped_ = false; // the opening voice was stopped by a click
     size_t index_ = 0;
     bool humans_ = true, clicked_ = false, active_ = false;
+    bool hebelPlayed_ = false; // closing part: Hebel01 started at pass 35 (seg8:94E7)
     Stage stage_ = Stage::Intro;
     Uint32 started_ = 0, stageStart_ = 0;
 };

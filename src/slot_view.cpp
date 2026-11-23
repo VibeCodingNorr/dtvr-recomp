@@ -61,7 +61,8 @@ SDL_Texture* SlotView::frame(int reels, const std::string& name) {
             SDL_SetSurfacePalette(s.get(), palette->format->palette);
             for (int y = 0; y < h; ++y)
                 std::copy_n(&px->second[size_t(y) * size_t(w)], w, static_cast<uint8_t*>(s->pixels) + y * s->pitch);
-            SDL_SetColorKey(s.get(), SDL_TRUE, 0);
+            // No colour key: the records have +0xD = 0, so seg6:41A2 copies them opaque
+            // (seg2:913A), index 0 included (count_<d> has 58 such pixels).
             t.reset(SDL_CreateTextureFromSurface(renderer_, s.get()));
         }
     }

@@ -1426,9 +1426,26 @@ display, started for every spin of the game (`Game::lastReels`).
   reels' repetitions +0xCA … +0x1CA to 0, state 3, and plays sound 2 on channel 1:
   every reel ends its current turn, it does not stop at once (*corrects* the
   earlier immediate faces).
-- seg2:74E4 restores the housing under each record before seg2:6F69 draws; ended
-  gears therefore vanish. **Assumption:** ended lever and reel records keep their
-  last frame (`slthad19`, `walze_<v>`), as before.
+- *Round 141, corrects "ended gears vanish" and replaces the assumption about ended
+  lever and reel records:* the loop calls seg2:74E4 with null bitmaps (six zero
+  words pushed at seg2:65D0–65DA), so its test at seg2:7536 skips every record and
+  nothing is restored. All slot records have +0xD = 0 (lever seg2:6A58, reels
+  seg2:7823, gears seg2:792D …, sum digits seg2:7D2F / 7DDF), so seg6:41A2 copies
+  each frame **opaque** with seg2:913A (index 0 included; `count_<d>` has 58 such
+  pixels) into the WinG surface DS:94F6, not keyed with seg2:9497. seg2:6F69 draws
+  only records with a definition (seg2:6FE4) whose frame name differs from the one
+  drawn last (+0x36, lstrcmp at seg2:7021) or that intersect such a record
+  (seg2:71F2); seg2:72DE then blits the dirty rectangles. A record ended by
+  seg2:6DCB (def = 0 at seg2:6F42) or by seg2:7E7C (gears) is skipped, so its last
+  frame stays: the lever `slthad19`, each reel `walze_<v>`, the sum digits and the
+  gears' last frames (three reels `slt3anm1`). Only WM_PAINT (seg2:6C2B) copies the
+  housing DS:94F2 over the whole surface; it needs an exposure — the map window is
+  created with WS_CLIPCHILDREN (style 0x4600xxxx at seg5:1CB1), and the slide out
+  moves the window with SetWindowPos (seg2:682F) and repaints only the map
+  (UpdateWindow(DS:A6F0), seg2:6838). Not modelled: an exposure by another window
+  during a spin (it would clear all frames until each changes again). No two record
+  rectangles overlap for one to five reels (positions above, frame sizes of
+  `sbs/slot0.sbs`, `slot3–5.sbs`), so the drawing order does not matter.
 
 Rebuilt in `src/slot_records.{hpp,cpp}` (no SDL, `tests/slot_records_test.cpp`), played
 from the lever pull by `SlotView`.
@@ -2118,8 +2135,43 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   4 → 5, 5 → 4, otherwise rand() % 2 + 4 (seg8:95E5..9613). The loop
   seg8:93CF..9871 ends when DS:A6F2 is cleared, on DS:8D5C, or after 500 passes
   without a human (seg2:5C5A). The draw is modelled in `Game::yearBalance`
-  (rules revision 35; **assumption:** the show reaches the lever — a human who
-  ends the closing part earlier skips the draw in the original).
+  (rules revision 35) as if the show always reached the lever; see the timing below.
+- **Closing draw timing (round 141, replaces the assumption of round 92).** seg8:925C
+  stops the voice, starts `Next_a_a` (seg8:928A, 1.57 s in the German data), sets
+  state [bp−0x6E] = 0, pass counter [bp−0x6C] = 0 and DS:A6F2 = 1 (seg8:92A1);
+  DS:8D5C is cleared only on the regular path (seg8:8E1A), not on the Escape jump
+  (seg8:9253). One pass of seg8:93CF..9871: the state logic, records (seg2:74E4,
+  6DCB, 6F69), seg6:0CDF(20) (seg8:97EB), the blit, the idle pass only while
+  DS:94C4 is set (cleared at window creation, seg8:9A5E), the message pump seg6:03F7
+  (seg8:9842; it dispatches the window's input), then the end test. State 0 → 1 in
+  the first pass with seg1:3E64 = 0 (`Next_a_a` played out, seg8:943B): record 0 =
+  DS:4A30 (`HEBEL05`–`13`, 23 frames, delay 3), follow-up DS:4968. Counting that
+  pass as 0, pass 35 sees frame 9 with countdown 1 and plays `%s\FX\HEBEL01.wav`
+  (DS:7DA5, base DS:72; snd/fx/hebel01.wav, 1.55 s) through seg1:3579, the voice
+  path (seg8:94E7–9547). The rand()
+  % 2 (seg8:9605; skipped when the letter is 4 or 5) runs in the first pass q ≥ 53
+  (frame > 13, seg8:959A) in which seg1:3E64 reports Hebel01 played out — about
+  pass 35 + 78, i.e. roughly 3.8 s after the closing part began (more when passes
+  take longer than 20 ms; without a wave device or with [Setup] Voice off the
+  TimerCount path of seg1:3E64 still waits the WAVs' lengths, round 102).
+  **A human can skip it:** Enter, Space or a left click (DS:8D5C = 1), Escape or a
+  right click (DS:A6F2 = 0) dispatched by the pump of any earlier pass end the loop
+  at that pass's end test, so no draw happens; likewise a click still pending when
+  Escape jumped from the players' part ends the closing part after its first pass.
+  Without humans the 500-pass exit (seg8:9857; the counter restarts at seg8:9452 and
+  9656) cannot come first with these WAV lengths, so a game of computers always
+  draws. **Also input-bound:** Escape in the players' part (seg8:9253) skips the
+  remaining players' rand() % 4 (seg8:8E38), and the closing letter is then the one
+  after the last *announced* player ([bp−0x7E] advances at seg8:913D), which also
+  decides whether seg8:9605 draws. The rebuild draws all of them at the year change
+  (deterministic; equal to the original whenever the show is watched to the lever).
+  Proposed faithful model (not implemented): make the balance an authoritative phase
+  with explicit commands — the view (or a headless driver, defaulting to "watched to
+  the end") sends "next player" before each seg8:8E38 draw, "closing lever" at the
+  pass of seg8:9605 and "end" — so rand() consumption follows the command log, not
+  wall-clock timing, and saves / replays / remote play stay deterministic. Rebuilt
+  in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
+  pending click on Escape and the 500 passes counted from the `pos_` voice.
 - **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
   and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.
   In the players' part DS:8D5C stops the opening voice (seg8:8D17) or lets the
