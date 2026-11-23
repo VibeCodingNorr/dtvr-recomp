@@ -173,11 +173,24 @@ int main() {
     CHECK(slots.save(3, a, description, error) && slots.description(3) == description);
     CHECK(slots.save(5, b, "zweiter\nStand", error) && slots.description(5) == "zweiter Stand");
     CHECK(slots.description(3) == description && slots.description(4).empty());
+    // Loading keeps the running random generator (rally.exe saves no seed, round 130):
+    // everything but the "rng" record is the saved state.
+    auto rngLine = [](const std::string& s) {
+        const size_t at = s.find("\nrng ");
+        return s.substr(at, s.find('\n', at + 1) - at);
+    };
+    auto withoutRng = [&](std::string s) { const std::string r = rngLine(s); s.erase(s.find(r), r.size()); return s; };
     Game c(board, towns, 1, 0, 7, 1);
-    CHECK(slots.load(3, c, error) && SaveCodec::encode(c) == SaveCodec::encode(a));
+    const std::string session = rngLine(SaveCodec::encode(c));
+    CHECK(session != rngLine(SaveCodec::encode(a)));
+    CHECK(slots.load(3, c, error) && withoutRng(SaveCodec::encode(c)) == withoutRng(SaveCodec::encode(a)));
+    CHECK(rngLine(SaveCodec::encode(c)) == session);
     CHECK(!slots.load(4, c, error) && !slots.save(9, a, "x", error));
     CHECK(!slots.hasAuto() && slots.saveAuto(b, error) && slots.hasAuto());
-    CHECK(slots.loadAuto(c, error) && SaveCodec::encode(c) == SaveCodec::encode(b));
+    CHECK(slots.loadAuto(c, error) && withoutRng(SaveCodec::encode(c)) == withoutRng(SaveCodec::encode(b)));
+    CHECK(rngLine(SaveCodec::encode(c)) == session);
+    // An exact copy (the default) restores the generator as well.
+    CHECK(SaveCodec::decode(c, SaveCodec::encode(a), error) && SaveCodec::encode(c) == SaveCodec::encode(a));
 
     // Options (round 39): defaults 1, Subtitle 0; joystick has three states.
     Settings settings;

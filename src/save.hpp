@@ -36,7 +36,12 @@ public:
     // The complete simulation state as text (messages and derived data excluded).
     static std::string encode(const Game& game);
     // Validates everything first; on failure `game` is unchanged and `error` says why.
-    static bool decode(Game& game, const std::string& text, std::string& error);
+    // Random::Session keeps the game's running random generator, as rally.exe does when
+    // it loads a game: its saves do not contain the C runtime's seed DS:838E, which is
+    // seeded once at program start (seg5:0029 -> seg1:02A9) and runs on (round 130).
+    // Restore (the default) is for exact copies: a new game, taking a roll back.
+    enum class Random { Restore, Session };
+    static bool decode(Game& game, const std::string& text, std::string& error, Random random = Random::Restore);
 };
 
 // Writes atomically (temporary file in the same directory, then rename).

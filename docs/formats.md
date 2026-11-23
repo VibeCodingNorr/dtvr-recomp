@@ -199,6 +199,16 @@ Confirmed from code unless marked otherwise.
   `srand()` (16-bit seed, high word cleared), seeded once at seg1:02A9 with the
   result of seg10:19AA(0) (probably `time`). seg6:1343 is `random(n)` =
   `n ≤ 0 ? 0 : rand() % (n + 1)`.
+  *Round 130:* seg1:02A9 lies in seg1:028A, called once by the program's
+  initialisation seg5:0000 (seg5:0029, after the cursor); nothing else calls
+  seg10:1DC6, and the seed DS:838E / 8390 is only used by seg10:1DC6 / 1DDE. The save
+  routine seg8:A870 writes the players (DS:56), heap tables (DS:5A, 5E, 9572) and
+  the blocks DS:9CFC, A0FE, A790 — not the seed. A loaded game therefore continues
+  the session's generator: loading the same game twice gives different rolls.
+  Rebuilt: the program seeds with the time when `--seed` is not given, and
+  `SaveSlots` loads with `SaveCodec::Random::Session` (the saved `rng` record stays
+  for exact copies). *Corrects* the former fixed seed 1 and the restored generator,
+  which made every load of a save roll the same.
 - **Field distances** seg2:43A8(unused, start): breadth-first search over the
   field links up to 80 levels into a word array at DS:22; a field with
   `flagset & DS:A10F` ≠ 0 is not expanded (seg4:0E0B sets the mask to 0x4000).

@@ -17,7 +17,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 | `DTVR-RECOMP-SAVE` | format version (currently 5; 4 is read without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
-| `rng` | state of the MS C random generator |
+| `rng` | state of the MS C random generator; loading a slot or the autosave keeps the running generator (rally.exe saves no seed, round 130), exact copies (new game, a roll taken back) restore it |
 | `player` | slot, status (0 inactive, 1 human, 2 computer), flags, field (8 lines) |
 | `town` | town, whole-town owner, then per entry owner, burden, landlord, months left |
 | `money` | slot, cash, credit debt, monthly income, property value (8 lines) |

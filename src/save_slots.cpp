@@ -101,7 +101,8 @@ bool SaveSlots::saveAuto(const Game& game, std::string& error) const {
 
 bool SaveSlots::loadAuto(Game& game, std::string& error) const {
     std::string text;
-    return readSaveFile(autoFile().string(), text, error) && SaveCodec::decode(game, text, error);
+    return readSaveFile(autoFile().string(), text, error)
+           && SaveCodec::decode(game, text, error, SaveCodec::Random::Session);
 }
 
 bool SaveSlots::hasAuto() const { return fs::exists(autoFile()); }
@@ -112,7 +113,7 @@ bool SaveSlots::load(int slot, Game& game, std::string& error) const {
         if (error.empty()) error = "ungueltiger Spielstand";
         return false;
     }
-    return SaveCodec::decode(game, text, error);
+    return SaveCodec::decode(game, text, error, SaveCodec::Random::Session);
 }
 
 } // namespace dtvr

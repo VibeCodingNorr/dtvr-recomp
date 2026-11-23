@@ -20,6 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <ctime>
 #include <iomanip>
 #include <stdexcept>
 #include <string>
@@ -177,7 +178,9 @@ static int run(int argc, char** argv) {
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
     int month = 2, roll = 0;
-    unsigned seed = 1;
+    // seg5:0029 -> seg1:02A9: srand(time(0)) once at program start; the generator then
+    // runs on through new and loaded games (round 130). --seed fixes it for tests.
+    unsigned seed = unsigned(uint16_t(std::time(nullptr)));
     View view = View::Overview;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];

@@ -157,7 +157,7 @@ std::string SaveCodec::encode(const Game& g) {
     return o.str();
 }
 
-bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
+bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Random random) {
     const long long fields = (long long)g.board_.fields.size();
     std::istringstream in(text);
     std::string line;
@@ -317,8 +317,10 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     if (towns.size() != g.economy_.townCount() || money.size() != g.economy_.playerCount())
         return fail("Wirtschaftsdaten passen nicht");
 
-    g.rng_ = MsRandom();
-    g.rng_.setState(rng);
+    if (random == Random::Restore) {
+        g.rng_ = MsRandom();
+        g.rng_.setState(rng);
+    }
     g.players_ = players;
     g.economy_.restore(towns, money);
     g.drago_ = drago;

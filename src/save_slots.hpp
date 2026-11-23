@@ -29,6 +29,7 @@ public:
     // The stored description, empty for an unused slot (the dialog shows text "leer").
     std::string description(int slot) const;
     bool save(int slot, const Game& game, const std::string& description, std::string& error) const;
+    // Loading keeps the game's running random generator (SaveCodec::Random::Session).
     bool load(int slot, Game& game, std::string& error) const;
     std::filesystem::path file(int slot) const;
     // Autosave of the turn start (seg8:A870: `%s\as.dat` and profile Save/AS = 1);
