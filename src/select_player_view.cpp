@@ -29,7 +29,7 @@ void SelectPlayerView::open(const std::vector<int>& candidates, const std::array
 }
 
 SDL_Rect SelectPlayerView::windowRect() const { // seg2:5343: n * (size + 5) + 20 by extra + size + 30
-    const int r = resolution(layout_.width), n = int(candidates_.size());
+    const int r = resolution(layout_.baseWidth), n = int(candidates_.size());
     const int w = n * (kSize[r] + 5) + 0x14, h = kExtra[r] + kSize[r] + 0x1E;
     return SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2, w, h};
 }
@@ -37,7 +37,7 @@ SDL_Rect SelectPlayerView::windowRect() const { // seg2:5343: n * (size + 5) + 2
 SDL_Rect SelectPlayerView::box() const { return borderClient(windowRect(), BorderSize::Thin); }
 
 SDL_Rect SelectPlayerView::button(size_t index) const { // seg2:53BD: first candidate on the right
-    const int r = resolution(layout_.width), n = int(candidates_.size());
+    const int r = resolution(layout_.baseWidth), n = int(candidates_.size());
     const SDL_Rect b = box();
     const int x = (kSize[r] + 5) * (n - 1) + 5 - int(index) * (kSize[r] + 5);
     return SDL_Rect{b.x + x, b.y + 5, kSize[r], kSize[r]};

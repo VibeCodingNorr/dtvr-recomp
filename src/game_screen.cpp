@@ -21,12 +21,28 @@ namespace {
 constexpr char kPortraitLetters[8] = {'D', 'F', 'E', 'M', 'U', 'J', 'I', 'V'};
 // seg2:1C87-1C90 synchronizes the driving loop with seg6:0CDF(20), independently
 // of the 50 ms palette timer. Vehicle definitions have delay 4; seg2:1941-1971
-// advances only when the old countdown is negative: six passes per frame.
+// advances only when the old countdown is negative (src/vehicle_anim.hpp).
 constexpr Uint32 kVehicleTickMs = 20;
 constexpr int kVehiclePixelsPerTick = 2 << 1;
-constexpr Uint32 kVehicleFramePasses = 6;
 
 SDL_Rect toSdl(const ScreenRect& r) { return {r.x, r.y, r.w, r.h}; }
+
+// Widescreen extension: full-canvas windows (PLAYER, OPTION) draw in their original
+// coordinates inside the centred 4:3 stage; the game window shifts their mouse input.
+class StageViewport {
+public:
+    StageViewport(SDL_Renderer* renderer, const ScreenLayout& layout) : renderer_(renderer), active_(layout.extra() != 0) {
+        if (!active_) return;
+        const SDL_Rect stage = toSdl(layout.stage());
+        SDL_RenderSetViewport(renderer_, &stage);
+    }
+    ~StageViewport() { if (active_) SDL_RenderSetViewport(renderer_, nullptr); }
+    StageViewport(const StageViewport&) = delete;
+    StageViewport& operator=(const StageViewport&) = delete;
+private:
+    SDL_Renderer* renderer_;
+    bool active_;
+};
 
 std::string upper(std::string s) {
     for (char& c : s) c = char(std::toupper(static_cast<unsigned char>(c)));
@@ -535,11 +551,13 @@ void GameScreen::drawMap() {
         const Field& f = board_.fields[size_t(game_.playerField(p))];
         SDL_Point at{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
         if (shownField_[size_t(p)] >= 0) at = shown_[size_t(p)];
-        const bool driving = vehicleMoving(p) || (p == game_.currentPlayer() && game_.phase() == Game::Phase::Move);
-        const int frameNo = driving ? int(tick / kVehicleFramePasses % 4) + 1 : 1;
         const VehicleAir& air = air_[size_t(p)]; // seg2:2318: plane frames ?f… unless on the ground
+        // Every vehicle animates on every pass, standing ones too (mode 2, src/vehicle_anim.hpp).
+        const int facing = std::clamp(game_.facing(p), 1, 4);
+        anim_[size_t(p)].select(VehicleAnimation::key(air.plane() ? 0 : vehicleMoving(p) ? 1 : 2, facing), tick);
+        const int frameNo = anim_[size_t(p)].frame(tick) + 1;
         const std::string name = std::string(1, kPortraitLetters[p]) + (air.plane() ? "F" : "")
-                                 + kFacing[std::clamp(game_.facing(p), 1, 4)] + std::to_string(frameNo);
+                                 + kFacing[facing] + std::to_string(frameNo);
         SDL_Texture* vehicle = sprite(name);
         if (!vehicle) continue;
         int w = 0, h = 0;
@@ -596,7 +614,7 @@ void GameScreen::drawPortrait() {
     const SDL_Rect nick{window.x + window.w / 2 - pw / 2, window.y + window.h + 5, pw, ph};
     SDL_RenderCopy(renderer_, plate, nullptr, &nick);
     static constexpr int kNickSize[3] = {13, 12, 11};
-    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int res = layout_.resolution();
     TextStyle style{kNickSize[res], true, false, true, false, 1, SDL_Color{255, 255, 255, 255}};
     const int textH = text_.measure(game_.playerName(p), style).y;
     text_.draw(renderer_, game_.playerName(p), ScreenRect{nick.x, nick.y - 3 + (nick.h - textH) / 2, nick.w, textH},
@@ -619,7 +637,7 @@ void GameScreen::drawHandStack() {
         if (const int type = game_.deck().typeOfSlot(game_.hand(p)[size_t(s)]); type >= 0) types.push_back(type);
     if (types.empty()) return;
     static constexpr int kW[3] = {0x82, 0x66, 0x52}, kH[3] = {0xBB, 0x91, 0x75};
-    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int res = layout_.resolution();
     const int n = int(types.size()), w = kW[res], h = kH[res];
     const int x0 = portraitWindow_.x + portraitWindow_.w / 2 - (w + (n - 1) * 3) / 2;
     const int y0 = layout_.elements[4][1] + (n - 1) * 3;
@@ -642,7 +660,7 @@ void GameScreen::drawPlayerInfo() {
     const SDL_Rect target = toSdl(panel);
     SDL_RenderCopy(renderer_, info, nullptr, &target);
     const PlayerInfo pi = playerInfo(game_, board_, towns_, texts_);
-    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int res = layout_.resolution();
     static constexpr int kItalic[3] = {24, 19, 16}, kRegular[3] = {18, 15, 12}; // seg5:622F
     auto slot = [&](int i) {
         ScreenRect r = panelSlot(layout_, i);
@@ -689,21 +707,27 @@ void GameScreen::draw() {
         return;
     }
     if (!picture_.empty()) {
-        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / picture_))
-            SDL_RenderCopy(renderer_, t, nullptr, nullptr);
+        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / picture_)) {
+            const SDL_Rect stage = toSdl(layout_.stage());
+            SDL_RenderCopy(renderer_, t, nullptr, &stage);
+        }
         return;
     }
     if (options_.isOpen()) { // OPTION covers the canvas
+        const StageViewport guard(renderer_, layout_);
         options_.draw();
         return;
     }
     if (title_ && setup_.isOpen()) { // PLAYER replaces the title (seg4:0DA9)
+        const StageViewport guard(renderer_, layout_);
         setup_.draw();
         return;
     }
     if (title_) {
-        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp"))
-            SDL_RenderCopy(renderer_, t, nullptr, nullptr);
+        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp")) {
+            const SDL_Rect stage = toSdl(layout_.stage());
+            SDL_RenderCopy(renderer_, t, nullptr, &stage);
+        }
         if (stages_.isOpen()) { // TEMP after PLAYER (seg4:0E54), a child of the canvas
             stages_.draw();
             return;
@@ -715,7 +739,7 @@ void GameScreen::draw() {
     }
     // Canvas (seg8:0000): butt/<n>/bk.bmp fills the client area.
     if (SDL_Texture* background = art(fs::path("butt") / std::to_string(layout_.artDir) / "bk.bmp"))
-        SDL_RenderCopy(renderer_, background, nullptr, nullptr);
+        drawBackground(background);
     drawMap();
     drawPortrait();
     drawHandStack();
@@ -771,6 +795,21 @@ void GameScreen::draw() {
     sight_.draw();
     menu_.draw();
     if (!eventSceneActive(SDL_GetTicks())) messages_.draw(game_); // seg8:6EF2 after the animation
+}
+
+void GameScreen::drawBackground(SDL_Texture* background) {
+    if (layout_.extra() == 0) { SDL_RenderCopy(renderer_, background, nullptr, nullptr); return; }
+    // Widescreen extension: the bevelled edges keep their size, the wood between them
+    // (horizontal grain) is stretched to the wide canvas.
+    int w = 0, h = 0;
+    SDL_QueryTexture(background, nullptr, nullptr, &w, &h);
+    constexpr int kEdge = 16;
+    const SDL_Rect leftSrc{0, 0, kEdge, h}, midSrc{kEdge, 0, w - 2 * kEdge, h}, rightSrc{w - kEdge, 0, kEdge, h};
+    const SDL_Rect leftDst{0, 0, kEdge, layout_.height}, midDst{kEdge, 0, layout_.width - 2 * kEdge, layout_.height},
+        rightDst{layout_.width - kEdge, 0, kEdge, layout_.height};
+    SDL_RenderCopy(renderer_, background, &leftSrc, &leftDst);
+    SDL_RenderCopy(renderer_, background, &midSrc, &midDst);
+    SDL_RenderCopy(renderer_, background, &rightSrc, &rightDst);
 }
 
 std::vector<EstateRow> GameScreen::estateRows() const {

@@ -24,7 +24,7 @@ size_t utf8Length(const std::string& s) {
 } // namespace
 
 SetupView::SetupView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout, TextRenderer& text)
-    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.width)) {}
+    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth)) {}
 
 void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std::array<std::string, kPlayerSlots>& names) {
     status_ = status;
@@ -164,7 +164,7 @@ void SetupView::draw() {
         // Roman italic weight 600 at 20 / 17 / 15 (seg1:1C85 by seg6:12FA), no text
         // colour (black), transparent; the caret after the text.
         static constexpr int kInput[3] = {0x14, 0x11, 0xF};
-        const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+        const int res = layout_.resolution();
         const ScreenRect& r = geometry_.name[size_t(p)];
         const std::string shown = names_[size_t(p)] + (p == editing_ ? "|" : "");
         TextStyle style{kInput[res], true, true, false, false, 0, SDL_Color{0, 0, 0, 255}};

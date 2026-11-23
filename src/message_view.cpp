@@ -31,7 +31,7 @@ SDL_Texture* MessageView::bitmap(const fs::path& relative, int& w, int& h) {
 }
 
 int MessageView::buttonSize() const {
-    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int res = layout_.resolution();
     static constexpr int kSize[3] = {18, 16, 14};
     return kSize[res] + 5; // seg6:5505: text size + 5 for the buttons
 }
@@ -113,7 +113,7 @@ void MessageView::draw(const Game& game) {
     const Notice& n = queue_.front();
     const auto it = texts_.find(n.text);
     const std::string message = it == texts_.end() ? "Text " + std::to_string(n.text) : formatNotice(it->second, n, game);
-    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    const int res = layout_.resolution();
     static constexpr int kSize[3] = {18, 16, 14};
     TextStyle style{kSize[res], true, false, false, false, 0, SDL_Color{67, 27, 0, 255}};
     const ScreenRect textRect{box.x + 10 + sw + 10, box.y + 10, w - 30 - sw, h - 20};

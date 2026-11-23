@@ -1,5 +1,9 @@
 # Proposed fullscreen and upscaling options
 
+> Update: fullscreen, integer scaling and an optional widescreen extension are
+> implemented (README "Widescreen", `widenLayout` in src/layout.cpp). Widescreen
+> is off by default: the original 4:3 layout with side bars stays the reference.
+
 Status: recorded idea, not implemented by this document. Renderer integration
 belongs to the engine work; installer validation must not modify that work.
 

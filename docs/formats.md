@@ -1276,7 +1276,17 @@ reels and pulling the lever with the mouse.
   (seg8:6E0F → seg2:3D9C) and are moved by (−16, −16) as well.
 
 Rebuilt in `src/game_screen.cpp`: the vehicles of all drivers in play with the
-facing of their last step; the current driver's car animates while driving.
+facing of their last step.
+**Frame animation (round 124, corrects "only while driving"):** the idle pass
+seg2:1C37 (while DS:94C4 and DS:94E6 are set) calls seg2:4F7D → seg2:16C1 for every
+vehicle in play with an animation (+0x20 ≠ 0): it draws frame +0x2C, then
+`old = +0x1E--; if (old < 0) { +0x1E = def[0] (4); +0x2C = (+0x2C + 1) % def[3] (4) }`
+(seg2:1941–19BD). +0x20 is set at the start (seg2:5142: mode 2, mode 0 at sea),
+when a step starts (seg2:1EC0 / 2324: mode 1, mode 0 on sea routes) and at the
+arrival (seg2:2101: mode 2). DS:1994 mode 2 (definitions DS:2006–2082) has the same
+four frames `?up1–4` … as mode 1, so cars also animate while standing. seg2:2B30
+resets +0x2C and +0x1E to 0 only when the pointer changes. Rebuilt in
+`src/vehicle_anim.{hpp,cpp}` (tested against a direct simulation of the loop).
 **Smooth driving (round 31):** the drawn position follows the game position at
 4 pixels per idle pass of 20 ms (velocity 2 from DS:19EA / 19F4 shifted by DS:34,
 seg2:1CB0; round 117: DS:34 is loaded from DS:19FE = 1 at seg2:202D, and its only

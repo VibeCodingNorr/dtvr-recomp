@@ -155,7 +155,7 @@ void StagesView::draw() {
         const SDL_Rect dst{w.x + 10, w.y + 10, sw, sh};
         SDL_RenderCopy(renderer_, sm, nullptr, &dst);
     }
-    const int res = resolutionIndex(layout_.width);
+    const int res = resolutionIndex(layout_.baseWidth);
     // seg8:0C0A: seg6:04F9(18 / 16 / 14, weight 600); left + sm width + 10; text 810,
     // DT_WORDBREAK | DT_NOCLIP (0x110), colour 0x45.
     static constexpr int kSizes[3] = {0x12, 0x10, 0xE};

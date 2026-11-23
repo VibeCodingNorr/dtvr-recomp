@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "layout.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace dtvr {
@@ -17,7 +18,7 @@ constexpr std::array<std::array<int, 2>, 10> k1024 = {{
 } // namespace
 
 ScreenRect ScreenLayout::portrait() const {
-    const int side = width == 1024 ? 102 : width == 800 ? 80 : 64; // bmp/<n>/p1/*.bmp
+    const int side = baseWidth == 1024 ? 102 : baseWidth == 800 ? 80 : 64; // bmp/<n>/p1/*.bmp
     return {elements[2][0], elements[2][1], side + 16, side + 16};
 }
 
@@ -40,7 +41,28 @@ ScreenLayout layoutForCanvas(int canvasWidth) {
     const int bottom = (l.height - margin) & ~0xF;
     l.map = {margin, margin, bottom - margin, bottom - margin};
     l.viewport = {0, 0, l.map.w - 16, l.map.h - 16}; // seg5:13AF: DS:94DE/94E0
+    l.overview = l.map;
+    l.baseWidth = l.width;
     return l;
+}
+
+ScreenLayout widenLayout(const ScreenLayout& base, int extra) {
+    if (extra < 0 || extra % 2 != 0) throw std::invalid_argument("Breitbild: gerade Zusatzbreite");
+    ScreenLayout l = base;
+    l.width += extra;
+    l.map.w += extra;
+    l.viewport.w += extra;
+    l.overview.x += extra / 2;
+    l.elements[2][0] += extra; // portrait (and with it name plate and hand stack)
+    l.elements[9][0] += extra; // player info
+    return l;
+}
+
+int widescreenExtra(const ScreenLayout& base, int displayWidth, int displayHeight) {
+    if (displayWidth <= 0 || displayHeight <= 0) return 0;
+    const long long cap = 21LL * base.height / 9;
+    const long long wide = std::min(cap, (long long)displayWidth * base.height / displayHeight);
+    return std::max(0, int(wide - base.width) & ~1);
 }
 
 ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth) {
@@ -57,7 +79,7 @@ std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::
     // rows by the number of cards; 10 pixels between cards.
     static constexpr int kWidth[3] = {0x82, 0x66, 0x52}, kHeight[3] = {0xBB, 0x91, 0x75};
     static constexpr int kColumns[9] = {0, 1, 2, 3, 4, 3, 3, 4, 4}, kRows[9] = {0, 1, 1, 1, 1, 2, 2, 2, 2};
-    const int res = layout.width == 1024 ? 0 : layout.width == 800 ? 1 : 2;
+    const int res = layout.resolution();
     int count = 0;
     for (bool o : occupied) count += o;
     std::vector<CardButton> out;

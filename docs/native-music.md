@@ -17,17 +17,18 @@ an update preserves existing packs and does not modify playback preferences.
 
 ## Choosing music
 
-Press **F8** from the game or its title/options menus. The options window also
-shows this shortcut. In the audio overlay:
+Open the **Audio** page of the recomb menu (`src/recomp_menu.cpp`): **F8** in the
+game and title, Escape → Audio, or "Weitere Einstellungen" in the options window
+(F8 stays the original's eighth switch there and in the player setup).
 
-| Key | Action |
+| Entry | Action |
 | --- | --- |
-| Up / Down | Select an installed complete sound set |
-| Left / Right | Adjust music volume by 5 percent |
-| Space | Enable/disable music (the original music option) |
-| Escape / Enter / F8 | Return to the previous screen |
+| Musik | Enable/disable music (the original music option) |
+| Klangset | Left / Right / click: select an installed complete sound set |
+| Musiklautstärke | Left / Right in 5 percent steps, or click on the bar |
+| Es läuft | The current cue |
 
-The overlay displays the selected set and any pending change. A new set takes
+The page shows the selected set and any pending change in its footer. A new set takes
 effect at the next cue boundary; positions are never copied between different
 render timelines. A volume of zero preserves progression; disabling music stops
 it, and enabling starts a new background selection. Normal menus leave music
@@ -94,7 +95,7 @@ unverified original MCI position units.
 ## Streaming and limits
 
 `music_catalog` handles discovery/preferences, `music_player` handles control,
-`music_stream` owns decoding, and `music_menu` owns the local overlay. Decoder/file
+`music_stream` owns decoding, and `music_menu` connects the player to the recomb menu's Audio page. Decoder/file
 work runs on a worker with a half-second PCM ring. The audio callback performs no
 file I/O, allocation or waiting: it consumes buffered samples or emits silence.
 All sources are summed and clipped in one device; closing the device precedes
@@ -121,6 +122,6 @@ available, generates stereo tones outside the checkout for native catalog and
 streaming tests. Coverage includes natural completion vs cancellation, nominal
 end vs render tails, pause/resume/seek, mute, decoder recovery, pack boundaries,
 preferences and rejected incomplete/linked/corrupt/unsafe catalogs. Local Xvfb
-checks additionally exercise F8, set selection, volume persistence and rendering
+checks additionally exercise the Audio page, set selection, volume persistence and rendering
 against externally stored real sets. Dummy audio validates decoding/mixing, not
 listening quality on physical hardware.

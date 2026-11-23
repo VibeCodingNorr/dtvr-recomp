@@ -30,6 +30,9 @@ struct Settings {
     // and whole-number scaling of the canvas with black borders.
     bool fullscreen = false;
     bool integerScale = true;
+    // Widescreen (recomb only): the canvas takes the display's aspect (up to 21:9) and
+    // the map window shows more of the world. Off by default; read at start.
+    bool widescreen = false;
     // Text smoothing (recomb only): 0 Original (no anti-aliasing, as GDI on 256 colours),
     // 1 smoothed at canvas size (scaled like the art), 2 smoothed at screen resolution.
     int textSmoothing = 1;

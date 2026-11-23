@@ -165,6 +165,10 @@ static int run(int argc, char** argv) {
     bool flight = false;           // --game: open the Flugzeug booking (screenshots)
     bool nails = false;            // --game: open the Nägel direction choice (screenshots)
     bool invest = false;           // --game: open the investment offer (screenshots)
+    int aspectW = 0, aspectH = 0;  // --aspect W:H
+    int recompMenuPage = -1;       // --recomp-menu PAGE
+    int windowW = 0, windowH = 0;  // --window-size WxH
+    int widescreen = -1;           // --widescreen / --no-widescreen (default: [Display] Widescreen)
     bool fullscreen = false;       // --game: start in fullscreen (F11 / Alt+Enter toggle)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
@@ -179,7 +183,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -219,6 +223,14 @@ static int run(int argc, char** argv) {
         else if (arg == "--surroundings") openSurroundings = true;
         else if (arg == "--zoom") zoomIn = true;
         else if (arg == "--options") openOptions = true;
+        else if (arg == "--recomp-menu" && i + 1 < argc) recompMenuPage = std::stoi(argv[++i]);
+        else if (arg == "--window-size" && i + 1 < argc) { // WxH
+            const std::string a = argv[++i];
+            const size_t x = a.find('x');
+            if (x == std::string::npos) throw std::invalid_argument("--window-size BxH, z. B. 2560x1440");
+            windowW = std::stoi(a.substr(0, x));
+            windowH = std::stoi(a.substr(x + 1));
+        }
         else if (arg == "--demo") demo = true;
         else if (arg == "--finish") finish = true;
         else if (arg == "--victory") victory = true;
@@ -230,6 +242,17 @@ static int run(int argc, char** argv) {
         else if (arg == "--nails") nails = true;
         else if (arg == "--invest") invest = true;
         else if (arg == "--fullscreen") fullscreen = true;
+        else if (arg == "--widescreen") widescreen = 1;
+        else if (arg == "--no-widescreen") widescreen = 0;
+        else if (arg == "--aspect" && i + 1 < argc) { // W:H, implies --widescreen
+            const std::string a = argv[++i];
+            const size_t colon = a.find(':');
+            if (colon == std::string::npos) throw std::invalid_argument("--aspect B:H, z. B. 16:9");
+            aspectW = std::stoi(a.substr(0, colon));
+            aspectH = std::stoi(a.substr(colon + 1));
+            if (aspectW <= 0 || aspectH <= 0) throw std::invalid_argument("--aspect B:H, z. B. 16:9");
+            widescreen = 1;
+        }
         else if (arg == "--estates" && i + 1 < argc) openEstates = std::stoi(argv[++i]);
         else if (arg == "--players" && i + 1 < argc) humans = std::stoi(argv[++i]);
         else if (arg == "--rounds" && i + 1 < argc) rounds = std::stoi(argv[++i]);
@@ -283,6 +306,9 @@ static int run(int argc, char** argv) {
         options.openSurroundings = openSurroundings;
         options.zoom = zoomIn;
         options.openOptions = openOptions;
+        options.recompMenuPage = recompMenuPage;
+        options.windowW = windowW;
+        options.windowH = windowH;
         options.demo = demo;
         options.finish = finish;
         options.victory = victory;
@@ -294,6 +320,9 @@ static int run(int argc, char** argv) {
         options.nails = nails;
         options.invest = invest;
         options.fullscreen = fullscreen;
+        options.widescreen = widescreen;
+        options.aspectW = aspectW;
+        options.aspectH = aspectH;
         options.intro = intro;
         options.noIntro = noIntro;
         options.computerExtraCards = computerCards;

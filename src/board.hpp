@@ -67,4 +67,10 @@ std::string finishPhotoName(const std::string& oemTownName);
 // Converts OEM code page 850 text (as stored in the game files) to UTF-8.
 std::string oemToUtf8(const std::string& text);
 
+// The town whose (UTF-8) name equals `name` without regard to ASCII case
+// (seg3:32CE: _fstricmp, seg10:22CA folds A-Z only); -1 if none.
+int townByName(const std::vector<Town>& towns, const std::string& name);
+// The Flugzeug rows 5602 + i of the language texts (UTF-8) as towns, -1 where none.
+std::array<int, 8> flightAirports(const std::map<int, std::string>& texts, const std::vector<Town>& towns);
+
 } // namespace dtvr

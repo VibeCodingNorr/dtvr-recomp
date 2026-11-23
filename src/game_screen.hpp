@@ -10,6 +10,7 @@
 #include "mouse_control_view.hpp"
 #include "film_view.hpp"
 #include "vehicle_air.hpp"
+#include "vehicle_anim.hpp"
 #include "sight_view.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
@@ -167,6 +168,7 @@ private:
     void drawHandStack(); // seg3:0EE8: the hand under the portrait while the card window is closed
     SDL_Rect portraitWindow_{}; // the PORTRAIT window of the last drawPortrait
     void drawPlayerInfo();
+    void drawBackground(SDL_Texture* background); // butt/<n>/bk.bmp, stretched between its edges when wide
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
@@ -230,6 +232,7 @@ private:
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
     std::array<VehicleAir, kPlayerSlots> air_{};    // plane state +0x2D / height +0x2E
+    std::array<VehicleAnimation, kPlayerSlots> anim_{}; // animation +0x20 and its frame +0x2C
     std::array<bool, kPlayerSlots> airSet_{};
     std::array<bool, kPlayerSlots> stepPending_{};  // a step began, its first tick is still due
     Uint32 lastAdvance_ = 0;
@@ -250,6 +253,10 @@ private:
 struct GameWindowOptions {
     int canvasWidth = 0;          // 0: the largest canvas that fits the screen (seg5:1227)
     bool fullscreen = false;      // start in fullscreen (also [Display] Fullscreen)
+    int widescreen = -1;          // -1: [Display] Widescreen, 0 off, 1 on (recomb extension)
+    int aspectW = 0, aspectH = 0; // widescreen aspect; 0: the display's
+    int recompMenuPage = -1;      // open the recomb menu on this page at start
+    int windowW = 0, windowH = 0; // initial window size (tests of the scaled output)
     bool smokeTest = false;       // draw `frames` frames and exit
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)

@@ -44,6 +44,23 @@ int main() {
     try { layoutForCanvas(900); } catch (const std::invalid_argument&) { threw = true; }
     CHECK(threw);
 
+    // Widescreen extension: 16:9 at 1024 x 768 -> 1365 -> 341 extra -> 340 (even).
+    CHECK(l1024.extra() == 0 && l1024.resolution() == 0 && same(l1024.overview, 32, 32, 704, 704));
+    CHECK(widescreenExtra(l1024, 1920, 1080) == 340 && widescreenExtra(l1024, 2560, 1440) == 340
+          && widescreenExtra(l1024, 1920, 1200) == 204);
+    CHECK(widescreenExtra(l1024, 1024, 768) == 0 && widescreenExtra(l1024, 1280, 1024) == 0);
+    CHECK(widescreenExtra(l1024, 5120, 1440) == 768);      // 32:9 capped at 21:9 (1792)
+    CHECK(widescreenExtra(l1024, 0, 0) == 0);
+    const ScreenLayout wide = widenLayout(l1024, 340);
+    CHECK(wide.width == 1364 && wide.height == 768 && wide.baseWidth == 1024 && wide.resolution() == 0);
+    CHECK(same(wide.map, 32, 32, 1044, 704) && wide.viewport.w == 1028 && wide.viewport.h == 688);
+    CHECK(same(wide.overview, 32 + 170, 32, 704, 704) && same(wide.stage(), 170, 0, 1024, 768));
+    CHECK(wide.portrait().x == 815 + 340 && wide.playerInfo().x == 764 + 340 && wide.playerInfo().w == 220);
+    CHECK(widenLayout(layoutForCanvas(640), 208).resolution() == 2);
+    threw = false;
+    try { widenLayout(l1024, 11); } catch (const std::invalid_argument&) { threw = true; }
+    CHECK(threw);
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("layout_test: OK");
     return failures != 0;

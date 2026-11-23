@@ -27,13 +27,14 @@ public:
     void close() { open_ = false; }
     bool isOpen() const { return open_; }
     const Settings& settings() const { return settings_; }
-    // Recomb addition (not in rally.exe): the text smoothing between stop and star,
-    // cycled by a click; F12 changes it everywhere (game window) and updates the copy.
+    // F12 changes the text smoothing everywhere (game window) and updates the copy.
     void setTextSmoothing(int mode) { settings_.textSmoothing = mode; }
 
     // Toggled: a switch changed (seg1:B2E2 ff. apply it at once); Close: star, stop,
     // F10 and the cancel of an SBBUTTON all run seg1:B539, which keeps the values.
-    enum class Result { None, Toggled, Close };
+    // RecompMenu: the recomb addition between stop and star (not in rally.exe) was
+    // clicked: further settings (graphics, sound sets, music volume) in the recomb menu.
+    enum class Result { None, Toggled, Close, RecompMenu };
     Result handle(const SDL_Event& event);
     // The SBBUTTON sound of the last handled event for channel 2, -1 none.
     int takeSound() { const int s = sound_; sound_ = -1; return s; }
@@ -41,7 +42,7 @@ public:
 
 private:
     SDL_Texture* bitmap(const std::filesystem::path& relative);
-    SDL_Rect smoothingRect() const;
+    SDL_Rect extraRect() const; // the recomb label between stop and star
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;

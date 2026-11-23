@@ -8,10 +8,11 @@
 #include "panel.hpp"
 #include "settings.hpp"
 #include "music_menu.hpp"
+#include "display_control.hpp"
+#include "recomp_menu_view.hpp"
 #include "ne_strings.hpp"
 
 #include <array>
-#include <cctype>
 #include <ctime>
 #include <iostream>
 #include <stdexcept>
@@ -21,12 +22,12 @@ namespace fs = std::filesystem;
 namespace dtvr {
 namespace {
 
-// Names compared without regard to ASCII case (seg10:22CA folds A-Z only).
-bool sameName(const std::string& a, const std::string& b) {
-    if (a.size() != b.size()) return false;
-    for (size_t i = 0; i < a.size(); ++i)
-        if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) return false;
-    return true;
+// Widescreen extension: mouse input of the full-canvas windows drawn in the 4:3 stage.
+SDL_Event toStage(SDL_Event event, const ScreenLayout& layout) {
+    const int dx = layout.stage().x;
+    if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) event.button.x -= dx;
+    else if (event.type == SDL_MOUSEMOTION) event.motion.x -= dx;
+    return event;
 }
 
 } // namespace
@@ -35,22 +36,29 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                   const GameWindowOptions& options) {
     SDL_DisplayMode display{};
     if (SDL_GetDesktopDisplayMode(0, &display) != 0) display.w = 1024, display.h = 768;
-    const ScreenLayout layout = layoutForScreen(display.w, display.h, options.canvasWidth);
-    // The canvas keeps the original size; SDL scales it into the window or the
-    // desktop (logical size, black borders) and maps mouse coordinates back.
     const Settings displaySettings = loadSettings(defaultSettingsFile());
+    // The canvas keeps the original size; SDL scales it into the window or the
+    // desktop (logical size, black borders) and maps mouse coordinates back. The
+    // optional widescreen extension widens it to the display's aspect.
+    const bool widescreen = options.widescreen < 0 ? displaySettings.widescreen : options.widescreen != 0;
+    const ScreenLayout baseLayout = layoutForScreen(display.w, display.h, options.canvasWidth);
+    const ScreenLayout layout =
+        widescreen ? widenLayout(baseLayout, widescreenExtra(baseLayout, options.aspectW ? options.aspectW : display.w,
+                                                             options.aspectH ? options.aspectH : display.h))
+                   : baseLayout;
     const bool startFullscreen = options.fullscreen || (displaySettings.fullscreen && !options.smokeTest);
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
         SDL_CreateWindow("Die total verrueckte Rallye", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, layout.width,
                          layout.height, SDL_WINDOW_RESIZABLE | (startFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0)),
         SDL_DestroyWindow);
     if (!window) throw std::runtime_error(SDL_GetError());
+    if (options.windowW > 0 && options.windowH > 0) SDL_SetWindowSize(window.get(), options.windowW, options.windowH);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer(
         SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
     if (!renderer) throw std::runtime_error(SDL_GetError());
     if (SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height) != 0
-        || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale ? SDL_TRUE : SDL_FALSE) != 0)
+        || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale && layout.extra() == 0 ? SDL_TRUE : SDL_FALSE) != 0)
         throw std::runtime_error(SDL_GetError());
     ControllerInput controller; // joystick 1 of the original (seg2:8A30), any SDL game controller
     std::map<int, std::string> texts; // language file (texts in UTF-8)
@@ -68,16 +76,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
     // The Flugzeug rows 5602 + i as towns (seg3:32CE: _fstricmp on the names), for the
     // extension's computers; the same mapping as the booking below.
-    {
-        std::array<int, 8> airports{-1, -1, -1, -1, -1, -1, -1, -1};
-        for (size_t row = 0; row < airports.size(); ++row) {
-            const auto it = screen.texts().find(5602 + int(row));
-            if (it == screen.texts().end()) continue;
-            for (size_t t = 0; t < towns.size() && airports[row] < 0; ++t)
-                if (sameName(oemToUtf8(towns[t].name), it->second)) airports[row] = int(t);
-        }
-        play.game().setAirports(airports);
-    }
+    play.game().setAirports(flightAirports(screen.texts(), towns));
     // The command-line game (not a loaded one) takes the extension from the settings.
     if (options.loadSlot < 0)
         play.game().setComputerExtraCards(screen.settings().computerExtraCards || options.computerExtraCards);
@@ -89,11 +88,16 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     int musicEnabled = screen.settings().value[Settings::Midi];
     music.setEnabled(musicEnabled != 0);
     music.interrupt(options.title ? "i" : "a1");
-    MusicMenu musicMenu(renderer.get(), layout.width, layout.height, music, musicConfig, std::move(musicIssues));
+    DisplayControl displayControl(window.get(), renderer.get(), layout);
+    RecompMenuView recompMenu(renderer.get(), root, layout, screen.textRenderer(), DTVR_VERSION); // Esc (recomb)
     // Declare the audio device after the decoder so it closes before the decoder.
     SoundPlayer sound(root); // WaveMix (seg1:2C9B)
     sound.setMusic(&music.stream());
     screen.setSound(&sound);
+    auto applySettings = [&](const Settings& s) { // saved; the OPTION window shows the same smoothing
+        screen.applySettings(s);
+        screen.options().setTextSmoothing(s.textSmoothing);
+    };
     auto report = [&] {
         play.printLog(std::cout);
         SDL_SetWindowTitle(window.get(), play.title().c_str());
@@ -253,6 +257,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.openSurroundings) screen.startSurroundings();
     if (options.zoom) screen.toggleZoom();
     if (options.openOptions) screen.options().open(screen.settings());
+    if (options.recompMenuPage >= 0) {
+        recompMenu.menu().open(screen.settings(), true);
+        recompMenu.menu().focusPage(options.recompMenuPage);
+        recompMenu.menu().activate(); // into the page's entries
+    }
     if (options.demo) { menu.close(); command(1024); }
     if (options.victory) { music.interrupt("s"); screen.startVictory(SDL_GetTicks()); }
     if (options.balance) screen.startBalance(SDL_GetTicks());
@@ -451,7 +460,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             music.interrupt(play.game().finishMusic());
             screen.startFinish(play.game().finishField(), play.game().finishPlayer(), SDL_GetTicks());
         }
-        const bool modal = musicMenu.open() || screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
+        const bool modal = recompMenu.isOpen() || screen.messages().open() || menu.isOpen() || cards.isOpen() || saveDialog.isOpen()
                            || estates.statistics() || screen.title() || screen.overview().isOpen()
                            || screen.surroundings() || screen.options().isOpen() || screen.finish().active()
                            || screen.victory().active() || screen.balance().active()
@@ -476,7 +485,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         // [Setup] TimeOut: the 1000 ms timer of seg2:3ABD runs while the window is active.
         play.game().setTimeLimit(screen.settings().value[Settings::TimeOut] != 0);
-        if (play.game().timeLimitRunning() && !screen.title()
+        if (play.game().timeLimitRunning() && !screen.title() && !recompMenu.isOpen() // paused in the recomb menu
             && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS || options.smokeTest)) {
             if (int(SDL_GetTicks() - timeLimitTick) >= 1000) {
                 timeLimitTick += 1000;
@@ -502,33 +511,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (event.type == SDL_QUIT) running = false;
             controller.handleEvent(event);
             if (event.type == SDL_WINDOWEVENT) {
-                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) // keep the canvas centred and scaled
-                    SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height);
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) music.setFocused(false);
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) music.setFocused(true);
             }
-            if (event.type == SDL_KEYDOWN && !event.key.repeat
-                && (event.key.keysym.sym == SDLK_F11
-                    || (event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT)))) {
-                Settings s = screen.settings(); // window / fullscreen (recomb, [Display])
-                s.fullscreen = !(SDL_GetWindowFlags(window.get()) & SDL_WINDOW_FULLSCREEN_DESKTOP);
-                if (SDL_SetWindowFullscreen(window.get(), s.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0) {
-                    SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height); // new output size
-                    screen.applySettings(s);
+            { // F11 / Alt+Enter, F12 and the window size (recomb, [Display])
+                Settings s = screen.settings();
+                bool changed = false;
+                if (displayControl.handle(event, s, changed)) {
+                    if (changed) applySettings(s);
+                    heldArrow = SDLK_UNKNOWN;
+                    continue;
                 }
-                else
-                    std::cerr << "Vollbild: " << SDL_GetError() << "\n";
-                heldArrow = SDLK_UNKNOWN;
-                continue;
-            }
-            if (event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym == SDLK_F12) {
-                Settings s = screen.settings(); // text smoothing (recomb, [Display] TextSmoothing)
-                s.textSmoothing = (s.textSmoothing + 1) % 3;
-                screen.applySettings(s);
-                screen.options().setTextSmoothing(s.textSmoothing);
-                static const char* const kModes[3] = {"Original", "Bildgröße", "Bildschirmauflösung"};
-                std::cout << "Schriftglättung: " << kModes[s.textSmoothing] << "\n";
-                continue;
             }
             if (screen.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
                 continue; // the FLIC window runs modally (seg6:0FB4)
@@ -549,18 +542,35 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     || event.type == SDL_MOUSEBUTTONUP || closed)
                     continue;
             }
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8) {
-                if (!event.key.repeat) musicMenu.toggle();
+            // F8: Audio of the recomb menu, except where rally.exe's button windows use F1-F8
+            // (OPTION seg1:B60A, PLAYER); the options window has its own entry for it.
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8
+                && (recompMenu.isOpen() || (!screen.options().isOpen() && !screen.setup().isOpen()))) {
+                if (event.key.repeat) {}
+                else if (recompMenu.isOpen()) recompMenu.menu().close();
+                else recompMenu.menu().openAt(screen.settings(), !screen.title(), "Audio");
                 heldArrow = SDLK_UNKNOWN;
                 continue;
             }
-            if (musicMenu.open()) {
-                if (musicMenu.handle(event)) {
-                    Settings settings = screen.settings();
-                    settings.value[Settings::Midi] = music.enabled();
-                    screen.applySettings(settings);
-                    musicEnabled = settings.value[Settings::Midi];
+            if (recompMenu.isOpen()) { // the recomb menu over the paused game (docs/pause-menu.md)
+                using Action = RecompMenu::Action;
+                const Action a = recompMenu.handle(event);
+                if (a == Action::Changed) {
+                    applySettings(recompMenu.menu().settings());
+                    displayControl.apply(screen.settings());
+                    if (screen.options().isOpen()) screen.options().open(screen.settings()); // shows the same switches
+                } else if (a == Action::MusicChanged) {
+                    std::string error;
+                    if (!applyMusicChoice(music, recompMenu.menu().music(), musicConfig, error))
+                        std::cerr << "Musik: " << error << "\n";
+                } else if (a != Action::None && a != Action::Resume) {
+                    recompMenu.menu().close();
+                    if (a == Action::SaveGame) screen.saveDialog().open(true);       // as Spiel speichern (1062)
+                    else if (a == Action::LoadGame) screen.saveDialog().open(false);
+                    else if (a == Action::OriginalMenu) openMenu("RIGHTBTN");
+                    else if (a == Action::Quit) askQuit(false);
                 }
+                heldArrow = SDLK_UNKNOWN;
                 continue;
             }
             if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
@@ -585,9 +595,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (menu.isOpen()) {
+                // Recomb deviation: in MAIN, Escape would post the checked item "Neues Spiel"
+                // (seg5:543D); it opens the recomb menu instead. Other menus keep seg5:543D.
+                if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && menu.name() == "MAIN") {
+                    if (!event.key.repeat) recompMenu.menu().open(screen.settings(), false);
+                    continue;
+                }
                 const int id = menu.handle(event);
                 if (const int s = menu.takeSound(); s >= 0) sound.play(2, s);
                 if (id) command(id);
+                else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && !event.key.repeat)
+                    recompMenu.menu().open(screen.settings(), !screen.title()); // Escape does nothing here in rally.exe
                 continue;
             }
             const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
@@ -638,8 +656,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (screen.options().isOpen()) {
-                const OptionsView::Result r = screen.options().handle(event);
+                const OptionsView::Result r = screen.options().handle(toStage(event, layout));
                 if (const int fx = screen.options().takeSound(); fx >= 0) sound.play(2, fx);
+                if (r == OptionsView::Result::RecompMenu) { // graphics, sound sets and more (recomb)
+                    recompMenu.menu().openAt(screen.settings(), !screen.title(), "Grafik");
+                    continue;
+                }
                 if (r != OptionsView::Result::None) screen.applySettings(screen.options().settings());
                 if (r == OptionsView::Result::Close) {
                     screen.options().close();
@@ -674,7 +696,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (screen.setup().isOpen()) { // seg1:0A60
-                const SetupView::Result r = screen.setup().handle(event);
+                const SetupView::Result r = screen.setup().handle(toStage(event, layout));
                 if (const int fx = screen.setup().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r == SetupView::Result::Start) {
                     pendingSeed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
@@ -761,9 +783,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (!r.town.empty()) {
                     screen.flight().close();
                     // seg3:32CE: the town whose name equals the booked one (_fstricmp).
-                    int town = -1;
-                    for (size_t t = 0; t < towns.size() && town < 0; ++t)
-                        if (sameName(oemToUtf8(towns[t].name), r.town)) town = int(t);
+                    const int town = townByName(towns, r.town);
                     if (town >= 0 && play.game().playCard(flightCardSlot, town)) report();
                 }
                 continue;
@@ -938,26 +958,20 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
-            if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN"); // seg4:01D1
+            // seg4:01D1: Escape and Backspace open RIGHTBTN; the recomb menu takes Escape
+            // (its entry "Originales Spielmenü" leads to RIGHTBTN).
+            if (key == SDLK_ESCAPE && !risiko && !screen.title() && !event.key.repeat)
+                recompMenu.menu().open(screen.settings(), true);
+            else if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN");
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();
         }
-        SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
-        SDL_RenderClear(renderer.get());
+        displayControl.beginFrame();
         screen.draw();
-        musicMenu.draw(screen.textRenderer(), screen.options().isOpen());
+        if (recompMenu.isOpen()) recompMenu.menu().setMusic(musicMenuState(music, musicIssues));
+        recompMenu.draw();
+        displayControl.endFrame();
         const bool last = options.smokeTest && frame >= options.frames;
-        if (!options.screenshot.empty() && (last || !options.smokeTest)) {
-            int outW = layout.width, outH = layout.height; // the scaled output, borders included
-            SDL_GetRendererOutputSize(renderer.get(), &outW, &outH);
-            Surface shot(SDL_CreateRGBSurfaceWithFormat(0, outW, outH, 32, SDL_PIXELFORMAT_ARGB8888), SDL_FreeSurface);
-            // ReadPixels(NULL) reads the viewport; without the logical size it is the whole output.
-            SDL_RenderSetLogicalSize(renderer.get(), 0, 0);
-            SDL_RenderSetViewport(renderer.get(), nullptr);
-            const bool read = shot && SDL_RenderReadPixels(renderer.get(), nullptr, SDL_PIXELFORMAT_ARGB8888,
-                                                           shot->pixels, shot->pitch) == 0;
-            SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height);
-            if (!read || SDL_SaveBMP(shot.get(), options.screenshot.c_str()) != 0) throw std::runtime_error(SDL_GetError());
-        }
+        if (!options.screenshot.empty() && (last || !options.smokeTest)) displayControl.screenshot(options.screenshot);
         SDL_RenderPresent(renderer.get());
         if (last) break;
         SDL_Delay(16);

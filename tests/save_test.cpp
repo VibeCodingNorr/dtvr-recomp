@@ -202,12 +202,13 @@ int main() {
     CHECK(Settings::decode("Views=7\nMidi=x\nWave=0\n").value[Settings::Views] == 1);
     CHECK(Settings::decode("Wave=0\n").value[Settings::Wave] == 0 && loadSettings(dir / "none.ini").value[0] == 1);
     // [Display] (round 63): window by default, whole-number scaling on.
-    CHECK(!back.fullscreen && back.integerScale);
+    CHECK(!back.fullscreen && back.integerScale && !back.widescreen); // widescreen is optional, off
     settings.fullscreen = true;
     settings.integerScale = false;
+    settings.widescreen = true;
     CHECK(saveSettings(settingsFile, settings, error));
     const Settings shown = loadSettings(settingsFile);
-    CHECK(shown.fullscreen && !shown.integerScale && shown.value == settings.value);
+    CHECK(shown.fullscreen && !shown.integerScale && shown.widescreen && shown.value == settings.value);
     std::filesystem::remove_all(dir);
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

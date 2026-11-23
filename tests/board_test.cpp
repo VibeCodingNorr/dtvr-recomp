@@ -62,6 +62,10 @@ int main() {
     CHECK(towns[0].x == 86 && towns[0].y == 96);
     CHECK(oemToUtf8(towns[0].name) == "B\xC3\xB6rse");
     CHECK(oemToUtf8(towns[0].entries[0].name) == "Caf\xC3\xA9");
+    // Town names compared without regard to ASCII case only (seg10:22CA); Flugzeug rows 5602+.
+    CHECK(townByName(towns, "b\xC3\xB6RSE") == 0 && townByName(towns, "B\xC3\x96rse") == -1 && townByName(towns, "") == -1);
+    const auto airports = flightAirports({{5602, "B\xC3\xB6rse"}, {5605, "Nirgendwo"}}, towns);
+    CHECK(airports[0] == 0 && airports[1] == -1 && airports[3] == -1);
     CHECK(towns[0].entries[0].value == 100000 && towns[0].entries[0].words[2] == 100);
     CHECK(throws([&] { parseTowns(tow, 2); }));
     // Name without terminator stops at its field size.

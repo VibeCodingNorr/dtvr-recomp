@@ -132,24 +132,24 @@ void OverviewView::draw(const Game& game) {
     }
     if (!layer_) {
         layer_.reset(SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
-                                       layout_.map.w, layout_.map.h));
+                                       layout_.overview.w, layout_.overview.h));
         if (!layer_) throw std::runtime_error(SDL_GetError());
     }
     compose(game);
     // seg1:AB95-AC9D: half-size crop at nine overlapping positions. Panning uses
     // full window dimensions, not the (slightly smaller) map.bmp dimensions.
-    SDL_Rect source{0, 0, layout_.map.w, layout_.map.h};
+    SDL_Rect source{0, 0, layout_.overview.w, layout_.overview.h};
     if (zoomed_) {
-        source = {(cell_ % 3) * (layout_.map.w / 4 - 4), (cell_ / 3) * (layout_.map.h / 4 - 4),
-                  layout_.map.w / 2, layout_.map.h / 2};
+        source = {(cell_ % 3) * (layout_.overview.w / 4 - 4), (cell_ / 3) * (layout_.overview.h / 4 - 4),
+                  layout_.overview.w / 2, layout_.overview.h / 2};
     }
     // OUTLINE has the map window's rectangle and the 8-pixel border of seg6:1A68
     // (seg1:AAD4); the paint stretches the source to the window size (DS:8C5A / 8C5C,
     // seg1:A30C) at (0, 0) of the client (seg1:AA80), clipped to the client area.
-    const SDL_Rect window{layout_.map.x, layout_.map.y, layout_.map.w, layout_.map.h};
+    const SDL_Rect window{layout_.overview.x, layout_.overview.y, layout_.overview.w, layout_.overview.h};
     drawWindowBorder(renderer_, sprite_, window, BorderSize::Thin);
     const SDL_Rect client = borderClient(window, BorderSize::Thin);
-    const SDL_Rect destination{client.x, client.y, layout_.map.w, layout_.map.h};
+    const SDL_Rect destination{client.x, client.y, layout_.overview.w, layout_.overview.h};
     {
         const ClipGuard guard(renderer_);
         SDL_RenderSetClipRect(renderer_, &client);
@@ -161,7 +161,7 @@ void OverviewView::draw(const Game& game) {
 void OverviewView::compose(const Game& game) {
     LayerTarget target(renderer_, layer_.get());
     // Source bitmap of the map window (DS:8C4E..8C54); compose all marks before zoom.
-    const SDL_Rect window{0, 0, layout_.map.w, layout_.map.h};
+    const SDL_Rect window{0, 0, layout_.overview.w, layout_.overview.h};
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &window);
     const SDL_Rect dst{window.x, window.y, mapSize_, mapSize_};

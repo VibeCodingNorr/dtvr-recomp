@@ -30,14 +30,14 @@ is claimed.
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
 | Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Intro, sights, subtitles, ambient map animations, the stage count window (with a slider as a recomb addition) and the forced sale. Open: remaining presentation details. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
-| Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. F8 controls set/volume; remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
-| Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and F8 selection. | [Soundtrack builder](docs/soundtracks.md) |
+| Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. Sound set and volume on the Audio page of the recomb menu (F8); remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
+| Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and selection in the recomb menu (F8). | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view; arrow-key driving and the original mouse steering cross (MCTRL) and game controllers as the original joystick, with the step and arrival rules. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
 | Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn. Driver names come from the language file at run time. Not yet: the computer answer to investment offers (they decline). | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
-| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick, mouse wheel where the original has page arrows, F8 music menu, F12 text smoothing. Planned: rebinding, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
-| Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
+| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick, mouse wheel where the original has page arrows, recomb menu (Escape / F8), F12 text smoothing. Planned: rebinding, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
+| Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); optional widescreen with a wider map window (`--widescreen`, `[Display] Widescreen`, [layout](src/layout.cpp)); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
 <details>
@@ -260,7 +260,7 @@ For the known mixed-mode image, installation also converts six recovered audio
 regions to Ogg Vorbis in `data/music/` (requires FFmpeg/libvorbis and ffprobe).
 Original CD track IDs remain unverified. These six recordings alone do not supply
 a complete soundtrack. The installer prepares a complete original-MIDI Ogg pack by default for
-[native playback and F8 selection](docs/native-music.md).
+[native playback and sound set selection](docs/native-music.md).
 
 Read-only preflight and later installation verification are available separately:
 
@@ -282,21 +282,35 @@ number of stages (1–300).
 | Enter | Spin the slot machine, stop its reels / close it, confirm |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
-| Escape / Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
+| Escape | Recomb menu (pause, graphics, audio, game, controls; recomb) where rally.exe has no Escape action; in windows: back |
+| Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
 | 1–4 | Pause length of the scenes |
 | Q | Quit question |
 | F1–F8, F10 | Buttons of the button windows (player setup, options, cards) |
 | F9 | Player setup: switch "Computer spielen alle Karten" (recomb) |
-| F8 | Music and Klangset menu (recomb) |
+| F8 | Audio page of the recomb menu (not in the options and player setup windows, which use F8 themselves) |
 | F11 / Alt+Enter | Window / fullscreen (recomb) |
 | F12 | Text smoothing: Original / canvas size / screen resolution (recomb) |
 | Mouse wheel | Scroll lists that have page arrows in the original (recomb) |
 
-**F8** opens music controls from the game/title/options menus: Up/Down selects a
-complete installed Klangset, Left/Right adjusts volume, Space toggles music and
-Escape returns. Set changes apply at the next piece; settings persist locally.
+**Escape** opens the recomb menu over the paused game (computers, the time limit and
+the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
+save, load, original RIGHTBTN menu, quit with the original question),
+Grafik, Audio, Spiel and Steuerung. Switches marked ORIGINAL are those of the
+original options window; the others are recomb settings in `[Display]` /
+`[Extensions]`. Changes apply at once and persist, Breitbild at the next start. In
+the original turn menu Escape did nothing; dialogs keep their Escape. In the title
+menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
+the recomb opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
+keep the original Escape (Weiter spielen, Zurück).
+The options window has a recomb entry "Weitere Einstellungen" that opens the menu.
+
+**Audio** (also F8): Musik (the original MIDI switch), Klangset (installed complete
+Ogg sets; the change applies at the next piece), Musiklautstärke (slider, steps of
+5 %), the current piece, effects, speech and subtitles. Sound set and volume persist
+in `music.ini`.
 
 **Game controllers** (Xbox and other pads) work like the original joystick while the
 option Joystick is on: d-pad or left stick steer and move through menus, A confirms
@@ -308,7 +322,7 @@ option Joystick is on: d-pad or left stick steer and move through menus, A confi
 
 Settings live in `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (else
 `~/.config/dtvr-recomb/settings.ini`): `[Setup]` the original options, `[Default]
-Rounds` the stage count, `[Display]` `Fullscreen`, `IntegerScale` (0 stretches to
+Rounds` the stage count, `[Display]` `Fullscreen`, `Widescreen`, `IntegerScale` (0 stretches to
 the largest fitting size with the canvas proportions) and `TextSmoothing` (0–2),
 `[Extensions]` `ComputerExtraCards`. Saves are stored in the user's data directory.
 
@@ -324,6 +338,16 @@ players, together 1–8; one human alone gets a computer opponent; `--rounds N` 
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
 hand slot (37 of 41 card types are playable, the other four are passive; with three or more players **T**
+**Widescreen** (optional recomb extension, off by default): `[Display] Widescreen=1`
+or `--widescreen` widens the canvas to the display's aspect (at most 21:9; `--aspect
+16:9` chooses one, `--no-widescreen` overrides the setting). The map window grows and
+shows more of the world; portrait, hand stack and info panel move to the right edge.
+Title, player setup, options and the overview keep their original 4:3 size, centred.
+The wide canvas always fills the display's height (`IntegerScale` applies to 4:3 only).
+At a fractional scale the frame is drawn at the next whole multiple and scaled to the
+display once (no gaps between window border pieces).
+Read at start.
+
 chooses the target; Nägel waits for an arrow key, Flugzeug flies to the current
 destination). When the professor or the football club makes an offer, **I**
 invests half the cash (rounded to 1,000) and **N** declines. After stopping in a town the terminal lists its
@@ -369,7 +393,7 @@ ISO after installation; subsequent launches use the installed local data.
 | Ctrl+1–8 | With `--play`, after stopping in a town: play a property card |
 | T | With `--play`: choose the card target player (three or more players) |
 | I / N | With `--play`: accept / decline a professor or football club investment |
-| Escape | Exit (with `--game`: open the menu `RIGHTBTN`; quit through Hauptmenü → Rallye beenden) |
+| Escape | Exit (with `--game`: open the recomb menu; Backspace opens `RIGHTBTN`) |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
 For a specific seasonal view, use `play --world --month 0` (months are 0–11).

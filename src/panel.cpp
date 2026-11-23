@@ -30,7 +30,7 @@ ScreenRect panelSlot(const ScreenLayout& layout, int slot) {
          {12, 88, 255, 255}, {124, 88, 162, 107}, {12, 119, 255, 137}, {132, 122, 152, 113}},
         {{0, 5, 255, 255}, {0, 25, 255, 50}, {8, 55, 255, 255}, {97, 55, 129, 71},
          {8, 77, 255, 255}, {97, 77, 129, 93}, {8, 102, 255, 251}, {104, 105, 120, 114}}};
-    const int res = layout.width == 1024 ? 0 : layout.width == 800 ? 1 : 2;
+    const int res = layout.resolution();
     const ScreenRect client = layout.playerInfo();
     const int* s = kSlots[res][slot & 7];
     const int left = s[0] == 255 ? 0 : s[0], top = s[1] == 255 ? 0 : s[1];

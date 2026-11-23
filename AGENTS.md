@@ -121,7 +121,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
   `src/stages_view.{hpp,cpp}`: the stage count window TEMP with the slider;
-  `src/overview_view.{hpp,cpp}`: the overview map; `src/settings.{hpp,cpp}` (no SDL) and
+  `src/overview_view.{hpp,cpp}`: the overview map; `src/recomp_menu.{hpp,cpp}` (no SDL) and
+  `src/recomp_menu_view.{hpp,cpp}`: the recomb Escape menu (docs/pause-menu.md);
+  `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
   `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance;
@@ -158,7 +160,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   packs and retained rollback installation. Never hash mutable saves as managed
   assets or modify XDG settings; run smoke checks with isolated XDG directories.
 - `src/music_{catalog,stream,player,menu}.{hpp,cpp}`: complete local Ogg catalogs,
-  bounded worker decoding, presentation-only cue control and F8 sound-set selection.
+  bounded worker decoding, presentation-only cue control and sound-set selection on the recomb menu's Audio page (`music_menu`).
   One 44.1 kHz stereo device mixes music and effects. No file I/O or waiting in
   the audio callback; stop/error must never count as natural completion.
 - `docs/native-music.md`: supported triggers, timing limitations, preferences and

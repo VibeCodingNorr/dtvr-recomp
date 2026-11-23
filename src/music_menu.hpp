@@ -1,30 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-only
+// The music page of the recomb menu (src/recomp_menu.hpp, Audio): the installed
+// sound sets, volume and current piece of the MusicPlayer, and applying a choice.
+// Presentation only: nothing here touches game rules or the RNG.
 #pragma once
 
 #include "music_player.hpp"
-#include "text.hpp"
+#include "recomp_menu.hpp"
+
+#include <filesystem>
+#include <string>
+#include <vector>
 
 namespace dtvr {
 
-// Local audio overlay (F8), available above the original menu/options windows.
-class MusicMenu {
-public:
-    MusicMenu(SDL_Renderer* renderer, int width, int height, MusicPlayer& player,
-              std::filesystem::path preferences, std::vector<std::string> issues);
-    bool open() const { return open_; }
-    void toggle() { open_ = !open_; }
-    // true if local settings changed; caller persists the original Midi switch.
-    bool handle(const SDL_Event& event);
-    void draw(TextRenderer& text, bool hint = false);
-private:
-    void changePack(int delta);
-    void save();
-    SDL_Renderer* renderer_;
-    int width_, height_;
-    MusicPlayer& player_;
-    std::filesystem::path preferences_;
-    std::vector<std::string> issues_;
-    bool open_ = false;
-};
+// What the Audio page shows; `issues` are the sound sets the catalog rejected.
+RecompMenu::Music musicMenuState(const MusicPlayer& player, const std::vector<std::string>& issues);
+// Applies the chosen set (at the next cue boundary) and volume and saves music.ini;
+// false with `error` when the preferences could not be written.
+bool applyMusicChoice(MusicPlayer& player, const RecompMenu::Music& music, const std::filesystem::path& preferences,
+                      std::string& error);
 
 } // namespace dtvr

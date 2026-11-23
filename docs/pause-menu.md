@@ -1,8 +1,18 @@
 # Native start and Escape menus
 
-Status: proposed interface scope, not implemented. The current viewer's Escape
-key exits the program. Introduce these menus when a native game interface exists;
-do not change the shared input/renderer files as part of audio research.
+Status: a first in-game sample is implemented (`src/recomp_menu.{hpp,cpp}` model,
+no SDL; `src/recomp_menu_view.{hpp,cpp}` drawing and input; tests in
+`tests/recomp_menu_test.cpp`). Escape opens it where rally.exe has no Escape action
+(no menu, or a menu without a checked item such as ONFIELD and the title menu);
+Backspace and the entry "Originales Spielmenü" keep RIGHTBTN. Deliberate deviation:
+in the title menu MAIN, rally.exe's Escape posts the checked item (seg5:543D:
+GETMENUSTATE & MF_CHECKED → WM_COMMAND), which is "Neues Spiel"; the recomb opens its
+menu there instead. MAIN1 (Weiter spielen) and RIGHTBTN (Zurück) keep seg5:543D. Pages: Pause, Grafik,
+Audio, Spiel, Steuerung. While it is open the game loop treats it as modal and the
+time limit stops. The Audio page holds sound set and music volume (F8 opens it;
+the former F8 overlay is gone); the options window opens the menu through its
+recomb entry "Weitere Einstellungen". Not yet: controller Menu button, effect and
+speech volume, help pages, multiplayer entries, a native start screen.
 
 ## Before a game
 

@@ -92,6 +92,25 @@ std::vector<Town> parseTowns(const std::vector<uint8_t>& d, uint16_t count) {
     return towns;
 }
 
+int townByName(const std::vector<Town>& towns, const std::string& name) {
+    auto lower = [](char c) { return c >= 'A' && c <= 'Z' ? char(c - 'A' + 'a') : c; };
+    for (size_t t = 0; t < towns.size(); ++t) {
+        const std::string town = oemToUtf8(towns[t].name);
+        if (town.size() != name.size()) continue;
+        bool same = true;
+        for (size_t i = 0; i < town.size() && same; ++i) same = lower(town[i]) == lower(name[i]);
+        if (same) return int(t);
+    }
+    return -1;
+}
+
+std::array<int, 8> flightAirports(const std::map<int, std::string>& texts, const std::vector<Town>& towns) {
+    std::array<int, 8> airports{-1, -1, -1, -1, -1, -1, -1, -1};
+    for (size_t row = 0; row < airports.size(); ++row)
+        if (const auto it = texts.find(5602 + int(row)); it != texts.end()) airports[row] = townByName(towns, it->second);
+    return airports;
+}
+
 std::string oemToUtf8(const std::string& in) {
     // Code page 850, bytes 0x80..0xFF.
     static const char16_t high[128] = {
