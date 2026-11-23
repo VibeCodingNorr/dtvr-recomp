@@ -1182,7 +1182,15 @@ shows while the player stands on the reached field (phase Arrived).
   then slides it down 0x100 >> 4 = 16 times by 16 pixels, each step followed by
   seg6:0CDF(20) (wait until 20 ms of TimerCount have passed since its last call;
   5 ms with DS:16); with the 265 pixel bitmaps it ends at y = −9. At the end
-  seg2:6B1D → seg2:67B8 slides it up the same way before DestroyWindow. The paint (seg2:6C2B) only blits
+  seg2:6B1D → seg2:67B8 slides it up the same way before DestroyWindow. *Round 115:*
+  the slot procedure keeps a state DS:A780 that WM_KEYDOWN Enter / Space advance
+  (seg2:6B4A; Escape / Backspace go to seg2:69AD): 1 pulls the lever, 2 (reels
+  turning) ends the reels' runs at once (seg2:6AA2, state 3), 4 (set after the
+  count, seg2:7EAC) slides the window out and destroys it (seg2:6B08). For a
+  computer the wait loop seg2:65C4 posts the key itself after more than 0x1E
+  passes in state 4 (seg2:664E); for a human nothing does — the window stays
+  until Enter or Space. Rebuilt in `SlotView::key` (the human's lever is still
+  pulled by the spin command; a pass is taken as 20 ms). The paint (seg2:6C2B) only blits
   the slot DIB; palette entries 10–153 come from the slot bitmap (seg2:6C63).
   Computers pull the lever by posting 0x7EF.
 - **Reels** seg2:776A: value random(max) + 1 in DS:9584[i]; record 3 + i spins

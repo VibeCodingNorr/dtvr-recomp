@@ -73,30 +73,53 @@ SDL_Texture* SlotView::frame(int reels, const std::string& name) {
     return raw;
 }
 
-void SlotView::start(const std::vector<int>& reels, Uint32 now) {
+void SlotView::start(const std::vector<int>& reels, Uint32 now, bool computer) {
     reels_ = reels;
     if (reels_.size() > 5) reels_.resize(5);
     started_ = now + kSlideTime; // seg2:6597: the window slides in first
+    computer_ = computer;
+    stoppedEarly_ = 0;
+    released_ = kNever;
+}
+
+Uint32 SlotView::stopTime() const {
+    const Uint32 regular = started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs;
+    return stoppedEarly_ != 0 && stoppedEarly_ < regular ? stoppedEarly_ : regular;
+}
+
+Uint32 SlotView::releaseTime() const {
+    // seg2:664E: a computer's loop posts the key after 30 passes in state 4; a human
+    // presses Enter or Space (seg2:6B08 -> 67B8).
+    return computer_ ? stopTime() + kComputerHold : released_;
 }
 
 bool SlotView::stopped(Uint32 now) const {
     if (reels_.empty()) return true;
-    return now >= started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs;
+    return now >= stopTime();
 }
 
 bool SlotView::active(Uint32 now) const {
     if (reels_.empty()) return false;
-    const int last = stopTick(int(reels_.size()) - 1);
-    // The result stays visible for a moment (assumption), then the window slides out.
-    return now < started_ + Uint32(last) * kTickMs + 1000 + kSlideTime;
+    const Uint32 out = releaseTime();
+    return out == kNever || now < out + kSlideTime;
+}
+
+bool SlotView::key(Uint32 now) {
+    if (reels_.empty() || computer_ || now < started_) return false;
+    if (!stopped(now)) { // seg2:6AA2: state 2 ends the reels' runs at once (state 3)
+        stoppedEarly_ = now;
+        return true;
+    }
+    if (released_ == kNever) { released_ = now; return true; } // state 4: slide out
+    return false;
 }
 
 int SlotView::slideOffset(Uint32 now) const {
     const Uint32 in = started_ - kSlideTime;
     if (now < started_) // seg2:6777: each step first moves, then waits
         return kSlideStep * std::min(kSlideSteps, int((now - in) / kSlideMs) + 1);
-    const Uint32 out = started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs + 1000;
-    if (now < out) return kSlideStep * kSlideSteps;
+    const Uint32 out = releaseTime();
+    if (out == kNever || now < out) return kSlideStep * kSlideSteps;
     return kSlideStep * std::max(0, kSlideSteps - (int((now - out) / kSlideMs) + 1)); // seg2:6817
 }
 
@@ -126,12 +149,14 @@ void SlotView::draw(const ScreenRect& map, Uint32 now) {
         const int stop = stopTick(i);
         const int v = std::clamp(reels_[size_t(i)], 0, 6);
         std::string name;
-        if (tick < stop - 4) name = "drehung" + std::to_string(tick / 2 % 4 + 1);
+        const bool early = stoppedEarly_ != 0 && now >= stoppedEarly_; // seg2:6AA2
+        if (early) { name = "walze_" + std::to_string(v); sum += reels_[size_t(i)]; }
+        else if (tick < stop - 4) name = "drehung" + std::to_string(tick / 2 % 4 + 1);
         else if (tick < stop) name = "walze_" + std::to_string(v) + "h";
         else { name = "walze_" + std::to_string(v); sum += reels_[size_t(i)]; }
         blit(name, kReelX[n - 1][i], kReelY[n - 1][i]);
     }
-    if (tick >= stopTick(0)) { // seg2:7C0A updates the sum when a reel stops
+    if (tick >= stopTick(0) || (stoppedEarly_ != 0 && now >= stoppedEarly_)) { // seg2:7C0A updates the sum
         blit("count_" + std::to_string(sum / 10 % 10), kCountX[n - 1][0], kCountY[n - 1]);
         blit("count_" + std::to_string(sum % 10), kCountX[n - 1][1], kCountY[n - 1]);
     }

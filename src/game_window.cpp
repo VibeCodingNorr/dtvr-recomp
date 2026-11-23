@@ -637,6 +637,15 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 }
                 continue;
             }
+            // SLOT (seg2:6855) has the focus while it is on the map: Enter and Space stop the
+            // reels or let it slide out (seg2:6B4A); other input waits (modal).
+            if (screen.slotActive(SDL_GetTicks()) && !screen.title()) {
+                if (event.type == SDL_KEYDOWN && !event.key.repeat
+                    && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER
+                        || event.key.keysym.sym == SDLK_SPACE))
+                    screen.slotKey(SDL_GetTicks());
+                if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) continue;
+            }
             if (screen.overview().isOpen()) { screen.overview().handle(event); continue; }
             if (screen.handleSurroundings(event)) continue;
             if (screen.stages().isOpen()) { // seg8:08D6, modal (seg6:0FB4)

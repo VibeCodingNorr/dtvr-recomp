@@ -723,7 +723,8 @@ void GameScreen::draw() {
     const Uint32 now = SDL_GetTicks();
     if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
         seenSpin_ = game_.spinSerial();
-        slot_.start(game_.lastReels(), now);
+        const int p = game_.currentPlayer();
+        slot_.start(game_.lastReels(), now, p >= 0 && game_.isComputer(p));
         reelsPending_ = true; // the reels turn once the window has slid in
     }
     if (reelsPending_ && slot_.running(now)) {

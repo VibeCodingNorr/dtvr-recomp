@@ -124,6 +124,7 @@ public:
     bool eventSceneActive(Uint32 now) const;
     // The slot machine is on the map (sliding in, turning, or sliding out; modal in rally.exe).
     bool slotActive(Uint32 now) const { return slot_.active(now); }
+    bool slotKey(Uint32 now) { return slot_.key(now); } // Enter / Space in the slot window
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,

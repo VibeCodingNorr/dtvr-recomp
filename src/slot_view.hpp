@@ -19,7 +19,12 @@ class SlotView {
 public:
     SlotView(SDL_Renderer* renderer, const std::filesystem::path& root);
     // Starts the animation for a new spin (reel values 1..6, one to five reels).
-    void start(const std::vector<int>& reels, Uint32 now);
+    // `computer`: the window slides out by itself after the count (seg2:664E);
+    // otherwise it waits for key().
+    void start(const std::vector<int>& reels, Uint32 now, bool computer);
+    // Enter / Space of a human (seg2:6B4A): while the reels turn they stop at once
+    // (seg2:6AA2), after the count the window slides out (seg2:6B08). True if used.
+    bool key(Uint32 now);
     bool active(Uint32 now) const;
     // The window has slid in and the reels turn (seg2:6597 returned).
     bool running(Uint32 now) const { return !reels_.empty() && now >= started_; }
@@ -34,6 +39,10 @@ public:
     static constexpr int kSlideSteps = 16, kSlideStep = 16; // seg2:675D: 0x100 >> 4 steps of 0x10
     static constexpr Uint32 kSlideMs = 20;                  // seg6:0CDF(0x14): TimerCount milliseconds
     static constexpr Uint32 kSlideTime = kSlideSteps * kSlideMs;
+    // seg2:6657: more than 0x1E passes of the loop seg2:65C4 in state 4; a pass is
+    // the idle pass of seg2:1C37, taken as 20 ms (assumption: seg6:0CDF(20)).
+    static constexpr Uint32 kComputerHold = 31 * 20;
+    static constexpr Uint32 kNever = 0xFFFFFFFFu;
     // Ticks until reel i shows its final face: (i + 3) * 2 turns of four frames at
     // two ticks each (DS:2398), then walze_<v>h for four ticks (DS:23BE ff.).
     static int stopTick(int reel) { return (reel + 3) * 2 * 4 * 2 + 4; }
@@ -49,6 +58,11 @@ private:
     std::map<std::string, Texture> textures_;               // per housing palette
     std::vector<int> reels_;
     Uint32 started_ = 0;  // the reels start after the slide-in
+    bool computer_ = false;
+    Uint32 stoppedEarly_ = 0;   // a human's key stopped the reels (0: not)
+    Uint32 released_ = kNever;  // a human's key after the count
+    Uint32 stopTime() const;
+    Uint32 releaseTime() const;
     int slideOffset(Uint32 now) const; // pixels the window has moved down from y = -height
 };
 

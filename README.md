@@ -182,7 +182,8 @@ is claimed.
 106. Messages close by themselves during computer turns (2.5 s × pause factor), as seg6:0FB4 does.
 107. A human's turn ends when the field's message or dialog closes (seg2:1618), without another Enter.
 108. The hand as a card stack under the portrait (seg3:0EE8); slot machine and event animations block the turn menu; ambient animations start staggered.
-109. *Next:* remaining presentation details (compare windows with rally.exe).
+109. Slot machine keys as seg2:6B4A: Enter / Space stop the reels, then let the window slide out; computers continue by themselves.
+110. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 
@@ -275,7 +276,7 @@ number of stages (1–300).
 
 | Key / input | Game window (as rally.exe unless marked) |
 | --- | --- |
-| Enter | Spin the slot machine, confirm |
+| Enter | Spin the slot machine, stop its reels / close it, confirm |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
 | Escape / Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
