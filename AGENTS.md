@@ -116,7 +116,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   contents (both no SDL).
 - `src/sdl_assets.{hpp,cpp}`: BMP/world loading and case-insensitive paths; `src/text.{hpp,cpp}`:
   GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`)
-  and `src/game_window.cpp` its flow (title, menus, dialogs, scenes, loop);
+  and `src/game_window.{hpp,cpp}` its flow (class GameWindow: set-up, title, menu commands, loop) with
+  `src/game_window_frame.cpp` (per frame), `src/game_window_input.cpp` (input order) and
+  `src/game_window_dialogs.cpp` (game dialogs);
   `src/slot_view.{hpp,cpp}`: the slot machine over the map; `src/message_view.{hpp,cpp}`: the
   message window (texts from `Game::takeNotices`); `src/menu_view.{hpp,cpp}`: the menu window
   (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window;
