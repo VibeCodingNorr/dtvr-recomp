@@ -16,6 +16,7 @@
 #include <SDL.h>
 
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -26,8 +27,16 @@ public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const int& canvasWidth, const int& canvasHeight);
+    // The game's commands at the points where rally.exe draws (round 144): `announce(i)`
+    // when the show master goes on to player i (seg8:8E38) returns its variant,
+    // `close()` at the closing lever (seg8:9605) returns the closing letter. Without
+    // them the entries' and `closing`'s values are used (--balance).
+    struct Commands {
+        std::function<int(size_t)> announce;
+        std::function<int()> close;
+    };
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,
-               Uint32 now);
+               Uint32 now, Commands commands = {});
     bool active() const { return active_; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     // seg8:8BDB: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
@@ -61,6 +70,7 @@ private:
     Texture background_{nullptr, SDL_DestroyTexture};
     std::map<std::string, Texture> frames_;
     std::vector<Game::BalanceEntry> entries_;
+    Commands commands_;
     SoundPlayer* sound_ = nullptr;
     SubtitleView* subtitles_ = nullptr;
     int intro_ = 0, closing_ = 4;

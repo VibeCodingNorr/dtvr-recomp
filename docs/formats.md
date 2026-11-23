@@ -2165,12 +2165,21 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   after the last *announced* player ([bp−0x7E] advances at seg8:913D), which also
   decides whether seg8:9605 draws. The rebuild draws all of them at the year change
   (deterministic; equal to the original whenever the show is watched to the lever).
-  Proposed faithful model (not implemented): make the balance an authoritative phase
-  with explicit commands — the view (or a headless driver, defaulting to "watched to
-  the end") sends "next player" before each seg8:8E38 draw, "closing lever" at the
-  pass of seg8:9605 and "end" — so rand() consumption follows the command log, not
-  wall-clock timing, and saves / replays / remote play stay deterministic. Rebuilt
-  in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
+  *Round 144, rebuilt as an authoritative phase:* the year balance hook suspends the
+  player change after the inflation (`TurnChange::suspended`, `Game::Phase::Balance`)
+  when a window shows it. The show sends commands at the original points:
+  `Game::balanceAnnounce` as the show master goes on to the next player (seg8:8E38,
+  rand() % 4), `Game::balanceClose` at the closing lever (seg8:9605, the letter after
+  the last announced player, seg8:913D) and `Game::balanceFinish` when it ends; the
+  finish resumes nextPlayer at seg1:8BC6 / 8B41 (credits cleared, month) with the
+  event trigger, sit-outs and Dr. Drago following in the original order. Escape or
+  a click before a draw skips it. Without a window (the terminal mode, tests) the
+  hook draws everything at once, the show watched to the end. The phase is never
+  saved (BILANZ is modal; the autosave waits). If `bil_leer.bmp` is missing the show
+  does not start (seg8:89C0) and the player change goes on without those draws;
+  the rebuild still takes the window's own rand() % 5 / % 4 (seg8:8C49 / 8C57) in that
+  case, which rally.exe would skip too (not modelled, needs a missing file).
+  Rules revision 40. Rebuilt in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
   pending click on Escape and the 500 passes counted from the `pos_` voice.
 - **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
   and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.

@@ -95,7 +95,7 @@ public:
     BalanceView& balance() { return balance_; }
     StageView& announcement() { return stage_; }
     bool startAnnouncement(int mode, int variant, Uint32 now);
-    bool startBalance(Uint32 now);
+    bool startBalance(Uint32 now, BalanceView::Commands commands = {});
     bool startVictory(Uint32 now);
     // seg5:0174 -> seg7:0000 before the title with [Setup] ShowIntro.
     bool startIntro(MsRandom& random, Uint32 now); // `random`: the session's generator

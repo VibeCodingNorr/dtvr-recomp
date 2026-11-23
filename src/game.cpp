@@ -509,6 +509,17 @@ void Game::advanceTurn() {
         }
         messages_.push_back("Hindernis bei (" + std::to_string(gone.x) + "," + std::to_string(gone.y) + ") ist weg");
     }
+    timeLimitActive_ = false; // seg2:0716 -> seg2:3A8E: DS:12 = 0, the timer stops
+    const auto change = nextPlayer(players_, current_, calendar_, rng_, turnHooks());
+    if (change.suspended) { // the year balance's show decides its remaining draws
+        balanceTurn_ = change;
+        phase_ = Phase::Balance;
+        return;
+    }
+    completeTurn(change);
+}
+
+TurnHooks Game::turnHooks() {
     TurnHooks hooks;
     hooks.chargeCredits = [this] { economy_.chargeCredits(activePlayers()); };
     hooks.settleMonth = [this] { economy_.settleMonth(); };
@@ -531,22 +542,60 @@ void Game::advanceTurn() {
         for (int p : activePlayers()) { // seg8:8E38: one announcement per player in play
             BalanceEntry e;
             e.player = p;
-            e.variant = rng_.rand() % 4;
+            e.variant = -1; // drawn when the show master announces the player (seg8:8E38)
             e.positive = !(middle - economy_.money(p).cash > economy_.money(p).propertyValue);
             e.letter = letter;
             letter = (letter + 1) % 7; // seg8:913D
             balance_.push_back(e);
         }
-        // seg8:95E5: the closing pos_ voice; assumption: the show runs until the lever
-        // is pulled (a human could close it earlier and skip the draw).
-        balanceClosing_ = letter == 4 ? 5 : letter == 5 ? 4 : rng_.rand() % 2 + 4;
+        balanceAnnounced_ = 0;
+        balanceClosed_ = false;
         ++balanceSerial_;
+        // With a window the show's input decides the remaining draws (seg8:8E38 per
+        // announced player, seg8:9605 at the closing lever; round 144): the change waits.
+        if (balanceWindow_) return true;
+        while (balanceAnnounce()) {} // headless: the show watched to the end
+        balanceClose();
+        return false;
     };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
-    timeLimitActive_ = false; // seg2:0716 -> seg2:3A8E: DS:12 = 0, the timer stops
-    const auto change = nextPlayer(players_, current_, calendar_, rng_, hooks);
+    return hooks;
+}
+
+bool Game::balanceAnnounce() { // seg8:8E38: the show master goes on to the next player
+    if (balanceAnnounced_ >= balance_.size()) return false;
+    balance_[balanceAnnounced_++].variant = rng_.rand() % 4;
+    return true;
+}
+
+bool Game::balanceClose() { // seg8:95E5..9613 at the closing lever
+    if (balanceClosed_) return false;
+    balanceClosed_ = true;
+    // The letter after the last announced player (seg8:913D advances it per player).
+    const int letter = (balanceChoice_ + int(balanceAnnounced_)) % 7;
+    balanceClosing_ = letter == 4 ? 5 : letter == 5 ? 4 : rng_.rand() % 2 + 4;
+    return true;
+}
+
+bool Game::balanceFinish() { // seg8:88C6 returns: seg1:8BC6, 8B41 and the rest of nextPlayer
+    if (phase_ != Phase::Balance) return false;
+    const TurnChange before = balanceTurn_;
+    TurnChange rest = nextPlayer(players_, current_, calendar_, rng_, turnHooks(), before.resumePlayer);
+    rest.satOut.insert(rest.satOut.begin(), before.satOut.begin(), before.satOut.end());
+    rest.texts.insert(rest.texts.begin(), before.texts.begin(), before.texts.end());
+    rest.monthsAdvanced += before.monthsAdvanced;
+    rest.yearsEnded += before.yearsEnded;
+    if (rest.suspended) {
+        balanceTurn_ = rest;
+        return true;
+    }
+    completeTurn(rest);
+    return true;
+}
+
+void Game::completeTurn(const TurnChange& change) {
     for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
     for (const auto& [text, p] : change.texts) {
         notice(text, {playerArg(p)});

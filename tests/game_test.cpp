@@ -281,6 +281,38 @@ int main() {
         CHECK(swap.setComputer(0, false) && !swap.isComputer(0));
     }
 
+    // The year balance as a phase (round 144): with a window the player change waits;
+    // watching the whole show draws what the headless game draws at once, ending it
+    // early skips the remaining announcements' and the closing lever's draws.
+    {
+        auto toBalance = [&](Game& g, bool window) {
+            g.setComputer(0, true);
+            g.setComputer(1, true);
+            g.setBalanceWindow(window);
+            for (int guard = 0; guard < 20000 && g.balanceSerial() == 0; ++guard) g.runComputerTurn();
+        };
+        Game headless(board, towns, 2, 40, 7, 1, nullptr, nullptr, false), watched(board, towns, 2, 40, 7, 1, nullptr, nullptr, false),
+            skipped(board, towns, 2, 40, 7, 1, nullptr, nullptr, false);
+        toBalance(headless, false);
+        toBalance(watched, true);
+        toBalance(skipped, true);
+        CHECK(headless.phase() != Game::Phase::Balance && watched.phase() == Game::Phase::Balance);
+        CHECK(watched.balanceEntries().size() == 2 && watched.balanceEntries()[0].variant == -1);
+        CHECK(!watched.roll() && !watched.endTurn()); // nothing else runs while the show is on
+        while (watched.balanceAnnounce()) {}
+        CHECK(watched.balanceClose() && !watched.balanceClose());
+        for (size_t i = 0; i < 2; ++i)
+            CHECK(watched.balanceEntries()[i].variant == headless.balanceEntries()[i].variant);
+        CHECK(watched.balanceClosing() == headless.balanceClosing());
+        const uint32_t afterShow = watched.sessionRandom().state();
+        CHECK(watched.balanceFinish() && watched.phase() != Game::Phase::Balance && watched.currentPlayer() >= 0);
+        CHECK(!watched.balanceFinish());
+        // Escape after the first announcement: player 2's draw and the closing draw are skipped.
+        CHECK(skipped.balanceAnnounce());
+        const uint32_t afterOne = skipped.sessionRandom().state();
+        CHECK(afterOne != afterShow && skipped.balanceEntries()[1].variant == -1);
+        CHECK(skipped.balanceFinish() && skipped.phase() != Game::Phase::Balance);
+    }
     // Year balance closing (round 92, seg8:95E5): pos_e / pos_f; letter 4 gives 5,
     // letter 5 gives 4, otherwise one more draw rand() % 2 + 4.
     {

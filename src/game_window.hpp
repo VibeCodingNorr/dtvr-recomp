@@ -110,6 +110,7 @@ private:
     std::vector<FilmCue> pendingFilms_;
     int finishSeen_, balanceSeen_, announceSeen_, risikoPressSeen_; // serials already shown
     bool victoryShown_ = false;
+    bool balanceShown_ = false; // a year balance's show was started for Game::Phase::Balance
     int shopSerial_ = -1;
     int targetCardSlot_ = -1; // hand slot waiting for the target choice (-2: Mitspieler)
     int flightCardSlot_ = -1; // hand slot of the Flugzeug card being booked

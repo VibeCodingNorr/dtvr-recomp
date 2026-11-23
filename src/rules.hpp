@@ -137,12 +137,18 @@ struct TurnChange {
     int yearsEnded = 0;
     std::vector<int> satOut;       // players that consumed a sit-out flag
     std::vector<std::pair<int, int>> texts; // (language text, player) announced on the way
+    // The year balance hook asked to wait (round 144): the change stopped after the
+    // inflation, before the credits are cleared; resume with nextPlayer(..., resumePlayer).
+    bool suspended = false;
+    int resumePlayer = -1;
 };
 // Callbacks so the economy runs at the original points of seg2:0784-07EB.
 struct TurnHooks {
     std::function<void()> chargeCredits;    // year end, before the settlement (seg1:8AA7)
     std::function<void()> settleMonth;      // every month advance (seg1:85F9)
-    std::function<void()> yearBalance;      // year end, after inflation: BILANZ (seg2:07C5 -> seg8:88C6)
+    // Year end, after inflation: BILANZ (seg2:07C5 -> seg8:88C6). True suspends the
+    // change until the show has ended (its draws follow the viewer's input).
+    std::function<bool()> yearBalance;
     std::function<void()> clearCredits;     // year end, after the balance (seg1:8B41)
     std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
@@ -156,8 +162,9 @@ struct TurnHooks {
 // cleared and the player sits out only while holding Dr. Drago (seg2:C00C, text
 // random(4)); otherwise bit 1 or bit 2 make the player sit out once (text random(2),
 // then the sit-out hook). The search continues after a sit-out.
+// `resumePlayer` >= 0 continues a suspended change right after the year balance.
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
-                      const TurnHooks& hooks = {});
+                      const TurnHooks& hooks = {}, int resumePlayer = -1);
 
 // Target player of a card (seg2:51EA): with one active player the first active
 // slot, with two the other active player, otherwise the requested active

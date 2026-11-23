@@ -63,7 +63,9 @@ struct FilmCue { int film = 0; int loops = 1; const char* sound = ""; };
 class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
 public:
-    enum class Phase { Roll, Move, Arrived, GameOver, Risiko };
+    // Balance (round 144): the year balance's show is running inside the player change;
+    // never saved (rally.exe's window is modal), so the save format keeps 0..Risiko.
+    enum class Phase { Roll, Move, Arrived, GameOver, Risiko, Balance };
 
     // `map` and `props` are optional; without them border barriers and the sea
     // route test of the robbers are not applied. A single human gets a computer
@@ -317,6 +319,16 @@ public:
     struct BalanceEntry { int player = -1; int variant = 0; bool positive = true; int letter = 0; };
     int balanceIntro() const { return balanceIntro_; }
     int balanceClosing() const { return balanceClosing_; } // 4 or 5: pos_e / pos_f (seg8:9616)
+    // The show's commands (round 144, docs/formats.md "Year balance"). rally.exe draws
+    // rand() % 4 when the show master goes on to the next player (seg8:8E38) and
+    // rand() % 2 at the closing lever (seg8:9605); ending the show earlier (Escape,
+    // Enter, a click) skips them. With setBalanceWindow the player change waits in
+    // Phase::Balance until balanceFinish; without a window it draws them all at once.
+    void setBalanceWindow(bool on) { balanceWindow_ = on; }
+    bool balanceAnnounce();   // the next entry's variant; false when all are announced
+    bool balanceClose();      // the closing letter; false when already drawn
+    bool balanceFinish();     // the show has ended: the player change goes on
+    size_t balanceAnnounced() const { return balanceAnnounced_; }
     // The destination announcement seg7:372F(mode) (not saved): 2 at the game start,
     // 1 for a new stage, 3 before the last stage; variant 'a' + it of the voices
     // Part01-04 (mode 1: the rand() % 5 of seg7:3B4E, otherwise 3).
@@ -441,6 +453,11 @@ private:
     int remaining_ = 0;
     int totalStages_ = 0;
     int balanceSerial_ = 0, balanceChoice_ = 0, balanceIntro_ = 0, balanceClosing_ = 4;
+    bool balanceWindow_ = false, balanceClosed_ = false;
+    size_t balanceAnnounced_ = 0;
+    TurnChange balanceTurn_;                // the suspended player change
+    TurnHooks turnHooks();
+    void completeTurn(const TurnChange& change);
     int announceSerial_ = 0, announceMode_ = 2, announceVariant_ = 3;
     std::vector<BalanceEntry> balance_;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;

@@ -34,7 +34,8 @@ bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
 
 std::string PlayView::title() const {
     static const char* phases[] = {"wuerfeln (W)", "fahren (Pfeile)", "Zug beenden (Enter)", "Spielende",
-                                   "Risiko (Leertaste druecken, Ruecktaste aufhoeren)"};
+                                   "Risiko (Leertaste druecken, Ruecktaste aufhoeren)", "Jahresbilanz"};
+    static_assert(sizeof phases / sizeof *phases == size_t(Game::Phase::Balance) + 1, "a title per phase");
     const Game& g = *game_;
     const int p = g.currentPlayer();
     std::string s = "DTVR Recomp | " + g.playerName(p) + " | Monat "

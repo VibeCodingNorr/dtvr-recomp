@@ -34,7 +34,7 @@ BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, char lang
     : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans,
-                        SoundPlayer* sound, Uint32 now) {
+                        SoundPlayer* sound, Uint32 now, Commands commands) {
     active_ = false;
     const fs::path butt("butt");
     Surface scene = loadBmp(findCaseInsensitive(root_, butt / "bil_leer.bmp")); // DS:7CDA
@@ -44,6 +44,7 @@ bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entrie
     for (const char* file : {"ziel/hebel.sbs", "intro/red_foot.sbs", "intro/redet.sbs"}) // DS:7C4A ff.
         loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / file), scene->format->palette, frames_, 0xFF);
     entries_ = entries;
+    commands_ = std::move(commands);
     intro_ = intro;
     closing_ = closing;
     humans_ = humans;
@@ -98,7 +99,14 @@ void BalanceView::enter(Stage stage, Uint32 now) {
     const char a = 'a';
     switch (stage) {
     case Stage::Intro: voice(std::string("bilanz_") + char(a + intro_)); break; // seg8:8C74
-    case Stage::Pull: if (sound_) sound_->play(2, 4); break;                    // Hebel01 (DS:7D37)
+    case Stage::Pull: // seg8:8E38 draws the announcement's variant as the show master goes on
+        if (commands_.announce) {
+            const int v = commands_.announce(index_);
+            if (v >= 0) entries_[index_].variant = v;
+        }
+        if (entries_[index_].variant < 0) entries_[index_].variant = 0;
+        if (sound_) sound_->play(2, 4); // Hebel01 (DS:7D37)
+        break;
     case Stage::Next: // seg8:8E55: Next_<A + rand() % 4>_<A + player index>
         voice(std::string("next_") + char(a + entries_[index_].variant) + "_" + char(a + int(index_)));
         break;
@@ -108,7 +116,13 @@ void BalanceView::enter(Stage stage, Uint32 now) {
     case Stage::Wait: break;
     case Stage::Closing: clicked_ = false; voice("next_a_a"); break;           // DS:7D85
     case Stage::ClosingPull: hebelPlayed_ = false; break;                      // Hebel01 follows (DS:7DA5)
-    case Stage::ClosingResult: voice(std::string("pos_") + char(a + closing_)); break; // DS:7DB7, seg8:9616
+    case Stage::ClosingResult: // seg8:9605 draws the closing letter at the lever
+        if (commands_.close) {
+            const int c = commands_.close();
+            if (c >= 0) closing_ = c;
+        }
+        voice(std::string("pos_") + char(a + closing_)); // DS:7DB7, seg8:9616
+        break;
     case Stage::ClosingWait: break;
     }
 }

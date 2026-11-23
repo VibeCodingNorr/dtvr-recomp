@@ -149,7 +149,7 @@ void GameWindow::updateFrame(int frame) {
             && !screen_.pictureShown() && !screen_.messages().open())
             openTitle();
     } else if (play_.game().humansLeft() && play_.game().turnSerial() != autosaved_
-               && !play_.game().computerTurnRunning()) { // seg2:0837 -> seg8:A870 at each turn start
+               && !play_.game().computerTurnRunning() && play_.game().phase() != Game::Phase::Balance) { // seg2:0837 -> seg8:A870 at each turn start
         std::string error;
         if (!screen_.saveSlots().saveAuto(play_.game(), error)) std::cerr << "Autosave: " << error << "\n";
         autosaved_ = play_.game().turnSerial();
@@ -205,7 +205,23 @@ void GameWindow::updateFrame(int frame) {
     if (!screen_.title() && play_.game().balanceSerial() != balanceSeen_ && !moving_ && !screen_.messages().open()
         && !screen_.finish().active()) {
         balanceSeen_ = play_.game().balanceSerial();
-        screen_.startBalance(SDL_GetTicks());
+        BalanceView::Commands commands; // the show's draws go through the game (round 144)
+        commands.announce = [this](size_t i) {
+            Game& g = play_.game();
+            g.balanceAnnounce();
+            return i < g.balanceEntries().size() ? g.balanceEntries()[i].variant : -1;
+        };
+        commands.close = [this] {
+            play_.game().balanceClose();
+            return play_.game().balanceClosing();
+        };
+        screen_.startBalance(SDL_GetTicks(), std::move(commands)); // without its bitmap no show (seg8:89C0)
+        balanceShown_ = true;
+    }
+    // seg8:88C6 returns when the show ends: the player change goes on.
+    if (balanceShown_ && !screen_.balance().active()) {
+        balanceShown_ = false;
+        if (play_.game().balanceFinish()) report();
     }
     // After the Master-Rallye: the victory (seg7:71C4), then the title (WM_COMMAND 0x424).
     screen_.victory().update(SDL_GetTicks());

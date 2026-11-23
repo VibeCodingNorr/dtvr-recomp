@@ -193,30 +193,43 @@ int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view
 }
 
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
-                      const TurnHooks& hooks) {
+                      const TurnHooks& hooks, int resumePlayer) {
     auto call = [](const std::function<void()>& f) { if (f) f(); };
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
-    int player = current;
+    int player = resumePlayer >= 0 ? resumePlayer : current;
+    bool resuming = resumePlayer >= 0;
     for (;;) {
-        if (player >= 0 && player < kPlayerSlots) players[size_t(player)].flags &= 0xFFF7;
-        if (activePlayerCount(players) == 0) return change;
-        do player = (player + 1) % kPlayerSlots; // seg2:19DD
-        while (!players[size_t(player)].status);
-        if (player == firstActivePlayer(players)) {
-            if (unsigned(calendar.month) % 12 == 11) {
-                call(hooks.chargeCredits);
-                call(hooks.settleMonth);
-                ++calendar.year;
-                calendar.inflation = inflateYear(calendar.inflation, rng);
-                call(hooks.yearBalance);
-                call(hooks.clearCredits);
-                ++change.yearsEnded;
-            } else {
-                call(hooks.settleMonth);
-            }
+        if (resuming) { // back from the year balance: seg1:8BC6, 8B41 and the month
+            resuming = false;
+            call(hooks.clearCredits);
+            ++change.yearsEnded;
             ++calendar.month;
             ++change.monthsAdvanced;
+        } else {
+            if (player >= 0 && player < kPlayerSlots) players[size_t(player)].flags &= 0xFFF7;
+            if (activePlayerCount(players) == 0) return change;
+            do player = (player + 1) % kPlayerSlots; // seg2:19DD
+            while (!players[size_t(player)].status);
+            if (player == firstActivePlayer(players)) {
+                if (unsigned(calendar.month) % 12 == 11) {
+                    call(hooks.chargeCredits);
+                    call(hooks.settleMonth);
+                    ++calendar.year;
+                    calendar.inflation = inflateYear(calendar.inflation, rng);
+                    if (hooks.yearBalance && hooks.yearBalance()) { // the show runs; wait for it
+                        change.suspended = true;
+                        change.resumePlayer = player;
+                        return change;
+                    }
+                    call(hooks.clearCredits);
+                    ++change.yearsEnded;
+                } else {
+                    call(hooks.settleMonth);
+                }
+                ++calendar.month;
+                ++change.monthsAdvanced;
+            }
         }
         if (hooks.afterPlayerChange) hooks.afterPlayerChange(player);
         PlayerSlot& p = players[size_t(player)];

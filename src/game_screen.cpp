@@ -441,10 +441,10 @@ bool GameScreen::startAnnouncement(int mode, int variant, Uint32 now) {
     return stage_.start(mode, variant, game_.destination(), sound_, now);
 }
 
-bool GameScreen::startBalance(Uint32 now) {
+bool GameScreen::startBalance(Uint32 now, BalanceView::Commands commands) {
     prepareSubtitles();
     return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.balanceClosing(), game_.humansLeft(),
-                          sound_, now);
+                          sound_, now, std::move(commands));
 }
 
 bool GameScreen::startIntro(MsRandom& random, Uint32 now) {
