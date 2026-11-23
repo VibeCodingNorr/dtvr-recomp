@@ -1778,7 +1778,18 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg6:0F60(0x7D0) before the loop and seg6:0F60(0x1F4) after it; seg6:0F60(n)
   runs seg2:1C37 n >> 5 times (none in a game without humans) — **assumed** n
   milliseconds. Then text 0x1451 + random(2) for the town on the centre cell
-  (seg8:41E6 ff.) and the damage. No shaking. WAV `snd\E5` is not on this disc.
+  (seg8:41E6 ff.) and the damage. No shaking. *Corrected (round 133):* seg8:3E52
+  first starts the MIDI cue `e5` (seg1:2A30, DS:6AC6), and seg8:4049 / 4064 plays the
+  WAV `<DS:7A>\snd\E5` (the file `butt/snd/e5`, no extension) on WaveMix channel 7
+  when the loop starts; after the message seg8:427F calls seg1:275E. Not yet rebuilt:
+  the event WAVs (seg1:2D40 calls of seg8: 1D2F, 2102, 260A, 3336, 351B, 35F1, 3964,
+  4064, 4553, 4E6F, 5664, 5C75).
+- **Event music ends with the event** (round 133): every event handler that starts
+  an `e` cue (seg8:1D03, 20D6, 25DE, 3970, 3E52, 4527, 4C01, 5638, 5C49, 6A10) calls
+  seg1:275E after its message (seg8:1E42, 2355, 2A01, 3BDA, 427F, 4933, 4EEA, 5A45,
+  5EED, 6C41): stop / close the sequencer and start the next background cue g0–g5
+  from zero. Rebuilt in `GameWindow::updateFrame` (`MusicPlayer::nextBackground` once
+  the event's notice has been closed); the cue no longer plays on to its end.
 - **Scene start draw** (round 72, rule correction, rules revision 31): rain,
   snow and flood call seg8:517B(&x, &y, …) before their animation; it draws
   random(3) (seg8:5211) to pick the corner the cloud / wave starts from: start =

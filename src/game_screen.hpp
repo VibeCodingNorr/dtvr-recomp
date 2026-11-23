@@ -287,6 +287,7 @@ struct GameWindowOptions {
     int recompMenuPage = -1;      // open the recomp menu on this page at start
     int windowW = 0, windowH = 0; // initial window size (tests of the scaled output)
     std::string pressKeys;        // --press: scripted keys for smoke tests
+    std::string event;            // --event NAME: apply this event at the start (tests)
     bool smokeTest = false;       // draw `frames` frames and exit
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)

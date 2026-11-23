@@ -106,6 +106,7 @@ private:
     int autosaved_ = -1; // turn serial of the last autosave
     std::vector<SoundCue> pendingSounds_;
     int noticesTaken_ = 0; // one past the highest notice sequence taken from the game
+    int eventMusicNotice_ = -1; // the notice whose closing ends the event music, -1 none
     std::vector<FilmCue> pendingFilms_;
     int finishSeen_, balanceSeen_, announceSeen_, risikoPressSeen_; // serials already shown
     bool victoryShown_ = false;

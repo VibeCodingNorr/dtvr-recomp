@@ -42,7 +42,10 @@ void GameWindow::updateFrame(int frame) {
     if (!screen_.title() && !moving_ && !screen_.risiko().blinking(SDL_GetTicks()))
         for (Notice& n : play_.game().takeNotices()) {
             noticesTaken_ = std::max(noticesTaken_, n.seq + 1);
-            if (const auto cue = musicForNotice(n.text); !cue.empty()) music_.interrupt(cue);
+            if (const auto cue = musicForNotice(n.text); !cue.empty()) {
+                music_.interrupt(cue);
+                eventMusicNotice_ = n.seq; // its message ends the event music (seg1:275E)
+            }
             // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
             // to the investment window, not to the message window.
             const bool offerText = n.text == 5321 || n.text == 5322 || n.text == 5401 || n.text == 5402;
@@ -87,6 +90,17 @@ void GameWindow::updateFrame(int frame) {
         if (screen_.film().start(f.film, f.loops, layout_.width, layout_.height, SDL_GetTicks())) { // centred
             const fs::path wav = findCaseInsensitive(screen_.root(), fs::path("butt") / "snd" / f.sound);
             if (!wav.empty()) sound_.playFile(7, wav); // seg1:2D40(7, …)
+        }
+    }
+    // The event handlers of seg8 (seg8:1E42, 2355, 2A01, 3BDA, 427F, 4933, 4EEA, 5A45,
+    // 5EED, 6C41) call seg1:275E once their message has been closed: the event music
+    // stops and the next background piece starts from the beginning.
+    if (eventMusicNotice_ >= 0) {
+        const Notice* front = screen_.messages().front();
+        const int settled = front ? std::min(front->seq, noticesTaken_) : noticesTaken_;
+        if (settled > eventMusicNotice_) {
+            eventMusicNotice_ = -1;
+            music_.nextBackground();
         }
     }
     // rally.exe's message window is modal (seg6:51EA -> 0FB4): a sound after a message

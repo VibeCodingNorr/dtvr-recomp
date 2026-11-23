@@ -80,6 +80,9 @@ public:
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
+    // Developer option --event (tests of the presentation): applies an event now, as
+    // the event trigger would; the game's rules are those of the event itself.
+    void triggerEvent(EventKind kind) { applyEvent(kind); }
     // seg2:69AD: a human may close the slot window of Würfeln (seg2:6426 flag DS:9AD8)
     // with Escape / Backspace / the right button before the reels stop: the roll is
     // taken back. In rally.exe the reel value is drawn when the lever ends (seg2:7671
