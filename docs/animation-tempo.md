@@ -21,7 +21,10 @@ two-computer game reached six turns instead of one in the same 900 frames at 4×
 an identical game log.
 **Round 137 (user decision 2026-11-23):** Computerzüge speeds the vehicles' drive,
 not their frame animation: the frames (<letter>R1–4 …) follow a second clock at
-AnimationTempo only (`GameScreen::animClock_`).
+AnimationTempo only (`GameScreen::animClock_`). The event animations (Nessie,
+Erdbeben … with their sounds and the message after them) use the same clock
+(`GameScreen::sceneNow`), so a computer's event is shown at full length; a
+two-computer game with `--event Erdbeben` shows identical frames at 1× and 4×.
 The proposed levels and first implementation scope below remain design choices,
 not recovered original behavior.
 

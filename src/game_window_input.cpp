@@ -75,7 +75,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     if (recompMenu_.isOpen()) { handleRecompMenu(event); return; }
     if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow_) heldArrow_ = SDLK_UNKNOWN;
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
-    if (screen_.messages().open() && screen_.eventSceneActive(screen_.presentationNow())) return; // animation first
+    if (screen_.messages().open() && screen_.eventSceneActive(screen_.sceneNow())) return; // animation first
     if (screen_.messages().question()) { // seg2:2404: obstacle question (text 600)
         if (const int answer = screen_.messages().handle(event); answer) {
             const int text = screen_.messages().frontText();

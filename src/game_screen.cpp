@@ -233,8 +233,8 @@ void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
 }
 
 void GameScreen::advanceVehicles(Uint32 now) {
-    if (eventSceneActive(now)) { // Nessie: seg6:3064 on Loch Ness, then on the place
-        const size_t pass = std::min(size_t((now - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
+    if (eventSceneActive(sceneNow())) { // Nessie: seg6:3064 on Loch Ness, then on the place
+        const size_t pass = std::min(size_t((sceneNow() - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
         for (; sceneCamera_ <= pass; ++sceneCamera_) {
             const SceneStep& step = sceneSteps_[sceneCamera_];
             if (step.recentre) origin_ = centredOrigin(step.camera.x, step.camera.y, viewSize());
@@ -606,8 +606,8 @@ void GameScreen::drawMap() {
                            target.y + (at.y + 2 - air.height - origin.y - kSpriteShift) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
-    if (eventSceneActive(presentationNow())) { // seg8:6E81: the record's frame at its position
-        const size_t pass = size_t((presentationNow() - sceneStart_) / kSceneStepMs);
+    if (eventSceneActive(sceneNow())) { // seg8:6E81: the record's frame at its position
+        const size_t pass = size_t((sceneNow() - sceneStart_) / kSceneStepMs);
         const SceneStep& step = sceneSteps_[std::min(pass, sceneSteps_.size() - 1)];
         const auto& frames = sceneFrames_[scene_->file];
         const auto it = step.frame ? frames.find(upperAscii(step.frame)) : frames.end();
@@ -837,7 +837,7 @@ void GameScreen::draw() {
     film_.draw();
     sight_.draw();
     menu_.draw();
-    if (!eventSceneActive(presentationNow())) messages_.draw(game_); // seg8:6EF2 after the animation
+    if (!eventSceneActive(sceneNow())) messages_.draw(game_); // seg8:6EF2 after the animation
 }
 
 void GameScreen::drawBackground(SDL_Texture* background) {

@@ -118,6 +118,9 @@ public:
     // `paused` (the recomp menu) stops it.
     void tickPresentation(Uint32 realNow, bool paused);
     Uint32 presentationNow() const { return clock_.now(); }
+    // Event animations (Nessie, Erdbeben ...) and the vehicles' frames: AnimationTempo
+    // only, so a computer's turn under Computerzüge shows them at full length.
+    Uint32 sceneNow() const { return animClock_.now(); }
     // The shared layout changed size (widescreen switch): keep the map origin valid.
     void layoutChanged();
     // Smooth driving (round 31): the drawn vehicle runs after the game position at
