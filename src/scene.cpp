@@ -3,10 +3,31 @@
 
 namespace dtvr {
 
-const char* sceneFrame(const SceneRecord& record, int step) {
+namespace {
+int span(const SceneRecord& record) { return (record.delay > 0 ? record.delay : 0) + 1; }
+} // namespace
+
+int sceneFrameIndex(const SceneRecord& record, int pass) {
+    if (record.frames.empty()) return 0;
+    const int n = int(record.frames.size());
+    return (record.first + 1 + (pass > 0 ? pass : 0) / span(record)) % n;
+}
+
+const char* sceneFrame(const SceneRecord& record, int pass) {
     if (record.frames.empty()) return "";
-    const int delay = record.delay > 0 ? record.delay : 1;
-    return record.frames[(size_t(record.first) + size_t(step / delay)) % record.frames.size()];
+    return record.frames[size_t(sceneFrameIndex(record, pass))];
+}
+
+int scenePassAt(const SceneRecord& record, int frame, int countdown) {
+    // Frame f is entered in the step of pass (f - first - 1) * span; the next pass
+    // starts with countdown = delay, each later one with one less.
+    const int entered = (frame - record.first - 1) * span(record);
+    return entered + 1 + (span(record) - 1 - countdown);
+}
+
+int sceneLength(const SceneRecord& record) {
+    const int n = int(record.frames.size());
+    return n > 0 ? (n - 1 - record.first) * span(record) : 0;
 }
 
 bool drawSceneFrame(SDL_Renderer* renderer, const std::map<std::string, Texture>& frames, const char* name, int x,

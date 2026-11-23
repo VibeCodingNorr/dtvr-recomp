@@ -143,7 +143,7 @@ void BalanceView::update(Uint32 now) {
         }
         break;
     case Stage::Pull:
-        if (now - stageStart_ >= Uint32(kPull.frames.size() * kPull.delay) * kSceneStepMs) enter(Stage::Next, now);
+        if (now - stageStart_ >= Uint32(sceneLength(kPull)) * kSceneStepMs) enter(Stage::Next, now);
         break;
     case Stage::Next:
         if (voiceDone(now, 1500)) enter(Stage::Result, now);

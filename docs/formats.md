@@ -1404,6 +1404,13 @@ display, started for every spin of the game (`Game::lastReels`).
   0) advances in its first pass. *Corrects* the earlier reading of delay passes
   per frame: the lever (DS:2292, delay 2, 9 frames) ends after 25 passes (was 18),
   a reel turn of `drehung1–4` takes 12 passes (was 8).
+  *Round 145:* the full-screen scenes (finish, victory, stage announcement, year
+  balance; `src/scene.cpp`) still showed the start frame first and each frame
+  `delay` passes. They now follow this rule too (`sceneFrameIndex`: frame first + 1
+  in pass 0, delay + 1 passes each; `sceneLength`: (frames − 1 − first) · (delay + 1)
+  passes until the follow-up; tested against a direct simulation). The stage
+  announcement starts the search when the lever record DS:4A30 is on frame 9 with
+  countdown 1 (seg7:3CE4 / 3CF1), at the start of pass 35, not 27.
 - After the last frame: repetitions +0xA > 0 count down and the definition starts
   again; at 0 the callback +0xE runs, then the follow-up +4 replaces the definition
   or the record ends (def = 0). Records advance in index order: 0 lever, 2 sum,

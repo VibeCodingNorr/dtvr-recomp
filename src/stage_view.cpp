@@ -149,12 +149,12 @@ void StageView::update(Uint32 now) {
         if (voiceDone(now, 1500)) enter(Stage::Pull, now);
         break;
     case Stage::Pull:
-        if (jumps_ == 0 && pass >= 9 * kPull.delay) { // seg7:3CE4: frame 9 starts the search
+        if (jumps_ == 0 && pass >= scenePassAt(kPull, 9, 1)) { // seg7:3CE4: frame 9 with countdown 1
             jumps_ = 1;
             jump();
             if (sound_) sound_->play(2, 4); // Hebel01 (DS:4D5C)
         }
-        if (pass >= int(kPull.frames.size()) * kPull.delay) {
+        if (pass >= sceneLength(kPull)) {
             const int keepJumps = jumps_, keepWait = wait_;
             enter(Stage::Search, now);
             jumps_ = keepJumps;

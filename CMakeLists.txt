@@ -109,6 +109,10 @@ add_executable(card-shop-view-test tests/card_shop_view_test.cpp
 target_compile_options(card-shop-view-test PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(card-shop-view-test PRIVATE dtvr-formats PkgConfig::SDL2)
 add_test(NAME card-shop-view COMMAND card-shop-view-test)
+add_executable(scene-test tests/scene_test.cpp src/scene.cpp src/sdl_assets.cpp)
+target_compile_options(scene-test PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(scene-test PRIVATE dtvr-formats PkgConfig::SDL2)
+add_test(NAME scene COMMAND scene-test)
 add_executable(overview-view-test tests/overview_view_test.cpp
     src/overview_view.cpp src/sdl_assets.cpp src/mouse_control_view.cpp src/window_border.cpp)
 target_compile_options(overview-view-test PRIVATE -Wall -Wextra -Wpedantic)
