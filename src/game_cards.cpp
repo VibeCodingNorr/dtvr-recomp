@@ -16,6 +16,7 @@ std::string amountText(double v) {
 } // namespace
 
 bool Game::openCardWindow() {
+    if (spinPending()) return false;
     if (current_ < 0 || !(players_[size_t(current_)].flags & kFlagCardsBlocked)) return true;
     notice(1020 + rng_.random(2), {playerArg(current_)});
     sound(5, 15); // Sfx08 (seg2:0B8D)
@@ -66,6 +67,7 @@ int Game::timeLimitSecond() {
 
 bool Game::playCard(int handSlot, int target) {
     messages_.clear();
+    if (spinPending()) return false; // the slot window is modal
     // The card window allows category 2 before spinning (seg4:0951) and category 1
     // from the town dialog (seg1:54C1); seg3:0701 compares (category & DS:18).
     const bool inTown = phase_ == Phase::Arrived && townAt(players_[size_t(current_)].field) >= 0;
@@ -128,7 +130,9 @@ bool Game::playCard(int handSlot, int target) {
         if (move.reels) allowance += spin(move.reels, move.maximum);
         if (type >= 29 && type <= 34) notice(11001 + type, {playerArg(current_)}); // "n Felder": 11030-11035
         messages_.push_back(std::to_string(allowance) + " Felder");
-        startMove(allowance); // seg3:3A2B ff. / seg2:66B9 -> seg2:61B7
+        rollUndo_.clear(); // reel cards are not taken back (DS:9AD8 = 0)
+        if (move.reels) moveAfterSpin(allowance); // seg2:6426 -> 66B9 -> 61B7 after the window
+        else startMove(allowance); // seg3:3A2B ff.: no slot window
         if (type >= 29 && type <= 34 && timeLimitOn_) { // seg3:3AB1 ff. -> seg2:3ABD
             timeLimitLeft_ = (allowance + 2) * 5;
             timeLimitOver_ = 0;
@@ -206,7 +210,8 @@ bool Game::playCard(int handSlot, int target) {
         int sum = 0;
         sum = spin(1, 5);
         messages_.push_back("wuerfelt " + std::to_string(sum));
-        startMove(sum); // seg2:66B9 -> seg2:61B7
+        rollUndo_.clear();
+        moveAfterSpin(sum); // seg2:66B9 -> seg2:61B7 after the window
         return true;
     }
     }

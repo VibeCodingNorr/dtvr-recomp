@@ -1309,9 +1309,28 @@ channel 1, stops channel 3 (seg1:317D), destroys the window and calls seg2:068F
 so the cancel before the lever leaves the random generator untouched and the one
 after it keeps that draw. Rebuilt as `Game::cancelRoll` (restores the state before
 the roll through the save codec, `tests/game_test.cpp`) and the slot block of
-`GameWindow::handleEvent`. **Deviation:** the simulation starts the move with the
-roll, rally.exe only at seg2:7EC2 (state 4); a roll that shut the player in (notices
-6003 / 6005 / 6009, turn end) is therefore not taken back.
+`GameWindow::handleEvent`.
+
+**Move after the window (round 131):** seg2:6426 loops (seg2:65C4) until DS:A780
+is 0, i.e. until the window has slid out or was cancelled. Only then: seg7:672A;
+a human with sum DS:A778 = 0 (cancelled; the sum is set at the count) returns
+without a move (seg2:66A6); otherwise seg2:66B9 → seg2:61B7 starts the move
+(reach, shut-in notices 6003 / 6005 / 6009, turn end) and seg2:0A2F follows. The
+reel cards (seg4:0A2D ff.) and the status cards' spin go the same way. Rebuilt:
+with a window (`Game::setSpinPresentation`, set by the game window) `roll()` and the
+reel / status card spins leave the move pending (`spinPending`, not saved) until
+`finishSpin()`, which the window calls when the slot window of that spin has closed;
+cards, rolls and computer stages wait meanwhile. Without a window (tests, headless
+play) the move starts at once, with the same outcome. A Würfeln can now always be
+taken back before the window closes (*replaces* the round 129 restriction for
+shut-in rolls).
+
+**Edge scrolling with the drawn frame (round 131):** seg2:1A91 writes the drawn
+frame's rectangle (x, y, x + width, y + height, after the −16 shift of seg2:3F21,
+with the boat / plane lift of seg2:1878) into player +0x30…+0x36; seg2:29EB compares
+that rectangle with the view inflated by −32. A rising plane therefore scrolls the
+view before its frame reaches the edge. *Corrects* the check with the field cell
+(16 × 16 at the ground position), which let a plane be cut off at the map's top.
 
 ### Vehicles on the map (round 24)
 

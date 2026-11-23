@@ -81,8 +81,16 @@ public:
     // -> 776A), so `reelsDrawn` keeps that one draw of the random generator. Possible
     // while the roll is the last command and left the player moving without messages
     // (round 129: a shut-in roll is not taken back, see docs/formats.md).
-    bool rollCancellable() const { return !rollUndo_.empty() && phase_ == Phase::Move; }
+    bool rollCancellable() const { return !rollUndo_.empty() && spinPending(); }
     bool cancelRoll(bool reelsDrawn);
+    // seg2:6426 returns only when the slot window has closed (DS:A780 = 0); then a
+    // human with sum 0 (cancelled) gets no move (seg2:66A6), otherwise seg2:66B9 ->
+    // seg2:61B7 starts the move (reach, shut-in notices). With a window
+    // (setSpinPresentation) a spin of Würfeln, a reel card or a status card waits in
+    // spinPending() until finishSpin(); without one the move starts at once (round 131).
+    void setSpinPresentation(bool on) { spinPresentation_ = on; }
+    bool spinPending() const { return pendingAllowance_ >= 0; }
+    bool finishSpin();
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
     // Yellow field with a full hand (seg3:1057): discard a card, then the card follows.
@@ -361,6 +369,9 @@ private:
     int timeLimitOver_ = 0;       // DS:8C02: seconds fined so far
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
     std::string rollUndo_;                  // the state before a human's roll (not saved)
+    int pendingAllowance_ = -1;             // a spin waiting for its window (not saved)
+    bool spinPresentation_ = false;         // a slot window shows the spins
+    void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
     std::vector<SoundCue> sounds_;

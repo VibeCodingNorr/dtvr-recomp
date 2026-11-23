@@ -24,6 +24,10 @@ void GameWindow::updateFrame(int frame) {
     music_.tick();
     for (const auto& cue : play_.game().takeMusic()) if (!screen_.title()) music_.interrupt(cue);
     screen_.tickPresentation(SDL_GetTicks(), recompMenu_.isOpen());
+    // seg2:6426 returns when the slot window has closed: then the move starts (66B9).
+    if (play_.game().spinPending() && screen_.slotDone(play_.game().spinSerial(), screen_.presentationNow())
+        && play_.game().finishSpin())
+        report();
     screen_.advanceVehicles(screen_.presentationNow());
     moving_ = screen_.vehicleMoving(play_.game().currentPlayer());
     // The original handles a field when the vehicle has reached it (the arrival

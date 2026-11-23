@@ -46,7 +46,9 @@ int main() {
         for (int p = 1; p < kPlayerSlots; ++p) computers += solo.isComputer(p);
         CHECK(computers == 1);
     }
-    // seg2:69AD: a human's roll is taken back while the slot window turns (round 129).
+    // seg2:6426: with a slot window the move starts only when it has closed
+    // (seg2:66B9 -> 61B7); seg2:69AD: a human's Würfeln is taken back before that
+    // (rounds 129 / 131).
     {
         auto rngOf = [](const Game& g) { // the "rng" record of the save format
             const std::string s = SaveCodec::encode(g);
@@ -56,20 +58,25 @@ int main() {
         Game ref(board, towns, 2, 0, 1), g(board, towns, 2, 0, 1);
         ref.setRandomEvents(false);
         g.setRandomEvents(false);
-        CHECK(!g.rollCancellable() && !g.cancelRoll(false));
+        g.setSpinPresentation(true);
+        CHECK(!g.rollCancellable() && !g.cancelRoll(false) && !g.finishSpin());
         const std::string before = SaveCodec::encode(g);
-        CHECK(g.roll() && g.rollCancellable());
+        CHECK(g.roll() && g.spinPending() && g.phase() == Game::Phase::Roll && g.rollCancellable());
+        CHECK(!g.roll() && !g.playCard(0) && !g.step(Direction::Right)); // the window is modal
         // Before the lever: nothing has been drawn; the state is the one before.
-        CHECK(g.cancelRoll(false) && g.phase() == Game::Phase::Roll && !g.rollCancellable() && !g.cancelRoll(false));
+        CHECK(g.cancelRoll(false) && g.phase() == Game::Phase::Roll && !g.spinPending() && !g.cancelRoll(false));
         CHECK(SaveCodec::encode(g) == before);
-        CHECK(g.roll() && ref.roll() && g.allowance() == ref.allowance()); // the same reel again
+        // The same reel again; the move starts when the window has closed.
+        CHECK(g.roll() && ref.roll() && g.finishSpin() && !g.spinPending() && !g.rollCancellable());
+        CHECK(g.phase() == Game::Phase::Move && g.allowance() == ref.allowance());
         // After the lever: the reel's draw stays consumed.
-        const std::string rolled = SaveCodec::encode(g);
-        CHECK(g.cancelRoll(true) && g.phase() == Game::Phase::Roll);
-        CHECK(rngOf(g) == rngOf(ref)); // ref has drawn its one reel as well
-        CHECK(SaveCodec::encode(g) != rolled);
-        // After a step the roll cannot be taken back.
-        CHECK(g.roll() && g.step(Direction::Right) && !g.cancelRoll(false) && g.stepsTaken() == 1);
+        Game h(board, towns, 2, 0, 1);
+        h.setRandomEvents(false);
+        h.setSpinPresentation(true);
+        CHECK(h.roll() && h.cancelRoll(true) && h.phase() == Game::Phase::Roll);
+        CHECK(rngOf(h) == rngOf(ref)); // ref has drawn its one reel as well
+        // Without a window (tests, headless play) the move starts at once.
+        CHECK(ref.phase() == Game::Phase::Move && !ref.spinPending() && !ref.rollCancellable());
     }
 
     Game game(board, towns, 2, 0, 1);

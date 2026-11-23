@@ -23,6 +23,8 @@ constexpr char kPortraitLetters[8] = {'D', 'F', 'E', 'M', 'U', 'J', 'I', 'V'};
 // of the 50 ms palette timer. Vehicle definitions have delay 4; seg2:1941-1971
 // advances only when the old countdown is negative (src/vehicle_anim.hpp).
 constexpr Uint32 kVehicleTickMs = 20;
+constexpr int kSpriteShift = 16;                           // seg2:3F21 ff.: sprites drawn at (-16, -16)
+constexpr int kVehicleWidth = 48, kVehicleHeight = 32;     // frames of sbs/<letter>.sbs
 constexpr int kVehiclePixelsPerTick = 2 << 1;
 
 SDL_Rect toSdl(const ScreenRect& r) { return {r.x, r.y, r.w, r.h}; }
@@ -297,9 +299,14 @@ void GameScreen::advanceVehicles(Uint32 now) {
             airTick(air_[size_t(p)], stepStart, game_.cellProperties(cx + dx, cy + dy), moved,
                     game_.cellProperties(at.x / WorldMap::kTile + 3 * dx, at.y / WorldMap::kTile + 3 * dy));
             // seg2:239F: every movement tick of the current vehicle keeps it 32 pixels
-            // inside the view (seg2:29EB); only a vehicle that moves is checked.
-            if (p == game_.currentPlayer() && originSet_ && moved)
-                edgeScroll(origin_, at.x, at.y, at.x + WorldMap::kTile, at.y + WorldMap::kTile, viewSize());
+            // inside the view (seg2:29EB); only a vehicle that moves is checked. The
+            // rectangle is the drawn frame, player +0x30..+0x36 written by seg2:1A91:
+            // (x - 16, y + 2 - height - 16) and the frame's size (round 131), so a rising
+            // plane scrolls the view before it is cut off.
+            if (p == game_.currentPlayer() && originSet_ && moved) {
+                const int left = at.x - kSpriteShift, top = at.y + 2 - air_[size_t(p)].height - kSpriteShift;
+                edgeScroll(origin_, left, top, left + kVehicleWidth, top + kVehicleHeight, viewSize());
+            }
             // seg2:1DE2 / 1E35: a view point cell (bit 0x10) stops a human's vehicle with
             // [Setup] Views like a field unless the cell ahead in the driving direction
             // (DS:A77A) has the properties exactly 0x20 (seg2:1E2D); computers drive on.
@@ -559,7 +566,6 @@ void GameScreen::drawMap() {
     // <letter>UP / R / DOWN / L 1-4, six passes per frame), entered into the sprite list at
     // (+0x16, +0x18 - +0x2E + 2) (+0x2E: the boat counter, 0 on land); seg2:3EB0
     // moves every sprite by (-16, -16) before seg2:1A91 draws it minus the origin.
-    constexpr int kSpriteShift = 16; // seg2:3F21 ff.
     static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
     const Uint32 tick = presentationNow() / kVehicleTickMs; // the drive's passes follow the tempo
     SDL_RenderSetClipRect(renderer_, &target);

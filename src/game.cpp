@@ -210,25 +210,38 @@ bool Game::startMove(int allowance) {
 
 bool Game::roll() {
     messages_.clear();
-    if (phase_ != Phase::Roll || (computerControls() && !aiActing_)) return false;
-    // A human's roll can be taken back while the slot window turns (seg2:69AD).
-    rollUndo_ = computerControls() ? std::string() : SaveCodec::encode(*this);
-    const size_t noticesBefore = notices_.size();
+    if (phase_ != Phase::Roll || spinPending() || (computerControls() && !aiActing_)) return false;
+    // A human's Würfeln can be taken back while its slot window turns (seg2:69AD).
+    rollUndo_ = spinPresentation_ && !computerControls() ? SaveCodec::encode(*this) : std::string();
     declineInvestment();
     int sum = 0;
     sum = spin(1, 5);
     messages_.push_back(playerName(current_) + " wuerfelt " + std::to_string(sum));
-    startMove(sum); // seg2:66B9 -> seg2:61B7
-    if (phase_ != Phase::Move || notices_.size() != noticesBefore) rollUndo_.clear(); // shut in: not taken back
+    moveAfterSpin(sum); // seg2:66B9 -> seg2:61B7 once the window has closed
+    return true;
+}
+
+void Game::moveAfterSpin(int allowance) {
+    if (spinPresentation_) pendingAllowance_ = allowance;
+    else startMove(allowance);
+}
+
+bool Game::finishSpin() {
+    if (!spinPending()) return false;
+    messages_.clear();
+    const int allowance = pendingAllowance_;
+    pendingAllowance_ = -1;
+    rollUndo_.clear();
+    startMove(allowance); // seg2:66B9 -> seg2:61B7
     return true;
 }
 
 bool Game::cancelRoll(bool reelsDrawn) {
-    if (!rollCancellable() || counter_.history().size() != 0) return false;
+    if (!rollCancellable()) return false;
     std::string before;
     before.swap(rollUndo_);
     std::string error;
-    if (!SaveCodec::decode(*this, before, error)) return false;
+    if (!SaveCodec::decode(*this, before, error)) return false; // also ends the pending spin
     if (reelsDrawn) spinReels(rng_, 1, 5); // seg2:776A has drawn the reel
     messages_.push_back(playerName(current_) + " nimmt den Wurf zurueck");
     return true;

@@ -351,6 +351,8 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     g.computerExtraCards_ = extraCards != 0;
     g.totalStages_ = totalStages >= 0 ? totalStages : remaining; // formats 1-3: the stages left
     g.messages_.clear();
+    g.pendingAllowance_ = -1; // a spin waiting for its window is not part of a state
+    g.rollUndo_.clear();
     return true;
 }
 

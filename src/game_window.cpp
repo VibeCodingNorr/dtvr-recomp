@@ -91,7 +91,9 @@ GameWindow::GameWindow(const GameWindowResources& r)
       displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), menu_(r.screen.menu()),
       cards_(r.screen.cards()), musicEnabled_(r.screen.settings().value[Settings::Midi]),
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
-      announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()) {}
+      announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()) {
+    play_.game().setSpinPresentation(true); // moves start after the slot window (seg2:6426)
+}
 
 void GameWindow::start() {
     introShown_ = options_.title && (options_.intro || (!options_.noIntro && screen_.settings().showIntro != 0))

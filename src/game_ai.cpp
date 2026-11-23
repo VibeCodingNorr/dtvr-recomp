@@ -89,6 +89,7 @@ bool Game::computerAdvance() {
     std::vector<std::string> log;
     auto collect = [&] { log.insert(log.end(), messages_.begin(), messages_.end()); };
     auto finish = [&](bool result) { messages_ = log; return result; };
+    if (spinPending()) return false; // the window finishes the spin (finishSpin)
     if (!aiTurn_ && computerControls() && (phase_ == Phase::Move || phase_ == Phase::Arrived)) {
         // Mitspieler (seg2:5E93 -> seg5:6CE8 / 6BF2) handed a running human turn to the
         // computer: it drives the remaining fields (route as states 5 / 6) or, already
