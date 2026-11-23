@@ -184,6 +184,7 @@ private:
     AmbientAnimations ambient_;
     MsRandom ambientRng_{1};
     Uint32 ambientLast_ = 0;
+    std::array<int, 4> ambientView_{-1, -1, -1, -1}; // origin (tiles) and size of the listed view
     using SpriteSet = std::map<std::string, Texture>;
     // `transparent`: the colour key (0 for SBS frames; seg2:9497 callers pass their own).
     void loadSprites(const std::filesystem::path& relative, SpriteSet& into, int transparent = 0);

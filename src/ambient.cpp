@@ -62,8 +62,9 @@ const std::vector<AmbientDefinition>& ambientDefinitions() {
     return table;
 }
 
-void AmbientAnimations::build(const WorldMap& map, MsRandom& rng) {
+void AmbientAnimations::build(const WorldMap& map) {
     objects_.clear();
+    listed_.clear();
     for (int x = 0; x < WorldMap::kSize; ++x)       // seg8:7E2A: x outer, y inner
         for (int y = 0; y < WorldMap::kSize; ++y) {
             const uint16_t t0 = map.cell(0, x, y) & WorldMap::kTileMask;
@@ -74,19 +75,49 @@ void AmbientAnimations::build(const WorldMap& map, MsRandom& rng) {
                     o.def = &d;
                     o.x = x;
                     o.y = y;
-                    o.countdown = rng.random(d.pause); // seg8:82DA: seg6:1343(+8)
-                    o.delay = 0;                        // seg8:8300
-                    o.repeats = d.repeats;              // seg8:8321
-                    o.frame = 0xFF;                     // seg8:8332
-                    o.restart = true;                   // seg8:8344
                     objects_.push_back(o);
                     break;
                 }
         }
 }
 
+void AmbientAnimations::writeFrame(const Object& o, WorldMap& map, std::vector<AmbientCell>& changed) const {
+    // seg8:861E / 8129: the frame's tiles, row by row (seg6:273B, then seg6:2C0A redraws).
+    const AmbientDefinition& d = *o.def;
+    uint16_t tile = d.frames[size_t(o.frame)];
+    for (int y = o.y; y < o.y + d.height; ++y)
+        for (int x = o.x; x < o.x + d.width; ++x) {
+            map.setTile(d.layer, x, y, tile++);
+            changed.push_back({d.layer, x, y});
+        }
+}
+
+void AmbientAnimations::setView(int originX, int originY, int viewWidth, int viewHeight, WorldMap& map,
+                                MsRandom& rng, std::vector<AmbientCell>& changed) {
+    for (size_t i : listed_) { // seg8:7FAB: frame up to the terminator, back by one: the last frame
+        Object& o = objects_[i];
+        o.frame = int(o.def->frames.size()) - 1;
+        writeFrame(o, map, changed);
+    }
+    listed_.clear(); // seg8:8359
+    const int left = originX, top = originY, right = originX + viewWidth, bottom = originY + viewHeight; // seg8:81E2
+    for (size_t i = 0; i < objects_.size(); ++i) {
+        Object& o = objects_[i];
+        const int l = o.x * 16, t = o.y * 16, r = (o.x + o.def->width) * 16, b = (o.y + o.def->height) * 16;
+        if (!(r >= left && top <= b && right >= l && t <= bottom)) continue; // seg2:42A4
+        if (listed_.size() >= 0x96) break;  // seg8:828B
+        o.countdown = rng.random(o.def->pause); // seg8:82DA: seg6:1343(+8)
+        o.delay = 0;                             // seg8:8300
+        o.repeats = o.def->repeats;              // seg8:8321
+        o.frame = 0xFF;                          // seg8:8332
+        o.restart = true;                        // seg8:8344
+        listed_.push_back(i);
+    }
+}
+
 void AmbientAnimations::tick(WorldMap& map, MsRandom& rng, std::vector<AmbientCell>& changed, std::vector<int>& sounds) {
-    for (Object& o : objects_) {
+    for (size_t index : listed_) {
+        Object& o = objects_[index];
         const AmbientDefinition& d = *o.def;
         if (o.countdown > 0) { --o.countdown; continue; } // seg8:83EC
         if (o.restart) {                                   // seg8:8419: a run starts
@@ -108,13 +139,7 @@ void AmbientAnimations::tick(WorldMap& map, MsRandom& rng, std::vector<AmbientCe
             if (o.repeats != 0xFF) --o.repeats;
             o.frame = 0;
         }
-        // seg8:861E: the frame's tiles, row by row (seg6:273B, then seg6:2C0A redraws).
-        uint16_t tile = d.frames[size_t(o.frame)];
-        for (int y = o.y; y < o.y + d.height; ++y)
-            for (int x = o.x; x < o.x + d.width; ++x) {
-                map.setTile(d.layer, x, y, tile++);
-                changed.push_back({d.layer, x, y});
-            }
+        writeFrame(o, map, changed);
     }
 }
 

@@ -9,6 +9,7 @@
 #include "event_scenes.hpp"
 #include "panel.hpp"
 
+#include <algorithm>
 #include <iostream>
 
 namespace fs = std::filesystem;
@@ -40,6 +41,7 @@ void GameWindow::updateFrame(int frame) {
     }
     if (!screen_.title() && !moving_ && !screen_.risiko().blinking(SDL_GetTicks()))
         for (Notice& n : play_.game().takeNotices()) {
+            noticesTaken_ = std::max(noticesTaken_, n.seq + 1);
             if (const auto cue = musicForNotice(n.text); !cue.empty()) music_.interrupt(cue);
             // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
             // to the investment window, not to the message window.
@@ -87,9 +89,19 @@ void GameWindow::updateFrame(int frame) {
             if (!wav.empty()) sound_.playFile(7, wav); // seg1:2D40(7, …)
         }
     }
+    // rally.exe's message window is modal (seg6:51EA -> 0FB4): a sound after a message
+    // in the code sounds only when it has been closed, one before it with its opening
+    // (seg2:0EF1 moneywin, then 0F05). Every notice before the cue has to be settled.
     if (!moving_) {
-        for (const SoundCue& c : pendingSounds_) sound_.play(c.channel, c.sound, c.loops);
-        pendingSounds_.clear();
+        const Notice* front = screen_.messages().front();
+        const int settled = front ? std::min(front->seq, noticesTaken_) : noticesTaken_;
+        size_t played = 0;
+        for (; played < pendingSounds_.size(); ++played) {
+            const SoundCue& c = pendingSounds_[played];
+            if (c.afterNotice > settled) break; // keeps the order of the cues
+            sound_.play(c.channel, c.sound, c.loops);
+        }
+        pendingSounds_.erase(pendingSounds_.begin(), pendingSounds_.begin() + long(played));
     }
     // Message window and menu are modal (seg6:0FB4, SetCapture in seg5:578C).
     // A played card changes the turn state and closes the card window.

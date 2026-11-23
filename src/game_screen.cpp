@@ -490,6 +490,15 @@ void GameScreen::tickAmbient(bool views) {
     passes = std::min(passes, 10); // no long catch-up after a stall
     std::vector<AmbientCell> changed;
     std::vector<int> sounds;
+    // seg2:05A8 -> seg8:7F7D after every change of the view: the list of animated objects
+    // is rebuilt from the origin (tiles) and the view's size (pixels).
+    const SDL_Point origin = viewOrigin();
+    const MapViewSize size = viewSize();
+    const std::array<int, 4> view{origin.x / WorldMap::kTile, origin.y / WorldMap::kTile, size.width, size.height};
+    if (view != ambientView_) {
+        ambientView_ = view;
+        ambient_.setView(view[0], view[1], view[2], view[3], *ambientMap_, ambientRng_, changed);
+    }
     for (int i = 0; i < passes; ++i) ambient_.tick(*ambientMap_, ambientRng_, changed, sounds);
     if (!changed.empty() && SDL_LockSurface(world_.get()) == 0) {
         auto* pixels = static_cast<uint8_t*>(world_->pixels);
@@ -534,7 +543,8 @@ void GameScreen::drawMap() {
         // seg8:7CFB: the animated objects of the map (rebuilt with the season's tiles).
         try {
             ambientMap_ = std::make_unique<WorldMap>(readFile(findCaseInsensitive(root_, fs::path("map") / "europe.map")));
-            ambient_.build(*ambientMap_, ambientRng_);
+            ambient_.build(*ambientMap_);
+            ambientView_ = {-1, -1, -1, -1}; // the list is built at the next pass
         } catch (const std::exception&) {
             ambientMap_.reset();
         }

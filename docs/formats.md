@@ -2017,6 +2017,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `WaveMixActivate(FALSE)` (seg1:33E6); WaveMix is activated again when the voice
   has ended (seg1:3D86). While a voice sounds the effects are silent; the MIDI
   music goes on unchanged. The finish's `snd\z.wav` (seg7:2C48) takes this path too.
+- **Order with messages:** the message window seg6:51EA is modal (seg6:0FB4); code
+  after it — and its sounds — runs only when it has been closed (seg2:0EF1 plays
+  moneywin, seg2:0F05 then opens the message). Rebuilt: every `Notice` gets a
+  sequence number, every `SoundCue` the number of the next notice
+  (`afterNotice`); the game window plays a cue only when all notices before it have
+  been closed (`GameWindow::updateFrame`), instead of every cue of a command at once.
 - **Focus** WM_ACTIVATEAPP seg4:0CAE: losing it minimises the window, pauses a voice
   (`waveOutPause`, seg4:0D4E) or deactivates WaveMix (seg4:0D6E) and calls
   seg1:293F (music); gaining it restarts the voice or activates WaveMix (0CD7 /
@@ -2218,10 +2224,21 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   list gets pause random(+8), delay 0, the definition's repeats, frame 0xFF and
   restart 1 (seg8:8277), so the objects start staggered (they all started
   together after loading). Rebuilt in `src/ambient.cpp` (table
-  generated from the data segment) and `GameScreen::tickAmbient`: all objects
-  advance every 20 ms on a copy of the map with their own random numbers.
-  **Simplifications:** objects outside the view advance too, and changing the view
-  does not reset their frames.
+  generated from the data segment) and `GameScreen::tickAmbient`: the listed
+  objects advance every 20 ms on a copy of the map with their own random numbers.
+  *Round 132 (replaces the former simplification that every object advanced):*
+  seg8:7F7D, called only from the redraw seg2:05A8 (after centring, edge scrolling,
+  turn starts and event scenes), first moves every listed record to its last frame
+  (seg8:7FAB: frame up to the terminator, back by one) and writes its tiles, clears
+  the list (seg8:8359), then lists the records (in scan order, at most 0x96,
+  seg8:828B) whose rectangle — pixels: cell · 16 to (cell + size) · 16 (seg8:7EED,
+  7F1E) — touches (DS:956A, DS:9568, DS:956A − DS:94DA + DS:94DE, DS:9568 − DS:94DC +
+  DS:94E0) by seg2:42A4 (inclusive overlap). DS:956A / 9568 is the origin in *tiles*
+  (seg6:3099 `sar 4`), DS:94DE / 94E0 the view in pixels: rally.exe mixes the units,
+  so the list holds objects near the world's top left, not the visible ones.
+  Measured with europe.map (1276 objects, 99 with a sound): every origin lists 42–50
+  objects, none with a sound — the farm animals' sounds never play in rally.exe.
+  Rebuilt exactly (`AmbientAnimations::setView`, tested).
 - **Voice** (round 102): seg1:3579 always selects the sync.dat record but loads and
   plays the WAV only with a wave device (DS:9552) and [Setup] Voice (DS:B5D4),
   independent of Sound-F/X (seg1:3661); otherwise seg1:3E64's TimerCount path

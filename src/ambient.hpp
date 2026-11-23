@@ -33,13 +33,22 @@ struct AmbientCell { int layer, x, y; };
 
 class AmbientAnimations {
 public:
-    // seg8:7CFB: scan both layers of every cell (tile & 0xFFF).
-    // seg8:7CFB; each record then starts as seg8:8277 sets it when it enters the
-    // visible list: pause random(range), delay 0, repeats of the definition, frame
-    // 0xFF, restart 1 (so the objects do not start together).
-    void build(const WorldMap& map, MsRandom& rng);
+    // seg8:7CFB: scan both layers of every cell (tile & 0xFFF); the list is empty.
+    void build(const WorldMap& map);
     size_t size() const { return objects_.size(); }
-    // seg8:83A0, one pass: changes `map`, appends the changed cells and the sounds.
+    size_t listed() const { return listed_.size(); }
+    // seg8:7F7D (from the redraw seg2:05A8 after every change of the view): the listed
+    // objects show their last frame, then the list DS:A05E is rebuilt with the objects
+    // whose rectangle (pixels, seg8:7EED) touches (originX, originY, originX + viewWidth,
+    // originY + viewHeight) — rally.exe takes the origin DS:956A / 9568 in *tiles* here
+    // and the view size DS:94DE / 94E0 in pixels (seg8:81E2), so the list holds objects
+    // near the world's top left rather than the visible ones — at most 150 (seg8:828B),
+    // each started as seg8:8277 does: pause random(range), delay 0, the definition's
+    // repeats, frame 0xFF, restart 1.
+    void setView(int originX, int originY, int viewWidth, int viewHeight, WorldMap& map, MsRandom& rng,
+                 std::vector<AmbientCell>& changed);
+    // seg8:83A0, one pass over the listed objects: changes `map`, appends the changed
+    // cells and the sounds.
     void tick(WorldMap& map, MsRandom& rng, std::vector<AmbientCell>& changed, std::vector<int>& sounds);
 
 private:
@@ -52,7 +61,9 @@ private:
         int frame = 0;            // +0x10 (byte, 0xFF before a run)
         bool restart = false;     // +0x11
     };
+    void writeFrame(const Object& o, WorldMap& map, std::vector<AmbientCell>& changed) const;
     std::vector<Object> objects_;
+    std::vector<size_t> listed_; // DS:A05E: indices into objects_
 };
 
 } // namespace dtvr

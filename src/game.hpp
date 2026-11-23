@@ -47,10 +47,15 @@ struct Notice {
     // (seg2:BAB5 ff.), butt/prof.bmp / fuss.bmp for investment results (seg8:65C0 /
     // 6428); `cardPicture` takes precedence.
     enum class Picture : uint8_t { Showmaster, Drago, Professor, Football } picture = Picture::Showmaster;
+    // Order of emission (presentation): a sound waits until the messages before it
+    // have been closed, as rally.exe's modal message windows (seg6:51EA) hold its code.
+    int seq = 0;
 };
 // A sound of seg1:2C9B(channel, sound, loops): sound = index into the table of
 // snd/fx files (seg1:2E90 ff., docs/formats.md "Sounds"); cosmetic, no rule effect.
-struct SoundCue { int channel = 0; int sound = 0; int loops = 0; };
+// `afterNotice`: the sequence number the next notice would get when the sound was
+// emitted; it plays once every notice with a smaller number has been closed.
+struct SoundCue { int channel = 0; int sound = 0; int loops = 0; int afterNotice = 0; };
 // A card film of the FLIC window (seg7:62AA): butt/flc/karte<film>.flc played `loops`
 // times with its sound butt/snd/<sound>.wav on channel 7; cosmetic, no rule effect.
 struct FilmCue { int film = 0; int loops = 1; const char* sound = ""; };
@@ -161,7 +166,7 @@ public:
     // them clears the queue (not part of the saved state).
     // Moves the notices of another game (a new game handed over through the save codec).
     void adoptNotices(Game& other) {
-        for (Notice& n : other.takeNotices()) notices_.push_back(std::move(n));
+        for (Notice& n : other.takeNotices()) pushNotice(std::move(n));
     }
     std::vector<SoundCue> takeSounds() { std::vector<SoundCue> s; s.swap(sounds_); return s; }
     std::vector<FilmCue> takeFilms() { std::vector<FilmCue> f; f.swap(films_); return f; }
@@ -303,8 +308,9 @@ private:
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
     int spin(int reels, int maximum);       // seg2:6426 / 776A: sum of the reels
-    void notice(int text, std::vector<NoticeArg> args = {}) { notices_.push_back({text, std::move(args)}); }
-    void sound(int channel, int index, int loops = 0) { sounds_.push_back({channel, index, loops}); }
+    void pushNotice(Notice n) { n.seq = nextNotice_++; notices_.push_back(std::move(n)); }
+    void notice(int text, std::vector<NoticeArg> args = {}) { pushNotice({text, std::move(args)}); }
+    void sound(int channel, int index, int loops = 0) { sounds_.push_back({channel, index, loops, nextNotice_}); }
     static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
@@ -314,7 +320,7 @@ private:
         n.focusX = cellX;
         n.focusY = cellY;
         n.variant = variant;
-        notices_.push_back(std::move(n));
+        pushNotice(std::move(n));
     }
     double propertyPrice(const Economy::PropertyRef& p) const;
     void startRisiko();                     // game_risiko.cpp
@@ -374,6 +380,7 @@ private:
     void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
+    int nextNotice_ = 0; // sequence of the next notice (presentation, not saved)
     std::vector<SoundCue> sounds_;
     std::vector<FilmCue> films_;
     int risikoPresses_ = 0, risikoPressLight_ = 0; // not saved: presentation only

@@ -36,11 +36,26 @@ int main() {
     AmbientAnimations a;
     MsRandom rng(1);
     MsRandom expected(1);
-    const int pause = expected.random(10); // seg8:8277: the start pause random(+8)
-    a.build(map, rng);
-    check(a.size() == 1, "one object found");
+    map.setTile(0, 100, 100, 0xAD5); // a second object in the middle of the world
+    a.build(map);
+    check(a.size() == 2 && a.listed() == 0, "two objects found, none listed before a view");
     std::vector<AmbientCell> changed;
     std::vector<int> sounds;
+    a.tick(map, rng, changed, sounds);
+    check(changed.empty(), "nothing moves without the list");
+    // seg8:81E2: the view is (origin in tiles, + size in pixels) against pixel rectangles:
+    // with the origin (100, 100) the object at cell (100, 100) (pixel 1600) is not listed,
+    // the one at (10, 20) (pixels 160 / 320) is.
+    const int pause = expected.random(10); // seg8:8277: the start pause random(+8)
+    a.setView(100, 100, 688, 688, map, rng, changed);
+    check(a.listed() == 1 && changed.empty(), "rally.exe lists the object near the top left");
+    a.setView(0, 0, 0, 0, map, expected, changed); // a view touching neither (pause drawn from another generator)
+    check(a.listed() == 0, "an empty view lists nothing");
+    check(changed.size() == 1 && map.cell(0, 10, 20) == (0x4000 | 0xADB), "the unlisted object shows its last frame");
+    map.setTile(0, 10, 20, uint16_t(0x4000 | 0xAD5));
+    rng = MsRandom(1);
+    a.setView(100, 100, 688, 688, map, rng, changed);
+    changed.clear();
     int passes = 0;
     while (map.cell(0, 10, 20) != (0x4000 | 0xAD6) && passes < 100) {
         changed.clear();

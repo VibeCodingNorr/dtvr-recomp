@@ -280,7 +280,7 @@ bool Game::step(Direction d) {
             Notice q{600, {}};                             // "Willst Du diese Karte wirklich einsetzen ?"
             q.buttons = 4;
             q.cardPicture = card;                          // DS:1A6C: <n>card_<number>.bmp
-            notices_.push_back(std::move(q));
+            pushNotice(std::move(q));
             return false;
         }
         messages_.push_back(playerName(current_) + " raeumt das Hindernis mit "
