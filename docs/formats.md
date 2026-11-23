@@ -222,6 +222,12 @@ Confirmed from code unless marked otherwise.
   (DS:9592 ≠ −1), steps taken = allowance or allowance = −1, the vehicle is
   aligned to the cell grid (seg2:2C0F: `(x | y) & 0xF == 0`) and DS:9EDE = 0. A
   move therefore only triggers a field when the full allowance is used.
+- **Turn end after the field** (round 113): every field handler returns to
+  seg2:1618, which calls the forced sale check seg1:4E39 and nextPlayer seg2:06FC
+  directly. The handler's message, card dialog, town dialog or card shop runs
+  modally, so a human's turn ends when it is closed, without another Enter. The
+  game window now calls `Game::endTurn` itself once nothing modal is left (the
+  terminal mode `--play` keeps Enter).
 - **Dispatch** on `whatisit − 1`, jump table seg2:160C:
 
   | Kind | Marker | Handler | Action |

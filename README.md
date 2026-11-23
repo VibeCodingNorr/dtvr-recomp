@@ -180,7 +180,8 @@ is claimed.
 104. The overview inside its border; the message text 10 pixels right of the picture.
 105. The name plate under the portrait (NICKNAME).
 106. Messages close by themselves during computer turns (2.5 s × pause factor), as seg6:0FB4 does.
-107. *Next:* remaining presentation details (compare windows with rally.exe).
+107. A human's turn ends when the field's message or dialog closes (seg2:1618), without another Enter.
+108. *Next:* the hand as a card stack under the portrait (seg3:0EE8), remaining presentation details.
 
 </details>
 
@@ -273,7 +274,7 @@ number of stages (1–300).
 
 | Key / input | Game window (as rally.exe unless marked) |
 | --- | --- |
-| Enter | Spin the slot machine, confirm, end the turn after arriving |
+| Enter | Spin the slot machine, confirm |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
 | Escape / Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |

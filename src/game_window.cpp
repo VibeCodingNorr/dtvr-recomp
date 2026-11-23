@@ -451,6 +451,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
                            || screen.sight().isOpen() || screen.intro().active();
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
+        // seg2:1618: after the field action (its message, town dialog, card dialog or card
+        // shop run modally) the original checks the forced sale (seg1:4E39) and calls
+        // nextPlayer (seg2:06FC) at once: a human does not press Enter again.
+        {
+            Game& g = play.game();
+            const int p = g.currentPlayer();
+            if (!modal && !moving && !screen.title() && p >= 0 && !g.isComputer(p) && g.phase() == Game::Phase::Arrived
+                && !estates.isOpen() && !g.yellowCardPending() && options.openEstates < 0 && !options.cardShop
+                && g.endTurn())
+                report();
+        }
         // [Setup] TimeOut: the 1000 ms timer of seg2:3ABD runs while the window is active.
         play.game().setTimeLimit(screen.settings().value[Settings::TimeOut] != 0);
         if (play.game().timeLimitRunning() && !screen.title()
