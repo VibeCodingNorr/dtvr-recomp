@@ -63,12 +63,12 @@ def build(python_runtime, appimagetool, runtime, output, arch):
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".dtvr-appimage-", dir=output.parent) as temporary:
         appdir = Path(temporary) / "AppDir"
-        source = appdir / "usr/src/dtvr-recomb"
+        source = appdir / "usr/src/dtvr-recomp"
         revision = export_source(source)
         version = read_version(source)
         if version != read_version():
             raise ValueError("Commit VERSION before packaging a release")
-        filename = f"DTVR-Recomb-Setup-{version}-{arch}.AppImage"
+        filename = f"DTVR-Recomp-Setup-{version}-{arch}.AppImage"
         bundled = appdir / "usr/python"
         shutil.copytree(python_runtime, bundled, symlinks=True,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -98,15 +98,15 @@ def build(python_runtime, appimagetool, runtime, output, arch):
         (appdir / "AppRun").chmod(0o755)
         subprocess.run(["rsvg-convert", "-w", "256", "-h", "256",
                         str(source / "assets/branding/icon.svg"), "-o",
-                        str(appdir / "dtvr-recomb-setup.png")], check=True)
-        shutil.copy2(appdir / "dtvr-recomb-setup.png", appdir / ".DirIcon")
+                        str(appdir / "dtvr-recomp-setup.png")], check=True)
+        shutil.copy2(appdir / "dtvr-recomp-setup.png", appdir / ".DirIcon")
         for name, width, height in (("logo", 224, 67), ("icon", 64, 64)):
             subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height),
                             str(source / f"assets/branding/{name}.svg"), "-o",
                             str(source / f"assets/branding/installer-{name}.png")], check=True)
-        (appdir / "dtvr-recomb-setup.desktop").write_text(
+        (appdir / "dtvr-recomp-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"
-            f"Name=DTVR Recomb Setup {version}\nExec=AppRun\nIcon=dtvr-recomb-setup\n"
+            f"Name=DTVR Recomp Setup {version}\nExec=AppRun\nIcon=dtvr-recomp-setup\n"
             "Terminal=false\nCategories=Utility;\n")
         metadata = {"project_version": version, "architecture": arch,
                     "tcl_version": probe["tcl"], "tk_version": probe["tk"],

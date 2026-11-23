@@ -16,7 +16,7 @@ namespace dtvr {
 
 constexpr int kSaveSlots = 9; // slots 0..8 (seg8:B750, seg8:B53A)
 
-// $XDG_DATA_HOME/dtvr-recomb/saves, else ~/.local/share/dtvr-recomb/saves.
+// $XDG_DATA_HOME/dtvr-recomp/saves, else ~/.local/share/dtvr-recomp/saves.
 std::filesystem::path defaultSaveDirectory();
 
 // seg8:B413: "%Fs (%d) - %Fs" with text 301 + month % 12, year + 1 and the names of

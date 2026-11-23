@@ -10,7 +10,8 @@
 namespace dtvr {
 namespace {
 
-constexpr const char* kMagic = "DTVR-RECOMB-SAVE";
+constexpr const char* kMagic = "DTVR-RECOMP-SAVE";
+constexpr const char* kLegacyMagic = "DTVR-RECOMB-SAVE"; // the project's former name; read only
 
 void fnv(uint64_t& h, uint64_t v, int bytes) {
     for (int i = 0; i < bytes; ++i) {
@@ -167,7 +168,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
         std::istringstream head(line);
         std::string magic;
         int format = 0;
-        if (!(head >> magic >> format) || magic != kMagic) return fail("kein DTVR-Recomb-Spielstand");
+        if (!(head >> magic >> format) || (magic != kMagic && magic != kLegacyMagic)) return fail("kein DTVR-Recomp-Spielstand");
         if (format < 1 || format > kSaveFormat)
             return fail("Spielstandformat " + std::to_string(format) + " wird nicht unterstuetzt");
         version = format;
@@ -194,7 +195,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error) {
     int phase = 0, current = 0, origin = -1, destination = -1, remaining = 0;
     Game::RisikoState risiko;
     int demoEnd = 0;
-    int extraCards = 0; // format 5: recomb extensions (0 in older saves)
+    int extraCards = 0; // format 5: recomp extensions (0 in older saves)
     int totalStages = -1;
     std::map<std::string, int> seen;
     bool ended = false;

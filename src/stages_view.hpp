@@ -7,7 +7,7 @@
 // window accepts 1-300 (written back to [Default] Rounds, DS:A104 / A106); other
 // values play Zaehler2. Evidence in docs/formats.md "Stage count window".
 //
-// Recomb addition (not in rally.exe, always shown): a slider 1-300 below the text,
+// Recomp addition (not in rally.exe, always shown): a slider 1-300 below the text,
 // on a 40 pixel taller window cut from the same paper; it and the field follow
 // each other.
 #pragma once

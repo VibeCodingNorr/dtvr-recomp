@@ -97,7 +97,7 @@ struct AiState {
     uint16_t routeMask = 0;         // DS:A10F
     bool steerless = false;         // DS:8D2A: card Steuerlos, random(1000) scores
     std::vector<uint16_t> fieldDist; // DS:22: last field distances (from the destination)
-    bool extraCards = false;              // recomb extension: also the never-winning cards
+    bool extraCards = false;              // recomp extension: also the never-winning cards
     std::array<bool, 4> nailsDirections{}; // the current player's (Game::nailsDirections)
     std::array<int, 8> airports{-1, -1, -1, -1, -1, -1, -1, -1}; // Flugzeug rows 5602 + i as towns
     int cardCount(int player, int type) const;   // seg3:3FFC (type 0-based here)

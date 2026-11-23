@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The recomb menu (Escape): navigation, settings edits and commands.
+// The recomp menu (Escape): navigation, settings edits and commands.
 #include "recomp_menu.hpp"
 
 #include <cstdio>

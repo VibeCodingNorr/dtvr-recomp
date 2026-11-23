@@ -1,13 +1,13 @@
 # Versions and setup AppImage
 
 The project starts at **0.0.1**. `VERSION` is the single source for CMake,
-`dtvr-recomb --version`, the installer window, `tools/install.py --version`,
+`dtvr-recomp --version`, the installer window, `tools/install.py --version`,
 installation manifests and setup filenames. Increase it for every release;
 ordinary development commits do not increase it. Use MAJOR.MINOR.PATCH and tags
 such as `v0.0.1`. Fix releases normally increase PATCH, compatible features MINOR,
 and incompatible changes MAJOR. A release version must exceed every earlier one.
 
-The setup filename is `DTVR-Recomb-Setup-0.0.1-x86_64.AppImage` for the initial
+The setup filename is `DTVR-Recomp-Setup-0.0.1-x86_64.AppImage` for the initial
 x86_64 version. Packaging is implemented; no public release is published yet.
 The AppImage contains our committed source, branding, GPL license and a supplied
 relocatable Python/Tk runtime with its third-party license files. No ISO, original
@@ -26,10 +26,10 @@ dependencies. The package does not install system packages or require root.
 The resulting game still needs the host SDL2 runtime.
 
 ```sh
-chmod +x DTVR-Recomb-Setup-0.0.1-x86_64.AppImage
-./DTVR-Recomb-Setup-0.0.1-x86_64.AppImage
-./DTVR-Recomb-Setup-0.0.1-x86_64.AppImage --version
-./DTVR-Recomb-Setup-0.0.1-x86_64.AppImage --cli --help
+chmod +x DTVR-Recomp-Setup-0.0.1-x86_64.AppImage
+./DTVR-Recomp-Setup-0.0.1-x86_64.AppImage
+./DTVR-Recomp-Setup-0.0.1-x86_64.AppImage --version
+./DTVR-Recomp-Setup-0.0.1-x86_64.AppImage --cli --help
 ```
 
 On hosts without usable FUSE, the AppImage runtime's `--appimage-extract-and-run`

@@ -17,7 +17,7 @@ an update preserves existing packs and does not modify playback preferences.
 
 ## Choosing music
 
-Open the **Audio** page of the recomb menu (`src/recomp_menu.cpp`): **F8** in the
+Open the **Audio** page of the recomp menu (`src/recomp_menu.cpp`): **F8** in the
 game and title, Escape → Audio, or "Weitere Einstellungen" in the options window
 (F8 stays the original's eighth switch there and in the player setup).
 
@@ -38,7 +38,7 @@ state. It blocks local input/AI like other current single-player modal dialogs;
 network pause policy is not implemented.
 
 Set ID and volume are stored separately in
-`$XDG_CONFIG_HOME/dtvr-recomb/music.ini` (default `~/.config/dtvr-recomb/music.ini`).
+`$XDG_CONFIG_HOME/dtvr-recomp/music.ini` (default `~/.config/dtvr-recomp/music.ini`).
 The enable switch remains `[Setup] Midi` in `settings.ini` for compatibility with
 the existing options UI; it now controls Ogg playback. No settings affect RNG.
 
@@ -95,7 +95,7 @@ unverified original MCI position units.
 ## Streaming and limits
 
 `music_catalog` handles discovery/preferences, `music_player` handles control,
-`music_stream` owns decoding, and `music_menu` connects the player to the recomb menu's Audio page. Decoder/file
+`music_stream` owns decoding, and `music_menu` connects the player to the recomp menu's Audio page. Decoder/file
 work runs on a worker with a half-second PCM ring. The audio callback performs no
 file I/O, allocation or waiting: it consumes buffered samples or emits silence.
 All sources are summed and clipped in one device; closing the device precedes

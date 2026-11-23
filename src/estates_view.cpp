@@ -160,7 +160,7 @@ EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vecto
         else if (focus_ == 2) action.kind = Action::Kind::Cards;
         else if (focus_ == 3) { action.kind = Action::Kind::Close; action.sound = true; }
     };
-    // No WM_MOUSEMOVE handler (seg1:5D4A). The wheel is a recomb addition where the
+    // No WM_MOUSEMOVE handler (seg1:5D4A). The wheel is a recomp addition where the
     // original has arrow buttons to page: the statistics (PFEIL1 / PFEIL2).
     if (event.type == SDL_MOUSEWHEEL && statistics_) {
         scroll_ = std::max(0, std::min(std::max(0, count - kVisibleRows), scroll_ - event.wheel.y));

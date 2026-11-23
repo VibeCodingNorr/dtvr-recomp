@@ -69,11 +69,27 @@ Settings Settings::decode(const std::string& text) {
     return s;
 }
 
+bool adoptFormerName(const fs::path& path, std::string& error) {
+    fs::path former;
+    bool renamed = false;
+    for (const fs::path& part : path) {
+        const bool match = !renamed && part == "dtvr-recomp";
+        former /= match ? fs::path("dtvr-recomb") : part;
+        renamed |= match;
+    }
+    std::error_code ec;
+    if (!renamed || fs::exists(path, ec) || !fs::exists(former, ec)) return true;
+    fs::create_directories(path.parent_path(), ec);
+    if (!ec) fs::copy(former, path, fs::copy_options::recursive, ec);
+    if (ec) { error = former.string() + ": " + ec.message(); return false; }
+    return true;
+}
+
 fs::path defaultSettingsFile() {
-    if (const char* xdg = std::getenv("XDG_CONFIG_HOME"); xdg && *xdg) return fs::path(xdg) / "dtvr-recomb" / "settings.ini";
+    if (const char* xdg = std::getenv("XDG_CONFIG_HOME"); xdg && *xdg) return fs::path(xdg) / "dtvr-recomp" / "settings.ini";
     if (const char* home = std::getenv("HOME"); home && *home)
-        return fs::path(home) / ".config" / "dtvr-recomb" / "settings.ini";
-    return fs::path("dtvr-recomb-settings.ini");
+        return fs::path(home) / ".config" / "dtvr-recomp" / "settings.ini";
+    return fs::path("dtvr-recomp-settings.ini");
 }
 
 Settings loadSettings(const fs::path& file) {

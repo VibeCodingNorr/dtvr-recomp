@@ -56,7 +56,7 @@ OptionsView::Result OptionsView::handle(const SDL_Event& event) {
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const SDL_Rect extra = extraRect();
         const SDL_Point at{event.button.x, event.button.y};
-        if (SDL_PointInRect(&at, &extra)) { // recomb: open the recomb menu
+        if (SDL_PointInRect(&at, &extra)) { // recomp: open the recomp menu
             sound_ = 2;
             return Result::RecompMenu;
         }
@@ -97,7 +97,7 @@ void OptionsView::draw() {
         }
     }
     buttons_.drawFocus(renderer_);
-    // Recomb addition: a label in the dialog colour (0x45) that opens the recomb menu.
+    // Recomp addition: a label in the dialog colour (0x45) that opens the recomp menu.
     const SDL_Rect extra = extraRect();
     text_.draw(renderer_, "Weitere Einstellungen \u203a  (Erg\u00e4nzung)",
                ScreenRect{extra.x, extra.y, extra.w, extra.h},

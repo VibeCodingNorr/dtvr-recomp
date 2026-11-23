@@ -3,10 +3,10 @@
 Status: the user endorsed adjustable animation tempo on 2026-11-23. **First
 increment implemented (round 125):** `src/presentation_clock.{hpp,cpp}` (no SDL,
 tests in `tests/presentation_clock_test.cpp`), `[Extensions] AnimationTempo` (1, 2,
-4; others read as 1) and **Animationstempo** on the Spiel page of the recomb menu.
+4; others read as 1) and **Animationstempo** on the Spiel page of the recomp menu.
 The clock drives the event animations (`GameScreen::startEventScene` /
 `eventSceneActive` and their camera) and the vehicles' drive including their frame
-animation; it stops while the recomb menu is open. Real time stays with input,
+animation; it stops while the recomp menu is open. Real time stays with input,
 the time limit, computer-message reading time, the slot machine, Risiko, the
 ambient map animations, palette cycling, music, speech, subtitles and films.
 Not yet: finish / victory / balance sequences (voiced), "Computerzüge schneller".

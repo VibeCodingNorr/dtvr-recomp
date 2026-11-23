@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Presentation time for the optional animation tempo (recomb extension, not in
+// Presentation time for the optional animation tempo (recomp extension, not in
 // rally.exe; docs/animation-tempo.md). Real elapsed milliseconds are accumulated at
 // the current rate (1, 2 or 4); a rate change counts the time since the last update
-// at the old rate, and paused time (the recomb menu) is not added. Only cosmetic
+// at the old rate, and paused time (the recomp menu) is not added. Only cosmetic
 // timing reads it: event animations and the vehicles' drive. Input, deadlines,
 // message reading time, music, speech and films keep real time. No SDL.
 #pragma once

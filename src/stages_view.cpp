@@ -10,7 +10,7 @@ namespace dtvr {
 namespace {
 
 constexpr int kWidth = 0x186;       // CreateWindow seg8:0828
-constexpr int kExtra = 40;          // recomb: the slider strip below the original window
+constexpr int kExtra = 40;          // recomp: the slider strip below the original window
 constexpr int kFieldW = 0xBE, kFieldH = 0x5A; // SBINPUT seg8:0976
 constexpr int kInputLimit = 0x13;   // seg1:1D2A: window word +0xC
 constexpr SDL_Color kText{67, 27, 0, 255}; // palette colour 0x45
@@ -104,7 +104,7 @@ StagesView::Result StagesView::handle(const SDL_Event& event) {
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const SDL_Point at{event.button.x, event.button.y};
         SDL_Rect grab{t.x - 8, t.y - 6, t.w + 16, t.h + 12};
-        if (SDL_PointInRect(&at, &grab)) { // recomb slider
+        if (SDL_PointInRect(&at, &grab)) { // recomp slider
             dragging_ = true;
             setFromSlider(at.x);
             return Result::None;
@@ -171,7 +171,7 @@ void StagesView::draw() {
     TextStyle input{kInput[res], true, true, false, false, 0, kBlack};
     input.serif = true;
     text_.draw(renderer_, input_ + "|", ScreenRect{w.x + f.x, w.y + f.y, f.w, f.h}, input);
-    // Recomb slider: a track and a knob in the dialog colour, 1 and 300 at its ends.
+    // Recomp slider: a track and a knob in the dialog colour, 1 and 300 at its ends.
     const SDL_Rect t = track();
     SDL_SetRenderDrawColor(renderer_, kText.r, kText.g, kText.b, 255);
     const SDL_Rect line{t.x, t.y + t.h / 2 - 1, t.w, 3};

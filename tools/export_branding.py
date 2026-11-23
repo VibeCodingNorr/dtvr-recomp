@@ -43,7 +43,7 @@ def export(output):
             directory += struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(png), offset)
             payload += png
             offset += len(png)
-        (stage / "dtvr-recomb.ico").write_bytes(directory + payload)
+        (stage / "dtvr-recomp.ico").write_bytes(directory + payload)
         if output.exists():
             raise ValueError("Output appeared during export")
         stage.rename(output)

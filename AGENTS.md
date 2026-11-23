@@ -1,4 +1,4 @@
-# Working on DTVR Recomb
+# Working on DTVR Recomp
 
 ## Objective and current state
 
@@ -82,11 +82,11 @@ SBS animation playback or executable translation have been implemented.
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
-./build/dtvr-recomb --data /path/to/extracted
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --smoke-test --screenshot /path/to/artifacts/overview.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted/program --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
+./build/dtvr-recomp --data /path/to/extracted
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --smoke-test --screenshot /path/to/artifacts/overview.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted/program --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
 ctest --test-dir build --output-on-failure
 python3 tools/ne_disasm.py /path/to/extracted/program/rally.exe /path/to/private-analysis --use32 9 --dll-dir /path/to/extracted/program --dll-dir /path/to/extracted/wing --dll-dir /path/to/optional-system-dlls
 python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analysis.json
@@ -125,7 +125,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
   `src/stages_view.{hpp,cpp}`: the stage count window TEMP with the slider;
   `src/overview_view.{hpp,cpp}`: the overview map; `src/recomp_menu.{hpp,cpp}` (no SDL) and
-  `src/recomp_menu_view.{hpp,cpp}`: the recomb Escape menu (docs/pause-menu.md);
+  `src/recomp_menu_view.{hpp,cpp}`: the recomp Escape menu (docs/pause-menu.md);
   `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
@@ -163,7 +163,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   packs and retained rollback installation. Never hash mutable saves as managed
   assets or modify XDG settings; run smoke checks with isolated XDG directories.
 - `src/music_{catalog,stream,player,menu}.{hpp,cpp}`: complete local Ogg catalogs,
-  bounded worker decoding, presentation-only cue control and sound-set selection on the recomb menu's Audio page (`music_menu`).
+  bounded worker decoding, presentation-only cue control and sound-set selection on the recomp menu's Audio page (`music_menu`).
   One 44.1 kHz stereo device mixes music and effects. No file I/O or waiting in
   the audio callback; stop/error must never count as natural completion.
 - `docs/native-music.md`: supported triggers, timing limitations, preferences and

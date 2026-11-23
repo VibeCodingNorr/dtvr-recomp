@@ -67,7 +67,7 @@ def fake_build_tool():
         if mode == "install-fail":
             raise SystemExit(4)
         stage = Path(args[args.index("--prefix") + 1])
-        binary = stage / "bin/dtvr-recomb"
+        binary = stage / "bin/dtvr-recomp"
         binary.parent.mkdir(parents=True)
         binary.write_text("#!" + sys.executable + "\n"
                           "import json, os, sys\n"

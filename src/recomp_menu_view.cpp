@@ -149,7 +149,7 @@ void RecompMenuView::draw() {
     TextStyle title{px(30), true, true, false, false, std::max(1, px(2)), kGold};
     text_.draw(renderer_, "Die total verrückte Rallye", ScreenRect{g.header.x + px(28), g.header.y + px(18), g.header.w / 2, px(34)}, title);
     TextStyle small{px(15), true, false, false, true, 0, kMuted};
-    text_.draw(renderer_, "Recomb " + version_, ScreenRect{g.header.x, g.header.y + px(30), g.header.w - px(28), px(20)}, small);
+    text_.draw(renderer_, "Recomp " + version_, ScreenRect{g.header.x, g.header.y + px(30), g.header.w - px(28), px(20)}, small);
     fill(renderer_, SDL_Rect{g.panel.x + px(20), g.header.y + g.header.h - 2, g.panel.w - px(40), 2}, kGold, 160);
 
     // Page list.

@@ -73,7 +73,7 @@ packaged runtime as well as source execution when changing fonts or Tcl/Tk paths
 Supply a previously built setup artifact and its adjacent SHA-256 sidecar:
 
 ```sh
-python3 tools/check_appimage.py /path/to/DTVR-Recomb-Setup-0.0.1-x86_64.AppImage
+python3 tools/check_appimage.py /path/to/DTVR-Recomp-Setup-0.0.1-x86_64.AppImage
 ```
 
 The checker validates the checksum, runs the bundled version and CLI through

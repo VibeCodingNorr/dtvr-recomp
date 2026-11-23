@@ -329,7 +329,7 @@ AiTownPlan aiTownPlan(const AiState& s, int player, int field) {
                     break;
                 }
     }
-    // Recomb extension (not in rally.exe, whose town plan never uses these cards):
+    // Recomp extension (not in rally.exe, whose town plan never uses these cards):
     // only when no property card was chosen above.
     if (s.extraCards && !blocked && mode == 0xFF) {
         double cash = s.cash(player);

@@ -35,7 +35,7 @@ std::string PlayView::title() const {
                                    "Risiko (Leertaste druecken, Ruecktaste aufhoeren)"};
     const Game& g = *game_;
     const int p = g.currentPlayer();
-    std::string s = "DTVR Recomb | " + g.playerName(p) + " | Monat "
+    std::string s = "DTVR Recomp | " + g.playerName(p) + " | Monat "
         + std::to_string(g.calendar().month % 12 + 1) + " | Schritte " + std::to_string(g.stepsTaken()) + "/"
         + std::to_string(g.allowance()) + " | Ziel " + g.townName(g.destination()) + " | Etappen "
         + std::to_string(g.remainingStages()) + " | Geld " + std::to_string(int64_t(g.cash(p)));

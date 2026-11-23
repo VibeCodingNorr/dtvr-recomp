@@ -14,11 +14,11 @@ class ManifestTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        for name in ["play", "bin/dtvr-recomb", "data/program/butt/1/map.bmp"]:
+        for name in ["play", "bin/dtvr-recomp", "data/program/butt/1/map.bmp"]:
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"synthetic test file")
-            if name in ("play", "bin/dtvr-recomb"):
+            if name in ("play", "bin/dtvr-recomp"):
                 path.chmod(0o755)
         self.manifest = write_manifest(self.root, {})
 
@@ -34,7 +34,7 @@ class ManifestTests(unittest.TestCase):
         path.unlink()
         with self.assertRaises(ValueError):
             verify_installation(self.root)
-        path.symlink_to(self.root / "bin/dtvr-recomb")
+        path.symlink_to(self.root / "bin/dtvr-recomp")
         with self.assertRaises(ValueError):
             verify_installation(self.root)
         with self.assertRaises(ValueError):
@@ -53,6 +53,24 @@ class ManifestTests(unittest.TestCase):
             verify_installation(self.root)
         path.write_text(json.dumps({"schema_version": 1}))
         with self.assertRaisesRegex(ValueError, "legacy"):
+            verify_installation(self.root)
+
+    def test_installation_of_the_former_name_stays_verifiable(self):
+        # DTVR Recomb installations (bin/dtvr-recomb) must remain updatable.
+        new = self.root / "bin/dtvr-recomp"
+        old = self.root / "bin/dtvr-recomb"
+        new.rename(old)
+        files = {name.replace("dtvr-recomp", "dtvr-recomb"): value for name, value in self.manifest["files"].items()}
+        legacy = {**self.manifest, "format": "dtvr-recomb-installation", "files": files}
+        (self.root / "manifest.json").write_text(json.dumps(legacy))
+        self.assertEqual(verify_installation(self.root)["files_verified"], 3)
+        old.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "not executable: bin/dtvr-recomb"):
+            verify_installation(self.root)
+        old.chmod(0o755)
+        # The new format requires the new binary name.
+        (self.root / "manifest.json").write_text(json.dumps({**legacy, "format": "dtvr-recomp-installation"}))
+        with self.assertRaisesRegex(ValueError, "missing required runtime"):
             verify_installation(self.root)
 
 

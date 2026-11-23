@@ -20,7 +20,7 @@ def default_output():
     data_home = Path(os.environ.get("XDG_DATA_HOME", ""))
     if not data_home.is_absolute():
         data_home = Path.home() / ".local/share"
-    return data_home / "dtvr-recomb"
+    return data_home / "dtvr-recomp"
 
 
 def validate_output(output):

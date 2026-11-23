@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The recomb menu (Escape): pause, settings and help of the native port, not part
+// The recomp menu (Escape): pause, settings and help of the native port, not part
 // of rally.exe (docs/pause-menu.md). Pages on the left, their entries on the right;
 // keyboard, controller (through its keys) and mouse share these commands. No SDL.
 #pragma once

@@ -14,7 +14,7 @@ class InstallerLayout:
         self.app = app
         root = app.root
         self.family = configure(root)
-        root.title(f"DTVR Recomb Setup · {read_version()}")
+        root.title(f"DTVR Recomp Setup · {read_version()}")
         root.geometry("1180x900")
         root.minsize(960, 760)
         root.configure(bg=BODY)
@@ -79,7 +79,7 @@ class InstallerLayout:
             self.nav.create_image(10, 38, image=logo, anchor="nw")
         else:
             self.nav.create_text(26, 52, text="DTVR", fill="#f5edda", font=(self.family, 23, "bold"), anchor="nw")
-            self.nav.create_text(28, 91, text="RECOMB", fill=MINT, font=(self.family, 12), anchor="nw")
+            self.nav.create_text(28, 91, text="RECOMP", fill=MINT, font=(self.family, 12), anchor="nw")
         icon = branding_image(root, REPO, "icon", 64, 64)
         if icon:
             self.images.append(icon)

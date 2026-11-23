@@ -6,6 +6,8 @@
 #include "rules.hpp"
 #include "sbs.hpp"
 #include "sdl_assets.hpp"
+#include "save_slots.hpp"
+#include "settings.hpp"
 #include "worldmap.hpp"
 
 #include <SDL.h>
@@ -180,10 +182,10 @@ static int run(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--version") {
-            std::cout << "DTVR Recomb " << DTVR_VERSION << '\n';
+            std::cout << "DTVR Recomp " << DTVR_VERSION << '\n';
             return 0;
         } else if (arg == "--help") {
-            std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
+            std::cout << "dtvr-recomp --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
                          "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--press Escape,Down,Return] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
@@ -263,7 +265,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--month" && i + 1 < argc) month = std::stoi(argv[++i]);
         else throw std::runtime_error("Unbekanntes oder unvollstaendiges Argument: " + arg);
     }
-    if (root.empty()) throw std::runtime_error("Datenpfad fehlt. Aufruf: dtvr-recomb --data PFAD");
+    if (root.empty()) throw std::runtime_error("Datenpfad fehlt. Aufruf: dtvr-recomp --data PFAD");
     root = programDirectory(root);
     const auto tiles = findFiles(root / "map", ".sbb");
     const auto sprites = findFiles(root, ".sbs");
@@ -335,6 +337,12 @@ static int run(int argc, char** argv) {
                         && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !announce && !cardShop && !selectPlayer && !flight && !nails && !invest;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
+        // Settings, music preferences and saves of the former name DTVR Recomb, copied once.
+        for (const fs::path& path : {dtvr::defaultSettingsFile(), dtvr::defaultSettingsFile().parent_path() / "music.ini",
+                                     dtvr::defaultSaveDirectory()}) {
+            std::string error;
+            if (!dtvr::adoptFormerName(path, error)) std::cerr << "Daten von DTVR Recomb: " << error << '\n';
+        }
         const int code = dtvr::runGameWindow(*game, root, board, towns, options);
         SDL_Quit();
         return code;
@@ -342,7 +350,7 @@ static int run(int argc, char** argv) {
     struct Quit { ~Quit() { SDL_Quit(); } } quit;
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
-        SDL_CreateWindow("DTVR Recomb", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        SDL_CreateWindow("DTVR Recomp", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                          1000, 800, SDL_WINDOW_RESIZABLE | (smoke ? SDL_WINDOW_HIDDEN : 0)),
         SDL_DestroyWindow);
     if (!window) throw std::runtime_error(SDL_GetError());
@@ -370,7 +378,7 @@ static int run(int argc, char** argv) {
         width = surface->w; height = surface->h;
         texture.reset(SDL_CreateTextureFromSurface(renderer.get(), surface.get()));
         if (!texture) throw std::runtime_error(SDL_GetError());
-        const auto title = "DTVR Recomb | " + fs::relative(path, root).string()
+        const auto title = "DTVR Recomp | " + fs::relative(path, root).string()
             + " | M: Ansicht | Pfeile: Datei | Rad: Zoom | Ziehen | R: Einpassen";
         SDL_SetWindowTitle(window.get(), title.c_str());
         std::cout << "Geladen: " << path << " (" << width << "x" << height << ")\n";

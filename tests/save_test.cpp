@@ -5,6 +5,7 @@
 #include "settings.hpp"
 
 #include <cstdio>
+#include <fstream>
 #include <filesystem>
 #include <map>
 
@@ -52,7 +53,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMB-SAVE 5\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMP-SAVE 5\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -76,7 +77,7 @@ int main() {
     // Format 1 (round 18, no Risiko record) still loads.
     {
         std::string v1 = saved;
-        v1.replace(0, 18, "DTVR-RECOMB-SAVE 1");
+        v1.replace(0, 18, "DTVR-RECOMP-SAVE 1");
         const size_t r = v1.find("\nrisiko ");
         v1.erase(r, v1.find('\n', r + 1) - r);
         const size_t d = v1.find("\ndemo ");
@@ -90,7 +91,7 @@ int main() {
         Game staged(board, towns, 1, 5, 3, 1);
         std::string v3 = SaveCodec::encode(staged);
         CHECK(v3.find("\nstages 5\n") != std::string::npos);
-        v3.replace(0, 18, "DTVR-RECOMB-SAVE 3");
+        v3.replace(0, 18, "DTVR-RECOMP-SAVE 3");
         const size_t st = v3.find("\nstages ");
         v3.erase(st, v3.find('\n', st + 1) - st);
         Game c(board, towns, 1, 9, 4, 1);
@@ -101,7 +102,7 @@ int main() {
         CHECK(!SaveCodec::decode(c, missing, error)); // format 4 needs it
     }
 
-    // Format 5 (round 98): the recomb extension record; format 4 saves load with it off.
+    // Format 5 (round 98): the recomp extension record; format 4 saves load with it off.
     {
         Game ext(board, towns, 1, 2, 5, 1);
         ext.setComputerExtraCards(true);
@@ -110,10 +111,16 @@ int main() {
         Game d(board, towns, 1, 0, 6, 1);
         CHECK(SaveCodec::decode(d, v5, error) && d.computerExtraCards());
         std::string v4 = v5;
-        v4.replace(0, 18, "DTVR-RECOMB-SAVE 4");
+        v4.replace(0, 18, "DTVR-RECOMP-SAVE 4");
         const size_t es = v4.find("\nextensions ");
         v4.erase(es, v4.find('\n', es + 1) - es);
         CHECK(SaveCodec::decode(d, v4, error) && !d.computerExtraCards());
+        // Saves of the project's former name (DTVR Recomb) still load; other magics do not.
+        std::string legacy = v5;
+        legacy.replace(0, 16, "DTVR-RECOMB-SAVE");
+        CHECK(SaveCodec::decode(d, legacy, error) && d.computerExtraCards());
+        legacy.replace(0, 16, "DTVR-RECOMX-SAVE");
+        CHECK(!SaveCodec::decode(d, legacy, error));
         std::string missing = v5;
         const size_t ms = missing.find("\nextensions ");
         missing.erase(ms, missing.find('\n', ms + 1) - ms);
@@ -129,7 +136,7 @@ int main() {
     };
     CHECK(rejects(""));
     CHECK(rejects("SOMETHING ELSE 1\n"));
-    CHECK(rejects("DTVR-RECOMB-SAVE 4\nend\n"));
+    CHECK(rejects("DTVR-RECOMP-SAVE 4\nend\n"));
     CHECK(rejects(saved.substr(0, saved.size() / 2)));          // truncated
     std::string bad = saved;
     bad.replace(bad.find("rng "), 4, "rnx ");
@@ -149,7 +156,7 @@ int main() {
     CHECK(!SaveCodec::decode(other, saved, why) && why.find("Originaldaten") != std::string::npos);
 
     // Files are written atomically and read back unchanged.
-    const auto dir = std::filesystem::temp_directory_path() / "dtvr-recomb-save-test";
+    const auto dir = std::filesystem::temp_directory_path() / "dtvr-recomp-save-test";
     std::filesystem::create_directories(dir);
     const std::string path = (dir / "test.sav").string();
     std::string text;
@@ -212,6 +219,24 @@ int main() {
     CHECK(saveSettings(settingsFile, settings, error));
     const Settings shown = loadSettings(settingsFile);
     CHECK(shown.fullscreen && !shown.integerScale && shown.widescreen && shown.animationTempo == 2 && shown.value == settings.value);
+    // The former name's user files are copied once into the new folders (round 126).
+    {
+        namespace fs = std::filesystem;
+        const fs::path base = dir / "xdg";
+        fs::create_directories(base / "dtvr-recomb" / "saves");
+        std::ofstream(base / "dtvr-recomb" / "saves" / "slot1.sav") << "alt";
+        std::ofstream(base / "dtvr-recomb" / "settings.ini") << "Wave=0\n";
+        std::string err;
+        CHECK(adoptFormerName(base / "dtvr-recomp" / "saves", err) && fs::exists(base / "dtvr-recomp" / "saves" / "slot1.sav"));
+        CHECK(fs::exists(base / "dtvr-recomb" / "saves" / "slot1.sav")); // copied, not moved
+        CHECK(adoptFormerName(base / "dtvr-recomp" / "settings.ini", err)
+              && loadSettings(base / "dtvr-recomp" / "settings.ini").value[Settings::Wave] == 0);
+        std::ofstream(base / "dtvr-recomb" / "settings.ini") << "Wave=1\nMidi=0\n";
+        CHECK(adoptFormerName(base / "dtvr-recomp" / "settings.ini", err) // the new file is kept
+              && loadSettings(base / "dtvr-recomp" / "settings.ini").value[Settings::Midi] == 1);
+        CHECK(adoptFormerName(base / "dtvr-recomp" / "music.ini", err) && !fs::exists(base / "dtvr-recomp" / "music.ini"));
+        CHECK(adoptFormerName(base / "other" / "x.ini", err));
+    }
     std::filesystem::remove_all(dir);
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

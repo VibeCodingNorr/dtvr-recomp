@@ -250,7 +250,7 @@ AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obs
         case 29:                                         // 1 oder 2 when at most two fields away
             if (myDist <= 2) score = bonus(0xB0);
             break;
-        case 19: {                                       // Nägel: recomb extension only (see below)
+        case 19: {                                       // Nägel: recomp extension only (see below)
             if (!s.extraCards) break;
             // Not in rally.exe (its random value never wins): when an opponent trails
             // at most 8 fields behind, the nails go into an available direction away
@@ -275,7 +275,7 @@ AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obs
             }
             break;
         }
-        case 14: {                                       // Steuerlos: recomb extension only
+        case 14: {                                       // Steuerlos: recomp extension only
             if (!s.extraCards) break;
             // The leader steers like a computer with random routes for one turn: the
             // other player nearest to the destination, at most 10 fields away and
@@ -290,11 +290,11 @@ AiCardChoice aiChooseCard(const AiState& s, int player, const ObstacleTable& obs
             if (leader >= 0) { score = uint16_t(w.at(0) + 1); target = leader; }
             break;
         }
-        case 27:                                         // Risiko: recomb extension only
+        case 27:                                         // Risiko: recomp extension only
             // Far from the destination the gamble for up to four times the spin pays.
             if (s.extraCards && d0 != kUnreached && d0 >= 10) score = uint16_t(w.at(0) + 1);
             break;
-        case 28: {                                       // Flugzeug: recomb extension only
+        case 28: {                                       // Flugzeug: recomp extension only
             if (!s.extraCards) break;
             // The bookable airport nearest to the destination when it saves more than
             // six fields (rows: Moskau only with the east open, Brüssel not on the last

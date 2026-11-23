@@ -831,7 +831,7 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   random start value (property cards, Steuerlos, Risiko, Nägel, Flugzeug) never
   wins: rally.exe's computers never play these cards from the hand (the Nägel
   window, seg3:1E5E, has no computer path either).
-- **Recomb extension** (not rally.exe; `[Extensions] ComputerExtraCards`,
+- **Recomp extension** (not rally.exe; `[Extensions] ComputerExtraCards`,
   `--computer-cards`, saved per game, off by default; since round 106 also a switch
   "Computer spielen alle Karten" in the player setup between stop and star, toggled
   by a click or F9 — PLAYER handles F1–F8 and F10 itself): computers may also play
@@ -1037,7 +1037,7 @@ Assumption: one pause unit of seg6:0CDF is 10 ms for the presentation timing.
   BILANZ (seg8:992E), PICT (seg6:0B66).
 
 Rebuilt in `src/layout.cpp` (SDL-free geometry) and `src/game_screen.cpp`
-(`dtvr-recomb --game`): canvas background, map window with the black margin,
+(`dtvr-recomp --game`): canvas background, map window with the black margin,
 portrait and the player info frame. Assumptions: the viewport is centred on the
 current player (the scrolling code is not traced yet); players are marked with
 provisional squares until the vehicle sprites are placed. Not yet: the contents
@@ -1594,7 +1594,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   active tab with Plopp02 and give it the header focus again (seg1:53BE),
   otherwise close the dialog (seg1:5391). The stop waits for the dialog
   (seg1:4DBC, seg6:0FB4 on DS:44); afterwards Dr. Drago acts and nextPlayer ends
-  the turn (seg2:15A6, 161D). The mouse wheel scrolls only the statistics (recomb
+  the turn (seg2:15A6, 161D). The mouse wheel scrolls only the statistics (recomp
   addition where the original has the PFEIL page buttons). *Round 104:* clicks
   (seg1:5DA2): the header rectangles (right edge excluded) are 0–0x9F, 0xA0–0x128,
   0x129–0x190 and 0x191–0x22E (item 3 closes), all 0x2A high; without an active tab
@@ -2072,7 +2072,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   pictures per switch and a third for joy (`2joy.bmp`).
 - **Rebuilt** (`src/settings.cpp`, `src/options_view.cpp`): the window, the
   switches (joy with three states) and the settings in
-  `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (`[Setup]`, the original keys).
+  `$XDG_CONFIG_HOME/dtvr-recomp/settings.ini` (`[Setup]`, the original keys).
   Applied so far: Views (tile 0x33 on the map) and Wave (round 40).
   **Input** (round 94, dispatch seg1:B677): WM_COMMAND 0x1392–0x1399 toggle the
   switches at once (seg1:B2E2 ff.; Wave without a device DS:954E only plays sound 7
@@ -2478,7 +2478,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   window stays, otherwise [Default] Rounds is written, DS:A104 = DS:A106 = the
   count and the window is destroyed. There is no cancel.
 - **Rebuilt** `src/stages_view.cpp` (profile value in `[Default] Rounds` of
-  settings.ini). **Recomb addition** (not in rally.exe, always shown, as the user
+  settings.ini). **Recomp addition** (not in rally.exe, always shown, as the user
   asked): a slider 1–300 on a 40 pixel taller window cut from the same paper;
   field and slider follow each other.
 
@@ -2602,7 +2602,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (DS:80C0), key `slot%d`.
 - **Rebuilt** (`src/save_slots.cpp`, `src/save_view.cpp`): the same dialog and
   descriptions, but the slots are the native save format (docs/save-format.md)
-  in `$XDG_DATA_HOME/dtvr-recomb/saves` (`slot<n>.sav`, descriptions in
+  in `$XDG_DATA_HOME/dtvr-recomp/saves` (`slot<n>.sav`, descriptions in
   `saves.ini`); original save files are neither read nor written. Confirmed in
   round 95: the footer starts on Ok (DS:8D64 = 6, seg8:B253; Left sets 7 = Nein);
   WM_LBUTTONDOWN (seg8:B8F6) only chooses a slot inside its rectangle

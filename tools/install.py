@@ -85,7 +85,7 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy",
                    XDG_DATA_HOME=str(Path(temporary) / "test-data"),
                    XDG_CONFIG_HOME=str(Path(temporary) / "test-config"))
-        binary = stage / "bin/dtvr-recomb"
+        binary = stage / "bin/dtvr-recomp"
         print("DTVR_STAGE:6:Checking the installed runtime", flush=True)
         for view in ([], ["--tiles"], ["--sprites"], ["--world"], ["--game"]):
             subprocess.run([str(binary), "--data", str(data), "--smoke-test", *view],
@@ -94,7 +94,7 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         launcher.write_text('#!/bin/sh\nset -eu\n'
                             'install_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
                             'if [ "$#" -eq 0 ]; then set -- --game; fi\n'
-                            'exec "$install_dir/bin/dtvr-recomb" --data "$install_dir/data" "$@"\n')
+                            'exec "$install_dir/bin/dtvr-recomp" --data "$install_dir/data" "$@"\n')
         launcher.chmod(0o755)
         print("DTVR_STAGE:7:Verifying files and completing installation", flush=True)
         excluded = []
@@ -120,7 +120,7 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", action="version", version=f"DTVR Recomb Setup {read_version()}")
+    parser.add_argument("--version", action="version", version=f"DTVR Recomp Setup {read_version()}")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--iso", type=Path)
     source.add_argument("--directory", type=Path, help="Original game folder containing rally.exe, or its parent with program/")

@@ -8,6 +8,11 @@ import re
 
 from installer_checks import digest
 
+FORMAT = "dtvr-recomp-installation"
+# Manifest format -> runtime binary; installations of the former name DTVR Recomb
+# stay verifiable so that they can be updated (the update writes the new format).
+RUNTIMES = {FORMAT: "bin/dtvr-recomp", "dtvr-recomb-installation": "bin/dtvr-recomb"}
+
 
 def write_manifest(root, metadata, excluded=()):
     files = {}
@@ -18,7 +23,7 @@ def write_manifest(root, metadata, excluded=()):
         if (path.is_file() and path != root / "manifest.json"
                 and relative.parts[0] != "saves" and relative.as_posix() not in excluded):
             files[path.relative_to(root).as_posix()] = digest(path)
-    manifest = {**metadata, "schema_version": 2, "format": "dtvr-recomb-installation", "files": files}
+    manifest = {**metadata, "schema_version": 2, "format": FORMAT, "files": files}
     (root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
 
@@ -30,12 +35,13 @@ def verify_installation(root):
         raise ValueError("Invalid installation manifest")
     manifest = json.loads(manifest_path.read_text())
     if (not isinstance(manifest, dict) or manifest.get("schema_version") != 2
-            or manifest.get("format") != "dtvr-recomb-installation"):
+            or manifest.get("format") not in RUNTIMES):
         raise ValueError("Unsupported or legacy manifest; verification requires a new installer build")
     files = manifest.get("files")
     if not isinstance(files, dict) or not 1 <= len(files) <= 20000:
         raise ValueError("Invalid installation file table")
-    if not {"play", "bin/dtvr-recomb", "data/program/butt/1/map.bmp"}.issubset(files):
+    runtime = RUNTIMES[manifest["format"]]
+    if not {"play", runtime, "data/program/butt/1/map.bmp"}.issubset(files):
         raise ValueError("Installation is missing required runtime entries")
     for name, expected in files.items():
         relative = PurePosixPath(name)
@@ -49,7 +55,7 @@ def verify_installation(root):
             raise ValueError(f"Missing or linked installation file: {name}")
         if digest(path) != expected:
             raise ValueError(f"Installation file hash mismatch: {name}")
-        if name in ("play", "bin/dtvr-recomb") and not os.access(path, os.X_OK):
+        if name in ("play", runtime) and not os.access(path, os.X_OK):
             raise ValueError(f"Runtime file is not executable: {name}")
     return {"files_verified": len(files), "soundtrack_packs": manifest.get("soundtrack_packs", [])}
 

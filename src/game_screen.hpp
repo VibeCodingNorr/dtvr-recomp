@@ -113,9 +113,9 @@ public:
     std::vector<EstateRow> estateRows() const;
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
-    // Animation tempo (recomb, [Extensions] AnimationTempo): the presentation time of
+    // Animation tempo (recomp, [Extensions] AnimationTempo): the presentation time of
     // event animations and the vehicles' drive; call once per frame with real time.
-    // `paused` (the recomb menu) stops it.
+    // `paused` (the recomp menu) stops it.
     void tickPresentation(Uint32 realNow, bool paused);
     Uint32 presentationNow() const { return clock_.now(); }
     // The shared layout changed size (widescreen switch): keep the map origin valid.
@@ -264,9 +264,9 @@ private:
 struct GameWindowOptions {
     int canvasWidth = 0;          // 0: the largest canvas that fits the screen (seg5:1227)
     bool fullscreen = false;      // start in fullscreen (also [Display] Fullscreen)
-    int widescreen = -1;          // -1: [Display] Widescreen, 0 off, 1 on (recomb extension)
+    int widescreen = -1;          // -1: [Display] Widescreen, 0 off, 1 on (recomp extension)
     int aspectW = 0, aspectH = 0; // widescreen aspect; 0: the display's
-    int recompMenuPage = -1;      // open the recomb menu on this page at start
+    int recompMenuPage = -1;      // open the recomp menu on this page at start
     int windowW = 0, windowH = 0; // initial window size (tests of the scaled output)
     std::string pressKeys;        // --press: scripted keys for smoke tests
     bool smokeTest = false;       // draw `frames` frames and exit
@@ -296,7 +296,7 @@ struct GameWindowOptions {
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     bool intro = false;           // play the intro before the title even with ShowIntro=0
     bool noIntro = false;         // skip the intro (seg7:0000) before the title
-    bool computerExtraCards = false; // --computer-cards: the recomb extension for this game
+    bool computerExtraCards = false; // --computer-cards: the recomp extension for this game
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)
     std::string screenshot;       // BMP of the first frame

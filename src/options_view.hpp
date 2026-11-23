@@ -32,8 +32,8 @@ public:
 
     // Toggled: a switch changed (seg1:B2E2 ff. apply it at once); Close: star, stop,
     // F10 and the cancel of an SBBUTTON all run seg1:B539, which keeps the values.
-    // RecompMenu: the recomb addition between stop and star (not in rally.exe) was
-    // clicked: further settings (graphics, sound sets, music volume) in the recomb menu.
+    // RecompMenu: the recomp addition between stop and star (not in rally.exe) was
+    // clicked: further settings (graphics, sound sets, music volume) in the recomp menu.
     enum class Result { None, Toggled, Close, RecompMenu };
     Result handle(const SDL_Event& event);
     // The SBBUTTON sound of the last handled event for channel 2, -1 none.
@@ -42,7 +42,7 @@ public:
 
 private:
     SDL_Texture* bitmap(const std::filesystem::path& relative);
-    SDL_Rect extraRect() const; // the recomb label between stop and star
+    SDL_Rect extraRect() const; // the recomp label between stop and star
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;

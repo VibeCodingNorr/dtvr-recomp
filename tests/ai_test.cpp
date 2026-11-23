@@ -125,7 +125,7 @@ int main() {
         CHECK(plan2.size() == 1 && plan2[0].second == 2);
     }
 
-    // Recomb extension (round 100): Verkaufen in debt, Kredit without spare money.
+    // Recomp extension (round 100): Verkaufen in debt, Kredit without spare money.
     {
         AiState xs = ts;
         Economy xe(tt, 8);
@@ -177,7 +177,7 @@ int main() {
         CHECK(c.slot == 6);
         cs.dragoHolder = -1;
         CHECK(aiChooseCard(cs, 0, clear, cr).slot == -1);
-        // Recomb extension (round 98): Nägel (type 18) never wins in rally.exe; with
+        // Recomp extension (round 98): Nägel (type 18) never wins in rally.exe; with
         // extraCards a trailing opponent within 8 fields makes the computer throw them
         // away from the goal (field 2 -> left neighbour 1, direction 4).
         {
@@ -200,7 +200,7 @@ int main() {
             players[3].field = keepField;
             players[3].status = uint8_t(keepStatus);
         }
-        // Recomb extension (round 99) on a 20-field row, destination 19, the computer at
+        // Recomp extension (round 99) on a 20-field row, destination 19, the computer at
         // field 2 (17 away): Risiko (type 26) far from the goal, Flugzeug (27) to the
         // airport two fields before the goal, Steuerlos (13) on a leader 7 away.
         {

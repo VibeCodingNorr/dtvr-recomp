@@ -21,7 +21,7 @@ class InstallerTests(unittest.TestCase):
             root = Path(temporary)
             self.assertEqual(validate_output(root / "game"), root.resolve() / "game")
             with patch.dict(os.environ, {"XDG_DATA_HOME": str(root)}):
-                self.assertEqual(default_output(), root / "dtvr-recomb")
+                self.assertEqual(default_output(), root / "dtvr-recomp")
             link = root / "checkout"
             link.symlink_to(REPO, target_is_directory=True)
             with self.assertRaises(ValueError):

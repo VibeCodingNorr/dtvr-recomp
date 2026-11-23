@@ -1,6 +1,6 @@
-# DTVR Recomb
+# DTVR Recomp
 
-![DTVR Recomb: an original road-and-die mark](assets/branding/logo.svg)
+![dtvr-recomp: a road forming an r between code brackets](assets/branding/logo.svg)
 
 Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
 Current project version: **0.0.1** ([release and AppImage policy](docs/releases.md)).
@@ -29,15 +29,15 @@ is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom; the water cycles its palette as the original. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Intro, sights, subtitles, ambient map animations, the stage count window (with a slider as a recomb addition) and the forced sale. Open: remaining presentation details. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Intro, sights, subtitles, ambient map animations, the stage count window (with a slider as a recomp addition) and the forced sale. Open: remaining presentation details. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
-| Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. Sound set and volume on the Audio page of the recomb menu (F8); remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
-| Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and selection in the recomb menu (F8). | [Soundtrack builder](docs/soundtracks.md) |
+| Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. Sound set and volume on the Audio page of the recomp menu (F8); remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
+| Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and selection in the recomp menu (F8). | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view; arrow-key driving and the original mouse steering cross (MCTRL) and game controllers as the original joystick, with the step and arrival rules. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
 | Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
 | AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn. Driver names come from the language file at run time. Not yet: the computer answer to investment offers (they decline). | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
 | LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
-| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick, mouse wheel where the original has page arrows, recomb menu (Escape / F8), F12 text smoothing. Planned: rebinding, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
+| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick, mouse wheel where the original has page arrows, recomp menu (Escape / F8), F12 text smoothing. Planned: rebinding, contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
 | Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); optional widescreen with a wider map window (`--widescreen`, `[Display] Widescreen`, [layout](src/layout.cpp)); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
@@ -172,7 +172,7 @@ is claimed.
 95. Forced sale after an arrival in debt (statistics in sale mode, computers by their original plan).
 96. The extension switch "Computer spielen alle Karten" in the player setup (click or F9).
 97. Statistics sorted as rally.exe and Windows 3.x lstrcmp do.
-98. The stage count window after the player setup, with a slider (recomb addition).
+98. The stage count window after the player setup, with a slider (recomp addition).
 99. Text smoothing in three modes (F12): Original, canvas size, screen resolution.
 100. Locked town dialog items (empty hand, property card modes) and the statistics header arrows.
 101. Window centring as rally.exe (seg6:0000); the slot machine slides in from the top of the map and out again.
@@ -202,7 +202,7 @@ all original content comes from the user's own data.
 
 Start the native graphical assistant:
 
-The planned release artifact is `DTVR-Recomb-Setup-0.0.1-x86_64.AppImage`.
+The planned release artifact is `DTVR-Recomp-Setup-0.0.1-x86_64.AppImage`.
 It bundles Python/Tk and our source; users still supply their original data. The installer
 automatically compiles the game using checked host build dependencies. No release
 download is published yet. For a source checkout, run:
@@ -242,7 +242,7 @@ The equivalent CLI installation is:
 
 ```sh
 python3 tools/install.py --iso /path/to/game.iso
-~/.local/share/dtvr-recomb/play
+~/.local/share/dtvr-recomp/play
 ```
 
 Alternatively, import a complete original game directory:
@@ -266,8 +266,8 @@ creates a local installation with a launcher and hash manifest. It supports
 No root access or Windows installer is needed.
 
 Use `--output /path/to/new/directory` to choose another destination and `--jobs N`
-to limit build parallelism. The default is `$XDG_DATA_HOME/dtvr-recomb`, falling
-back to `~/.local/share/dtvr-recomb`. Destinations inside the source checkout are
+to limit build parallelism. The default is `$XDG_DATA_HOME/dtvr-recomp`, falling
+back to `~/.local/share/dtvr-recomp`. Destinations inside the source checkout are
 rejected. Existing destinations require explicit update mode. Original Windows
 executables and runtime DLLs are not part of the resulting native installation.
 The ISO can be disconnected after installation. The launcher opens the native
@@ -300,30 +300,30 @@ number of stages (1–300).
 | Enter | Spin the slot machine, stop its reels / close it, confirm |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
-| Escape | Recomb menu (pause, graphics, audio, game, controls; recomb) where rally.exe has no Escape action; in windows: back |
+| Escape | Recomp menu (pause, graphics, audio, game, controls; recomp) where rally.exe has no Escape action; in windows: back |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
 | 1–4 | Pause length of the scenes |
 | Q | Quit question |
 | F1–F8, F10 | Buttons of the button windows (player setup, options, cards) |
-| F9 | Player setup: switch "Computer spielen alle Karten" (recomb) |
-| F8 | Audio page of the recomb menu (not in the options and player setup windows, which use F8 themselves) |
-| F11 / Alt+Enter | Window / fullscreen (recomb) |
-| F12 | Text smoothing: Original / canvas size / screen resolution (recomb) |
-| Mouse wheel | Scroll lists that have page arrows in the original (recomb) |
+| F9 | Player setup: switch "Computer spielen alle Karten" (recomp) |
+| F8 | Audio page of the recomp menu (not in the options and player setup windows, which use F8 themselves) |
+| F11 / Alt+Enter | Window / fullscreen (recomp) |
+| F12 | Text smoothing: Original / canvas size / screen resolution (recomp) |
+| Mouse wheel | Scroll lists that have page arrows in the original (recomp) |
 
-**Escape** opens the recomb menu over the paused game (computers, the time limit and
+**Escape** opens the recomp menu over the paused game (computers, the time limit and
 the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
 save, load, original RIGHTBTN menu, quit with the original question),
 Grafik, Audio, Spiel and Steuerung. Switches marked ORIGINAL are those of the
-original options window; the others are recomb settings in `[Display]` /
+original options window; the others are recomp settings in `[Display]` /
 `[Extensions]`. Changes apply at once and persist. In
 the original turn menu Escape did nothing; dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
-the recomb opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
+the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
 keep the original Escape (Weiter spielen, Zurück).
-The options window has a recomb entry "Weitere Einstellungen" that opens the menu.
+The options window has a recomp entry "Weitere Einstellungen" that opens the menu.
 
 **Animationstempo** (Spiel page, `[Extensions] AnimationTempo` 1 / 2 / 4): event
 animations and the vehicles' drive at 1×, 2× or 4×; messages keep their reading
@@ -343,7 +343,7 @@ option Joystick is on: d-pad or left stick steer and move through menus, A confi
 (`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or
 1024 × 768) is scaled by whole numbers with black borders; the window can be resized.
 
-**Widescreen** (optional recomb extension, off by default): `[Display] Widescreen=1`
+**Widescreen** (optional recomp extension, off by default): `[Display] Widescreen=1`
 or `--widescreen` widens the canvas to the display's aspect (at most 21:9; `--aspect
 16:9` chooses one, `--no-widescreen` overrides the setting). The map window grows and
 shows more of the world; portrait, hand stack and info panel move to the right edge.
@@ -351,13 +351,16 @@ Title, player setup, options and the overview keep their original 4:3 size, cent
 The wide canvas always fills the display's height (`IntegerScale` applies to 4:3 only).
 At a fractional scale the frame is drawn at the next whole multiple and scaled to the
 display once (no gaps between window border pieces).
-Breitbild in the recomb menu switches at once (a window keeps its height).
+Breitbild in the recomp menu switches at once (a window keeps its height).
 
-Settings live in `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (else
-`~/.config/dtvr-recomb/settings.ini`): `[Setup]` the original options, `[Default]
+Settings live in `$XDG_CONFIG_HOME/dtvr-recomp/settings.ini` (else
+`~/.config/dtvr-recomp/settings.ini`): `[Setup]` the original options, `[Default]
 Rounds` the stage count, `[Display]` `Fullscreen`, `Widescreen`, `IntegerScale` (0 stretches to
 the largest fitting size with the canvas proportions) and `TextSmoothing` (0–2),
-`[Extensions]` `ComputerExtraCards`. Saves are stored in the user's data directory.
+`[Extensions]` `ComputerExtraCards`, `AnimationTempo`. Saves are stored in the user's data directory.
+The project was called DTVR Recomb: on the first start, settings, `music.ini` and saves
+are copied once from the `dtvr-recomb` folders (the old files stay); saves and
+installations of the old name remain readable and updatable.
 
 ### Debugging modes
 
@@ -416,7 +419,7 @@ ISO after installation; subsequent launches use the installed local data.
 | Ctrl+1–8 | With `--play`, after stopping in a town: play a property card |
 | T | With `--play`: choose the card target player (three or more players) |
 | I / N | With `--play`: accept / decline a professor or football club investment |
-| Escape | Exit (with `--game`: open the recomb menu; Backspace opens `RIGHTBTN`) |
+| Escape | Exit (with `--game`: open the recomp menu; Backspace opens `RIGHTBTN`) |
 
 To inspect a different starting view, pass `--tiles` or `--sprites` to `play`.
 For a specific seasonal view, use `play --world --month 0` (months are 0–11).
@@ -431,7 +434,7 @@ Python 3 is used for the analysis tool. No Python packages are required.
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
-./build/dtvr-recomb --data /path/to/extracted
+./build/dtvr-recomp --data /path/to/extracted
 ```
 
 `--data` accepts either the CD root or its `program` directory. Supply your own
@@ -450,11 +453,11 @@ not the reconstructed world map. The overview loads `butt/1/map.bmp`.
 ## Verification and analysis
 
 ```sh
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --smoke-test --screenshot /path/to/artifacts/overview.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
-SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted/program --game --no-title --press Escape,Left,Down,Right --smoke-test --frames 60 --screenshot /path/to/artifacts/menu.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --smoke-test --screenshot /path/to/artifacts/overview.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomp --data /path/to/extracted/program --game --no-title --press Escape,Left,Down,Right --smoke-test --frames 60 --screenshot /path/to/artifacts/menu.bmp
 ctest --test-dir build --output-on-failure
 python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analysis.json
 ```

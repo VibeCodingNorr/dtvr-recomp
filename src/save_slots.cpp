@@ -31,10 +31,10 @@ size_t utf8Offset(const std::string& s, size_t chars) {
 } // namespace
 
 fs::path defaultSaveDirectory() {
-    if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg && *xdg) return fs::path(xdg) / "dtvr-recomb" / "saves";
+    if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg && *xdg) return fs::path(xdg) / "dtvr-recomp" / "saves";
     if (const char* home = std::getenv("HOME"); home && *home)
-        return fs::path(home) / ".local" / "share" / "dtvr-recomb" / "saves";
-    return fs::path("dtvr-recomb-saves");
+        return fs::path(home) / ".local" / "share" / "dtvr-recomp" / "saves";
+    return fs::path("dtvr-recomp-saves");
 }
 
 std::string saveDescription(const Game& game, const std::map<int, std::string>& texts) {

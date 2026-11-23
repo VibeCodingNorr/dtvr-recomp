@@ -13,7 +13,7 @@ from project_version import read_version
 
 
 def installation(root, content="old", packs=()):
-    for name in ("play", "bin/dtvr-recomb", "data/program/butt/1/map.bmp"):
+    for name in ("play", "bin/dtvr-recomp", "data/program/butt/1/map.bmp"):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The music page of the recomb menu (src/recomp_menu.hpp, Audio): the installed
+// The music page of the recomp menu (src/recomp_menu.hpp, Audio): the installed
 // sound sets, volume and current piece of the MusicPlayer, and applying a choice.
 // Presentation only: nothing here touches game rules or the RNG.
 #pragma once

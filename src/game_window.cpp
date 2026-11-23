@@ -46,7 +46,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     const ScreenLayout wideLayout = widenLayout(baseLayout, widescreenExtra(baseLayout, options.aspectW ? options.aspectW : display.w,
                                                                             options.aspectH ? options.aspectH : display.h));
     // One layout shared by every view (they keep references): the widescreen switch of
-    // the recomb menu assigns it while the game runs.
+    // the recomp menu assigns it while the game runs.
     ScreenLayout layout = widescreen ? wideLayout : baseLayout;
     const bool startFullscreen = options.fullscreen || (displaySettings.fullscreen && !options.smokeTest);
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -92,7 +92,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     music.interrupt(options.title ? "i" : "a1");
     DisplayControl displayControl(window.get(), renderer.get(), layout);
     ScriptedInput scripted(options.pressKeys); // --press (smoke tests)
-    RecompMenuView recompMenu(renderer.get(), root, layout, screen.textRenderer(), DTVR_VERSION); // Esc (recomb)
+    RecompMenuView recompMenu(renderer.get(), root, layout, screen.textRenderer(), DTVR_VERSION); // Esc (recomp)
     // Declare the audio device after the decoder so it closes before the decoder.
     SoundPlayer sound(root); // WaveMix (seg1:2C9B)
     sound.setMusic(&music.stream());
@@ -494,7 +494,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         }
         // [Setup] TimeOut: the 1000 ms timer of seg2:3ABD runs while the window is active.
         play.game().setTimeLimit(screen.settings().value[Settings::TimeOut] != 0);
-        if (play.game().timeLimitRunning() && !screen.title() && !recompMenu.isOpen() // paused in the recomb menu
+        if (play.game().timeLimitRunning() && !screen.title() && !recompMenu.isOpen() // paused in the recomp menu
             && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS || options.smokeTest)) {
             if (int(SDL_GetTicks() - timeLimitTick) >= 1000) {
                 timeLimitTick += 1000;
@@ -524,7 +524,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) music.setFocused(false);
                 if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) music.setFocused(true);
             }
-            { // F11 / Alt+Enter, F12 and the window size (recomb, [Display])
+            { // F11 / Alt+Enter, F12 and the window size (recomp, [Display])
                 Settings s = screen.settings();
                 bool changed = false;
                 if (displayControl.handle(event, s, changed)) {
@@ -552,7 +552,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     || event.type == SDL_MOUSEBUTTONUP || closed)
                     continue;
             }
-            // F8: Audio of the recomb menu, except where rally.exe's button windows use F1-F8
+            // F8: Audio of the recomp menu, except where rally.exe's button windows use F1-F8
             // (OPTION seg1:B60A, PLAYER); the options window has its own entry for it.
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8
                 && (recompMenu.isOpen() || (!screen.options().isOpen() && !screen.setup().isOpen()))) {
@@ -561,7 +561,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 heldArrow = SDLK_UNKNOWN;
                 continue;
             }
-            if (recompMenu.isOpen()) { // the recomb menu over the paused game (docs/pause-menu.md)
+            if (recompMenu.isOpen()) { // the recomp menu over the paused game (docs/pause-menu.md)
                 using Action = RecompMenu::Action;
                 const Action a = recompMenu.handle(event);
                 if (a == Action::Changed) {
@@ -610,8 +610,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             if (menu.isOpen()) {
-                // Recomb deviation: in MAIN, Escape would post the checked item "Neues Spiel"
-                // (seg5:543D); it opens the recomb menu instead. Other menus keep seg5:543D.
+                // Recomp deviation: in MAIN, Escape would post the checked item "Neues Spiel"
+                // (seg5:543D); it opens the recomp menu instead. Other menus keep seg5:543D.
                 if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && menu.name() == "MAIN") {
                     if (!event.key.repeat) recompMenu.menu().open(menuSettings(), false);
                     continue;
@@ -673,7 +673,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (screen.options().isOpen()) {
                 const OptionsView::Result r = screen.options().handle(toStage(event, layout));
                 if (const int fx = screen.options().takeSound(); fx >= 0) sound.play(2, fx);
-                if (r == OptionsView::Result::RecompMenu) { // graphics, sound sets and more (recomb)
+                if (r == OptionsView::Result::RecompMenu) { // graphics, sound sets and more (recomp)
                     recompMenu.menu().openAt(menuSettings(), !screen.title(), "Grafik");
                     continue;
                 }
@@ -973,7 +973,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 continue;
             }
             const bool risiko = play.game().phase() == Game::Phase::Risiko;
-            // seg4:01D1: Escape and Backspace open RIGHTBTN; the recomb menu takes Escape
+            // seg4:01D1: Escape and Backspace open RIGHTBTN; the recomp menu takes Escape
             // (its entry "Originales Spielmenü" leads to RIGHTBTN).
             if (key == SDLK_ESCAPE && !risiko && !screen.title() && !event.key.repeat)
                 recompMenu.menu().open(menuSettings(), true);

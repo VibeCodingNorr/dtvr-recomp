@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Drawing and input of the recomb menu (src/recomp_menu.hpp) over the darkened game:
+// Drawing and input of the recomp menu (src/recomp_menu.hpp) over the darkened game:
 // our own layout and colours; the panel uses the wood of butt/<n>/bk.bmp from the
 // installation when it is there.
 #pragma once

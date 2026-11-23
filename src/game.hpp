@@ -99,7 +99,7 @@ public:
     // steps away has no sea-route bit 0x04. Without any, CreateWindow fails and the
     // card takes the water path (seg3:1E02: sound 0x12, text 5500).
     std::array<bool, 4> nailsDirections() const;
-    // Recomb extension (not in rally.exe, docs/formats.md "Computer card play"):
+    // Recomp extension (not in rally.exe, docs/formats.md "Computer card play"):
     // computers also play the cards whose original score never wins. Part of the
     // game state (saved), off by default.
     void setComputerExtraCards(bool on) { computerExtraCards_ = on; }
@@ -344,7 +344,7 @@ private:
     bool obstacleConfirmed_ = false;
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
-    bool computerExtraCards_ = false;       // recomb extension: computers also play the cards rally.exe never picks
+    bool computerExtraCards_ = false;       // recomp extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
     bool forcedSale_ = false;     // the statistics in sale mode 0x10 are open
     bool timeLimitOn_ = false;    // DS:B5D6

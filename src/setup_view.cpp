@@ -78,7 +78,7 @@ SDL_Rect SetupView::extraRect() const {
 
 SetupView::Result SetupView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
-    // The recomb extension's switch (no counterpart in rally.exe).
+    // The recomp extension's switch (no counterpart in rally.exe).
     const SDL_Rect extra = extraRect();
     bool toggle = event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F9 && editing_ < 0;
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
@@ -171,7 +171,7 @@ void SetupView::draw() {
         style.serif = true;
         text_.draw(renderer_, shown, ScreenRect{r.x, r.y, r.w, r.h}, style);
     }
-    // Recomb extension: a box and its label in the text colour of the dialogs (0x45).
+    // Recomp extension: a box and its label in the text colour of the dialogs (0x45).
     const SDL_Rect extra = extraRect();
     const int side = extra.h * 3 / 4;
     const SDL_Rect box{extra.x, extra.y + (extra.h - side) / 2, side, side};

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Window and scaling of the game canvas (recomb only, [Display]): the logical canvas
+// Window and scaling of the game canvas (recomp only, [Display]): the logical canvas
 // size, fullscreen (F11 / Alt+Enter), whole-number scaling and text smoothing (F12).
 // rally.exe uses none of these keys.
 #pragma once

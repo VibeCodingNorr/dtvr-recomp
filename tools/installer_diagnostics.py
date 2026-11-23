@@ -38,7 +38,7 @@ class DiagnosticLog:
         self.lines.extend(line[:8192] for line in text.splitlines())
 
     def export(self, destination, private_paths=()):
-        header = ("DTVR Recomb Installer-Diagnose\n"
+        header = ("DTVR Recomp Installer-Diagnose\n"
                   f"Version: {read_version()}\nPython: {platform.python_version()}\n"
                   f"Architektur: {platform.machine()}\n"
                   f"Zeit (UTC): {datetime.now(timezone.utc).isoformat()}\n"

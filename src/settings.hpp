@@ -17,10 +17,10 @@ struct Settings {
     std::array<int, kCount> value{1, 1, 1, 1, 1, 1, 1, 1};
     int subtitle = 0; // DS:B5DF
     int showIntro = 1; // seg5:0174: [Setup] ShowIntro (default 1) plays the intro seg7:0000
-    // [Extensions] (recomb only): ComputerExtraCards lets computers also play the
+    // [Extensions] (recomp only): ComputerExtraCards lets computers also play the
     // cards rally.exe's scores never pick (applied to new games, saved with them).
     bool computerExtraCards = false;
-    // [Extensions] AnimationTempo (recomb only): 1, 2 or 4 times the speed of event
+    // [Extensions] AnimationTempo (recomp only): 1, 2 or 4 times the speed of event
     // animations and the vehicles' drive (src/presentation_clock.hpp); others read as 1.
     int animationTempo = 1;
     // [Default] Rounds (seg8:099B / 0A6A): the stage count the window TEMP offers and keeps.
@@ -29,14 +29,14 @@ struct Settings {
     // seg6:0EE0 are multiplied by 1.0 / 1.5 / 2.0 / 3.0 (DS:858E).
     int pause = 0;
     double pauseFactor() const { static const double f[4] = {1.0, 1.5, 2.0, 3.0}; return f[pause & 3]; }
-    // [Display] (recomb only, not in rally.exe): fullscreen on the desktop resolution
+    // [Display] (recomp only, not in rally.exe): fullscreen on the desktop resolution
     // and whole-number scaling of the canvas with black borders.
     bool fullscreen = false;
     bool integerScale = true;
-    // Widescreen (recomb only): the canvas takes the display's aspect (up to 21:9) and
+    // Widescreen (recomp only): the canvas takes the display's aspect (up to 21:9) and
     // the map window shows more of the world. Off by default; read at start.
     bool widescreen = false;
-    // Text smoothing (recomb only): 0 Original (no anti-aliasing, as GDI on 256 colours),
+    // Text smoothing (recomp only): 0 Original (no anti-aliasing, as GDI on 256 colours),
     // 1 smoothed at canvas size (scaled like the art), 2 smoothed at screen resolution.
     int textSmoothing = 1;
 
@@ -49,7 +49,13 @@ struct Settings {
     static Settings decode(const std::string& text); // unknown lines and bad values are ignored
 };
 
-// $XDG_CONFIG_HOME/dtvr-recomb/settings.ini, else ~/.config/dtvr-recomb/settings.ini.
+// The project was called DTVR Recomb: when `path` (a file or folder below a
+// "dtvr-recomp" folder) does not exist yet, copy it once from the same place under
+// "dtvr-recomb". The old files are never moved or changed. True when nothing had to
+// be done or the copy succeeded.
+bool adoptFormerName(const std::filesystem::path& path, std::string& error);
+
+// $XDG_CONFIG_HOME/dtvr-recomp/settings.ini, else ~/.config/dtvr-recomp/settings.ini.
 std::filesystem::path defaultSettingsFile();
 Settings loadSettings(const std::filesystem::path& file);       // defaults when missing
 bool saveSettings(const std::filesystem::path& file, const Settings& settings, std::string& error);

@@ -83,7 +83,7 @@ class InstallerWindow:
                                   "Vorhandene Installation auswählen" if self.update.get() else "Übergeordneten Zielordner auswählen",
                                   path if self.update.get() else path.parent)
         if parent:
-            self.output.set(str(Path(parent) if self.update.get() else Path(parent) / "dtvr-recomb"))
+            self.output.set(str(Path(parent) if self.update.get() else Path(parent) / "dtvr-recomp"))
             self._mode_changed()
 
     def _mode_changed(self):
@@ -118,7 +118,7 @@ class InstallerWindow:
 
     def _export_diagnostic(self):
         filename = filedialog.asksaveasfilename(parent=self.root, title="Bereinigtes Diagnoseprotokoll speichern",
-                    defaultextension=".txt", initialfile=f"dtvr-recomb-{read_version()}-diagnose.txt",
+                    defaultextension=".txt", initialfile=f"dtvr-recomp-{read_version()}-diagnose.txt",
                     filetypes=(("Textdatei", "*.txt"),))
         if filename:
             try:
@@ -229,7 +229,7 @@ class InstallerWindow:
                         result = data.get("installation", {})
                         self.backup = Path(result["backup"]) if result.get("backup") else None
                         version = result.get("project_version", read_version())
-                        self.status.set(f"Fertig. DTVR Recomb {version} ist installiert und geprüft.")
+                        self.status.set(f"Fertig. DTVR Recomp {version} ist installiert und geprüft.")
                         if self.backup:
                             self.detail.set(f"Update von {result.get('previous_version', 'unbekannt')} auf {version}. Sicherung: {self.backup}")
                         else:

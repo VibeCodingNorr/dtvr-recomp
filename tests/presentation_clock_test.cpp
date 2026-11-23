@@ -40,7 +40,7 @@ int main() {
     for (uint32_t t = 1; t <= 1000; ++t) a.update(t);
     b.update(1000);
     CHECK(a.now() == b.now() && a.now() == 2000);
-    // Paused time (the recomb menu) is not added; resuming continues without a jump.
+    // Paused time (the recomp menu) is not added; resuming continues without a jump.
     PresentationClock p;
     p.update(0);
     p.update(100);

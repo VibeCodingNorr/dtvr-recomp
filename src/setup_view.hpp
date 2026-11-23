@@ -32,7 +32,7 @@ public:
     const std::array<uint8_t, kPlayerSlots>& status() const { return status_; }
     const std::array<std::string, kPlayerSlots>& names() const { return names_; }
 
-    // Recomb extension (not in rally.exe): "Computer spielen alle Karten"
+    // Recomp extension (not in rally.exe): "Computer spielen alle Karten"
     // ([Extensions] ComputerExtraCards) between stop and star; a click or F9 (a key
     // PLAYER does not use, seg1:0C7A) toggles it.
     void setExtraCards(bool on) { extraCards_ = on; }

@@ -1,6 +1,6 @@
 # Native save format
 
-DTVR Recomb stores games in its own versioned text format (`src/save.cpp`),
+DTVR Recomp stores games in its own versioned text format (`src/save.cpp`),
 independent of the original game's save files, as agreed in
 `docs/architecture.md`. A save holds the complete simulation state, so loading it
 and continuing with the same commands gives the same game as continuing the
@@ -14,7 +14,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 
 | Record | Fields |
 | --- | --- |
-| `DTVR-RECOMB-SAVE` | format version (currently 5; 4 is read without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
+| `DTVR-RECOMP-SAVE` | format version (currently 5; 4 is read without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
 | `rng` | state of the MS C random generator |
@@ -34,7 +34,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 | `risiko` | level (0 = not running), light, tick counter, steps (format 2) |
 | `demo` | 1 when a game without humans was asked to end (DS:16, format 3) |
 | `stages` | total number of stages DS:A106 (format 4; older saves use the stages left) |
-| `extensions` | 1 when computers also play the cards rally.exe never picks (recomb extension, format 5; older saves: 0) |
+| `extensions` | 1 when computers also play the cards rally.exe never picks (recomp extension, format 5; older saves: 0) |
 | `turn` | phase (0 spin, 1 drive, 2 arrived, 3 game over, 4 Risiko), current slot, stage origin, destination, stages left |
 | `end` | — |
 
@@ -64,7 +64,7 @@ older revision loads, but continues with the current rules.
 ## Save slots
 
 The game window's save dialog (round 33) writes slot `n` (0–8) to
-`slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomb/saves` (default
-`~/.local/share/dtvr-recomb/saves`), and its description to `saves.ini` in the
+`slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomp/saves` (default
+`~/.local/share/dtvr-recomp/saves`), and its description to `saves.ini` in the
 same directory (`[Save]`, one `Slot<n>=<description>` line per slot). The
 autosave of each turn start (round 35) is `as.sav` in the same directory.

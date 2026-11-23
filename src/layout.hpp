@@ -18,7 +18,7 @@ struct ScreenLayout {
     ScreenRect map;                 // "The Map" child: DS:9C84..9C88 x DS:9C86..9C8A
     // seg6:12FA: 0 = 1024, 1 = 800, 2 = 640 (the art and font sizes).
     int resolution() const { return baseWidth == 1024 ? 0 : baseWidth == 800 ? 1 : 2; }
-    // Widescreen extension (recomb only): the pixels added to the original canvas width.
+    // Widescreen extension (recomp only): the pixels added to the original canvas width.
     int extra() const { return width - baseWidth; }
     // The original 4:3 canvas centred in the wide one: full-canvas pictures (title,
     // PLAYER, OPTION, PICT) keep their size and coordinates there.
@@ -40,7 +40,7 @@ struct ScreenLayout {
 ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth = 0);
 ScreenLayout layoutForCanvas(int canvasWidth); // 640, 800 or 1024
 
-// Widescreen extension (recomb only, not in rally.exe): the canvas is widened by
+// Widescreen extension (recomp only, not in rally.exe): the canvas is widened by
 // `extra` pixels; the map window and its world view grow by them and the right
 // column (portrait, hand stack, player info) moves along. Heights stay original.
 ScreenLayout widenLayout(const ScreenLayout& base, int extra);

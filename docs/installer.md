@@ -125,7 +125,7 @@ MIDI/SoundFont preparation works as usual. Updates preserve existing music packs
 7. Publish the staged installation by renaming it to the requested destination.
    On ordinary failure, temporary output is cleaned up and the destination is absent.
 
-The final installation has `bin/dtvr-recomb`, `data/program/`, `manifest.json` and
+The final installation has `bin/dtvr-recomp`, `data/program/`, `manifest.json` and
 `play`. It needs the host SDL2 runtime; it is not a statically linked portable
 package. Build dependencies must already be installed. Paths containing spaces
 are supported. No privileged mount, Wine, extraction service or external archive
@@ -211,14 +211,14 @@ files and collisions between user files and new managed files are rejected.
 
 Game saves under the installation's `saves/` directory, including the default XDG
 location, are preserved as mutable user files. Settings normally live separately
-at `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (or `~/.config/dtvr-recomb/settings.ini`)
+at `$XDG_CONFIG_HOME/dtvr-recomp/settings.ini` (or `~/.config/dtvr-recomp/settings.ini`)
 and are never modified by the installer. Unmanaged local files are copied and
 excluded from managed-file hashes; saves are always excluded. The game must remain
 closed throughout the update because the installer cannot lock a running game.
 Preserving bytes does not migrate incompatible save formats; the game validates them.
 
 Publication uses a per-destination lock and short, cancellation-protected renames.
-The old directory moves to a unique sibling `dtvr-recomb.backup-*/installation`,
+The old directory moves to a unique sibling `dtvr-recomp.backup-*/installation`,
 then staging takes its place. The complete backup is retained and its path printed
 in the GUI log/CLI. If the second rename fails, restore the old directory immediately.
 SIGKILL or power loss between renames may require manually restoring that backup.

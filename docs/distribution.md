@@ -20,8 +20,8 @@ or external images. Raster/ICO exports are generated outside the checkout with
 ## Installation boundary
 
 The installer receives an explicit `--iso` or `--directory` path and creates an external user-local
-installation. By default it uses `$XDG_DATA_HOME/dtvr-recomb`, or
-`~/.local/share/dtvr-recomb` when that environment setting is unavailable or relative.
+installation. By default it uses `$XDG_DATA_HOME/dtvr-recomp`, or
+`~/.local/share/dtvr-recomp` when that environment setting is unavailable or relative.
 An explicit `--output` also has to be outside the checkout, including after
 resolving symlinks. Original source files are never modified in place. Directory
 imports identify the supported executable and record SHA-256 hashes for every
