@@ -39,7 +39,7 @@ ScreenRect panelSlot(const ScreenLayout& layout, int slot) {
 }
 
 PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<Town>& towns,
-                      const std::map<int, std::string>& texts) {
+                      const std::map<int, std::string>& texts, int labelField) {
     auto text = [&](int id) { auto it = texts.find(id); return it == texts.end() ? std::string() : it->second; };
     auto townName = [&](int field) {
         if (field < 0 || size_t(field) >= board.fields.size()) return std::string();
@@ -61,9 +61,9 @@ PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<To
     info.stepsLabel = text(201);
     const int left = game.phase() == Game::Phase::Move ? game.allowance() - game.stepsTaken() : 0;
     info.steps = {left / 10 % 10, left % 10};
-    if (game.phase() == Game::Phase::Arrived) { // DS:B632 is filled on arrival (seg2:5ABC)
-        const int kind = board.fields[size_t(field)].kind;
-        info.fieldKind = (kind == 4 || kind == 6) ? townName(field) : text(202 + kind);
+    if (labelField >= 0 && size_t(labelField) < board.fields.size()) { // seg2:5ABC
+        const int kind = board.fields[size_t(labelField)].kind;
+        info.fieldKind = (kind == 4 || kind == 6) ? townName(labelField) : text(202 + kind);
         if (info.fieldKind.size() > 19) info.fieldKind.resize(19);
         info.fieldIcon = kind == 1 ? "BLAU" : kind == 2 ? "ROT" : kind == 3 ? "GELB" : kind == 5 ? "LILA" : "";
     }

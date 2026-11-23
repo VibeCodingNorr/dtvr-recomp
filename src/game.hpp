@@ -97,6 +97,14 @@ public:
     // (setSpinPresentation) a spin of Würfeln, a reel card or a status card waits in
     // spinPending() until finishSpin(); without one the move starts at once (round 131).
     void setSpinPresentation(bool on) { spinPresentation_ = on; }
+    // seg2:0BC3 (with the arrival test seg2:0D38) has one caller, the main window's
+    // Return (seg4:01EA): a human's vehicle stops on its last field and the field's
+    // action runs only when Return accepts it — until then the move can still be
+    // turned back. With setArrivalConfirm (the game window) step() leaves the arrival to
+    // confirmArrival(); computers and windowless play arrive at once (round 137).
+    void setArrivalConfirm(bool on) { arrivalConfirm_ = on; }
+    bool arrivalDue() const;     // the move is complete, Return would run the field
+    bool confirmArrival();
     bool spinPending() const { return pendingAllowance_ >= 0; }
     bool finishSpin();
     bool step(Direction d);      // one field; reversing undoes the last step
@@ -380,6 +388,7 @@ private:
     std::string rollUndo_;                  // the state before a human's roll (not saved)
     int pendingAllowance_ = -1;             // a spin waiting for its window (not saved)
     bool spinPresentation_ = false;         // a slot window shows the spins
+    bool arrivalConfirm_ = false;           // a human accepts the field with Return
     void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;

@@ -38,18 +38,18 @@ int main() {
     towns[1].x = 12; towns[1].name = "Rom";
     Game game(b, towns, 1, 0, 1, 1, nullptr, nullptr, false);
     const std::map<int, std::string> texts{{201, "Z\xc3\xbcge"}, {301, "Januar"}, {203, "Gewinn-Feld"}};
-    PlayerInfo pi = playerInfo(game, b, towns, texts);
+    PlayerInfo pi = playerInfo(game, b, towns, texts, -1);
     CHECK(pi.monthLine == "Januar (1)" && pi.money == "$30.000" && pi.destination == "Rom");
     CHECK(pi.distance[0] == 0 && pi.distance[1] == 4 && pi.stepsLabel == "Z\xc3\xbcge" && pi.fieldKind.empty());
     CHECK(game.roll());
-    pi = playerInfo(game, b, towns, texts);
+    pi = playerInfo(game, b, towns, texts, -1);
     CHECK(pi.steps[1] == game.allowance() % 10);
     for (int i = 0; i < 10 && game.phase() == Game::Phase::Move; ++i)  // the row ends at field 4
         if (!game.step(Direction::Right)) game.step(Direction::Left);
-    if (game.phase() == Game::Phase::Arrived && game.playerField(0) < 4) {
-        pi = playerInfo(game, b, towns, texts);
-        CHECK(pi.fieldKind == "Gewinn-Feld" && pi.fieldIcon == "BLAU");
-    }
+    pi = playerInfo(game, b, towns, texts, 2); // DS:B632 of the drive, whatever the phase
+    CHECK(pi.fieldKind == "Gewinn-Feld" && pi.fieldIcon == "BLAU");
+    pi = playerInfo(game, b, towns, texts, 0);
+    CHECK(pi.fieldKind == "London" && pi.fieldIcon.empty());
 
     // Notices: the solo opponent (texts 961-963) and the yellow field card (4201-4214).
     {

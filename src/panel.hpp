@@ -34,8 +34,11 @@ struct PlayerInfo {
 // argument (driver name, amount formatted as formatMoney, or text).
 std::string formatNotice(const std::string& pattern, const Notice& notice, const Game& game);
 
-// `texts` are the language strings (id -> UTF-8).
+// `texts` are the language strings (id -> UTF-8). `labelField` is the field of DS:B632
+// (slots 6 and 7), -1 when empty: the drive sets it to each field a vehicle reaches
+// (seg2:20CF -> seg2:5AA8) and clears it when the vehicle leaves its field (seg2:1F36);
+// nothing else writes it, so a player change keeps it.
 PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<Town>& towns,
-                      const std::map<int, std::string>& texts);
+                      const std::map<int, std::string>& texts, int labelField);
 
 } // namespace dtvr

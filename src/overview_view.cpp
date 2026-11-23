@@ -155,7 +155,7 @@ void OverviewView::draw(const Game& game) {
         SDL_RenderSetClipRect(renderer_, &client);
         SDL_RenderCopy(renderer_, layer_.get(), &source, &destination);
     }
-    mouse_.draw(game.phase() == Game::Phase::Arrived);
+    mouse_.draw(game.arrivalDue() || game.phase() == Game::Phase::Arrived); // M1: DS:9D40 = DS:A778
 }
 
 void OverviewView::compose(const Game& game) {

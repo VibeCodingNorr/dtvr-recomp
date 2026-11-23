@@ -94,6 +94,7 @@ GameWindow::GameWindow(const GameWindowResources& r)
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
       announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()) {
     play_.game().setSpinPresentation(true); // moves start after the slot window (seg2:6426)
+    play_.game().setArrivalConfirm(true);   // a human accepts the field with Return (seg2:0BC3)
 }
 
 void GameWindow::start() {

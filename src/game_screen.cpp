@@ -227,6 +227,9 @@ void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
     if (clock_.rate() != rate) clock_.setRate(rate, realNow);
     clock_.setPaused(paused, realNow);
     clock_.update(realNow);
+    if (animClock_.rate() != settings_.animationTempo) animClock_.setRate(settings_.animationTempo, realNow);
+    animClock_.setPaused(paused, realNow);
+    animClock_.update(realNow);
 }
 
 void GameScreen::advanceVehicles(Uint32 now) {
@@ -265,6 +268,7 @@ void GameScreen::advanceVehicles(Uint32 now) {
                 if (p == game_.currentPlayer()) centreOnPlayer(); // Tschüss / Flugzeug: seg3:29E7 / 3314
             } else {
                 stepPending_[size_t(p)] = true; // consumed by the next movement tick
+                labelField_ = -1;               // seg2:1F36: leaving a field clears DS:B632
                 if (p == game_.currentPlayer()) viewPassed_ = SDL_Point{-1, -1};
             }
             from = field;
@@ -292,6 +296,7 @@ void GameScreen::advanceVehicles(Uint32 now) {
             approach(at.x, target.x);
             approach(at.y, target.y);
             const bool moved = at.x != before.x || at.y != before.y;
+            if (moved && at.x == target.x && at.y == target.y) labelField_ = field; // seg2:20CF
             // Plane (seg2:1EB5 / 2866): the cell next in the driving direction decides
             // the take-off, the cell three ahead the landing; the height moves by 2.
             const int cx = before.x / WorldMap::kTile, cy = before.y / WorldMap::kTile;
@@ -578,7 +583,8 @@ void GameScreen::drawMap() {
     // (+0x16, +0x18 - +0x2E + 2) (+0x2E: the boat counter, 0 on land); seg2:3EB0
     // moves every sprite by (-16, -16) before seg2:1A91 draws it minus the origin.
     static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
-    const Uint32 tick = presentationNow() / kVehicleTickMs; // the drive's passes follow the tempo
+    // The frames follow AnimationTempo; ComputerTempo only speeds the drive (advanceVehicles).
+    const Uint32 tick = animClock_.now() / kVehicleTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
@@ -693,7 +699,7 @@ void GameScreen::drawPlayerInfo() {
     const ScreenRect panel = layout_.playerInfo();
     const SDL_Rect target = toSdl(panel);
     SDL_RenderCopy(renderer_, info, nullptr, &target);
-    const PlayerInfo pi = playerInfo(game_, board_, towns_, texts_);
+    const PlayerInfo pi = playerInfo(game_, board_, towns_, texts_, labelField_);
     const int res = layout_.resolution();
     static constexpr int kItalic[3] = {24, 19, 16}, kRegular[3] = {18, 15, 12}; // seg5:622F
     auto slot = [&](int i) {
@@ -826,7 +832,8 @@ void GameScreen::draw() {
     if (nails_.isOpen()) nails_.draw(compassTexture());
     invest_.draw();
     save_.draw(slots_);
-    mouseControl_.draw(game_.phase() == Game::Phase::Arrived); // M1 once the move is done (seg4:12FC)
+    // M1 when DS:9D40 = DS:A778 (seg4:12FC): the move is complete, its Return accepts the field.
+    mouseControl_.draw(game_.arrivalDue() || game_.phase() == Game::Phase::Arrived);
     film_.draw();
     sight_.draw();
     menu_.draw();

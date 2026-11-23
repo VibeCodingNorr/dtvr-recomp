@@ -91,7 +91,18 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         return;
     }
     if (screen_.messages().open()) {
-        if (event.type == SDL_KEYDOWN || click) screen_.messages().dismiss();
+        // INFO (seg6:5492): WM_KEYDOWN closes only with Return / Space, and Escape /
+        // Backspace (after VK_RIGHT for a No), with Plopp02 on channel 0 (seg6:579F ->
+        // 5627); the arrows only move between Yes / No, other keys do nothing — a held
+        // arrow of the drive does not close an arrival's message. WM_LBUTTONDOWN closes
+        // a message without buttons at once, without a sound (seg6:54C0 -> 559F).
+        const SDL_Keycode key = event.type == SDL_KEYDOWN ? event.key.keysym.sym : SDLK_UNKNOWN;
+        if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE || key == SDLK_ESCAPE || key == SDLK_BACKSPACE) {
+            screen_.messages().dismiss();
+            sound_.play(0, 2);
+        } else if (click && event.button.button == SDL_BUTTON_LEFT) {
+            screen_.messages().dismiss();
+        }
         return;
     }
     if (menu_.isOpen()) {
@@ -307,6 +318,8 @@ void GameWindow::handleKey(const SDL_Event& event) {
     const SDL_Keycode key = event.key.keysym.sym;
     if (isArrow(key) && play_.game().phase() == Game::Phase::Move) { heldArrow_ = key; return; }
     if (key == SDLK_INSERT || key == SDLK_DELETE) { screen_.toggleZoom(); return; } // seg4:0212
+    // seg2:0D38 needs the vehicle on the cell grid (seg2:2C0F): no field while it drives.
+    if ((key == SDLK_RETURN || key == SDLK_KP_ENTER) && moving_ && play_.game().arrivalDue()) return;
     if (key >= SDLK_1 && key <= SDLK_4) { // seg4:018B -> seg6:0DA0(key - 1, 1): pause and memo
         Settings s = screen_.settings();
         s.pause = int(key - SDLK_1);

@@ -79,6 +79,23 @@ int main() {
         CHECK(ref.phase() == Game::Phase::Move && !ref.spinPending() && !ref.rollCancellable());
     }
 
+    // seg4:01EA -> seg2:0BC3: with a game window a human accepts the field with Return;
+    // the vehicle waits on its last field and can still turn back (round 137).
+    {
+        Game g(board, towns, 2, 0, 1);
+        g.setRandomEvents(false);
+        g.setArrivalConfirm(true);
+        CHECK(g.roll() && !g.arrivalDue() && !g.confirmArrival());
+        const int n = g.allowance();
+        for (int i = 0; i < n; ++i) CHECK(g.step(Direction::Right));
+        CHECK(g.phase() == Game::Phase::Move && g.arrivalDue() && g.cash(0) == kStartingCash);
+        if (n > 1) { // turning back undoes the last step, forward again
+            CHECK(g.step(Direction::Left) && !g.arrivalDue() && g.step(Direction::Right) && g.arrivalDue());
+        }
+        CHECK(g.confirmArrival() && g.phase() == Game::Phase::Arrived && g.cash(0) > kStartingCash); // blue field
+        CHECK(!g.arrivalDue() && !g.confirmArrival());
+    }
+
     Game game(board, towns, 2, 0, 1);
     game.setRandomEvents(false);
     CHECK(game.origin() == 0 && game.destination() == 12 && game.currentPlayer() == 0);

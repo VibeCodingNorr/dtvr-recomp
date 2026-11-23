@@ -236,6 +236,14 @@ Confirmed from code unless marked otherwise.
   case of the field action (seg2:11A6 / 11BA / 11CD), the finish (1304 / 130B), 1542
   and the route (9B73 / 9B8F) — never by the drive. Passing over the destination
   with steps left triggers nothing; only a move that ends on it reaches the goal.
+- **Return accepts the field** (round 137): seg2:0BC3, which contains this test,
+  has one caller, the main window's Return (seg4:01EA; the steering cross M1
+  posts Return too). A human's vehicle therefore stops on its last field (Carb01)
+  and the field's action — money, card, town, finish — runs only when Return is
+  pressed; until then an arrow can still turn back. The rebuild did this at once;
+  now `Game::setArrivalConfirm` (game window) leaves it to `confirmArrival`.
+  Computers and the terminal mode arrive at once (an unchanged two-computer log).
+  Return while the vehicle is still between cells does nothing (seg2:2C0F).
 - **Turn end after the field** (round 113): every field handler returns to
   seg2:1618, which calls the forced sale check seg1:4E39 and nextPlayer seg2:06FC
   directly. The handler's message, card dialog, town dialog or card shop runs
@@ -1092,8 +1100,13 @@ of PLINFO (texts), menus (MENU / SBBUTTON), slot machine (SLOT), messages
   seg6:0DA0(key − 1), C seg2:7F72, Q seg4:0EDF.
 
 Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
-Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
-shows while the player stands on the reached field (phase Arrived).
+Arial, else Liberation Sans; bold face for weight 600). *Round 137:* DS:B632
+(slots 6 / 7) is written only by the drive: seg2:20CF → seg2:5AA8 fills it each
+time a vehicle reaches a field (after Plopp01 / Carb01), seg2:1F36 empties it when
+the vehicle leaves its field (also SELPLAYER seg2:51EA / 562C refill it for a
+moment). So the panel names every field passed, also mid-move; a player change
+keeps it. The rebuild formerly showed it only in phase Arrived; now
+`GameScreen::labelField_` follows the drawn vehicle.
 
 ### Hand stack (round 114)
 

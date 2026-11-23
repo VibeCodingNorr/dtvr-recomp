@@ -19,6 +19,9 @@ time (2500 ms × Pause factor, seg6:0FB4) is divided by it. The slot machine now
 follows the presentation clock too (its key timing uses the same clock). A
 two-computer game reached six turns instead of one in the same 900 frames at 4×, with
 an identical game log.
+**Round 137 (user decision 2026-11-23):** Computerzüge speeds the vehicles' drive,
+not their frame animation: the frames (<letter>R1–4 …) follow a second clock at
+AnimationTempo only (`GameScreen::animClock_`).
 The proposed levels and first implementation scope below remain design choices,
 not recovered original behavior.
 

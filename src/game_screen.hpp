@@ -262,9 +262,13 @@ private:
     std::array<VehicleAnimation, kPlayerSlots> anim_{}; // animation +0x20 and its frame +0x2C
     std::array<bool, kPlayerSlots> airSet_{};
     std::array<bool, kPlayerSlots> stepPending_{};  // a step began, its first tick is still due
+    int labelField_ = -1; // DS:B632: the field the drive last reached, -1 after leaving one
     Uint32 lastAdvance_ = 0;
     bool advanced_ = false;                         // lastAdvance_ is set
     PresentationClock clock_;
+    // The vehicles' frame animation: AnimationTempo only, so a faster computer turn
+    // drives faster without its wheels spinning faster (round 137).
+    PresentationClock animClock_;
     MapViewSize viewSize() const;
     TilePoint origin_{};          // DS:956A / 9568 outside Umfeld
     bool originSet_ = false;

@@ -300,7 +300,22 @@ bool Game::step(Direction d) {
             messages_.push_back("Dr. Drago faehrt jetzt bei " + playerName(drago_.holder) + " mit");
     }
     // Field-to-field movement keeps the vehicle grid-aligned; no dialog is modelled.
-    if (arrivalTriggers(next, 0, 0, counter_.taken(), counter_.allowance(), false)) arrive();
+    // A human with a game window accepts the field with Return (confirmArrival).
+    if (arrivalTriggers(next, 0, 0, counter_.taken(), counter_.allowance(), false)
+        && !(arrivalConfirm_ && !computerControls()))
+        arrive();
+    return true;
+}
+
+bool Game::arrivalDue() const {
+    return phase_ == Phase::Move && question_.card < 0
+        && arrivalTriggers(players_[size_t(current_)].field, 0, 0, counter_.taken(), counter_.allowance(), false);
+}
+
+bool Game::confirmArrival() { // seg2:0BC3 -> 0D38 ff.
+    messages_.clear();
+    if (!arrivalDue()) return false;
+    arrive();
     return true;
 }
 
