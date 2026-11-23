@@ -16,6 +16,12 @@ No original game artwork or external font files are included.
   through an SVG alpha mask and filled with ivory, avoiding generated cutout
   speckles. There is no background panel. Embedded project images and the mask
   make this asset self-contained too.
+- `banner-dark.svg`: dark-theme README banner with prefiltered 1800 × 600 PNG
+  artwork, displayed at up to 1200 × 400. The lettering mask is softened before
+  and after color conversion (Gaussian deviations 1.5 and 1.0 in the original
+  2172 × 724 coordinate space), then rendered with the shared supersampling
+  pipeline. The resulting SVG has no live mask/filter, avoiding hard alpha edges
+  when browsers scale the GitHub banner. The installer asset remains separate.
 
 The winding road leads toward a town tower against an amber sun; the tilted
 five-pip die represents the board-game rally. The lowercase wordmark leans

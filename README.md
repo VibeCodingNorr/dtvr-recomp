@@ -1,7 +1,7 @@
 # DTVR Recomp
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logo-dark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/banner-dark.svg">
   <img src="assets/branding/logo.svg" alt="dtvr-recomp: a winding road, town tower and five-pip die" width="1200">
 </picture>
 
