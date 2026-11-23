@@ -175,7 +175,9 @@ is claimed.
 99. Text smoothing in three modes (F12): Original, canvas size, screen resolution.
 100. Locked town dialog items (empty hand, property card modes) and the statistics header arrows.
 101. Window centring as rally.exe (seg6:0000); the slot machine slides in from the top of the map and out again.
-102. *Next:* remaining presentation details (compare windows with rally.exe).
+102. The wooden window border of rally.exe (8 / 16 pixels, non-client) for the map, portrait and dialogs.
+103. The original name codes of the eighth driver: "Armin Gessert" (500,000) and "130663" (1,000,000 and a full hand).
+104. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

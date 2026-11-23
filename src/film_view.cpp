@@ -62,7 +62,14 @@ void FilmView::upload() {
 }
 
 void FilmView::draw() {
-    if (film_ && texture_) SDL_RenderCopy(renderer_, texture_.get(), nullptr, &box_);
+    if (!film_ || !texture_) return;
+    // The window has the film's size (DS:8D3C / 8D3E) and the 8-pixel border of seg6:1A68
+    // (seg7:669E); the paint blits the whole film at (0, 0) of the client (seg7:65D9),
+    // so it starts 8 pixels in and loses 16 pixels on the right and at the bottom.
+    drawWindowBorder(renderer_, borderSprites_, box_, BorderSize::Thin);
+    const SDL_Rect client = borderClient(box_, BorderSize::Thin);
+    const SDL_Rect src{0, 0, client.w, client.h};
+    SDL_RenderCopy(renderer_, texture_.get(), &src, &client);
 }
 
 } // namespace dtvr

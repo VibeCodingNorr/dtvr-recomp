@@ -8,6 +8,8 @@
 // docs/formats.md "Finish sequence".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "board.hpp"
 #include "sdl_assets.hpp"
 
@@ -21,6 +23,8 @@ namespace dtvr {
 
 class FinishView {
 public:
+    // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     FinishView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
     // Builds the scene for the driver letter and the town (OEM name); false when the
     // pictures are missing (the original then skips the sequence, seg7:26E8).
@@ -32,6 +36,7 @@ public:
     void draw(Uint32 now);
 
 private:
+    SpriteLookup borderSprites_;
     int steps(Uint32 now) const;
 
     SDL_Renderer* renderer_;

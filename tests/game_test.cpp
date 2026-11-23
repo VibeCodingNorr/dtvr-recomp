@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Tests for the hotseat game flow assembled from the recovered rules.
+#include <memory>
 #include "estates.hpp"
 #include "game.hpp"
 
@@ -220,5 +221,30 @@ int main() {
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("game_test: OK");
+    // Name codes of slot 7 (round 112, seg2:6332): case-sensitive, applied after the deal.
+    {
+        std::array<uint8_t, kPlayerSlots> slots{};
+        slots[0] = 1;
+        slots[7] = 1;
+        auto make = [&](const std::string& name) {
+            auto g = std::make_unique<Game>(board, towns, slots, 99, 5, 1, nullptr, nullptr);
+            std::array<std::string, kPlayerSlots> names;
+            names[7] = name;
+            g->setPlayerNames(names);
+            g->applyNameCodes();
+            return g;
+        };
+        auto plain = make("Armino Gesserti");
+        const double start = plain->cash(7);
+        const int cards = plain->handCount(7);
+        CHECK(make("armin gessert")->cash(7) == start);
+        auto armin = make("Armin Gessert");
+        CHECK(armin->cash(7) == 500000.0 && armin->handCount(7) == cards);
+        auto birthday = make("130663");
+        CHECK(birthday->cash(7) == 1000000.0 && birthday->playerNames()[7] == "Armin Gessert");
+        CHECK(cards == 0 ? birthday->handCount(7) == 0 : birthday->handCount(7) == 8); // the walk cascades
+        CHECK(birthday->cash(0) == start && birthday->handCount(0) == cards);
+    }
+
     return failures != 0;
 }

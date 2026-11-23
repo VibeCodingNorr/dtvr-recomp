@@ -19,10 +19,12 @@ void MenuView::open(const std::string& name, std::vector<NeMenuItem> items) {
     focus_ = 0; // SetProp(FOCUS, 0) on WM_CREATE (seg5:5715)
 }
 
-SDL_Rect MenuView::box() const {
+SDL_Rect MenuView::windowRect() const {
     const int h = (int(items_.size()) + 1) * kRow; // (count + 1) << 5; only `count` rows are painted
     return SDL_Rect{(layout_.width - kWidth) / 2, (layout_.height - h) / 2, kWidth, h};
 }
+
+SDL_Rect MenuView::box() const { return borderClient(windowRect(), BorderSize::Thick); }
 
 int MenuView::choose(int index) const {
     if (index < 0 || size_t(index) >= items_.size()) return 0;
@@ -68,6 +70,7 @@ int MenuView::handle(const SDL_Event& event) {
 
 void MenuView::draw() {
     if (!isOpen()) return;
+    drawWindowBorder(renderer_, sprite_, windowRect(), BorderSize::Thick); // seg5:57ED
     const SDL_Rect b = box();
     // seg5:58B1: items from the top, each as tall as its frame; text at (+18, +7),
     // focused (+20, +9); Arial weight 600 height 16 (seg6:04F9), no shadow; colour

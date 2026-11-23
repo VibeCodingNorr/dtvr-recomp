@@ -5,6 +5,8 @@
 // unavailable during the final stage (text 8300). Evidence in docs/formats.md "Flugzeug".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
@@ -19,6 +21,7 @@ namespace dtvr {
 
 class FlightView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     FlightView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                const std::map<int, std::string>& texts, TextRenderer& text);
     void open(bool eastOpen, bool lastStage);
@@ -34,7 +37,9 @@ public:
     void draw();
 
 private:
-    SDL_Rect box() const;
+    SpriteLookup borderSprites_;
+    SDL_Rect windowRect() const; // CreateWindow size, centred
+    SDL_Rect box() const;        // the client area inside the border (seg3:3938)
     int rows() const { return eastOpen_ ? 8 : 7; } // DS:8C1E + 1 (seg3:3633)
     std::string text(int id) const;
     Result choose(int row);

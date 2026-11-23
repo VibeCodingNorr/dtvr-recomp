@@ -25,7 +25,8 @@ static FlightView::Result key(FlightView& view, SDL_Keycode code) {
 
 static FlightView::Result pointer(FlightView& view, const ScreenLayout& layout, int x, int y,
                                  Uint32 type = SDL_MOUSEBUTTONDOWN, Uint8 button = SDL_BUTTON_LEFT) {
-    const int left = (layout.width - 0x114) / 2, top = (layout.height - 0x100) / 2;
+    // Client coordinates of WM_LBUTTONDOWN: inside the 8-pixel border of seg6:1A68 (round 112).
+    const int left = (layout.width - 0x114) / 2 + 8, top = (layout.height - 0x100) / 2 + 8;
     SDL_Event event{};
     event.type = type;
     if (type == SDL_MOUSEMOTION) {

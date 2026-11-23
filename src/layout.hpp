@@ -15,6 +15,9 @@ struct ScreenLayout {
     int width = 640, height = 480;  // canvas DS:9DC2 x DS:9D94
     int artDir = 6;                 // seg5:1827: butt/<n>, bmp/<n> (6 = 640, 8 = 800, 1 = 1024)
     ScreenRect map;                 // "The Map" child: DS:9C84..9C88 x DS:9C86..9C8A
+    // Its client area inside the 8-pixel border of seg6:1A68 (seg6:1763), the size of
+    // the drawn area DS:94DE / 94E0 (round 112).
+    ScreenRect mapClient() const { return {map.x + 8, map.y + 8, map.w - 16, map.h - 16}; }
     ScreenRect viewport;            // drawn world area inside the map window (DS:94DA..94E0)
     // seg6:1140(index) -> (a, b) for the current resolution; meanings in docs.
     std::array<std::array<int, 2>, 10> elements{};

@@ -6,6 +6,8 @@
 // Evidence and simplifications in docs/formats.md "Year balance".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "game.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
@@ -21,6 +23,8 @@ namespace dtvr {
 
 class BalanceView {
 public:
+    // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,
                Uint32 now);
@@ -40,6 +44,7 @@ public:
     void draw(Uint32 now);
 
 private:
+    SpriteLookup borderSprites_;
     enum class Stage { Intro, Wait, Pull, Next, Result, Closing, ClosingPull, ClosingResult, ClosingWait };
     bool closingPart() const { return stage_ >= Stage::Closing; }
     void enter(Stage stage, Uint32 now);

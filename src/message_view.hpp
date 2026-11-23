@@ -5,6 +5,8 @@
 // (round 25).
 #pragma once
 
+#include "window_border.hpp"
+
 #include "game.hpp"
 #include "layout.hpp"
 #include "sdl_assets.hpp"
@@ -19,6 +21,7 @@ namespace dtvr {
 
 class MessageView {
 public:
+    void setSprites(SpriteLookup sprites) { sprites_ = std::move(sprites); } // B1-B8 of assorted.sbs
     MessageView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                 const std::map<int, std::string>& texts, TextRenderer& text);
     void push(Notice notice) { queue_.push_back(std::move(notice)); }
@@ -39,7 +42,9 @@ public:
 
 private:
     SDL_Texture* bitmap(const std::filesystem::path& relative, int& w, int& h);
-    struct Geometry { SDL_Rect box{}; SDL_Texture* picture = nullptr; int pw = 0, ph = 0; SDL_Rect yes{}, no{}; };
+    // box: the window (CreateWindow size); client: inside the 8-pixel border of
+    // seg6:1A68 (INFO calls it at seg6:593F).
+    struct Geometry { SDL_Rect box{}, client{}; SDL_Texture* picture = nullptr; int pw = 0, ph = 0; SDL_Rect yes{}, no{}; };
     Geometry geometry();
     int buttonSize() const;
 
@@ -52,6 +57,7 @@ private:
     std::deque<Notice> queue_;
     int choice_ = 6; // DS:8C38, Yes after WM_CREATE (seg6:5834)
     int serial_ = 0;
+    SpriteLookup sprites_;
 };
 
 } // namespace dtvr

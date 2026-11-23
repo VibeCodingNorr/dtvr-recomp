@@ -24,7 +24,7 @@ void RisikoView::load() {
 }
 
 SDL_Rect RisikoView::frame() const {
-    // Window centred (assumption as for the other child windows); the frame inside it.
+    // Window centred by seg6:0000 (seg7:6D42); the frame fills its client area.
     const int wx = (layout_.width - kWindowW) / 2, wy = (layout_.height - kWindowH) / 2;
     return SDL_Rect{wx + (kWindowW - kFrameW) / 2, wy + (kWindowH - kFrameH) / 2, kFrameW, kFrameH};
 }
@@ -43,9 +43,8 @@ void RisikoView::draw(int light, Uint32 now) {
     load();
     const int wx = (layout_.width - kWindowW) / 2, wy = (layout_.height - kWindowH) / 2;
     const SDL_Rect window{wx, wy, kWindowW, kWindowH};
-    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
-    SDL_RenderFillRect(renderer_, &window);
-    const SDL_Rect f = frame();
+    drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thin); // seg6:1A68 (seg7:7138)
+    const SDL_Rect f = frame(); // fills the client area: 0xF6 x 0x9E minus the border
     const char* name = light == 0 ? "R-LIGHT0" : light == 2 ? "R-LIGHT2" : light == 3 ? "R-LIGHT3"
                      : light == 4 ? "R-LIGHT4" : "R-NORMAL"; // seg7:6E54
     if (const auto it = frames_.find(name); it != frames_.end()) SDL_RenderCopy(renderer_, it->second.get(), nullptr, &f);

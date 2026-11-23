@@ -15,6 +15,7 @@
 #include "layout.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
+#include "window_border.hpp"
 
 #include <SDL.h>
 
@@ -37,6 +38,7 @@ public:
     Result handle(const SDL_Event& event);
     int stages() const { return stages_; }              // the accepted count
     int takeSound() { const int s = sound_; sound_ = -1; return s; }
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     void draw();
 
     // seg8:0A0D: the first four characters (GetWindowText(…, 5)) read by atoi.
@@ -44,6 +46,7 @@ public:
 
 private:
     SDL_Rect window() const;
+    SDL_Rect client() const;
     SDL_Rect field() const;
     SDL_Rect track() const;
     void setFromSlider(int x);
@@ -61,6 +64,7 @@ private:
     std::string input_;     // the SBINPUT text, at most 19 characters (seg1:1D2A)
     int stages_ = 99;
     int sound_ = -1;
+    SpriteLookup borderSprites_;
 };
 
 } // namespace dtvr

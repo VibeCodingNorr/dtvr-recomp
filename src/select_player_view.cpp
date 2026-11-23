@@ -28,11 +28,13 @@ void SelectPlayerView::open(const std::vector<int>& candidates, const std::array
     buttons_.reset(std::move(buttons), candidates_.empty() ? -1 : candidates_.back());
 }
 
-SDL_Rect SelectPlayerView::box() const { // seg2:5343: n * (size + 5) + 20 by extra + size + 30
+SDL_Rect SelectPlayerView::windowRect() const { // seg2:5343: n * (size + 5) + 20 by extra + size + 30
     const int r = resolution(layout_.width), n = int(candidates_.size());
     const int w = n * (kSize[r] + 5) + 0x14, h = kExtra[r] + kSize[r] + 0x1E;
     return SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2, w, h};
 }
+
+SDL_Rect SelectPlayerView::box() const { return borderClient(windowRect(), BorderSize::Thin); }
 
 SDL_Rect SelectPlayerView::button(size_t index) const { // seg2:53BD: first candidate on the right
     const int r = resolution(layout_.width), n = int(candidates_.size());
@@ -69,6 +71,7 @@ SbButtonGroup::Input SelectPlayerView::handle(const SDL_Event& event) {
 
 void SelectPlayerView::draw() {
     if (!isOpen()) return;
+    drawWindowBorder(renderer_, borderSprites_, windowRect(), BorderSize::Thin); // seg2:5969
     const SDL_Rect b = box();
     const std::string dir = "butt/" + std::to_string(layout_.artDir) + "/";
     if (SDL_Texture* paper = bitmap(dir + "p.bmp")) { // DS:1BA3

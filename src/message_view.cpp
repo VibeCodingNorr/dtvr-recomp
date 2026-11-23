@@ -52,11 +52,12 @@ MessageView::Geometry MessageView::geometry() {
     // seg6:5213: width from element 5, height = picture + 0x24; centred on the canvas.
     const int w = layout_.elements[5][0], h = g.ph + 0x24;
     g.box = SDL_Rect{std::max(0, (layout_.width - w) / 2), std::max(0, (layout_.height - h) / 2), w, h};
+    g.client = borderClient(g.box, BorderSize::Thin); // picture + 0x24 - 16: 10 pixels above and below
     if (n.buttons == 4) {
         // seg6:54C4: client rectangle inflated by -10, left past the picture + 10, then
         // inflated by (-10, 0); seg6:639C puts Ja (text 115) bottom left and Nein (116)
         // bottom right of it.
-        const SDL_Rect r{g.box.x + 30 + g.pw, g.box.y + 10, w - 50 - g.pw, h - 20};
+        const SDL_Rect r{g.client.x + 30 + g.pw, g.client.y + 10, g.client.w - 50 - g.pw, g.client.h - 20};
         const TextStyle style{buttonSize(), true, false, false, false, 0, SDL_Color{}};
         auto text = [&](int id) { const auto it = texts_.find(id); return it == texts_.end() ? std::string() : it->second; };
         const SDL_Point yes = text_.measure(text(115), style), no = text_.measure(text(116), style);
@@ -92,8 +93,9 @@ void MessageView::draw(const Game& game) {
     SDL_Texture* paper = bitmap(fs::path("butt") / dir / "p1.bmp", pw, ph);
     const Geometry g = geometry();
     SDL_Texture* showmaster = g.picture;
-    const int sw = g.pw, sh = g.ph, w = g.box.w, h = g.box.h;
-    const SDL_Rect box = g.box;
+    const SDL_Rect box = g.client;
+    const int sw = g.pw, sh = g.ph, w = box.w, h = box.h;
+    drawWindowBorder(renderer_, sprites_, g.box, BorderSize::Thin);
     if (paper && pw > 0 && ph > 0) // the paper fills the client area (tiled where it is smaller)
         for (int y = 0; y < h; y += ph)
             for (int x = 0; x < w; x += pw) {

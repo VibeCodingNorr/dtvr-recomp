@@ -36,13 +36,16 @@ void SubtitleView::update(Uint32 now) {
 
 void SubtitleView::draw() {
     if (!open_) return;
-    // seg6:678B: unipaper.bmp stretched over the window.
-    if (paper_) SDL_RenderCopy(renderer_, paper_.get(), nullptr, &rect_);
+    // The 8-pixel border of seg6:1A68 (seg6:6991); seg6:678B: unipaper.bmp stretched
+    // over the client area.
+    drawWindowBorder(renderer_, borderSprites_, rect_, BorderSize::Thin);
+    const SDL_Rect client = borderClient(rect_, BorderSize::Thin);
+    if (paper_) SDL_RenderCopy(renderer_, paper_.get(), nullptr, &client);
     const auto it = texts_.find(track_.shown());
     if (track_.shown() == 0 || it == texts_.end()) return;
     // seg6:68A6: font seg6:04F9(FONTSIZE 14, weight 600); client rect inflated by
     // (-6, -6); DrawText 0x110 in PALETTEINDEX(0) without shadow.
-    const ScreenRect area{rect_.x + 6, rect_.y + 6, rect_.w - 12, rect_.h - 12};
+    const ScreenRect area{client.x + 6, client.y + 6, client.w - 12, client.h - 12};
     text_.drawWrapped(renderer_, it->second, area, TextStyle{14, true, false, false, false, 0, SDL_Color{0, 0, 0, 255}});
 }
 

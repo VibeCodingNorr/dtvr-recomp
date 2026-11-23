@@ -269,6 +269,7 @@ void IntroView::draw() {
     const SDL_Rect w = window();
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &w);
+    drawWindowBorder(renderer_, borderSprites_, w, BorderSize::Thin); // seg7:259D
     const SDL_Rect area{w.x + (kWindowW - kWidth) / 2, w.y + (kWindowH - kHeight) / 2, kWidth, kHeight};
     SDL_RenderCopy(renderer_, texture_.get(), nullptr, &area);
 }

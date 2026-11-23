@@ -6,6 +6,8 @@
 // "Victory sequence".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "sdl_assets.hpp"
 
 #include <SDL.h>
@@ -19,6 +21,8 @@ namespace dtvr {
 
 class VictoryView {
 public:
+    // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     VictoryView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
     // `ranking` lists slots best first (seg1:8EE1); false when the pictures are missing.
     bool start(const std::vector<int>& ranking, Uint32 now);
@@ -34,6 +38,7 @@ public:
     void draw(Uint32 now);
 
 private:
+    SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     int canvasWidth_, canvasHeight_;

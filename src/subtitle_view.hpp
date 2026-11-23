@@ -4,6 +4,8 @@
 // the language text of the voice playing, timed by dat/<lang>/sync.dat.
 #pragma once
 
+#include "window_border.hpp"
+
 #include "sdl_assets.hpp"
 #include "text.hpp"
 #include "voice_sync.hpp"
@@ -19,6 +21,7 @@ namespace dtvr {
 
 class SubtitleView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     SubtitleView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text,
                  const std::map<int, std::string>& texts);
     void setEnabled(bool enabled) { enabled_ = enabled; }
@@ -30,6 +33,7 @@ public:
     void draw();
 
 private:
+    SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     TextRenderer& text_;

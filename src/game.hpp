@@ -186,6 +186,12 @@ public:
     // Driver names of the slots (texts 120-127 of the language file, UTF-8); without
     // them messages say "Spieler N".
     void setPlayerNames(const std::array<std::string, kPlayerSlots>& names) { names_ = names; }
+    // seg2:6332 (new game, seg4:0E71): the name codes of slot 7 (Armino Gesserti),
+    // compared case-sensitively: "Armin Gessert" sets its cash to 500,000 (DS:861E);
+    // "130663" sets 1,000,000 (DS:8626), draws a card (seg2:4327) for every occupied
+    // hand slot while walking the eight slots and renames it "Armin Gessert".
+    void applyNameCodes();
+    const std::array<std::string, kPlayerSlots>& playerNames() const { return names_; }
     std::string playerName(int player) const;
     bool requestDemoEnd();
     // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.

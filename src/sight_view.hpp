@@ -6,6 +6,8 @@
 // butt/<lang>/views/<x>_<y>.txt right of it. Evidence in docs/formats.md "Sights".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "sdl_assets.hpp"
 #include "text.hpp"
 
@@ -18,6 +20,7 @@ namespace dtvr {
 
 class SightView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // BS1-BS8
     SightView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text, int canvasWidth,
               int canvasHeight)
         : renderer_(renderer), root_(root), text_(text), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
@@ -29,6 +32,7 @@ public:
     void draw();
 
 private:
+    SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     TextRenderer& text_;

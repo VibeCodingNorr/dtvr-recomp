@@ -72,9 +72,11 @@ SDL_Rect StagesView::field() const {
     return SDL_Rect{e[0], e[1], kFieldW, kFieldH};
 }
 
+SDL_Rect StagesView::client() const { return borderClient(window(), BorderSize::Thin); } // seg8:0D25
+
 SDL_Rect StagesView::track() const {
-    const SDL_Rect w = window();
-    return SDL_Rect{w.x + 20, w.y + w.h - kExtra + 8, w.w - 40, 20};
+    const SDL_Rect c = client();
+    return SDL_Rect{c.x + 12, c.y + c.h - kExtra + 8, c.w - 24, 20};
 }
 
 void StagesView::setFromSlider(int x) {
@@ -98,7 +100,7 @@ bool StagesView::accept() {
 
 StagesView::Result StagesView::handle(const SDL_Event& event) {
     if (!open_) return Result::None;
-    const SDL_Rect w = window(), t = track(), f = field();
+    const SDL_Rect w = client(), t = track(), f = field(); // input reaches the client only
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         const SDL_Point at{event.button.x, event.button.y};
         SDL_Rect grab{t.x - 8, t.y - 6, t.w + 16, t.h + 12};
@@ -137,7 +139,8 @@ StagesView::Result StagesView::handle(const SDL_Event& event) {
 
 void StagesView::draw() {
     if (!open_) return;
-    const SDL_Rect w = window();
+    drawWindowBorder(renderer_, borderSprites_, window(), BorderSize::Thin); // seg6:1A68 (seg8:0D25)
+    const SDL_Rect w = client(); // GetClientRect: the paper, picture, text and field lie inside the border
     const std::string dir = std::to_string(layout_.artDir);
     if (SDL_Texture* paper = bitmap(fs::path("butt") / dir / "p1.bmp")) { // seg8:0B8B at (0, 0)
         int pw = 0, ph = 0;

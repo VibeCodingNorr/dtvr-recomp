@@ -44,9 +44,11 @@ void NailsView::open(const std::array<bool, 4>& available) {
     open_ = selected_ != 0;                           // none: CreateWindow fails (seg3:241C)
 }
 
-SDL_Rect NailsView::box() const {
+SDL_Rect NailsView::windowRect() const {
     return SDL_Rect{(layout_.width - kWidth) / 2, (layout_.height - kHeight) / 2, kWidth, kHeight};
 }
+
+SDL_Rect NailsView::box() const { return borderClient(windowRect(), BorderSize::Thin); }
 
 int NailsView::handle(const SDL_Event& event) {
     if (!open_) return 0;
@@ -76,6 +78,7 @@ int NailsView::handle(const SDL_Event& event) {
 
 void NailsView::draw(SDL_Texture* compass) {
     if (!open_) return;
+    drawWindowBorder(renderer_, borderSprites_, windowRect(), BorderSize::Thin); // seg3:2730
     const SDL_Rect b = box();
     if (paper_) {
         const SDL_Rect src{0, 0, std::min(kWidth, 661), std::min(kHeight, 270)};

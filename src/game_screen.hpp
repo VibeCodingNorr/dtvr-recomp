@@ -33,6 +33,7 @@
 #include "overview_view.hpp"
 #include "setup_view.hpp"
 #include "stages_view.hpp"
+#include "window_border.hpp"
 #include "menu_view.hpp"
 #include "message_view.hpp"
 #include "slot_view.hpp"

@@ -152,6 +152,7 @@ void BalanceView::draw(Uint32 now) {
     const SDL_Rect window{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2 - lift(), kWindowW, kWindowH};
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &window);
+    drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thin); // seg6:1A68 (ZIEL seg7:5084, SIEG 839C, BILANZ seg8:A7D7)
     const int ox = window.x + (kWindowW - kWidth) / 2, oy = window.y + (kWindowH - kHeight) / 2;
     const SDL_Rect area{ox, oy, kWidth, kHeight};
     SDL_RenderCopy(renderer_, background_.get(), nullptr, &area);

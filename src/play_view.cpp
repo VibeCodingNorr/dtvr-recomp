@@ -19,8 +19,9 @@ bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
     if (rounds > 0) rounds_ = rounds;
     Game fresh(board_, towns_, slots, rounds_, seed, 1, map_.get(), props_.get());
     fresh.setPlayerNames(names);
+    fresh.applyNameCodes(); // seg4:0E71 -> seg2:6332, after the deal
     if (!SaveCodec::decode(*game_, SaveCodec::encode(fresh), error)) return false;
-    game_->setPlayerNames(names);
+    game_->setPlayerNames(fresh.playerNames()); // with the renamed code of seg2:640F
     game_->takeNotices(); // nothing of the old game is announced any more
     game_->adoptNotices(fresh);
     cardTarget_ = pendingNails_ = -1;

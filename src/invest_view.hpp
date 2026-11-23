@@ -5,6 +5,8 @@
 // Evidence in docs/formats.md "Investment offer".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
@@ -19,6 +21,7 @@ namespace dtvr {
 
 class InvestView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     InvestView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                const std::map<int, std::string>& texts, TextRenderer& text);
     // `professor`: prof.bmp, else fuss.bmp; `offer`: the formatted offer text.
@@ -30,7 +33,9 @@ public:
     void draw();
 
 private:
-    SDL_Rect box() const;
+    SpriteLookup borderSprites_;
+    SDL_Rect windowRect() const; // CreateWindow size, centred
+    SDL_Rect box() const;        // the client area inside the border (seg8:7C63)
     SDL_Texture* bitmap(const std::string& file);
     std::string text(int id) const;
     Result enter();

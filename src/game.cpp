@@ -76,6 +76,21 @@ Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<
     messages_.push_back("Start in " + townName(origin_) + ", Ziel " + townName(destination_));
 }
 
+void Game::applyNameCodes() {
+    constexpr int kSlot = 7; // seg2:634C: DS:94E2 = 7 for the duration
+    auto setCash = [&](double value) { economy_.addMoney(kSlot, value - economy_.money(kSlot).cash); };
+    if (names_[kSlot] == "Armin Gessert") setCash(500000.0); // seg2:6361: _fstrcmp, then DS:861E
+    if (names_[kSlot] != "130663") return;                    // seg2:6397
+    setCash(1000000.0);                                       // DS:8626
+    Hand& hand = hands_[kSlot];
+    for (int i = 0; i < 8; ++i) {                             // seg2:63C7: every occupied slot ...
+        if (hand[size_t(i)] == Deck::kTaken) continue;
+        for (uint8_t& free : hand)                            // ... draws into the first free one (seg2:4327)
+            if (free == Deck::kTaken) { free = uint8_t(deck_.take()); break; }
+    }
+    names_[kSlot] = "Armin Gessert";                          // seg2:640F
+}
+
 std::string Game::townName(int field) const {
     if (field < 0 || size_t(field) >= board_.fields.size()) return "?";
     const Field& f = board_.fields[size_t(field)];

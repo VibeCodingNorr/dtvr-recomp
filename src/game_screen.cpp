@@ -59,6 +59,21 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
       stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_),
       intro_(renderer, root, layout.width, layout.height) {
     stage_.setSubtitles(&subtitles_);
+    messages_.setSprites([this](const std::string& name) { return sprite(name); });
+    stage_.setSprites([this](const std::string& name) { return sprite(name); });
+    balance_.setSprites([this](const std::string& name) { return sprite(name); });
+    victory_.setSprites([this](const std::string& name) { return sprite(name); });
+    finish_.setSprites([this](const std::string& name) { return sprite(name); });
+    intro_.setSprites([this](const std::string& name) { return sprite(name); });
+    stages_.setSprites([this](const std::string& name) { return sprite(name); });
+    invest_.setSprites([this](const std::string& name) { return sprite(name); });
+    selectPlayer_.setSprites([this](const std::string& name) { return sprite(name); });
+    nails_.setSprites([this](const std::string& name) { return sprite(name); });
+    flight_.setSprites([this](const std::string& name) { return sprite(name); });
+    risiko_.setSprites([this](const std::string& name) { return sprite(name); });
+    sight_.setSprites([this](const std::string& name) { return sprite(name); });
+    film_.setSprites([this](const std::string& name) { return sprite(name); });
+    subtitles_.setSprites([this](const std::string& name) { return sprite(name); });
     balance_.setSubtitles(&subtitles_);
     seenSpin_ = game.spinSerial();
     shownField_.fill(-1);
@@ -369,7 +384,7 @@ bool GameScreen::handleSurroundings(const SDL_Event& event) {
         surroundOrigin_.y = std::clamp(surroundOrigin_.y + dy * third, 0, maxY);
     };
     if (event.type == SDL_MOUSEMOTION) { // seg6:1798: strips of 0x3C pixels, corners excluded
-        const int x = event.motion.x - layout_.map.x, y = event.motion.y - layout_.map.y;
+        const int x = event.motion.x - layout_.mapClient().x, y = event.motion.y - layout_.mapClient().y;
         const int l = layout_.viewport.x, t = layout_.viewport.y;
         const int r = l + layout_.viewport.w, b = t + layout_.viewport.h;
         const bool midY = y >= t + 60 && y <= b - 60, midX = x >= l + 60 && x <= r - 60;
@@ -465,7 +480,9 @@ SDL_Texture* GameScreen::compassTexture() {
 void GameScreen::drawMap() {
     // The map window clears its WinG bitmap (PATBLT BLACKNESS, seg6:171E) and draws
     // the world from the tile origin DS:956A/9568 into DS:94DA..94DE.
-    const SDL_Rect map = toSdl(layout_.map);
+    drawWindowBorder(renderer_, [this](const std::string& name) { return sprite(name); }, toSdl(layout_.map),
+                     BorderSize::Thin); // seg6:1763
+    const SDL_Rect map = toSdl(layout_.mapClient());
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &map);
     // [Setup] Colorcycle ("Wellen und Jahreszeiten"): off fixes the tile directory to 1
@@ -562,7 +579,10 @@ void GameScreen::drawPortrait() {
     int w = 0, h = 0;
     SDL_QueryTexture(portrait, nullptr, nullptr, &w, &h);
     const ScreenRect r = layout_.portrait();
-    const SDL_Rect target{r.x, r.y, w, h};
+    // The window is the bitmap plus 16: the 8-pixel border of seg6:1A68 (seg2:30B8).
+    const SDL_Rect window{r.x, r.y, w + 16, h + 16};
+    drawWindowBorder(renderer_, [this](const std::string& n) { return sprite(n); }, window, BorderSize::Thin);
+    const SDL_Rect target{r.x + 8, r.y + 8, w, h};
     SDL_RenderCopy(renderer_, portrait, nullptr, &target);
 }
 
@@ -670,7 +690,7 @@ void GameScreen::draw() {
             sound_->play(4, 6);
         }
     }
-    slot_.draw(layout_.map, now);
+    slot_.draw(layout_.mapClient(), now); // a child of the map window: client coordinates
     if (estates_.isOpen()) {
         std::array<char, 8> letters{};
         for (size_t i = 0; i < 8; ++i) letters[i] = kPortraitLetters[i]; // seg2:2D43

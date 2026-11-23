@@ -870,7 +870,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (click && event.button.button == SDL_BUTTON_LEFT && !modal && !moving && !screen.title()) {
                 // seg6:1798 -> seg4:0F52: a click on the map opens the steering cross there.
                 const Game& g = play.game();
-                const ScreenRect& map = screen.layout().map;
+                const ScreenRect map = screen.layout().mapClient(); // WM_LBUTTONDOWN of the client
                 const bool onMap = event.button.x >= map.x && event.button.x < map.x + map.w && event.button.y >= map.y
                                    && event.button.y < map.y + map.h;
                 if (onMap && !screen.surroundings() && g.currentPlayer() >= 0 && !g.isComputer(g.currentPlayer())

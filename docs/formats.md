@@ -1065,6 +1065,49 @@ Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
 Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
 shows while the player stands on the reached field (phase Arrived).
 
+### Name codes (round 112)
+
+- seg2:6332, called for every new game after the deal (seg4:0E71), sets the
+  current player DS:94E2 to 7 for its duration and compares slot 7's name (record
+  +1; the driver Armino Gesserti) with the C runtime's case-sensitive _fstrcmp
+  (seg10:22CA): "Armin Gessert" (DS:1BB1) sets its cash +0x42 to 500,000.0
+  (DS:861E; fan sites say 50,000); "130663" (DS:1BBF) sets 1,000,000.0 (DS:8626),
+  then walks the eight hand slots and calls seg2:4327 for every *occupied* one,
+  which takes a card (seg3:032D(1)) into the first free slot, so one starting
+  card cascades into a full hand; finally the name becomes "Armin Gessert"
+  (DS:1BC6). Slot 7's status is not checked. Rebuilt as `Game::applyNameCodes`
+  (called in `PlayView::newGame`).
+
+### Window border (round 112)
+
+- The child windows have no WS_BORDER (style 0x44000000 etc.); their wooden frame
+  is a non-client handler their procedures call first: seg6:1A68 (8 pixels,
+  frames B1–B8 of `assorted.sbs`, names DS:16A0) and seg6:1E83 (16 pixels, BS1–BS8
+  at DS:16B8, all 16 × 16). WM_NCCALCSIZE (0x83) insets the client rectangle by
+  the thickness on every side (seg6:1A8E); WM_NCPAINT (0x85) gets the window DC,
+  tiles B2 along the top and B7 along the bottom from x = t while x < width − t,
+  B4 / B5 down the left and right from y = t while y < height − t, then the
+  corners B1 (0, 0), B3 (width − w, 0), B6 (0, height − h), B8 (width − w, height −
+  h), each copied opaque (seg5:4FC6, WinGBitBlt; the pieces hold no colour 0).
+- 8 pixels: Map (seg6:1763), PORTRAIT (seg2:30B8), SELPLAYER (seg2:5969), JOY
+  (seg2:90AE), Nägel (seg3:2730), Flugzeug (seg3:3938), INTRO (seg7:259D), ZIEL
+  (seg7:5084), FLIC (seg7:669E), Risiko (seg7:7138), SIEG (seg7:839C), INFO
+  (seg6:593F), SUBTITLE (seg6:6991), OUTLINE (seg1:AAD4), TEMP (seg8:0D25), the
+  investment offer (seg8:7C63) and BILANZ (seg8:A7D7). 16 pixels: MENU
+  (seg5:57ED), Tourism (seg6:5152) and STAT (seg1:9A0A). Without a border:
+  ESTATES, the card shop, the card window, SLOT, PLINFO, PLAYER and OPTION.
+- The sizes fit: the map window is 448 wide at 640 and its drawn area 432; INFO
+  is picture + 0x24 high, the client picture + 20 with 10 pixels around the
+  picture; MENU is (items + 1) · 32 high and 192 wide, the client items · 32 by
+  160, the size of MENUN / MENUG; Risiko 0xF6 × 0x9E around its 0xE6 × 0x8E
+  frames; the scene windows 0x1F0 × 0x178 around their 480 × 360 DIBs. FLIC
+  windows have the film's size (DS:8D3C / 8D3E) while the paint blits the whole
+  film at (0, 0) of the client (seg7:65D9), so 16 pixels are cut off right and
+  below.
+- Rebuilt in `src/window_border.cpp` for all of them except OUTLINE (the
+  overview's panning offsets still use the window size; open) and JOY / STAT
+  (not rebuilt). Replaces the black frames assumed for the scene windows.
+
 ### Window centring (round 111)
 
 - seg6:0000(hwnd) centres a window on its parent: GetWindowRect of both, half the
@@ -1650,7 +1693,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** (`src/finish_view.cpp`, name mapping `finishPhotoName` in
   `src/board.cpp`): the scene and its animation when a destination is reached
   and the car has arrived. The window is centred on the canvas (seg6:0000, round
-  111). **Assumptions:** a black frame, records draw with their top-left corner at the position.
+  111) with the wooden border of seg6:1A68 (round 112). **Assumptions:** records draw with their top-left corner at the position.
   **Input** (round 94): the window ZIEL (seg7:50D6) takes Escape, Space, Enter
   and the left button: seg5:607B(−1) and DS:A29C = 0 end the loop seg7:3536..3677
   (set to 1 on its first pass, seg7:35F0); the window is destroyed with the clean-up
@@ -1775,8 +1818,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `Game::ranking`): the scene after the finish of the Master-Rallye, then the
   title. **Input** (round 90, seg7:83EE): after the first pass (DS:9CDE,
   seg7:7CE9) WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN destroy the
-  window; other keys and buttons do nothing. Centred by seg6:0000 (round 111). **Assumption:** a
-  black frame.
+  window; other keys and buttons do nothing. Centred by seg6:0000 (round 111), with the wooden border of seg6:1A68 (round 112).
 
 ### Sounds (round 40)
 

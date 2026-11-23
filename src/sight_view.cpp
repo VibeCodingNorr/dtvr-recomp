@@ -51,9 +51,12 @@ void SightView::draw() {
     if (!open_) return;
     // Child of the canvas DS:40 created at (0, 0) (seg6:4ED8); WM_CREATE centres it
     // with seg6:0000 (seg6:4F86).
-    const SDL_Rect box{(canvasWidth_ - kWidth) / 2, (canvasHeight_ - kHeight) / 2, kWidth, kHeight};
+    const SDL_Rect window{(canvasWidth_ - kWidth) / 2, (canvasHeight_ - kHeight) / 2, kWidth, kHeight};
+    // seg6:1E83 (called at seg6:5152): the 16-pixel border BS1-BS8; the client inside it.
+    drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thick);
+    const SDL_Rect box = borderClient(window, BorderSize::Thick);
     if (paper_) {
-        const SDL_Rect src{0, 0, kWidth, kHeight};
+        const SDL_Rect src{0, 0, box.w, box.h};
         SDL_RenderCopy(renderer_, paper_.get(), &src, &box);
     }
     int pw = 0, ph = 0;
@@ -62,7 +65,7 @@ void SightView::draw() {
     SDL_RenderCopy(renderer_, picture_.get(), nullptr, &pic);
     // seg6:5094: client rect, left + 200, inflated by (-10, -5); Arial 15 weight 600,
     // colour 0x45, DT_WORDBREAK | DT_NOCLIP (0x110).
-    const ScreenRect area{box.x + 210, box.y + 5, kWidth - 220, kHeight - 10};
+    const ScreenRect area{box.x + 210, box.y + 5, box.w - 220, box.h - 10};
     text_.drawWrapped(renderer_, body_, area, TextStyle{15, true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
 }
 

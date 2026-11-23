@@ -5,6 +5,8 @@
 // and modal. Evidence in docs/formats.md "In-game menu".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "ne_strings.hpp"
 #include "text.hpp"
@@ -36,7 +38,8 @@ public:
     // moved, 7 Zaehler2 grayed), -1 for none; reading clears it.
     int takeSound() { const int s = sound_; sound_ = -1; return s; }
     // Client rectangle: 192 x (items + 1) * 32 (seg5:5733), centred (seg6:0000).
-    SDL_Rect box() const;
+    SDL_Rect windowRect() const; // CreateWindow size, centred
+    SDL_Rect box() const;        // the client area inside the border (seg5:57ED)
 
 private:
     int choose(int index) const; // id of an enabled item, else 0

@@ -5,6 +5,8 @@
 // STOP buttons are copied from r-button. Evidence in docs/formats.md "Risiko".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "sdl_assets.hpp"
 
@@ -18,6 +20,7 @@ namespace dtvr {
 
 class RisikoView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     RisikoView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
     // The button area at a screen point (seg7:6C83): 1 CHANCE (press), 2 STOP, 0 none.
     int buttonAt(int x, int y) const;
@@ -26,6 +29,7 @@ public:
     void draw(int light, Uint32 now);
 
 private:
+    SpriteLookup borderSprites_;
     SDL_Rect frame() const;
     void load();
 

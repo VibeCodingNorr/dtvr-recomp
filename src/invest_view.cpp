@@ -48,9 +48,11 @@ void InvestView::open(bool professor, const std::string& offer, double cash) {
     open_ = true;
 }
 
-SDL_Rect InvestView::box() const {
+SDL_Rect InvestView::windowRect() const {
     return SDL_Rect{(layout_.width - kWidth) / 2, (layout_.height - kHeight) / 2, kWidth, kHeight};
 }
+
+SDL_Rect InvestView::box() const { return borderClient(windowRect(), BorderSize::Thin); }
 
 InvestView::Result InvestView::enter() {
     Result r;
@@ -91,6 +93,7 @@ InvestView::Result InvestView::handle(const SDL_Event& event) {
 
 void InvestView::draw() {
     if (!open_) return;
+    drawWindowBorder(renderer_, borderSprites_, windowRect(), BorderSize::Thin); // seg8:7C63
     const SDL_Rect b = box();
     if (SDL_Texture* paper = bitmap("unipaper.bmp")) { // DS:71CD
         const SDL_Rect src{0, 0, kWidth, kHeight};

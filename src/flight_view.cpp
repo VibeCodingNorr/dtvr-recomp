@@ -36,9 +36,11 @@ void FlightView::open(bool eastOpen, bool lastStage) {
     open_ = true;
 }
 
-SDL_Rect FlightView::box() const {
+SDL_Rect FlightView::windowRect() const {
     return SDL_Rect{(layout_.width - kWidth) / 2, (layout_.height - kHeight) / 2, kWidth, kHeight};
 }
+
+SDL_Rect FlightView::box() const { return borderClient(windowRect(), BorderSize::Thin); }
 
 FlightView::Result FlightView::choose(int row) {
     Result r;
@@ -76,6 +78,7 @@ FlightView::Result FlightView::handle(const SDL_Event& event) {
 
 void FlightView::draw() {
     if (!open_) return;
+    drawWindowBorder(renderer_, borderSprites_, windowRect(), BorderSize::Thin); // seg3:3938
     const SDL_Rect b = box();
     if (paper_) {
         int pw = 0, ph = 0;

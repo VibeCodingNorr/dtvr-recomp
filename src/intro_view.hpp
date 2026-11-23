@@ -6,6 +6,8 @@
 // seg5:3483 / 3623 apply to it exactly.
 #pragma once
 
+#include "window_border.hpp"
+
 #include "intro_script.hpp"
 #include "rules.hpp"
 #include "sdl_assets.hpp"
@@ -23,6 +25,8 @@ namespace dtvr {
 
 class IntroView {
 public:
+    // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     IntroView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
     ~IntroView() { if (palette_) SDL_FreePalette(palette_); }
     IntroView(const IntroView&) = delete;
@@ -38,6 +42,7 @@ public:
     SDL_Rect window() const; // canvas coordinates of the INTRO window
 
 private:
+    SpriteLookup borderSprites_;
     enum class Effect { None, FadeOut, FadeIn, Wipe };
     void apply(const IntroEvent& e, Uint32 now);
     void compose();                   // backdrop + the records of the last pass

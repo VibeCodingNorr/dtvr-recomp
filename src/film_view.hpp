@@ -5,6 +5,8 @@
 // (seg1:2D40) and stopped after (seg1:317D). Evidence in docs/formats.md "Films".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "flc.hpp"
 #include "sdl_assets.hpp"
 
@@ -17,6 +19,7 @@ namespace dtvr {
 
 class FilmView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     FilmView(SDL_Renderer* renderer, const std::filesystem::path& root) : renderer_(renderer), root_(root) {}
     // Film 1-4 (karte<n>.flc); false when the file is missing or broken.
     // Centred on a canvas of this size (the FLIC window centres itself, seg7:6477).
@@ -28,6 +31,7 @@ public:
     void draw();
 
 private:
+    SpriteLookup borderSprites_;
     void upload();
 
     SDL_Renderer* renderer_;

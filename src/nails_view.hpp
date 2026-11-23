@@ -7,6 +7,8 @@
 // docs/formats.md "Nägel".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
@@ -22,6 +24,7 @@ namespace dtvr {
 
 class NailsView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     NailsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
               const std::map<int, std::string>& texts, TextRenderer& text);
     // `available`: up, right, down, left (Game::nailsDirections); the last available
@@ -35,7 +38,9 @@ public:
     void draw(SDL_Texture* compass);
 
 private:
-    SDL_Rect box() const;
+    SpriteLookup borderSprites_;
+    SDL_Rect windowRect() const; // CreateWindow size, centred
+    SDL_Rect box() const;        // the client area inside the border (seg3:2730)
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;

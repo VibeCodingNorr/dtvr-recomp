@@ -6,6 +6,8 @@
 // "Destination announcement".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "board.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
@@ -22,6 +24,8 @@ namespace dtvr {
 
 class StageView {
 public:
+    // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
     StageView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight,
               const Board& board, const std::vector<Town>& towns);
     // mode 2 game start, 1 new stage, 3 last stage; variant 0-4 of Part01-04.
@@ -38,6 +42,7 @@ public:
     void draw(Uint32 now);
 
 private:
+    SpriteLookup borderSprites_;
     enum class Stage { Intro, Pull, Search, Final };
     void enter(Stage stage, Uint32 now);
     void voice(const std::string& name);

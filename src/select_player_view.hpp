@@ -4,6 +4,8 @@
 // in a row. Evidence in docs/formats.md "Card target".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "layout.hpp"
 #include "sb_button.hpp"
 #include "sdl_assets.hpp"
@@ -20,6 +22,7 @@ namespace dtvr {
 
 class SelectPlayerView {
 public:
+    void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     SelectPlayerView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
     // `candidates` in slot order with their status (1 human, 2 computer).
     void open(const std::vector<int>& candidates, const std::array<uint8_t, 8>& status);
@@ -31,7 +34,9 @@ public:
     void draw();
 
 private:
-    SDL_Rect box() const;
+    SpriteLookup borderSprites_;
+    SDL_Rect windowRect() const; // CreateWindow size, centred
+    SDL_Rect box() const;        // the client area inside the border (seg2:5969)
     SDL_Rect button(size_t index) const;
     SDL_Texture* bitmap(const std::string& file);
 
