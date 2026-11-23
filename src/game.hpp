@@ -83,6 +83,8 @@ public:
     // Developer option --event (tests of the presentation): applies an event now, as
     // the event trigger would; the game's rules are those of the event itself.
     void triggerEvent(EventKind kind) { applyEvent(kind); }
+    // --drago FORM (tests): Dr. Drago joins as at a stage start, in form 0-2.
+    void startDrago(int form) { placeDragoForStage(); drago_.form = form < 0 ? 0 : form > 2 ? 2 : form; }
     // seg2:69AD: a human may close the slot window of Würfeln (seg2:6426 flag DS:9AD8)
     // with Escape / Backspace / the right button before the reels stop: the roll is
     // taken back. In rally.exe the reel value is drawn when the lever ends (seg2:7671
@@ -260,6 +262,9 @@ public:
     const Economy& economy() const { return economy_; }
     const std::vector<Town>& towns() const { return towns_; }
     const DragoState& drago() const { return drago_; }
+    // Counts seg2:9C97 placements (stage start, Konferenz): the map puts Dr. Drago's
+    // own vehicle beside the holder anew (presentation only, not saved).
+    int dragoPlacements() const { return dragoPlacements_; }
     bool eastOpen() const { return eastOpen_; }
     // A link exists and is not closed by a border barrier (for planners and the UI).
     bool linkOpen(int field, Direction d) const;
@@ -396,6 +401,7 @@ private:
     bool spinPresentation_ = false;         // a slot window shows the spins
     bool arrivalConfirm_ = false;           // a human accepts the field with Return
     bool investmentWindow_ = false;         // a window answers the offers, also a computer's
+    int dragoPlacements_ = 0;               // seg2:9C97 calls, see dragoPlacements()
     void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;

@@ -104,10 +104,14 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     loadSprites(fs::path("sbs") / "buy.sbs", buySprites_); // town dialog (DS:3FCC, seg1:4C45)
     loadSprites(fs::path("sbs") / "buy.sbs", buyKeyed_, 0xFF); // the header arrows via seg2:9497(…, 0xFF)
     loadSprites(fs::path("sbs") / "ls.sbs", lsSprites_);   // save dialog (DS:8081)
+    for (const char* file : {"f_bike.sbs", "f_car.sbs", "f_blimp.sbs"}) // Dr. Drago (DS:3DB6 ff.)
+        loadSprites(fs::path("sbs") / file, dragoSprites_);
     loadDriverSprites();
 }
 
 void GameScreen::loadDriverSprites() {
+    dragoVehicle_.reset(); // a started or loaded game places Dr. Drago anew (seg2:9C97)
+    dragoHolderSeen_ = -1;
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
         const std::string letter(1, kPortraitLetters[p]);
@@ -269,6 +273,9 @@ void GameScreen::advanceVehicles(Uint32 now) {
             } else {
                 stepPending_[size_t(p)] = true; // consumed by the next movement tick
                 labelField_ = -1;               // seg2:1F36: leaving a field clears DS:B632
+                // seg2:1FF5: the holder's step adds the field it leaves to Dr. Drago's trail.
+                if (p == game_.currentPlayer() && p == game_.drago().holder && dragoVehicle_.placed())
+                    dragoVehicle_.trail().push(from);
                 if (p == game_.currentPlayer()) viewPassed_ = SDL_Point{-1, -1};
             }
             from = field;
@@ -296,7 +303,11 @@ void GameScreen::advanceVehicles(Uint32 now) {
             approach(at.x, target.x);
             approach(at.y, target.y);
             const bool moved = at.x != before.x || at.y != before.y;
-            if (moved && at.x == target.x && at.y == target.y) labelField_ = field; // seg2:20CF
+            if (moved && at.x == target.x && at.y == target.y) {
+                labelField_ = field; // seg2:20CF
+                if (p == game_.currentPlayer() && p == game_.drago().holder && dragoVehicle_.placed())
+                    dragoVehicle_.trail().push(field); // seg2:20C7
+            }
             // Plane (seg2:1EB5 / 2866): the cell next in the driving direction decides
             // the take-off, the cell three ahead the landing; the height moves by 2.
             const int cx = before.x / WorldMap::kTile, cy = before.y / WorldMap::kTile;
@@ -332,12 +343,51 @@ void GameScreen::advanceVehicles(Uint32 now) {
             }
         }
     }
+    advanceDrago(ticks);
     // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
     if (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_) {
         if (game_.turnSerial() != seenTurn_) viewStop_ = false, viewPassed_ = SDL_Point{-1, -1};
         seenTurn_ = game_.turnSerial();
         seenCentreSpin_ = game_.spinSerial();
         centreOnPlayer();
+    }
+}
+
+void GameScreen::advanceDrago(int ticks) {
+    const int holder = game_.drago().holder;
+    if (holder < 0 || holder >= kPlayerSlots || shownField_[size_t(holder)] < 0) { // DS:9CFC = 0xFF
+        dragoVehicle_.reset();
+        dragoHolderSeen_ = -1;
+        return;
+    }
+    const SDL_Point at = shown_[size_t(holder)];
+    auto cell = [this](int x, int y) { return game_.cellProperties(x, y); };
+    const int form = std::clamp(game_.drago().form, 0, 2);
+    if (!dragoVehicle_.placed() || game_.dragoPlacements() != dragoPlacementsSeen_) { // seg2:9C97
+        dragoVehicle_.reset();
+        dragoVehicle_.place(form, at.x, at.y, game_.facing(holder), game_.playerField(holder), board_, cell);
+    } else if (holder != dragoHolderSeen_) { // seg2:B33E / B38D: handed over at a meeting
+        dragoVehicle_.trail().push(game_.playerField(holder));
+    }
+    dragoPlacementsSeen_ = game_.dragoPlacements();
+    dragoHolderSeen_ = holder;
+    for (int t = 0; t < ticks; ++t) dragoVehicle_.movePass(form, at.x, at.y, board_, cell); // seg2:1C71
+    // The frames follow the animation clock like the vehicles' (seg2:4F7D -> AF38).
+    const uint32_t pass = animClock_.now() / kVehicleTickMs;
+    if (!dragoAnimStarted_) dragoAnimPass_ = pass, dragoAnimStarted_ = true;
+    for (; dragoAnimPass_ < pass; ++dragoAnimPass_) dragoVehicle_.animatePass();
+}
+
+void GameScreen::drawDrago(const SDL_Rect& target, SDL_Point origin, int z) {
+    const int form = std::clamp(game_.drago().form, 0, 2);
+    for (const DragoVehicle::Sprite& s : dragoVehicle_.sprites(form)) {
+        SDL_Texture* t = find(dragoSprites_, s.frame);
+        if (!t) continue;
+        int w = 0, h = 0;
+        SDL_QueryTexture(t, nullptr, nullptr, &w, &h);
+        const SDL_Rect box{target.x + (s.x - origin.x - kSpriteShift) * z,
+                           target.y + (s.y - origin.y - kSpriteShift) * z, w * z, h * z};
+        SDL_RenderCopy(renderer_, t, nullptr, &box);
     }
 }
 
@@ -586,6 +636,9 @@ void GameScreen::drawMap() {
     // The frames follow AnimationTempo; ComputerTempo only speeds the drive (advanceVehicles).
     const Uint32 tick = animClock_.now() / kVehicleTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
+    // seg2:4F91: Dr. Drago below the vehicles, the blimp (form 2) above them.
+    const bool dragoAbove = game_.drago().form == 2;
+    if (!dragoAbove) drawDrago(target, origin, z);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
         const Field& f = board_.fields[size_t(game_.playerField(p))];
@@ -606,6 +659,7 @@ void GameScreen::drawMap() {
                            target.y + (at.y + 2 - air.height - origin.y - kSpriteShift) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
+    if (dragoAbove) drawDrago(target, origin, z);
     if (eventSceneActive(sceneNow())) { // seg8:6E81: the record's frame at its position
         const size_t pass = size_t((sceneNow() - sceneStart_) / kSceneStepMs);
         const SceneStep& step = sceneSteps_[std::min(pass, sceneSteps_.size() - 1)];
@@ -814,7 +868,8 @@ void GameScreen::draw() {
     // seg7:674D: the window follows the one-reel spin (seg2:6426).
     if ((game_.phase() == Game::Phase::Risiko && slot_.stopped(slotNow)) || risiko_.blinking(now))
         risiko_.draw(game_.risiko().light, now);
-    overview_.draw(game_);
+    overview_.draw(game_, dragoVehicle_.placed() ? SDL_Point{dragoVehicle_.x(), dragoVehicle_.y()}
+                                                 : SDL_Point{-1, -1});
     finish_.draw(SDL_GetTicks());
     victory_.draw(SDL_GetTicks());
     balance_.draw(SDL_GetTicks());

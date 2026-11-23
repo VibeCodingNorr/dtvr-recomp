@@ -179,7 +179,7 @@ bool Game::playCard(int handSlot, int target) {
         for (int p = 0; p < kPlayerSlots; ++p) {
             if (!players_[size_t(p)].status || p == current_) continue;
             players_[size_t(p)].field = here;
-            if (p == drago_.holder) placeDrago(drago_, p, rng_); // seg3:30A9
+            if (p == drago_.holder) placeDrago(drago_, p, rng_), ++dragoPlacements_; // seg3:30A9
         }
         messages_.push_back("Alle Mitspieler kommen zur Konferenz");
         notice(11022);

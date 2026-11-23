@@ -39,10 +39,12 @@ public:
     // Escape/Backspace/right button close. Enter toggles zoom; arrows pan the
     // enlarged overview on a 3 x 3 grid (seg1:A95E / AB7B). True only when closed.
     bool handle(const SDL_Event& event);
-    void draw(const Game& game);
+    // `drago`: Dr. Drago's own vehicle in world pixels (DS:9D01 / 9D03), {-1, -1} when
+    // it is not placed; the Q_FL flag marks it (seg1:A6A7).
+    void draw(const Game& game, SDL_Point drago = SDL_Point{-1, -1});
 
 private:
-    void compose(const Game& game);
+    void compose(const Game& game, SDL_Point drago);
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
     const ScreenLayout& layout_; // shared; the widescreen switch changes it

@@ -11,6 +11,7 @@
 #include "film_view.hpp"
 #include "vehicle_air.hpp"
 #include "vehicle_anim.hpp"
+#include "drago_vehicle.hpp"
 #include "presentation_clock.hpp"
 #include "sight_view.hpp"
 #include "play_view.hpp"
@@ -210,6 +211,7 @@ private:
     TextRenderer text_;
     std::map<std::string, Texture> sprites_;
     SpriteSet buySprites_;   // sbs/buy.sbs of the town dialog (seg1:4C45)
+    SpriteSet dragoSprites_; // sbs/F_BIKE / F_CAR / F_BLIMP.sbs (seg2:9BAE, DS:3DB6 ff.)
     SpriteSet buyKeyed_;     // the same with colour key 0xFF: PFEIL1 / PFEIL2 (seg1:7540)
     SpriteSet lsSprites_;    // sbs/ls.sbs of the save dialog (seg8:B1CE)
     std::map<std::string, Texture> art_;
@@ -266,6 +268,14 @@ private:
     std::array<bool, kPlayerSlots> airSet_{};
     std::array<bool, kPlayerSlots> stepPending_{};  // a step began, its first tick is still due
     int labelField_ = -1; // DS:B632: the field the drive last reached, -1 after leaving one
+    // Dr. Drago's own vehicle (seg2:9F61): its state, the holder and placement seen,
+    // and the frame passes on the animation clock.
+    DragoVehicle dragoVehicle_;
+    int dragoHolderSeen_ = -1, dragoPlacementsSeen_ = -1;
+    uint32_t dragoAnimPass_ = 0;
+    bool dragoAnimStarted_ = false;
+    void advanceDrago(int ticks);
+    void drawDrago(const SDL_Rect& target, SDL_Point origin, int z);
     Uint32 lastAdvance_ = 0;
     bool advanced_ = false;                         // lastAdvance_ is set
     PresentationClock clock_;
@@ -295,6 +305,7 @@ struct GameWindowOptions {
     int windowW = 0, windowH = 0; // initial window size (tests of the scaled output)
     std::string pressKeys;        // --press: scripted keys for smoke tests
     std::string event;            // --event NAME: apply this event at the start (tests)
+    int drago = -1;               // --drago FORM: Dr. Drago joins at the start (tests)
     bool smokeTest = false;       // draw `frames` frames and exit
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)

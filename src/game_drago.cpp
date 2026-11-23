@@ -103,6 +103,7 @@ void Game::placeDragoForStage() {
         }
     }
     placeDrago(drago_, chosen, rng_);
+    ++dragoPlacements_;
     messages_.push_back("Dr. Drago steigt bei Spieler " + std::to_string(chosen + 1) + " ein");
 }
 

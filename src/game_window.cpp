@@ -136,6 +136,7 @@ void GameWindow::start() {
     if (options_.openStatistics) screen_.estates().openStatistics(play_.game().currentPlayer());
     if (options_.openCards && cards_.open(play_.game(), 2)) cardWindowState_ = turnState();
     if (options_.rollAtStart && play_.game().roll()) report();
+    if (options_.drago >= 0) play_.game().startDrago(options_.drago); // --drago FORM
     if (!options_.event.empty()) { // --event: the name as eventName() gives it
         for (int k = int(EventKind::OpenEast); k <= int(EventKind::FootballClub); ++k)
             if (eventName(EventKind(k)) == options_.event) play_.game().triggerEvent(EventKind(k));

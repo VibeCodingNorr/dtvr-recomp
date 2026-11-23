@@ -540,10 +540,12 @@ the stage placement uses distances to the new destination. Open: Konferenz,
 the event system with the passive cards, Tschüss, Punch, Erdbeben, Nägel,
 Risiko, Flugzeug, Steuerlos, the card field, property cards in the town dialog.
 
-### Dr. Drago's own vehicle on the map (round 139, analysis; not rebuilt)
+### Dr. Drago's own vehicle on the map (round 139 analysis, round 140 rebuilt)
 
 Dr. Drago is not only a portrait (`<n>pd.bmp`): rally.exe moves him as a sprite
-of his own that follows the vehicle he rides with. The rebuild draws nothing yet.
+of his own that follows the vehicle he rides with. *Round 140:* following,
+frames and drawing are rebuilt in `src/drago_vehicle.cpp` (tested) and the game
+window; the form change's drive from outside the view is not yet.
 
 - **Per tick** seg2:9F61, called from the movement tick seg2:1C71 whenever
   DS:9CFC ≠ 0xFF (guard DS:3DE0 against re-entry). His pixel position is DS:9D01 /
@@ -577,9 +579,49 @@ of his own that follows the vehicle he rides with. The rebuild draws nothing yet
   the alternative frame tables (DS:3C0E / 3C12 by direction × 0x14, DS:3B7E /
   3BA2 by DS:3D76 × 4, set with seg2:AC89). The overview's Q_FL marks DS:9D01 /
   9D03 (seg1:A6A7), not the holder's field.
-- **Not yet read:** seg2:A5AA (movement per form and frame choice), seg2:AB09 /
-  AB49 / AC89 / AD39 / AE77 (frame tables, animation), seg2:9BAE, seg2:AF38, the
-  drawing in the sprite list (seg2:3D9C / 3EB0) and the save state of DS:9D01 ff.
+- **Step** seg2:A0A5: cut a loop of the trail (seg2:4EE7: when its oldest field
+  appears again later, skip to that copy), choose the direction DS:3D78 (moving) or
+  DS:3D76 (facing while standing), pick the frames, then move one pixel by DS:3D90 /
+  3DA2 {0, 0, 1, 1, 1, 0, −1, −1, −1} / {0, −1, −1, 0, 1, 1, 1, 0, −1} (directions
+  1 up clockwise to 8 up-left) and drop the trail's oldest field once he is on it
+  (seg2:ADAB = 0).
+- **Direction** seg2:AE77(tx, ty, x, y): per axis 0 equal, 1 target larger, 2
+  smaller; table {0, 5, 1, 0, 3, 4, 2, 0, 7, 6, 8, 0}[sx · 4 + sy]. seg2:ADAB uses a
+  field's cell × 16. Straight lines, not roads: he cuts corners between fields.
+- **Following, forms 0 / 1** (seg2:A5C4): one trail entry left within 4 pixels
+  clears the trail; one left and farther than 0x30 → towards it; empty and far →
+  straight at the holder; empty and near → stand and face the holder; two or more →
+  towards the oldest; one left and near → stop facing the last direction. Form 1
+  while rising or landing (DS:9D2F 1 / 3) keeps going straight (seg2:A732).
+- **Following, form 2** (seg2:A9F3): straight at the holder while |dx| > 0x30 or
+  |dy| > 3 (sic, seg2:A9FB), else stand facing him.
+- **Frames.** Records as for events (delay at +0, count at +3, names from +4); a
+  new record starts at frame 0 with countdown 0, each pass decrements and an old
+  value below 0 reloads the delay and advances (seg2:B0D6 / B21C). Form 0: moving
+  DS:3C0E (`far…` bicycle) or DS:3C12 (`fab…` boat) when his cell has bit 8; standing
+  DS:3B7E / 3BA2. Form 1 on the cell grid (seg2:B255) and moving: from a field cell
+  (bit 1) whose neighbour ahead has a road (bit 2), `fa…` with the rockets `r…`
+  (DS:3C16 / 3CCA), or the hovering `faf…` (DS:3C1A) when that neighbour is a sea
+  route (bits 2 + 4); off the grid the own cell decides. A hovering record starts a
+  hop (seg2:AB09 → DS:9D2F = 1): seg2:AF38 raises DS:9D30 by 2 per pass to 0x18
+  (state 2), seg2:AB49 looks three cells ahead for a field with a road and lands
+  there (state 3, down by 2, then the position snaps to that cell). Any other record
+  ends a hop. Form 2: `faz…` (DS:3C1E) under the blimp `zep…` (DS:3CD2), eight
+  directions.
+- **Placement** seg2:9C97 / 9CF9 (stage start, Konferenz, loading): the side behind
+  the holder's facing ({2, 3, 0, 1}), turned clockwise until the holder's field has
+  a link there, 48 pixels away (DS:3D7C / 3D84); standing record of that side, form 1
+  hovering at height 0x18 on water, form 2 `zeprido` until the first step.
+- **Drawing** seg2:AF38 into the sprite list (then −16, −16 like the vehicles):
+  form 0 at (x, y − 10), form 1 at (x, y − height + 2) with the rockets at (+16, +28)
+  up, (−7, +18) right, (+16, −4) down, (+42, +18) left (minus the height), form 2 the
+  figure at (x − 5, y − 45) and the blimp at (x − 5, y − 85). seg2:4F91 draws him
+  before the vehicles, in form 2 after them.
+- **Rebuilt approximations:** the trail gets the holder's fields from the drawn
+  drive; a meeting adds the new holder's field; the vehicles' ticks of a frame run
+  before his; a form change switches the vehicle in place (the drive of seg2:9804
+  is the next step). Not saved: loading places him anew. Unread: the sprite list
+  argument +0x18 (1, or 0 for the blimp).
 
 ### Events and Eastern Europe (round 11)
 
@@ -2387,8 +2429,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg1:AA00 / AB34): Enter, a double click or (unzoomed) a left click toggle the
   zoom; while zoomed the arrows pan a 3 × 3 grid of half-size crops (steps
   (size >> 2) − 4) and a left click opens the MCTRL steering cross; Escape,
-  Backspace and the right button close it. **Assumptions:** Q_FL is drawn at the
-  field of the driver Dr. Drago rides with; after
+  Backspace and the right button close it. Q_FL marks Dr. Drago's own vehicle
+  (round 140). **Assumption:** after
   Umfeld the view follows the current player again.
 
 ### Shut-in players (round 80)

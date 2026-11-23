@@ -173,6 +173,7 @@ static int run(int argc, char** argv) {
     int windowW = 0, windowH = 0;  // --window-size WxH
     std::string pressKeys;         // --press Key,Key,...
     std::string eventName;         // --event NAME
+    int dragoForm = -1;            // --drago FORM
     int widescreen = -1;           // --widescreen / --no-widescreen (default: [Display] Widescreen)
     bool fullscreen = false;       // --game: start in fullscreen (F11 / Alt+Enter toggle)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
@@ -233,6 +234,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--recomp-menu" && i + 1 < argc) recompMenuPage = std::stoi(argv[++i]);
         else if (arg == "--press" && i + 1 < argc) pressKeys = argv[++i]; // Key,Key,... (smoke tests)
         else if (arg == "--event" && i + 1 < argc) eventName = argv[++i]; // Erdbeben, Regen, ... (tests)
+        else if (arg == "--drago" && i + 1 < argc) dragoForm = std::atoi(argv[++i]); // 0-2 (tests)
         else if (arg == "--window-size" && i + 1 < argc) { // WxH
             const std::string a = argv[++i];
             const size_t x = a.find('x');
@@ -318,6 +320,7 @@ static int run(int argc, char** argv) {
         options.recompMenuPage = recompMenuPage;
         options.pressKeys = pressKeys;
         options.event = eventName;
+        options.drago = dragoForm;
         options.windowW = windowW;
         options.windowH = windowH;
         options.demo = demo;

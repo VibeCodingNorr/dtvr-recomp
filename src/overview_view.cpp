@@ -119,7 +119,7 @@ bool OverviewView::handle(const SDL_Event& event) {
     return false;
 }
 
-void OverviewView::draw(const Game& game) {
+void OverviewView::draw(const Game& game, SDL_Point drago) {
     if (!open_) return;
     if (!map_) { // seg1:A263: "%s\%d\map.bmp" in the butt directory
         const fs::path path = findCaseInsensitive(root_, fs::path("butt") / std::to_string(layout_.artDir) / "map.bmp");
@@ -135,7 +135,7 @@ void OverviewView::draw(const Game& game) {
                                        layout_.overview.w, layout_.overview.h));
         if (!layer_) throw std::runtime_error(SDL_GetError());
     }
-    compose(game);
+    compose(game, drago);
     // seg1:AB95-AC9D: half-size crop at nine overlapping positions. Panning uses
     // full window dimensions, not the (slightly smaller) map.bmp dimensions.
     SDL_Rect source{0, 0, layout_.overview.w, layout_.overview.h};
@@ -158,7 +158,7 @@ void OverviewView::draw(const Game& game) {
     mouse_.draw(game.arrivalDue() || game.phase() == Game::Phase::Arrived); // M1: DS:9D40 = DS:A778
 }
 
-void OverviewView::compose(const Game& game) {
+void OverviewView::compose(const Game& game, SDL_Point drago) {
     LayerTarget target(renderer_, layer_.get());
     // Source bitmap of the map window (DS:8C4E..8C54); compose all marks before zoom.
     const SDL_Rect window{0, 0, layout_.overview.w, layout_.overview.h};
@@ -189,17 +189,24 @@ void OverviewView::compose(const Game& game) {
     };
     if (game.origin() >= 0) disc(overviewPoint(board_, game.origin(), mapSize_), {0, 255, 0, 255});
     if (!route.empty()) disc(route.back(), {0, 0, 255, 255});
-    auto flag = [&](const std::string& name, int field) {
+    auto flagAt = [&](const std::string& name, int px, int py) {
         SDL_Texture* t = sprite_(name);
-        if (!t || field < 0) return;
+        if (!t) return;
         int w = 0, h = 0;
         SDL_QueryTexture(t, nullptr, nullptr, &w, &h);
-        const Field& f = board_.fields[size_t(field)];
-        const SDL_Rect r{window.x + scaled(f.x * 16, mapSize_), window.y + scaled(f.y * 16, mapSize_), w, h};
+        const SDL_Rect r{window.x + scaled(px, mapSize_), window.y + scaled(py, mapSize_), w, h};
         SDL_RenderCopy(renderer_, t, nullptr, &r);
     };
-    // Q_FL at Dr. Drago (DS:9D01 / 9D03; here the field of the driver he rides with).
-    if (game.drago().holder >= 0) flag("Q_FL", game.playerField(game.drago().holder));
+    auto flag = [&](const std::string& name, int field) {
+        if (field < 0) return;
+        const Field& f = board_.fields[size_t(field)];
+        flagAt(name, f.x * 16, f.y * 16);
+    };
+    // Q_FL at Dr. Drago's own vehicle (DS:9D01 / 9D03, seg1:A6A7) while DS:9CFC != 0xFF.
+    if (game.drago().holder >= 0) {
+        if (drago.x >= 0) flagAt("Q_FL", drago.x, drago.y);
+        else flag("Q_FL", game.playerField(game.drago().holder));
+    }
     // Driver flags from the player after the current one, the current one last (seg1:A72B).
     for (int k = 1; k <= kPlayerSlots; ++k) {
         const int q = (p + k) % kPlayerSlots;
