@@ -3,6 +3,13 @@
 
 namespace dtvr {
 
+ClipGuard::ClipGuard(SDL_Renderer* renderer) : renderer_(renderer) {
+    enabled_ = SDL_RenderIsClipEnabled(renderer_) == SDL_TRUE;
+    SDL_RenderGetClipRect(renderer_, &clip_);
+}
+
+ClipGuard::~ClipGuard() { SDL_RenderSetClipRect(renderer_, enabled_ ? &clip_ : nullptr); }
+
 SDL_Rect borderClient(const SDL_Rect& window, BorderSize size) {
     const int t = int(size); // seg6:1A91 ff.: left / top + t, right / bottom - t
     return SDL_Rect{window.x + t, window.y + t, window.w - 2 * t, window.h - 2 * t};
@@ -19,6 +26,7 @@ void drawWindowBorder(SDL_Renderer* renderer, const SpriteLookup& sprite, const 
         return tex;
     };
     // The window DC clips every piece to the window rectangle.
+    const ClipGuard guard(renderer);
     SDL_RenderSetClipRect(renderer, &window);
     auto blit = [&](SDL_Texture* tex, int x, int y, int w, int h) {
         const SDL_Rect dst{window.x + x, window.y + y, w, h};
@@ -37,7 +45,6 @@ void drawWindowBorder(SDL_Renderer* renderer, const SpriteLookup& sprite, const 
     if (SDL_Texture* c = piece(3, w, h)) blit(c, window.w - w, 0, w, h);              // seg6:1CFB
     if (SDL_Texture* c = piece(6, w, h)) blit(c, 0, window.h - h, w, h);              // seg6:1D27
     if (SDL_Texture* c = piece(8, w, h)) blit(c, window.w - w, window.h - h, w, h);   // seg6:1D54
-    SDL_RenderSetClipRect(renderer, nullptr);
 }
 
 } // namespace dtvr

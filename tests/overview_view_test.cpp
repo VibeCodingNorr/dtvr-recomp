@@ -119,13 +119,15 @@ int main(int argc, char** argv) {
             auto image = read(renderer.get(), layout);
             const int sx = zoomed ? column * (layout.map.w / 4 - 4) + 100 : 200;
             const int sy = zoomed ? row * (layout.map.h / 4 - 4) + 100 : 200;
-            CHECK(same(pixel(*image, layout.map.x + 200, layout.map.y + 200), pattern(sx, sy)));
+            // The paint starts at (0, 0) of the client, inside the 8-pixel border (seg1:AA80).
+            const int cx = layout.map.x + 8, cy = layout.map.y + 8;
+            CHECK(same(pixel(*image, cx + 200, cy + 200), pattern(sx, sy)));
             CHECK(same(pixel(*image, 0, 0), SDL_Color{17, 19, 23, 255}));
             if (zoomed && column == 0 && row == 0) {
                 // The two-pixel driver flag and underlying green start marker
                 // must be enlarged together with the bitmap, not drawn afterward.
-                CHECK(same(pixel(*image, layout.map.x + 2, layout.map.y + 2), SDL_Color{240, 240, 240, 255}));
-                CHECK(same(pixel(*image, layout.map.x + 4, layout.map.y + 4), SDL_Color{0, 255, 0, 255}));
+                CHECK(same(pixel(*image, cx + 2, cy + 2), SDL_Color{240, 240, 240, 255}));
+                CHECK(same(pixel(*image, cx + 4, cy + 4), SDL_Color{0, 255, 0, 255}));
             }
             if (shot && argc == 2) {
                 fs::create_directories(argv[1]);

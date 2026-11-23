@@ -26,4 +26,17 @@ SDL_Rect borderClient(const SDL_Rect& window, BorderSize size);
 // Draws the border pieces into the outer `size` pixels of `window` (WM_NCPAINT).
 void drawWindowBorder(SDL_Renderer* renderer, const SpriteLookup& sprite, const SDL_Rect& window, BorderSize size);
 
+// Restores the renderer's clip rectangle (or its absence) when it leaves scope.
+class ClipGuard {
+public:
+    explicit ClipGuard(SDL_Renderer* renderer);
+    ~ClipGuard();
+    ClipGuard(const ClipGuard&) = delete;
+    ClipGuard& operator=(const ClipGuard&) = delete;
+private:
+    SDL_Renderer* renderer_;
+    SDL_Rect clip_{};
+    bool enabled_ = false;
+};
+
 } // namespace dtvr

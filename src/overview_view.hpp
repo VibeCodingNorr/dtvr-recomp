@@ -6,6 +6,8 @@
 // docs/formats.md "Overview".
 #pragma once
 
+#include "window_border.hpp"
+
 #include "game.hpp"
 #include "layout.hpp"
 #include "mouse_control_view.hpp"

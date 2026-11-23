@@ -1104,9 +1104,10 @@ shows while the player stands on the reached field (phase Arrived).
   windows have the film's size (DS:8D3C / 8D3E) while the paint blits the whole
   film at (0, 0) of the client (seg7:65D9), so 16 pixels are cut off right and
   below.
-- Rebuilt in `src/window_border.cpp` for all of them except OUTLINE (the
-  overview's panning offsets still use the window size; open) and JOY / STAT
-  (not rebuilt). Replaces the black frames assumed for the scene windows.
+- Rebuilt in `src/window_border.cpp` for all of them except JOY / STAT (not
+  rebuilt). OUTLINE keeps the window size for its source (DS:8C5A / 8C5C =
+  DS:9C88 − 9C84 etc., seg1:A30C) and stretches it to that size at (0, 0) of the
+  client (seg1:AA80), clipped to the client (round 113). Replaces the black frames assumed for the scene windows.
 
 ### Window centring (round 111)
 
@@ -1226,6 +1227,9 @@ round 84.
   centred on the canvas (seg6:5852 → seg6:0000) and modal (seg6:0FB4). DS:8C36
   selects the buttons (0 none, 1 Yes / No with texts 114 ff., result DS:8C38);
   a click or key closes it.
+- **Text position** (round 113): seg6:5B59 inflates the client rectangle by −10
+  and adds the picture width + 10 to its left edge (seg6:5B6F), so the text
+  starts 10 pixels right of the picture (it was drawn at the picture's edge).
 - **Paint** seg6:59C6: the paper fills the client area, the showmaster at
   (10, 10); the text goes into the client rectangle inflated by −10 with its left
   edge moved past the showmaster, in Arial weight 600 at {18, 16, 14}

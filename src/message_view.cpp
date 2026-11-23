@@ -107,7 +107,8 @@ void MessageView::draw(const Game& game) {
         const SDL_Rect dst{box.x + 10, box.y + 10, sw, sh};
         SDL_RenderCopy(renderer_, showmaster, nullptr, &dst);
     }
-    // seg6:5B59: client rectangle inflated by -10, left edge moved past the showmaster;
+    // seg6:5B59: client rectangle inflated by -10, left edge moved by the picture width
+    // + 10 (seg6:5B6F), so the text starts 10 pixels right of the picture;
     // Arial weight 600 at {18, 16, 14}, palette colour 0x45, DT_WORDBREAK | DT_NOCLIP.
     const Notice& n = queue_.front();
     const auto it = texts_.find(n.text);
@@ -115,7 +116,7 @@ void MessageView::draw(const Game& game) {
     const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
     static constexpr int kSize[3] = {18, 16, 14};
     TextStyle style{kSize[res], true, false, false, false, 0, SDL_Color{67, 27, 0, 255}};
-    const ScreenRect textRect{box.x + 10 + sw, box.y + 10, w - 20 - sw, h - 20};
+    const ScreenRect textRect{box.x + 10 + sw + 10, box.y + 10, w - 30 - sw, h - 20};
     text_.drawWrapped(renderer_, message, textRect, style);
     if (n.buttons == 4) { // seg6:5CC1: the chosen answer in colour 0xFF, the other in 0x45
         auto button = [&](int id, const SDL_Rect& r, bool chosen) {

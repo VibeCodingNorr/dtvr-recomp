@@ -143,8 +143,18 @@ void OverviewView::draw(const Game& game) {
         source = {(cell_ % 3) * (layout_.map.w / 4 - 4), (cell_ / 3) * (layout_.map.h / 4 - 4),
                   layout_.map.w / 2, layout_.map.h / 2};
     }
-    const SDL_Rect destination{layout_.map.x, layout_.map.y, layout_.map.w, layout_.map.h};
-    SDL_RenderCopy(renderer_, layer_.get(), &source, &destination);
+    // OUTLINE has the map window's rectangle and the 8-pixel border of seg6:1A68
+    // (seg1:AAD4); the paint stretches the source to the window size (DS:8C5A / 8C5C,
+    // seg1:A30C) at (0, 0) of the client (seg1:AA80), clipped to the client area.
+    const SDL_Rect window{layout_.map.x, layout_.map.y, layout_.map.w, layout_.map.h};
+    drawWindowBorder(renderer_, sprite_, window, BorderSize::Thin);
+    const SDL_Rect client = borderClient(window, BorderSize::Thin);
+    const SDL_Rect destination{client.x, client.y, layout_.map.w, layout_.map.h};
+    {
+        const ClipGuard guard(renderer_);
+        SDL_RenderSetClipRect(renderer_, &client);
+        SDL_RenderCopy(renderer_, layer_.get(), &source, &destination);
+    }
     mouse_.draw(game.phase() == Game::Phase::Arrived);
 }
 

@@ -177,7 +177,8 @@ is claimed.
 101. Window centring as rally.exe (seg6:0000); the slot machine slides in from the top of the map and out again.
 102. The wooden window border of rally.exe (8 / 16 pixels, non-client) for the map, portrait and dialogs.
 103. The original name codes of the eighth driver: "Armin Gessert" (500,000) and "130663" (1,000,000 and a full hand).
-104. *Next:* remaining presentation details (compare windows with rally.exe).
+104. The overview inside its border; the message text 10 pixels right of the picture.
+105. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

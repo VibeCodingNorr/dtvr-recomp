@@ -90,7 +90,7 @@ target_compile_options(card-shop-view-test PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(card-shop-view-test PRIVATE dtvr-formats PkgConfig::SDL2)
 add_test(NAME card-shop-view COMMAND card-shop-view-test)
 add_executable(overview-view-test tests/overview_view_test.cpp
-    src/overview_view.cpp src/sdl_assets.cpp src/mouse_control_view.cpp)
+    src/overview_view.cpp src/sdl_assets.cpp src/mouse_control_view.cpp src/window_border.cpp)
 target_compile_options(overview-view-test PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(overview-view-test PRIVATE dtvr-formats PkgConfig::SDL2)
 add_test(NAME overview-view COMMAND overview-view-test)
