@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from installer_checks import REPO
-from installer_theme import BODY, NAVY, INK, MUTED, MINT, AMBER, WHITE, Card, branding_image, configure
+from installer_theme import BODY, NAVY, INK, MUTED, MINT, AMBER, WHITE, Card, branding_image, route_image, configure
+from installer_route import LEFT as ROUTE_LEFT, TOP as ROUTE_TOP
 from project_version import read_version
 
 
@@ -74,6 +75,7 @@ class InstallerLayout:
         side.pack_propagate(False)
         self.nav = tk.Canvas(side, bg=NAVY, highlightthickness=0, height=490)
         self.nav.pack(fill="x")
+        self.route_images = [route_image(root, REPO, active) for active in range(3)]
         logo = branding_image(root, REPO, "logo", 264, 88)
         if logo:
             self.images.append(logo)
@@ -101,24 +103,26 @@ class InstallerLayout:
         self.nav.delete("step")
         # The dashed route joins three real workflow phases; it is not a second
         # progress estimate alongside the backend's seven-stage progress bar.
-        for index in range(2):
-            y = 218 + index * 88
-            route = (48, y, 48, y+26, 64 if index == 0 else 32, y+44, 48, y+62, 48, y+88)
-            self.nav.create_line(*route, fill="#294351", width=14, smooth=True, tags="step")
-            self.nav.create_line(*route, fill=MINT if index < active else "#7d938c",
-                                 width=2, dash=(4, 6), smooth=True, tags="step")
+        artwork = self.route_images[active]
+        if artwork:
+            self.nav.create_image(ROUTE_LEFT, ROUTE_TOP, image=artwork, anchor="nw", tags="step")
+        else:
+            # Minimal source-only fallback if neither packaged PNGs nor librsvg
+            # are available. Packaged installers always contain the smooth art.
+            self.nav.create_line(48, 218, 48, 394, fill="#7d938c", width=2, tags="step")
         for index, (title, subtitle) in enumerate((("Vorbereiten", "Quelle, Ziel und Musik"),
                                                  ("Installieren", "Importieren und prüfen"), ("Losspielen", "Bereit für die Rallye"))):
             y = 218 + index * 88
             current = index == active
             completed = index < active
             color = MINT if current or completed else AMBER
-            self.nav.create_oval(29, y-19, 67, y+19, fill=color if current else NAVY,
-                                 outline=color, width=2, tags="step")
-            if completed:
+            if not artwork:
+                self.nav.create_oval(29, y-19, 67, y+19, fill=color if current else NAVY,
+                                     outline=color, width=2, tags="step")
+            if completed and not artwork:
                 self.nav.create_line(40, y, 46, y+6, 57, y-7, fill=color,
                                      width=3, capstyle="round", joinstyle="round", tags="step")
-            else:
+            elif not completed:
                 self.nav.create_text(48, y, text=str(index+1), fill=NAVY if current else color,
                                      font=(self.family, 11, "bold"), tags="step")
             self.nav.create_text(86, y-13, text=title, anchor="nw", fill="#fff8eb" if current else "#a9bbb1",

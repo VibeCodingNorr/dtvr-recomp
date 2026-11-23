@@ -43,6 +43,10 @@ Import/update behavior stays in `installer_gui.py`; `installer_layout.py` and
 Logo and icons use the shared supersampling renderer: four times the requested
 size, followed by two filtered half-size passes. Packaged PNGs and source GUI
 rendering therefore use the same edge smoothing without adding host dependencies.
+The road, circular waypoints and completion ticks also use pre-rendered,
+antialiased state images rather than Tk canvas strokes. Three packaged PNGs
+cover all phases; numbers and labels remain normal Tk text. Source checkouts
+without either these PNGs or librsvg retain a minimal canvas fallback.
 
 The project-owned folder chooser supports typed paths, directory navigation,
 hidden folders and selecting the current folder. Its optional **Systemdialog**

@@ -8,16 +8,9 @@ import subprocess
 import tkinter as tk
 from tkinter import font, ttk
 
-from branding_render import render_png
-
-NAVY = "#101c2e"
-BODY = "#f7f1e4"
-INK = "#183a39"
-MUTED = "#69756c"
-MINT = "#72ce9e"
-AMBER = "#f3b64c"
-BORDER = "#e2dbcc"
-WHITE = "#fffdf7"
+from branding_render import render_png, render_svg
+from installer_palette import NAVY, BODY, INK, MUTED, MINT, AMBER, BORDER, WHITE
+from installer_route import route_svg, WIDTH as ROUTE_WIDTH, HEIGHT as ROUTE_HEIGHT
 
 
 def configure(root):
@@ -81,6 +74,18 @@ def branding_image(root, repository, name, width, height):
         except (OSError, ValueError, subprocess.SubprocessError, tk.TclError):
             pass
     return None
+
+
+def route_image(root, repository, active):
+    """Packaged hosts need only Tk; source checkouts can render through librsvg."""
+    png = Path(repository) / "assets/branding" / f"installer-route-{active}.png"
+    try:
+        if png.is_file():
+            return tk.PhotoImage(master=root, file=str(png))
+        data = render_svg(route_svg(active), ROUTE_WIDTH, ROUTE_HEIGHT)
+        return tk.PhotoImage(master=root, data=base64.b64encode(data))
+    except (OSError, ValueError, subprocess.SubprocessError, tk.TclError):
+        return None
 
 
 class Card(tk.Canvas):

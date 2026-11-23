@@ -292,6 +292,26 @@ class InstallerUiTests(unittest.TestCase):
         self.assertTrue(app.layout.log_open)
         self.assertIn("Synthetic build failure", app.log.get("1.0", "end"))
 
+    def test_packaged_route_states_need_no_svg_converter(self):
+        import shutil
+        from branding_render import render_svg
+        from installer_route import route_svg, WIDTH, HEIGHT
+        from installer_theme import route_image
+        if not shutil.which("rsvg-convert"):
+            self.skipTest("fixture generation requires librsvg")
+        folder = self.directory / "assets/branding"
+        folder.mkdir(parents=True)
+        for active in range(3):
+            (folder / f"installer-route-{active}.png").write_bytes(
+                render_svg(route_svg(active), WIDTH, HEIGHT))
+        with patch("installer_theme.render_svg", side_effect=AssertionError("must use packaged PNG")):
+            pictures = [route_image(self.root, self.directory, active) for active in range(3)]
+        self.assertTrue(all(pictures))
+        self.assertTrue(all((picture.width(), picture.height()) == (WIDTH, HEIGHT) for picture in pictures))
+        # The first waypoint is filled at the start and an outlined check at the
+        # finish. Cached state images must not all contain the same artwork.
+        self.assertNotEqual(pictures[0].get(28, 24), pictures[2].get(28, 24))
+
 
 if __name__ == "__main__":
     unittest.main()

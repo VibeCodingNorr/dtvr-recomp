@@ -20,7 +20,8 @@ import tempfile
 from check_repository import check_file
 from installer_checks import REPO, digest, validate_output
 from project_version import read_version
-from branding_render import render_png
+from branding_render import render_png, render_svg
+from installer_route import route_svg, WIDTH as ROUTE_WIDTH, HEIGHT as ROUTE_HEIGHT
 
 
 def export_source(destination):
@@ -104,6 +105,9 @@ def build(python_runtime, appimagetool, runtime, output, arch):
             if not artwork.is_file():
                 artwork = source / f"assets/branding/{name}.svg"
             (source / f"assets/branding/installer-{name}.png").write_bytes(render_png(artwork, width, height))
+        for active in range(3):
+            (source / f"assets/branding/installer-route-{active}.png").write_bytes(
+                render_svg(route_svg(active), ROUTE_WIDTH, ROUTE_HEIGHT))
         (appdir / "dtvr-recomp-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"
             f"Name=DTVR Recomp Setup {version}\nExec=AppRun\nIcon=dtvr-recomp-setup\n"

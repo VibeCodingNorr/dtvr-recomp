@@ -16,14 +16,23 @@ def render_png(source, width=None, height=None):
     2:1 image passes let Cairo filter each intermediate image, including its
     premultiplied alpha. Packaged and source execution use the same renderer.
     """
-    renderer = shutil.which("rsvg-convert")
-    if renderer is None:
-        raise ValueError("Branding requires librsvg's rsvg-convert")
     source = Path(source)
     if width is None or height is None:
         root = ET.parse(source).getroot()
         width = int(root.attrib["width"]) if width is None else width
         height = int(root.attrib["height"]) if height is None else height
+    return _render(width, height, path=source)
+
+
+def render_svg(svg, width, height):
+    """Render generated project SVG without intermediate files."""
+    return _render(width, height, data=svg.encode("utf-8"))
+
+
+def _render(width, height, path=None, data=None):
+    renderer = shutil.which("rsvg-convert")
+    if renderer is None:
+        raise ValueError("Branding requires librsvg's rsvg-convert")
     if type(width) is not int or type(height) is not int or not (1 <= width <= 2048 and 1 <= height <= 2048):
         raise ValueError("Branding dimensions must be integers from 1 to 2048")
 
@@ -32,7 +41,7 @@ def render_png(source, width=None, height=None):
                                *([str(path)] if path is not None else [])],
                               input=data, capture_output=True, check=True, timeout=10).stdout
 
-    png = run(width * 4, height * 4, path=source)
+    png = run(width * 4, height * 4, path=path, data=data)
     for scale in (2, 1):
         previous_w, previous_h = width * scale * 2, height * scale * 2
         encoded = base64.b64encode(png).decode("ascii")
