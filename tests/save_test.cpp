@@ -206,6 +206,16 @@ int main() {
     const Settings back = loadSettings(settingsFile);
     CHECK(back.value == settings.value && back.subtitle == 0 && back.pause == 0 && back.showIntro == 1);
     CHECK(Settings::decode("[Setup]\nShowIntro=0\n").showIntro == 0);
+    // [Player] P0-P7 (round 142, seg1:02CE / 041E): defaults 1, 2, 0 ..., kept through
+    // encode / decode; values other than 0-2 read as the default.
+    {
+        Settings p;
+        CHECK((p.players == std::array<int, 8>{1, 2, 0, 0, 0, 0, 0, 0}));
+        p.players = {2, 0, 1, 1, 0, 2, 0, 1};
+        CHECK(Settings::decode(p.encode()).players == p.players);
+        const Settings odd = Settings::decode("[Player]\nP0=0\nP1=7\nP3=2\nP8=1\n");
+        CHECK((odd.players == std::array<int, 8>{0, 2, 0, 2, 0, 0, 0, 0}));
+    }
     // [Default] Rounds (round 108, window TEMP): default 99, kept through encode / decode.
     {
         Settings r;

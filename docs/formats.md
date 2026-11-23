@@ -641,8 +641,11 @@ window; *round 141* adds the form change's drive and Hau ab.
   before his; when the old form's step triggers the switch, the old form's frame
   choice for that step is skipped (rally.exe sets one old-form record that the next
   step replaces). The game window waits through `GameScreen::dragoTravelling`
-  (modal like a dialog, so input and computer turns pause). Not saved: loading
-  places him anew. Unread: the sprite list argument +0x18 (1, or 0 for the blimp).
+  (modal like a dialog, so input and computer turns pause). Not saved, as in
+  rally.exe: loading frees his sprites and calls seg2:9C97(holder) (seg8:B05D ff.),
+  so he is placed anew beside the holder. seg5:5E9D (a dialog that moves the
+  current player to a town chosen by name, seg5:5D06) re-places him too; how that
+  dialog is reached is not traced. Unread: the sprite list argument +0x18 (1, or 0 for the blimp).
 
 ### Events and Eastern Europe (round 11)
 
@@ -2329,8 +2332,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   byte +0x15 = 1, 0, 1, 0 instead of the player setup (seg1:02BA); then
   seg6:0DA0(1, 0) selects pause 1 without a memo. Escape or a right click while
   no human plays end it (seg1:021D, seg2:5CAD). Rebuilt with these slots and
-  zooms; **assumption:** without a human the message window closes by itself
-  after 2 s × the pause factor (the original wait is not traced).
+  zooms; without a human the message window closes after the computer wait of
+  seg6:0FB4 (2500 ms × the pause factor, 100 ms once the demo ends; see
+  "Waiting", round 113, which replaced the former 2 s assumption).
 - **Credits** (1026, seg4:070C): seg6:0A4D(…, "Credits.bmp" DS:9A, 1) shows
   `butt/<n>/Credits.bmp` in a window PICT over the canvas and waits (seg6:0FB4);
   any key or a left click closes it (round 94, PICT dispatch seg6:0C8E → seg6:0B80;
@@ -2742,8 +2746,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg1:02A9 with the time) and hands it over into the running Game object
   through the save codec. The names are drawn as SBINPUT does (below; since
   round 109). **Assumptions:** a bar as caret; a disabled star is drawn
-  unchanged; Escape cancels; non-ASCII characters pass as letters. The profile
-  values [Player] P0–P7 are not rebuilt.
+  unchanged; Escape cancels; non-ASCII characters pass as letters.
+- **[Player] P0–P7** (round 142): seg1:02CE ff. reads the slots with
+  GetPrivateProfileInt (seg5:22C0) from `rally.ini`, defaults P0 = 1, P1 = 2, others
+  0, into the player records +0x00 before PLAYER opens. The window cycles a record's
+  status in place (seg1:0A8A `inc`, above 2 back to 0 at seg1:0AA9), so there is no
+  copy to restore: after the modal loop seg1:041E writes all eight back with
+  `P%d` (DS:1DE2) and `%d` (seg5:22FC → WritePrivateProfileString), whether the
+  window was started or cancelled. Names are not stored there. Rebuilt in
+  `Settings::players` ([Player] of the recomp's settings file) for the menu's
+  Neues Spiel (1020); values outside 0–2 read as the default (rebuild decision).
 - **SBINPUT** (round 108): the class lives in rally.exe (registered at seg1:0E57,
   procedure seg1:1C71). WM_CREATE: Times New Roman (DS:32D2), height −20 / −17 /
   −15 by seg6:12FA, weight 600, *italic*, family 0x20 (seg1:1D04); length limit

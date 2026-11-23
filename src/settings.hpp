@@ -31,6 +31,12 @@ struct Settings {
     // rally.exe only switches them on and off and runs both devices at full volume
     // (seg5:2164 / 2194), so their relation stays the original's.
     int masterVolume = 100;
+    // [Player] P0-P7 (seg1:02CE ff., GetPrivateProfileInt with the defaults 1, 2, 0 ...):
+    // the slots the player setup PLAYER opens with (0 empty, 1 human, 2 computer). It
+    // changes the player records directly (seg1:0A8A), and seg1:041E writes all eight
+    // back after the window closes, also when it was cancelled. Rebuild decision: values
+    // other than 0-2 read as the default (rally.exe would keep any byte).
+    std::array<int, 8> players{1, 2, 0, 0, 0, 0, 0, 0};
     // [Default] Rounds (seg8:099B / 0A6A): the stage count the window TEMP offers and keeps.
     int rounds = 99;
     // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of

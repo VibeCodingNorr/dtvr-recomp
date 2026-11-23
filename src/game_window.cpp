@@ -241,8 +241,8 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
     case 1020: {                                             // Neues Spiel: seg4:0DA9(0) -> PLAYER
         std::array<uint8_t, kPlayerSlots> status{};
         std::array<std::string, kPlayerSlots> names;
-        for (int p = 0; p < kPlayerSlots; ++p) {
-            status[size_t(p)] = play_.game().players()[size_t(p)].status;
+        for (int p = 0; p < kPlayerSlots; ++p) { // seg1:02CE ff.: [Player] P0-P7
+            status[size_t(p)] = uint8_t(screen_.settings().players[size_t(p)]);
             names[size_t(p)] = play_.game().playerName(p);
         }
         screen_.setup().open(status, names);

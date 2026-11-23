@@ -223,6 +223,12 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     if (screen_.setup().isOpen()) { // seg1:0A60
         const SetupView::Result r = screen_.setup().handle(toStage(event, layout_));
         if (const int fx = screen_.setup().takeSound(); fx >= 0) sound_.play(2, fx);
+        if (r == SetupView::Result::Start || r == SetupView::Result::Cancel) {
+            // seg1:041E: after PLAYER closes, its slots go to [Player] P0-P7, also when cancelled.
+            Settings s = screen_.settings();
+            for (int p = 0; p < kPlayerSlots; ++p) s.players[size_t(p)] = screen_.setup().status()[size_t(p)];
+            screen_.applySettings(s);
+        }
         if (r == SetupView::Result::Start) {
             pendingSeed_ = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
             pendingStatus_ = screen_.setup().status();

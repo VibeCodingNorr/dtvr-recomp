@@ -30,6 +30,8 @@ std::string Settings::encode() const {
     o << "Subtitle=" << subtitle << '\n';
     o << "Pause=" << pause << '\n';
     o << "ShowIntro=" << showIntro << '\n';
+    o << "[Player]\n";
+    for (size_t i = 0; i < players.size(); ++i) o << 'P' << i << '=' << players[i] << '\n';
     o << "[Default]\n";
     o << "Rounds=" << rounds << '\n';
     o << "[Display]\n";
@@ -60,6 +62,10 @@ Settings Settings::decode(const std::string& text) {
         if (name == "ShowIntro") { s.showIntro = v != 0; continue; }
         if (name == "Pause") { s.pause = v >= 0 && v <= 3 ? v : 0; continue; } // seg6:0D89
         if (name == "Rounds") { s.rounds = v; continue; } // the window checks 0..300 itself
+        if (name.size() == 2 && name[0] == 'P' && name[1] >= '0' && name[1] <= '7') { // [Player]
+            if (v >= 0 && v <= 2) s.players[size_t(name[1] - '0')] = v;
+            continue;
+        }
         if (name == "Fullscreen") { s.fullscreen = v != 0; continue; }
         if (name == "IntegerScale") { s.integerScale = v != 0; continue; }
         if (name == "Widescreen") { s.widescreen = v != 0; continue; }
