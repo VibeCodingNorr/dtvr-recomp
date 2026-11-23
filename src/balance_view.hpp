@@ -20,6 +20,8 @@
 #include <map>
 #include <vector>
 
+#include "voice_sync.hpp"
+
 namespace dtvr {
 
 class BalanceView {
@@ -78,6 +80,13 @@ private:
     size_t index_ = 0;
     bool humans_ = true, clicked_ = false, active_ = false;
     bool hebelPlayed_ = false; // closing part: Hebel01 started at pass 35 (seg8:94E7)
+    // Closing part before the lever: record 0 = DS:4938 (seg8:92A7), held on frame 0 with
+    // countdown 2 in every pass in which Next_a_a talks (seg1:4071) or has ended
+    // (seg8:9408-9436). The last such pass (-1: none yet) and the passes processed.
+    std::vector<VoiceSyncRecord> sync_;
+    const VoiceSyncRecord* nextSync_ = nullptr;
+    int holdPass_ = -1, passesSeen_ = 0;
+    const char* closingHoldFrame(int pass) const;
     Stage stage_ = Stage::Intro;
     Uint32 started_ = 0, stageStart_ = 0;
 };

@@ -2186,7 +2186,18 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   does not start (seg8:89C0) and the player change goes on without those draws;
   the rebuild still takes the window's own rand() % 5 / % 4 (seg8:8C49 / 8C57) in that
   case, which rally.exe would skip too (not modelled, needs a missing file).
-  Rules revision 40. Rebuilt in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
+  Rules revision 40.
+  *Round 146, the show master in the closing part:* seg8:92A7 sets record 0 to
+  DS:4938 (HEBEL02, 03, 02, 03, 04; delay 3). In every pass in which seg1:4071
+  reports the position of `Next_a_a` inside one of its sync.dat talk intervals, or
+  seg1:3E64 reports it ended, seg8:9428 / 9436 set the record's countdown to 2 and
+  its frame to 0 before seg2:6DCB steps; between the intervals it runs on. The
+  rebuild showed the speaking record DS:4800 there; `BalanceView` now holds DS:4938
+  with the talk intervals of `dat/<c>/sync.dat`. **Players' part, not rebuilt yet:**
+  Hebel01 there plays through the voice path at lever frame 9 with countdown 1
+  (seg8:8F7F–8FBF, like seg7:3CE4), and `Next_` starts already when the show master
+  goes on (seg8:8E55–8E70); the rebuild plays Hebel01 as an effect at the lever's
+  start and `Next_` after the lever. Rebuilt in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
   pending click on Escape and the 500 passes counted from the `pos_` voice.
 - **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
   and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.
