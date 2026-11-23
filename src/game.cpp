@@ -562,6 +562,10 @@ void Game::advanceTurn() {
                         + std::to_string(calendar_.month % 12 + 1) + ")");
     if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) { // seg2:049F
         music_.push_back("f" + std::to_string(drago_.form + 1)); // seg2:B3F6/B429/B442
+        // seg2:9804 -> 454E: the search for his start field draws random(3) (seg2:459C);
+        // the form always differs, so it is always drawn.
+        dragoStartSide_ = rng_.random(3);
+        ++dragoFormChanges_;
         messages_.push_back("Dr. Drago wechselt in Form " + std::to_string(drago_.form + 1));
     }
 }

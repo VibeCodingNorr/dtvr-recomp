@@ -265,6 +265,13 @@ public:
     // Counts seg2:9C97 placements (stage start, Konferenz): the map puts Dr. Drago's
     // own vehicle beside the holder anew (presentation only, not saved).
     int dragoPlacements() const { return dragoPlacements_; }
+    // A form change (seg2:B3A4 -> 9804): its count and the start side random(3) that
+    // seg2:454E draws for the search of the start field outside the view.
+    int dragoFormChanges() const { return dragoFormChanges_; }
+    int dragoStartSide() const { return dragoStartSide_; }
+    // Hau ab (seg2:B4E3): its count and the old holder's field, where the route starts.
+    int dragoHandOvers() const { return dragoHandOvers_; }
+    int dragoHandOverFrom() const { return dragoHandOverFrom_; }
     bool eastOpen() const { return eastOpen_; }
     // A link exists and is not closed by a border barrier (for planners and the UI).
     bool linkOpen(int field, Direction d) const;
@@ -402,6 +409,8 @@ private:
     bool arrivalConfirm_ = false;           // a human accepts the field with Return
     bool investmentWindow_ = false;         // a window answers the offers, also a computer's
     int dragoPlacements_ = 0;               // seg2:9C97 calls, see dragoPlacements()
+    int dragoFormChanges_ = 0, dragoStartSide_ = 0;   // presentation only, not saved
+    int dragoHandOvers_ = 0, dragoHandOverFrom_ = -1;
     void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;

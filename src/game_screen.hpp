@@ -162,6 +162,8 @@ public:
         return true;
     }
     bool vehicleMoving(int player) const;
+    // DS:9CFE: Dr. Drago travels (form change, Hau ab); rally.exe waits (seg2:B454 / B55E).
+    bool dragoTravelling() const { return dragoVehicle_.travelling(); }
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,
     // Enter, Escape or Space ends it. Returns true when the event belonged to it.
@@ -271,7 +273,7 @@ private:
     // Dr. Drago's own vehicle (seg2:9F61): its state, the holder and placement seen,
     // and the frame passes on the animation clock.
     DragoVehicle dragoVehicle_;
-    int dragoHolderSeen_ = -1, dragoPlacementsSeen_ = -1;
+    int dragoHolderSeen_ = -1, dragoPlacementsSeen_ = -1, dragoFormChangesSeen_ = 0, dragoHandOversSeen_ = 0;
     uint32_t dragoAnimPass_ = 0;
     bool dragoAnimStarted_ = false;
     void advanceDrago(int ticks);

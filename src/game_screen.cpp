@@ -361,17 +361,30 @@ void GameScreen::advanceDrago(int ticks) {
         return;
     }
     const SDL_Point at = shown_[size_t(holder)];
-    auto cell = [this](int x, int y) { return game_.cellProperties(x, y); };
+    const DragoCellProperties cell = [this](int x, int y) { return game_.cellProperties(x, y); };
+    const MapViewSize size = viewSize();
+    const DragoContext ctx{at.x, at.y, game_.playerField(holder), board_, cell,
+                           DragoView{origin_.x * 16, origin_.y * 16, size.width, size.height}};
     const int form = std::clamp(game_.drago().form, 0, 2);
     if (!dragoVehicle_.placed() || game_.dragoPlacements() != dragoPlacementsSeen_) { // seg2:9C97
         dragoVehicle_.reset();
-        dragoVehicle_.place(form, at.x, at.y, game_.facing(holder), game_.playerField(holder), board_, cell);
-    } else if (holder != dragoHolderSeen_) { // seg2:B33E / B38D: handed over at a meeting
-        dragoVehicle_.trail().push(game_.playerField(holder));
+        dragoVehicle_.place(form, at.x, at.y, game_.facing(holder), ctx.holderField, board_, cell);
+    } else {
+        if (game_.dragoHandOvers() != dragoHandOversSeen_) { // Hau ab: seg2:B4E3
+            dragoVehicle_.startHandOver(game_.dragoHandOverFrom(), ctx);
+        } else if (holder != dragoHolderSeen_) { // seg2:B33E / B38D: handed over at a meeting
+            dragoVehicle_.trail().push(ctx.holderField);
+        }
+        if (game_.dragoFormChanges() != dragoFormChangesSeen_ // seg2:9804
+            && !dragoVehicle_.startFormChange(form, game_.dragoStartSide(), ctx))
+            dragoVehicle_.setForm(form); // no start field or route: switch in place
     }
+    if (!dragoVehicle_.travelling() && dragoVehicle_.form() != form) dragoVehicle_.setForm(form);
     dragoPlacementsSeen_ = game_.dragoPlacements();
+    dragoFormChangesSeen_ = game_.dragoFormChanges();
+    dragoHandOversSeen_ = game_.dragoHandOvers();
     dragoHolderSeen_ = holder;
-    for (int t = 0; t < ticks; ++t) dragoVehicle_.movePass(form, at.x, at.y, board_, cell); // seg2:1C71
+    for (int t = 0; t < ticks; ++t) dragoVehicle_.movePass(ctx); // seg2:1C71
     // The frames follow the animation clock like the vehicles' (seg2:4F7D -> AF38).
     const uint32_t pass = animClock_.now() / kVehicleTickMs;
     if (!dragoAnimStarted_) dragoAnimPass_ = pass, dragoAnimStarted_ = true;
@@ -379,8 +392,7 @@ void GameScreen::advanceDrago(int ticks) {
 }
 
 void GameScreen::drawDrago(const SDL_Rect& target, SDL_Point origin, int z) {
-    const int form = std::clamp(game_.drago().form, 0, 2);
-    for (const DragoVehicle::Sprite& s : dragoVehicle_.sprites(form)) {
+    for (const DragoVehicle::Sprite& s : dragoVehicle_.sprites()) {
         SDL_Texture* t = find(dragoSprites_, s.frame);
         if (!t) continue;
         int w = 0, h = 0;
@@ -637,7 +649,7 @@ void GameScreen::drawMap() {
     const Uint32 tick = animClock_.now() / kVehicleTickMs;
     SDL_RenderSetClipRect(renderer_, &target);
     // seg2:4F91: Dr. Drago below the vehicles, the blimp (form 2) above them.
-    const bool dragoAbove = game_.drago().form == 2;
+    const bool dragoAbove = dragoVehicle_.form() == 2;
     if (!dragoAbove) drawDrago(target, origin, z);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;

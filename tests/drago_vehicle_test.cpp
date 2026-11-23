@@ -58,7 +58,7 @@ int main() {
     d.place(0, 2 * 16, 160, 2, 0, b, cell);
     CHECK(d.x() == 2 * 16 + 48 && d.y() == 160);
     {
-        const auto s = d.sprites(0);
+        const auto s = d.sprites();
         CHECK(s.size() == 1 && std::strcmp(s[0].frame, "farrigt2") == 0 && s[0].y == 160 - 10);
     }
 
@@ -66,17 +66,19 @@ int main() {
     d.place(0, 2 * 16, 160, 3, 0, b, cell); // facing down: behind is up, none; right has a link
     for (int f = 0; f <= 6; ++f) d.trail().push(f);
     const int hx = 14 * 16, hy = 160;
+    const DragoView view{0, 0, 640, 480};
+    const DragoContext at6{hx, hy, 6, b, cell, view};
     int passes = 0;
     while (passes < 500 && !(d.trail().empty() || d.trail().oneLeft())) {
-        d.movePass(0, hx, hy, b, cell);
+        d.movePass(at6);
         ++passes;
     }
     CHECK(passes < 500 && d.y() == 160);
     CHECK(d.x() <= hx);
-    for (int i = 0; i < 200; ++i) d.movePass(0, hx, hy, b, cell);
+    for (int i = 0; i < 200; ++i) d.movePass(at6);
     CHECK(hx - d.x() <= 0x30 && d.direction() == 0); // stops within three cells
     {
-        const auto s = d.sprites(0);
+        const auto s = d.sprites();
         CHECK(s.size() == 1 && std::strncmp(s[0].frame, "farrigt", 7) == 0);
     }
 
@@ -84,10 +86,11 @@ int main() {
     DragoVehicle z;
     z.place(2, 160, 160, 2, 4, b, cell);
     z.trail().clear();
-    for (int i = 0; i < 400; ++i) z.movePass(2, 160 + 200, 160 + 100, b, cell);
+    const DragoContext beside{160 + 200, 160 + 100, 4, b, cell, view};
+    for (int i = 0; i < 400; ++i) z.movePass(beside);
     CHECK(std::abs(z.x() - 360) <= 0x30 && std::abs(z.y() - 260) <= 3);
     {
-        const auto s = z.sprites(2);
+        const auto s = z.sprites();
         CHECK(s.size() == 2 && std::strncmp(s[0].frame, "faz", 3) == 0 && std::strncmp(s[1].frame, "zep", 3) == 0);
         CHECK(s[0].x == z.x() - 5 && s[0].y == z.y() - 0x2D && s[1].y == z.y() - 0x55);
     }
@@ -95,13 +98,53 @@ int main() {
     // Frames: two passes for the first, then delay + 2 each (seg2:B0D6).
     DragoVehicle c;
     c.place(1, 10 * 16, 160, 2, 4, b, cell);
-    CHECK(std::strcmp(c.sprites(1)[0].frame, "faleft1") == 0);
+    CHECK(std::strcmp(c.sprites()[0].frame, "faleft1") == 0);
     c.animatePass();
-    CHECK(std::strcmp(c.sprites(1)[0].frame, "faleft1") == 0);
+    CHECK(std::strcmp(c.sprites()[0].frame, "faleft1") == 0);
     c.animatePass();
-    CHECK(std::strcmp(c.sprites(1)[0].frame, "faleft2") == 0);
+    CHECK(std::strcmp(c.sprites()[0].frame, "faleft2") == 0);
     for (int i = 0; i < 5; ++i) c.animatePass();
-    CHECK(std::strcmp(c.sprites(1)[0].frame, "faleft3") == 0);
+    CHECK(std::strcmp(c.sprites()[0].frame, "faleft3") == 0);
+
+    // The start field of a form change (seg2:454E): the first field along the links
+    // whose cell, inflated by three, misses the view.
+    {
+        const DragoView small{0, 0, 7 * 16, 400}; // cells 0..6 seen
+        CHECK(dragoStartField(b, 0, 0, small) == 4);  // x 10: 10 - 3 = 7 is outside
+        CHECK(dragoStartField(b, 0, 1, small) == 4);
+        CHECK(dragoStartField(b, 9, 0, small) == 8);  // already outside: the first neighbour
+        CHECK(dragoStartField(b, 0, 0, DragoView{0, 0, 640, 400}) == -1); // all in view
+    }
+    // A form change (seg2:9804 / 98D0): the bicycle leaves along the road to field 6,
+    // which is out of a view of cells 0..6; the car comes back and the travel ends
+    // near the holder at field 0.
+    {
+        DragoVehicle f;
+        f.place(0, 2 * 16, 160, 2, 0, b, cell);
+        const DragoView small{0, 0, 7 * 16, 400};
+        const DragoContext home{2 * 16, 160, 0, b, cell, small};
+        CHECK(f.startFormChange(1, 0, home) && f.travelling() && f.form() == 0);
+        int guard = 0;
+        bool sawBikeAway = false;
+        while (f.travelling() && guard++ < 2000) {
+            f.movePass(home);
+            if (f.form() == 0 && f.x() > 5 * 16) sawBikeAway = true;
+        }
+        CHECK(!f.travelling() && f.form() == 1 && sawBikeAway);
+        CHECK(std::abs(f.x() - 32) <= 0x30 && f.y() == 160);
+        CHECK(std::strncmp(f.sprites()[0].frame, "fa", 2) == 0);
+        CHECK(!f.startFormChange(1, 0, home)); // the same form: nothing to do
+    }
+    // Hau ab (seg2:B4E3): along the route to the new holder at field 9, then done.
+    {
+        DragoVehicle h;
+        h.place(1, 2 * 16, 160, 2, 0, b, cell);
+        const DragoContext there{20 * 16, 160, 9, b, cell, view};
+        CHECK(h.startHandOver(0, there) && h.travelling());
+        int guard = 0;
+        while (h.travelling() && guard++ < 2000) h.movePass(there);
+        CHECK(!h.travelling() && 20 * 16 - h.x() <= 0x30 && h.y() == 160);
+    }
 
     if (failures) std::fprintf(stderr, "drago_vehicle_test: %d failures\n", failures);
     else std::puts("drago_vehicle_test: OK");

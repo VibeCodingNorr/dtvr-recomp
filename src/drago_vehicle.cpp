@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "drago_vehicle.hpp"
 
+#include "rules.hpp"
+
 #include <cstdlib>
 
 namespace dtvr {
@@ -97,6 +99,8 @@ bool DragoTrail::pop() {
 
 int DragoTrail::front() const { return buffer_[size_t(tail_)]; }
 
+int DragoTrail::back() const { return buffer_[size_t(head_ == 0 ? kSize - 1 : head_ - 1)]; }
+
 bool DragoTrail::oneLeft() const { return tail_ == (head_ == 0 ? kSize - 1 : head_ - 1); }
 
 void DragoTrail::cutLoop() {
@@ -138,6 +142,40 @@ const char* DragoVehicle::Running::name() const {
     return record->frames[size_t(frame) % record->frames.size()];
 }
 
+namespace {
+// seg2:46C8: the field's cell inflated by three cells meets the view in cells.
+bool nearView(const Field& f, const DragoView& view) {
+    const int left = view.left >> 4, top = view.top >> 4;
+    const int right = (view.left + view.width) >> 4, bottom = (view.top + view.height) >> 4;
+    return f.x - 3 < right && left < f.x + 4 && f.y - 3 < bottom && top < f.y + 4;
+}
+
+bool searchStart(const Board& board, int field, int startSide, const DragoView& view,
+                 std::vector<bool>& seen, int& found) {
+    for (int i = 0; i < 4; ++i) { // seg2:45C1
+        if (found >= 0) return true;
+        const int next = board.fields[size_t(field)].next[size_t((i + startSide) & 3)];
+        if (next == Field::kNone) continue;
+        if (!nearView(board.fields[size_t(next)], view)) {
+            found = next;
+        } else if (!seen[size_t(next)]) {
+            seen[size_t(next)] = true;
+            searchStart(board, next, startSide, view, seen, found);
+        }
+    }
+    return found >= 0;
+}
+} // namespace
+
+int dragoStartField(const Board& board, int holderField, int startSide, const DragoView& view) {
+    if (holderField < 0 || size_t(holderField) >= board.fields.size()) return -1;
+    std::vector<bool> seen(board.fields.size(), false); // DS:1E
+    seen[size_t(holderField)] = true;
+    int found = -1;
+    searchStart(board, holderField, startSide, view, seen, found);
+    return found;
+}
+
 void DragoVehicle::place(int form, int holderX, int holderY, int holderFacing, int holderField,
                          const Board& board, const CellProperties& cell) {
     static constexpr int kBehind[5] = {0, 2, 3, 0, 1}; // [bp-0xE..-0xB] by the facing 1-4
@@ -146,6 +184,7 @@ void DragoVehicle::place(int form, int holderX, int holderY, int holderFacing, i
     if (holderField >= 0 && size_t(holderField) < board.fields.size())
         for (int i = 0; i < 4 && board.fields[size_t(holderField)].next[size_t(side)] == Field::kNone; ++i)
             side = side < 3 ? side + 1 : 0;
+    form_ = form;
     x_ = holderX + kSideX[side];
     y_ = holderY + kSideY[side];
     placed_ = true;
@@ -163,6 +202,61 @@ void DragoVehicle::place(int form, int holderX, int holderY, int holderFacing, i
     } else {
         main_.set(&kBlimp[4]); // seg2:9EB2: DS:2DF4 until the first step
     }
+}
+
+bool DragoVehicle::route(int from, int to, const Board& board) {
+    const std::vector<int> path = fieldRoute(board, from, to); // without the mask DS:A10F
+    if (path.empty() || path.size() >= size_t(DragoTrail::kSize)) return false;
+    trail_.clear();
+    for (int f : path) trail_.push(f);
+    if (trail_.count() > 1) { // seg2:9AA0: skip the first field when he is in line with it
+        const Field& a = board.fields[size_t(from)];
+        const Field& b = board.fields[size_t(path[1])];
+        if (b.x == a.x) {
+            if (a.x == x_ >> 4) trail_.pop();
+        } else if (b.y == a.y) {
+            if (a.y == y_ >> 4) trail_.pop();
+        }
+    }
+    return true;
+}
+
+bool DragoVehicle::startFormChange(int newForm, int startSide, const DragoContext& ctx) {
+    if (!placed_ || newForm == form_) return false;
+    startField_ = dragoStartField(ctx.board, ctx.holderField, startSide, ctx.view);
+    if (startField_ < 0 || !route(ctx.holderField, startField_, ctx.board)) return false;
+    travel_ = Travel::Leaving; // DS:9CFE = 1, DS:9566 = 0, DS:94EC = the new form
+    pendingForm_ = newForm;
+    return true;
+}
+
+bool DragoVehicle::startHandOver(int fromField, const DragoContext& ctx) {
+    if (!placed_ || !route(fromField, ctx.holderField, ctx.board)) return false;
+    travel_ = Travel::HandOver; // DS:9566 = 2, DS:94EC = 0xFF
+    pendingForm_ = -1;
+    return true;
+}
+
+void DragoVehicle::complete(const DragoContext& ctx) {
+    if (travel_ == Travel::Leaving && pendingForm_ >= 0) {
+        if (route(startField_, ctx.holderField, ctx.board)) { // seg2:990B: back to the holder
+            form_ = pendingForm_;
+            pendingForm_ = -1;
+            travel_ = Travel::Returning;
+            step(ctx); // seg2:992F (seg2:9BAE loads the new form's sprites first)
+            return;
+        }
+    } else if (travel_ == Travel::Leaving) {
+        return; // DS:9566 = 0 with nothing pending: rally.exe keeps waiting
+    }
+    travel_ = Travel::None; // DS:9CFE = 0, DS:96A0 = 1
+    pendingForm_ = -1;
+}
+
+bool DragoVehicle::visible(const DragoView& view) const {
+    const int top = form_ == 2 ? y_ - 0x28 : y_;
+    return x_ < view.left + view.width + 5 && view.left - 5 < x_ + 0x40 && top < view.top + view.height + 5
+        && view.top - 5 < y_ + 0x40;
 }
 
 int DragoVehicle::towardsField(int field, const Board& board) const {
@@ -203,9 +297,10 @@ bool DragoVehicle::checkLanding(int dir, const CellProperties& cell) {
     return true;
 }
 
-void DragoVehicle::follow(int form, int dx, int dy, int holderX, int holderY, const Board& board) {
-    if (form == 2) { // seg2:A9F3: straight at the holder; note the 3 for y (seg2:A9FB)
-        dir_ = dragoDirection(holderX, holderY, x_, y_);
+void DragoVehicle::follow(int dx, int dy, const DragoContext& ctx) {
+    const int hx = ctx.holderX, hy = ctx.holderY;
+    if (form_ == 2) { // seg2:A9F3: straight at the holder; note the 3 for y (seg2:A9FB)
+        dir_ = dragoDirection(hx, hy, x_, y_);
         setMain(kFigureTable[idx(dir_)]);
         const DragoAnimation* blimp = kBlimpTable[idx(dir_)];
         if (dx > kNear || dy > 3) {
@@ -218,7 +313,7 @@ void DragoVehicle::follow(int form, int dx, int dy, int holderX, int holderY, co
         }
         return;
     }
-    if (form == 1 && (hop_ == 1 || hop_ == 3)) { // seg2:A732: rising or landing goes straight on
+    if (form_ == 1 && (hop_ == 1 || hop_ == 3)) { // seg2:A732: rising or landing goes straight on
         dir_ = face_;
         return;
     }
@@ -226,28 +321,64 @@ void DragoVehicle::follow(int form, int dx, int dy, int holderX, int holderY, co
     const bool far = dx > kNear || dy > kNear;
     if (trail_.oneLeft() && far) {
         face_ = 0;
-        dir_ = towardsField(trail_.front(), board);
+        dir_ = towardsField(trail_.front(), ctx.board);
     } else if (trail_.empty() && far) {
+        if (travel_ != Travel::None) complete(ctx); // seg2:A645
         face_ = 0;
-        dir_ = dragoDirection(holderX, holderY, x_, y_);
+        dir_ = dragoDirection(hx, hy, x_, y_);
     } else if (trail_.empty()) {
         dir_ = 0;
-        face_ = dragoDirection(holderX, holderY, x_, y_);
+        face_ = dragoDirection(hx, hy, x_, y_);
     } else if (!trail_.oneLeft()) {
         face_ = 0;
-        dir_ = towardsField(trail_.front(), board);
+        dir_ = towardsField(trail_.front(), ctx.board);
     } else if (face_ == 0) {
         face_ = dir_;
         dir_ = 0;
     }
 }
 
-void DragoVehicle::step(int form, int holderX, int holderY, const Board& board, const CellProperties& cell) {
+bool DragoVehicle::travelStep(int dx, int dy, const DragoContext& ctx) {
+    const bool near = dx <= kNear && dy <= kNear;
+    const int before = form_; // the branch of seg2:A0A5 is chosen by the old form
+    if (form_ == 2) { // seg2:A8BB
+        if (travel_ == Travel::Leaving) { // straight at the route's end, the start field
+            dir_ = towardsField(trail_.back(), ctx.board);
+            setMain(kFigureTable[idx(dir_)]);
+            second_.set(kBlimpTable[idx(dir_)]);
+            face_ = dir_;
+            if (dir_ == 0) complete(ctx);
+        } else if (near) { // seg2:A961: done when near (the direction stays)
+            complete(ctx);
+        } else { // straight at the holder
+            dir_ = dragoDirection(ctx.holderX, ctx.holderY, x_, y_);
+            setMain(kFigureTable[idx(dir_)]);
+            second_.set(kBlimpTable[idx(dir_)]);
+            face_ = dir_;
+        }
+        return form_ != before; // form 2 has no frame choice in seg2:A0A5
+    }
+    if (travel_ == Travel::Leaving) { // seg2:A109 / A254: along the route, then the switch
+        if (trail_.empty()) complete(ctx); // the new form takes its own step (seg2:992F)
+        face_ = 0;
+        dir_ = towardsField(trail_.front(), ctx.board);
+        return form_ != before; // the old form's frames would not fit the new sprites
+    }
+    if (near) complete(ctx); // seg2:A154 / A29F
+    follow(dx, dy, ctx);
+    return form_ != before;
+}
+
+void DragoVehicle::step(const DragoContext& ctx) {
     trail_.cutLoop(); // seg2:A0B9
-    const int dx = std::abs(x_ - holderX), dy = std::abs(y_ - holderY);
-    follow(form, dx, dy, holderX, holderY, board);
+    const int dx = std::abs(x_ - ctx.holderX), dy = std::abs(y_ - ctx.holderY);
+    bool skipFrames = false;
+    if (travel_ != Travel::None) skipFrames = travelStep(dx, dy, ctx);
+    else follow(dx, dy, ctx);
+    const CellProperties& cell = ctx.cell;
     const int cx = x_ >> 4, cy = y_ >> 4;
-    if (form == 0) { // seg2:A1A6: bicycle, or boat on water (bit 8)
+    if (skipFrames) {
+    } else if (form_ == 0) { // seg2:A1A6: bicycle, or boat on water (bit 8)
         const bool water = (cell(cx, cy) & 0x08) != 0;
         if (dir_) {
             setMain((water ? kBoatMove : kBikeMove)[idx(dir_)]);
@@ -255,7 +386,7 @@ void DragoVehicle::step(int form, int holderX, int holderY, const Board& board, 
             setMain((water ? kBoatStand : kBikeStand)[idx(face_)]);
             face_ = 0;
         }
-    } else if (form == 1) { // seg2:A2F1: the car on roads, hovering over sea routes (6)
+    } else if (form_ == 1) { // seg2:A2F1: the car on roads, hovering over sea routes (6)
         std::array<uint16_t, 9> around{}; // [bp-0x18 + 2 dir]: own cell and the four sides
         around[0] = cell(cx, cy);
         around[1] = cell(cx, cy - 1);
@@ -291,20 +422,24 @@ void DragoVehicle::step(int form, int holderX, int holderY, const Board& board, 
     }
     x_ += kStepX[idx(dir_)]; // seg2:A55C
     y_ += kStepY[idx(dir_)];
-    if (!trail_.empty() && towardsField(trail_.front(), board) == 0) trail_.pop(); // seg2:A58D
+    if (!trail_.empty() && towardsField(trail_.front(), ctx.board) == 0) trail_.pop(); // seg2:A58D
 }
 
-void DragoVehicle::movePass(int form, int holderX, int holderY, const Board& board, const CellProperties& cell) {
+void DragoVehicle::movePass(const DragoContext& ctx) {
     if (!placed_) return;
-    if (form == 2) { // seg2:A016: three steps when far, else two
-        steps_ = std::abs(x_ - holderX) > 0x90 || std::abs(y_ - holderY) > 0x90 ? 3 : 2;
+    // seg2:9F96: while travelling out of sight he moves at once until he can be seen.
+    for (int guard = 0; travelling() && !visible(ctx.view) && guard < 20000; ++guard) step(ctx);
+    if (travelling()) {
+        steps_ = 3; // seg2:9FC8
+    } else if (form_ == 2) { // seg2:A016: three steps when far, else two
+        steps_ = std::abs(x_ - ctx.holderX) > 0x90 || std::abs(y_ - ctx.holderY) > 0x90 ? 3 : 2;
     } else if (steps_ == 3) { // seg2:9FE3
         if (trail_.count() >= 2) steps_ = 4;
     } else if (trail_.count() <= 1) {
         steps_ = 3;
     }
-    for (int i = 0; i < steps_; ++i) step(form, holderX, holderY, board, cell);
-    if (form != 1) return;
+    for (int i = 0; i < steps_; ++i) step(ctx);
+    if (form_ != 1) return;
     if (hop_ == 1) { // seg2:AFA9: rise by 2 to 0x18, then hover in place
         if (height_ < 0x18) height_ += 2;
         if (height_ >= 0x18) dir_ = 0, face_ = 0, hop_ = 2;
@@ -326,12 +461,12 @@ void DragoVehicle::animatePass() {
     second_.advance();
 }
 
-std::vector<DragoVehicle::Sprite> DragoVehicle::sprites(int form) const {
+std::vector<DragoVehicle::Sprite> DragoVehicle::sprites() const {
     std::vector<Sprite> out;
     if (!placed_) return out;
     if (const char* n = main_.name()) { // seg2:B017 ff.
-        if (form == 0) out.push_back({n, x_, y_ - 10});
-        else if (form == 1) out.push_back({n, x_, y_ - height_ + 2});
+        if (form_ == 0) out.push_back({n, x_, y_ - 10});
+        else if (form_ == 1) out.push_back({n, x_, y_ - height_ + 2});
         else out.push_back({n, x_ - 5, y_ - 0x2D});
     }
     if (const char* n = second_.name()) { // seg2:B153 ff.: rockets beside the car, else the blimp

@@ -545,7 +545,7 @@ Risiko, Flugzeug, Steuerlos, the card field, property cards in the town dialog.
 Dr. Drago is not only a portrait (`<n>pd.bmp`): rally.exe moves him as a sprite
 of his own that follows the vehicle he rides with. *Round 140:* following,
 frames and drawing are rebuilt in `src/drago_vehicle.cpp` (tested) and the game
-window; the form change's drive from outside the view is not yet.
+window; *round 141* adds the form change's drive and Hau ab.
 
 - **Per tick** seg2:9F61, called from the movement tick seg2:1C71 whenever
   DS:9CFC ≠ 0xFF (guard DS:3DE0 against re-entry). His pixel position is DS:9D01 /
@@ -617,11 +617,32 @@ window; the form change's drive from outside the view is not yet.
   up, (−7, +18) right, (+16, −4) down, (+42, +18) left (minus the height), form 2 the
   figure at (x − 5, y − 45) and the blimp at (x − 5, y − 85). seg2:4F91 draws him
   before the vehicles, in form 2 after them.
+- **Form change drive** (round 141): seg2:9804 returns unless DS:9CFD and DS:9CFC
+  are set (seg2:C0F9) and the form differs, so at a form change the start field
+  search always draws random(3) after the countdown and form draws of seg2:B3A4
+  (rules revision 39). Route seg2:9996(holder field, start field) fills the trail
+  (cleared first; without the mask DS:A10F; the first field is dropped when the
+  second lies in line with it on his row or column, seg2:9AA0). Forms 0 / 1 follow
+  it while DS:94EC holds the new form (seg2:A109 / A254) and call seg2:98D0 when it
+  is empty; form 2 flies straight at its last entry and calls seg2:98D0 on arrival
+  (seg2:A8BB). seg2:98D0 then routes back seg2:9996(start, holder), sets DS:9CFD,
+  loads the new form's sprites (seg2:9BAE) and takes a step; the new form follows
+  that trail and ends the travel within 0x30 pixels (forms 0 / 1 seg2:A154 / A29F,
+  form 2 seg2:A961; also when the trail runs out while far, seg2:A645), setting
+  DS:9CFE = 0 and DS:96A0 = 1. While travelling out of sight he steps without
+  waiting (seg2:9F96, the 64 × 64 rectangle against the view inflated by 5,
+  seg2:9ECB), then three steps per pass. seg2:B454 pumps messages and idle passes
+  until DS:96A0 is set: the game waits.
+- **Hau ab** seg2:B4E3: route from the old to the new holder's field, the music
+  F3 (DS:3DEB), DS:9CFC = the target, DS:9CFE = 1, DS:9566 = 2; the same wait
+  (seg2:B55E), then seg1:2889.
 - **Rebuilt approximations:** the trail gets the holder's fields from the drawn
   drive; a meeting adds the new holder's field; the vehicles' ticks of a frame run
-  before his; a form change switches the vehicle in place (the drive of seg2:9804
-  is the next step). Not saved: loading places him anew. Unread: the sprite list
-  argument +0x18 (1, or 0 for the blimp).
+  before his; when the old form's step triggers the switch, the old form's frame
+  choice for that step is skipped (rally.exe sets one old-form record that the next
+  step replaces). The game window waits through `GameScreen::dragoTravelling`
+  (modal like a dialog, so input and computer turns pause). Not saved: loading
+  places him anew. Unread: the sprite list argument +0x18 (1, or 0 for the blimp).
 
 ### Events and Eastern Europe (round 11)
 
