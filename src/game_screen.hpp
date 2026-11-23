@@ -53,7 +53,7 @@ class GameScreen {
 public:
     GameScreen(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                const Board& board, const std::vector<Town>& towns, const Game& game,
-               std::map<int, std::string> texts);
+               std::map<int, std::string> texts, char language);
     void draw();
     // Title (seg8:03AB): window TITEL over the canvas with butt/<n>/<lang>/t.bmp
     // (DS:17FB); the menu MAIN is drawn above it.
@@ -205,6 +205,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C), for language paths
     const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const Board& board_;
     const std::vector<Town>& towns_;
@@ -342,7 +343,8 @@ struct GameWindowOptions {
 };
 
 // Opens the game window and runs it until it is closed; returns the exit code.
-int runGameWindow(PlayView& play, const std::filesystem::path& root, const Board& board,
+// `language`: the letter of dat/lan.inf (readLanguageLetter).
+int runGameWindow(PlayView& play, const std::filesystem::path& root, char language, const Board& board,
                   const std::vector<Town>& towns, const GameWindowOptions& options);
 
 } // namespace dtvr

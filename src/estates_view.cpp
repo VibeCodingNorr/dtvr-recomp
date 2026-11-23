@@ -18,8 +18,9 @@ constexpr SDL_Color kBrown{67, 27, 0, 255}, kGray{123, 95, 27, 255}, kWhite{255,
 } // namespace
 
 EstatesView::EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout,
-                         const std::map<int, std::string>& texts, TextRenderer& text, SpriteLookup sprite)
-    : renderer_(renderer), layout_(layout), texts_(texts), text_(text), sprite_(std::move(sprite)) {}
+                         const std::map<int, std::string>& texts, TextRenderer& text, SpriteLookup sprite,
+                         char language)
+    : renderer_(renderer), layout_(layout), texts_(texts), text_(text), sprite_(std::move(sprite)), language_(language) {}
 
 void EstatesView::openStatistics(int player) {
     open(-1);
@@ -300,8 +301,13 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
 
 void EstatesView::drawStatisticsHeader() {
     // seg1:7506: an arrow at (14, 8), text 375 (Ansehen) at x 28, then arrows at
-    // (x - 15, 8) before the category (361 + DS:8C48) at x 160 and the sort order
-    // (368 + DS:8C4A) at x 266 (German offsets 0x84 / 0x6A, seg1:766F / 77C4).
+    // (x - 15, 8) before the category (361 + DS:8C48) and the sort order (368 + DS:8C4A).
+    // The text x advances by 0x84 / 0x6A when the language letter DS:A0F0 is 'd', else
+    // by 0x7A / 0x92 (seg1:766F / 77C4 compare with 0x64 only); the German lan.inf
+    // holds 'D', so rally.exe draws them at x 150 and 296 there.
+    const bool lowerD = language_ == 'd';
+    const int categoryX = 28 + (lowerD ? 0x84 : 0x7A);
+    const int sortX = categoryX + (lowerD ? 0x6A : 0x92);
     const SDL_Rect b = box();
     auto label = [&](int id) {
         const auto it = texts_.find(id);
@@ -323,10 +329,10 @@ void EstatesView::drawStatisticsHeader() {
     // Text 360 Verkaufen in the forced sale (DS:3FC2 = 0x10), 375 Ansehen otherwise.
     arrow(28 + 1, 0); // x 0 + 0xE = 28 - 15 + 1
     text_.draw(renderer_, label(forced_ ? 360 : 375), ScreenRect{b.x + 28, b.y + 10, 120, kRow}, style(0));
-    arrow(160, 1);
-    text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + 160, b.y + 10, 100, kRow}, style(1));
-    arrow(266, 2);
-    text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + 266, b.y + 10, 280, kRow}, style(2));
+    arrow(categoryX, 1);
+    text_.draw(renderer_, label(361 + category_), ScreenRect{b.x + categoryX, b.y + 10, 100, kRow}, style(1));
+    arrow(sortX, 2);
+    text_.draw(renderer_, label(368 + sort_), ScreenRect{b.x + sortX, b.y + 10, 280, kRow}, style(2));
 }
 
 } // namespace dtvr

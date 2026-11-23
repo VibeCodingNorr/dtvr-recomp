@@ -14,9 +14,9 @@ SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
 
 } // namespace
 
-OptionsView::OptionsView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
+OptionsView::OptionsView(SDL_Renderer* renderer, const fs::path& root, char language, const ScreenLayout& layout,
                          TextRenderer& text)
-    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth)) {}
+    : renderer_(renderer), root_(root), language_(language), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth)) {}
 
 SDL_Rect OptionsView::extraRect() const {
     const SDL_Rect stop = rect(geometry_.stop), star = rect(geometry_.start);
@@ -83,7 +83,7 @@ OptionsView::Result OptionsView::handle(const SDL_Event& event) {
 void OptionsView::draw() {
     if (!open_) return;
     const fs::path butt = fs::path("butt") / std::to_string(layout_.artDir);
-    if (SDL_Texture* back = bitmap(butt / "d" / "menu.bmp")) SDL_RenderCopy(renderer_, back, nullptr, nullptr);
+    if (SDL_Texture* back = bitmap(butt / languageDir(language_) / "menu.bmp")) SDL_RenderCopy(renderer_, back, nullptr, nullptr);
     for (const SbButton& b : buttons_.buttons()) {
         // seg1:AFB2: "%s\%d\op_menu\%d%s.bmp"; star / stop of pl_menu.
         const fs::path file = b.id == kStar ? butt / "pl_menu" / "star.bmp"

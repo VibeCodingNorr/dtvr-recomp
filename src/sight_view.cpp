@@ -29,7 +29,7 @@ bool SightView::open(int cellX, int cellY) {
     if (!picture_) return false;
     if (!paper_) paper_ = loadTexture(renderer_, findCaseInsensitive(root_, fs::path("butt") / "unipaper.bmp"));
     body_.clear();
-    if (const fs::path txt = findCaseInsensitive(root_, fs::path("butt") / "d" / "views" / (name + ".txt")); !txt.empty()) {
+    if (const fs::path txt = findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "views" / (name + ".txt")); !txt.empty()) {
         std::ifstream in(txt, std::ios::binary);
         body_ = ansiToUtf8(std::string(std::istreambuf_iterator<char>(in), {}));
     }

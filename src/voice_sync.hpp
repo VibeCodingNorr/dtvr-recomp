@@ -31,8 +31,9 @@ struct VoiceSyncRecord {
 // Throws std::runtime_error when the size is not a multiple of 0xD0 or a name is
 // not terminated within its 20 bytes.
 std::vector<VoiceSyncRecord> parseVoiceSync(const std::vector<uint8_t>& data);
-// The table of `<root>/dat/<lang>/sync.dat` (lang "d"); empty when missing or malformed.
-std::vector<VoiceSyncRecord> loadVoiceSync(const std::filesystem::path& root);
+// The table of `<root>/dat/<lang>/sync.dat` for the lan.inf letter `language`; empty
+// when missing or malformed.
+std::vector<VoiceSyncRecord> loadVoiceSync(const std::filesystem::path& root, char language);
 // The record of a voice file name (compared without regard to case), or nullptr.
 const VoiceSyncRecord* findVoiceSync(const std::vector<VoiceSyncRecord>& table, const std::string& name);
 

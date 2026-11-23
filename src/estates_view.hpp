@@ -21,8 +21,9 @@ namespace dtvr {
 class EstatesView {
 public:
     using SpriteLookup = std::function<SDL_Texture*(const std::string&)>;
+    // `language`: the lan.inf letter DS:A0F0 (the Statistik header spacing depends on it).
     EstatesView(SDL_Renderer* renderer, const ScreenLayout& layout, const std::map<int, std::string>& texts,
-                TextRenderer& text, SpriteLookup sprite);
+                TextRenderer& text, SpriteLookup sprite, char language);
 
     // seg1:4CF1: no tab, no selected row, scrolled to the top.
     // `handEmpty`: seg1:4D18 locks Karte (DS:3FBA = 2) when seg2:3C00 counts no hand card.
@@ -71,6 +72,7 @@ private:
     const std::map<int, std::string>& texts_; // language file, UTF-8
     TextRenderer& text_;
     SpriteLookup sprite_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     int town_ = -1;
     EstatesTab tab_ = EstatesTab::None; // DS:3FC2 / DS:3FBC
     int focus_ = 0; // DS:3FB6: header focus 0 Kaufen, 1 Verkaufen, 2 Karte, 3 close; -1 = 0xFF

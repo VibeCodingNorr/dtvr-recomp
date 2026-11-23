@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
-int runGameWindow(PlayView& play, const fs::path& root, const Board& board, const std::vector<Town>& towns,
+int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, const Board& board, const std::vector<Town>& towns,
                   const GameWindowOptions& options) {
     SDL_DisplayMode display{};
     if (SDL_GetDesktopDisplayMode(0, &display) != 0) display.w = 1024, display.h = 768;
@@ -48,7 +48,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     ControllerInput controller; // joystick 1 of the original (seg2:8A30), any SDL game controller
     std::map<int, std::string> texts; // language file (texts in UTF-8)
     std::vector<uint8_t> language;    // also holds the menu resources
-    if (const fs::path file = findCaseInsensitive(root, "dat/d/rally_d.dat"); !file.empty()) language = readFile(file);
+    if (const fs::path file = findCaseInsensitive(root, languageLibraryPath(languageLetter)); !file.empty()) language = readFile(file);
     if (!language.empty())
         for (const auto& [id, raw] : readNeStrings(language)) texts.emplace(id, ansiToUtf8(raw));
     if (options.loadSlot >= 0) { // before the screen: the drivers' sprites depend on the players
@@ -58,7 +58,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             throw std::runtime_error("Spielstand " + std::to_string(options.loadSlot) + ": " + error);
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
     }
-    GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts));
+    GameScreen screen(renderer.get(), root, layout, board, towns, play.game(), std::move(texts), languageLetter);
     // The Flugzeug rows 5602 + i as towns (seg3:32CE: _fstricmp on the names), for the
     // extension's computers; the same mapping as the booking below.
     play.game().setAirports(flightAirports(screen.texts(), towns));

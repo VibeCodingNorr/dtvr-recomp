@@ -19,9 +19,9 @@ constexpr SDL_Color kBrown{67, 27, 0, 255}, kGray{123, 95, 27, 255}, kWhite{255,
 
 } // namespace
 
-CardShopView::CardShopView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
+CardShopView::CardShopView(SDL_Renderer* renderer, const fs::path& root, char language, const ScreenLayout& layout,
                            const std::map<int, std::string>& texts, TextRenderer& text)
-    : renderer_(renderer), root_(root), layout_(layout), texts_(texts), text_(text) {}
+    : renderer_(renderer), root_(root), language_(language), layout_(layout), texts_(texts), text_(text) {}
 
 std::string CardShopView::text(int id) const {
     const auto it = texts_.find(id);
@@ -32,7 +32,7 @@ void CardShopView::open(const Game& game) {
     if (frames_.empty()) { // %s\%c\bcards.sbs (DS:3261) and the strips of ls.sbs
         Surface palette = loadBmp(findCaseInsensitive(root_, fs::path("butt") / "ziel.bmp"));
         const SDL_Palette* pal = palette && palette->format->palette ? palette->format->palette : nullptr;
-        loadSbsTextures(renderer_, findCaseInsensitive(root_, fs::path("butt") / "d" / "bcards.sbs"), pal, frames_, 0xFF);
+        loadSbsTextures(renderer_, findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "bcards.sbs"), pal, frames_, 0xFF);
         loadSbsTextures(renderer_, findCaseInsensitive(root_, fs::path("sbs") / "ls.sbs"), pal, frames_);
     }
     (void)game;

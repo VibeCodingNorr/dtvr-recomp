@@ -21,9 +21,9 @@ namespace dtvr {
 class SightView {
 public:
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // BS1-BS8
-    SightView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text, const int& canvasWidth,
+    SightView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, TextRenderer& text, const int& canvasWidth,
               const int& canvasHeight)
-        : renderer_(renderer), root_(root), text_(text), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+        : renderer_(renderer), root_(root), language_(language), text_(text), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
     // False when the cell has no picture.
     bool open(int cellX, int cellY);
     bool isOpen() const { return open_; }
@@ -35,6 +35,7 @@ private:
     SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     TextRenderer& text_;
     const int& canvasWidth_; // the shared layout's size (live widescreen switch)
     const int& canvasHeight_;

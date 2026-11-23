@@ -2822,9 +2822,13 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   whether a language driver treats it as a letter or not.
 - **Header** seg1:7506: text 375 (Ansehen; 360 Verkaufen when DS:3FC2 = 0x10) at
   x = 28; PFEIL1 (pressed PFEIL2) at (x − 15, 8) before the category text
-  361 + DS:8C48 (Alle, Industrie, Handel, Agrar, Risiko, Luxus, Sonstige) at
-  x = 160 and the sort text 368 + DS:8C4A (Sortieren: Wert / Rendite / Stadt) at
-  x = 266 (German offsets 0x84 / 0x6A when DS:A0F0 = 'd', otherwise 0x7A / 0x92).
+  361 + DS:8C48 (Alle, Industrie, Handel, Agrar, Risiko, Luxus, Sonstige) and the
+  sort text 368 + DS:8C4A (Sortieren: Wert / Rendite / Stadt); x advances by
+  0x84 / 0x6A when DS:A0F0 = 'd' (x 160 / 266), otherwise by 0x7A / 0x92 (x 150 /
+  296; seg1:766F / 77C4 compare with 0x64 only). The German `dat/lan.inf` holds
+  `D` (0x44), so the supported copy takes 150 / 296 (rebuilt since the lan.inf
+  letter is read; earlier rounds used 160 / 266). Not yet compared with a
+  screenshot of rally.exe.
 - **Eight rows always** (round 136): seg1:60D6 calls seg1:6119 for rows scroll …
   scroll + 7 (`cmp 8` at seg1:60F5); its strip seg1:65A4 (GR_Z / ZW_Z, the selected
   one GR_ZI / ZW_ZI) has no count check, while the owner icon (seg1:6160) and the

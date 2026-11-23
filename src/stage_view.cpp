@@ -27,9 +27,9 @@ const SceneRecord kLight{0, 0, 0, 1, {"licht1", "licht2"}};  // DS:4782 (delay 0
 
 } // namespace
 
-StageView::StageView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight,
+StageView::StageView(SDL_Renderer* renderer, const fs::path& root, char language, const int& canvasWidth, const int& canvasHeight,
                      const Board& board, const std::vector<Town>& towns)
-    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight), board_(board),
+    : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight), board_(board),
       towns_(towns) {}
 
 bool StageView::start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now) {
@@ -59,7 +59,7 @@ bool StageView::start(int mode, int variant, int destination, SoundPlayer* sound
 }
 
 void StageView::voice(const std::string& name) {
-    if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "zielsuch" / (name + ".wav")));
+    if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "voice" / "zielsuch" / (name + ".wav")));
     if (subtitles_) // seg6:64A5 below this window (0x1F0 x 0x178, centred by seg6:0000)
         subtitles_->voice(name + ".wav", SDL_Rect{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2 - lift(), kWindowW, kWindowH},
                           SDL_GetTicks());

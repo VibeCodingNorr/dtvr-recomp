@@ -25,7 +25,7 @@ class FinishView {
 public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
-    FinishView(SDL_Renderer* renderer, const std::filesystem::path& root, const int& canvasWidth, const int& canvasHeight);
+    FinishView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const int& canvasWidth, const int& canvasHeight);
     // Builds the scene for the driver letter and the town (OEM name); false when the
     // pictures are missing (the original then skips the sequence, seg7:26E8).
     bool start(char driverLetter, const std::string& oemTownName, Uint32 now);
@@ -41,6 +41,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const int& canvasWidth_; // the shared layout's size (live widescreen switch)
     const int& canvasHeight_;
     Texture background_{nullptr, SDL_DestroyTexture};

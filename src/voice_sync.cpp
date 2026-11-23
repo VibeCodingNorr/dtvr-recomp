@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "voice_sync.hpp"
 
+#include "data_paths.hpp"
+
 #include <cctype>
 #include <fstream>
 #include <iterator>
@@ -47,19 +49,10 @@ std::vector<VoiceSyncRecord> parseVoiceSync(const std::vector<uint8_t>& data) {
     return table;
 }
 
-std::vector<VoiceSyncRecord> loadVoiceSync(const std::filesystem::path& root) {
-    // Case-insensitive lookup of dat/d/sync.dat.
-    std::filesystem::path dir = root;
-    for (const char* part : {"dat", "d", "sync.dat"}) {
-        std::filesystem::path found;
-        std::error_code ec;
-        for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
-            std::string n = entry.path().filename().string(), want = part;
-            if (sameName(n, want)) { found = entry.path(); break; }
-        }
-        if (found.empty()) return {};
-        dir = found;
-    }
+std::vector<VoiceSyncRecord> loadVoiceSync(const std::filesystem::path& root, char language) {
+    // seg1:31D4: "%s\\%c\\sync.dat" with the dat directory and the language letter.
+    const std::filesystem::path dir = findCaseInsensitive(root, std::filesystem::path("dat") / languageDir(language) / "sync.dat");
+    if (dir.empty()) return {};
     std::ifstream in(dir, std::ios::binary);
     const std::vector<uint8_t> data{std::istreambuf_iterator<char>(in), {}};
     try { return parseVoiceSync(data); } catch (const std::exception&) { return {}; }

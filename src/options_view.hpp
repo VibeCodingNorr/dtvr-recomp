@@ -20,7 +20,7 @@ namespace dtvr {
 
 class OptionsView {
 public:
-    OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
+    OptionsView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const ScreenLayout& layout,
                 TextRenderer& text);
     // seg1:ADEE copies the values to DS:9478, but nothing reads the copy back.
     void open(const Settings& settings);
@@ -46,6 +46,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const ScreenLayout& layout_; // shared; the widescreen switch changes it
     TextRenderer& text_;
     SetupGeometry geometry_;

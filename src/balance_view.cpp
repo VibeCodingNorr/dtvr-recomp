@@ -24,8 +24,8 @@ const SceneRecord kHold{80, 159, 0, 3, {"HEBEL02", "HEBEL03", "HEBEL02", "HEBEL0
 
 } // namespace
 
-BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
-    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, char language, const int& canvasWidth, const int& canvasHeight)
+    : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans,
                         SoundPlayer* sound, Uint32 now) {
@@ -52,7 +52,7 @@ bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entrie
 }
 
 void BalanceView::voice(const std::string& name) {
-    if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "bilanz" / (name + ".wav")));
+    if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "voice" / "bilanz" / (name + ".wav")));
     if (subtitles_) // seg6:64A5 below this window (0x1F0 x 0x178, centred by seg6:0000)
         subtitles_->voice(name + ".wav", SDL_Rect{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2 - lift(), kWindowW, kWindowH},
                           SDL_GetTicks());

@@ -114,7 +114,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/ne_strings.{hpp,cpp}`: RT_STRING and RT_MENU reader for the language file and Windows-1252 conversion.
 - `src/layout.{hpp,cpp}`: original window geometry; `src/panel.{hpp,cpp}`: player info panel
   contents (both no SDL).
-- `src/sdl_assets.{hpp,cpp}`: BMP/world loading and case-insensitive paths; `src/text.{hpp,cpp}`:
+- `src/data_paths.{hpp,cpp}` (no SDL): case-insensitive paths and the `dat/lan.inf` language letter;
+  `src/sdl_assets.{hpp,cpp}`: BMP/world loading; `src/text.{hpp,cpp}`:
   GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`)
   and `src/game_window.{hpp,cpp}` its flow (class GameWindow: set-up, title, menu commands, loop) with
   `src/game_window_frame.cpp` (per frame), `src/game_window_input.cpp` (input order) and

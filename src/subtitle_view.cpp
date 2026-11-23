@@ -6,9 +6,9 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
-SubtitleView::SubtitleView(SDL_Renderer* renderer, const fs::path& root, TextRenderer& text,
+SubtitleView::SubtitleView(SDL_Renderer* renderer, const fs::path& root, char language, TextRenderer& text,
                            const std::map<int, std::string>& texts)
-    : renderer_(renderer), root_(root), text_(text), texts_(texts), table_(loadVoiceSync(root)) {}
+    : renderer_(renderer), root_(root), language_(language), text_(text), texts_(texts), table_(loadVoiceSync(root, language)) {}
 
 void SubtitleView::voice(const std::string& file, const SDL_Rect& owner, Uint32 now) {
     if (!enabled_) return;

@@ -22,7 +22,7 @@ namespace dtvr {
 class SubtitleView {
 public:
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
-    SubtitleView(SDL_Renderer* renderer, const std::filesystem::path& root, TextRenderer& text,
+    SubtitleView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, TextRenderer& text,
                  const std::map<int, std::string>& texts);
     void setEnabled(bool enabled) { enabled_ = enabled; }
     bool enabled() const { return enabled_; }
@@ -36,6 +36,7 @@ private:
     SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     TextRenderer& text_;
     const std::map<int, std::string>& texts_;
     std::vector<VoiceSyncRecord> table_;

@@ -22,7 +22,7 @@ namespace dtvr {
 class MessageView {
 public:
     void setSprites(SpriteLookup sprites) { sprites_ = std::move(sprites); } // B1-B8 of assorted.sbs
-    MessageView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
+    MessageView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const ScreenLayout& layout,
                 const std::map<int, std::string>& texts, TextRenderer& text);
     void push(Notice notice) { queue_.push_back(std::move(notice)); }
     bool open() const { return !queue_.empty(); }
@@ -50,6 +50,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const std::map<int, std::string>& texts_;
     TextRenderer& text_;

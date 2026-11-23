@@ -67,8 +67,8 @@ int frameHeight(const std::map<std::string, Texture>& frames, const std::string&
 
 } // namespace
 
-VictoryView::VictoryView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
-    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+VictoryView::VictoryView(SDL_Renderer* renderer, const fs::path& root, char language, const int& canvasWidth, const int& canvasHeight)
+    : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool VictoryView::start(const std::vector<int>& ranking, Uint32 now) {
     active_ = false;
@@ -76,7 +76,10 @@ bool VictoryView::start(const std::vector<int>& ranking, Uint32 now) {
     const fs::path butt("butt");
     Surface scene = loadBmp(findCaseInsensitive(root_, butt / "Sieg.bmp")); // DS:5EE2
     if (!scene || !scene->format->palette) return false;
-    if (const fs::path banner = findCaseInsensitive(root_, butt / "s_bann_d.bmp"); !banner.empty()) {
+    // seg7:7EC1: the banner only for the language letters 'd' and 'D' (DS:A0F0).
+    const bool german = language_ == 'd' || language_ == 'D';
+    if (const fs::path banner = german ? findCaseInsensitive(root_, butt / "s_bann_d.bmp") : fs::path();
+        !banner.empty()) {
         Surface b = loadBmp(banner);
         blitKeyed(b.get(), scene.get(), 3, 0x85); // seg7:7F99
     }

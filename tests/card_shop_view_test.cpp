@@ -95,7 +95,7 @@ int main() {
 
     for (int width : {640, 800, 1024}) {
         const ScreenLayout layout = layoutForCanvas(width);
-        CardShopView view(nullptr, assets.root, layout, texts, text);
+        CardShopView view(nullptr, assets.root, 'D', layout, texts, text);
         CHECK(idle(key(view, game, SDLK_RETURN)));
         view.open(game);
         CHECK(idle(key(view, game, SDLK_LEFT)));
@@ -183,7 +183,7 @@ int main() {
         Game single(board, towns, 2, 2, 3, 1);
         arrive(single);
         const ScreenLayout layout640 = layoutForCanvas(640); // the view keeps a reference
-        CardShopView view(nullptr, assets.root, layout640, texts, text);
+        CardShopView view(nullptr, assets.root, 'D', layout640, texts, text);
         view.open(single);
         key(view, single, SDLK_RIGHT);                              // Verkaufen
         CHECK(key(view, single, SDLK_RETURN).sound == 2);           // sell mode

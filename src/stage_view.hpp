@@ -26,7 +26,7 @@ class StageView {
 public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
-    StageView(SDL_Renderer* renderer, const std::filesystem::path& root, const int& canvasWidth, const int& canvasHeight,
+    StageView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const int& canvasWidth, const int& canvasHeight,
               const Board& board, const std::vector<Town>& towns);
     // mode 2 game start, 1 new stage, 3 last stage; variant 0-4 of Part01-04.
     bool start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now);
@@ -52,6 +52,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const int& canvasWidth_; // the shared layout's size (live widescreen switch)
     const int& canvasHeight_;
     const Board& board_;

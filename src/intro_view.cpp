@@ -55,8 +55,8 @@ bool towardsTarget(SDL_Color& c, const SDL_Color& target) {
 
 } // namespace
 
-IntroView::IntroView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
-    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+IntroView::IntroView(SDL_Renderer* renderer, const fs::path& root, char language, const int& canvasWidth, const int& canvasHeight)
+    : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 SDL_Rect IntroView::window() const {
     return SDL_Rect{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2 - (subtitlesOn_ ? kSubtitleLift : 0),
@@ -105,7 +105,7 @@ bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitle
     scene_.reset(SDL_CreateRGBSurfaceWithFormat(0, kWidth, kHeight, 8, SDL_PIXELFORMAT_INDEX8));
     if (!scene_) return false;
     SDL_SetSurfacePalette(scene_.get(), palette_);
-    sync_ = loadVoiceSync(root_);
+    sync_ = loadVoiceSync(root_, language_);
     script_ = IntroScript(&sync_);
     rand_ = MsRandom(1); // assumption: the intro runs before any game seeds rand
     effect_ = Effect::None;
@@ -147,7 +147,7 @@ void IntroView::stamp(const std::string& frame, int x, int y) {
 void IntroView::apply(const IntroEvent& e, Uint32 now) {
     switch (e.kind) {
     case IntroEvent::Voice: {
-        const fs::path wav = findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "intro" / (e.name + ".wav"));
+        const fs::path wav = findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "voice" / "intro" / (e.name + ".wav"));
         if (sound_) sound_->playVoice(kVoiceChannel, wav);
         if (subtitles_ && effect_ == Effect::None) subtitles_->voice(e.name + ".wav", window(), now);
         break;
@@ -164,7 +164,7 @@ void IntroView::apply(const IntroEvent& e, Uint32 now) {
         effectAt_ = now;
         break;
     case IntroEvent::Wipe:
-        next_ = loadBmp(findCaseInsensitive(root_, fs::path("butt") / "d" / (e.name + ".bmp"))); // DS:1376
+        next_ = loadBmp(findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / (e.name + ".bmp"))); // DS:1376
         if (!next_ || next_->format->BitsPerPixel != 8) { stop(); break; }                     // seg7:1BA4
         SDL_SetSurfacePalette(next_.get(), palette_);
         wipe_ = wipeMode4(kWidth, kHeight, rand_);

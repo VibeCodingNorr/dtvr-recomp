@@ -48,8 +48,9 @@ rename English assets to German paths to bypass the gate. Before enabling it:
 - Compare simulation input tables and relevant executable rules by hash/version;
   do not apply German segment addresses to this EXE without checking them.
 - Add explicit resource selection for the English language and art directory 6,
-  covering text, town names, cards, menus, subtitles and scene assets. The current
-  native entry point still expects `butt/1/map.bmp` and `dat/d/rally_d.dat`.
+  covering text, town names, cards, menus, subtitles and scene assets. The language
+  letter now comes from `dat/lan.inf` (see below), but the native entry point still
+  expects `butt/1/map.bmp`.
 - Make preflight and installation verification accept the actual runtime layout
   of an explicitly supported profile instead of requiring the German overview.
 - Verify one complete human turn and the installer smoke checks against the
@@ -57,6 +58,43 @@ rename English assets to German paths to bypass the gate. Before enabling it:
 
 This engine work is separate from the directory importer so it can be coordinated
 with the ongoing game-window reconstruction.
+
+**Language letter (supported German EXE, checked 2026-11-23 after a user hint).**
+seg5:0239 formats `%s\lan.inf` (DS:0118) with the `dat` directory DS:7E, reads it
+(seg6:027F) and keeps its first byte as the language letter DS:A0F0; seg5:02B1
+then loads `Rally_%c.dat` (DS:0123) with that letter as the language library
+(seg5:1B6B formats `%s\%c\%s` (DS:02ED) with DS:7E and calls LoadLibrary; handle
+DS:B5C4, below 32 = failure). The German copy holds `D` + CRLF (bytes `44 0D 0A`)
+and the directory `dat/d/`; the user reports `E` for English with `dat/e/`.
+seg5:028C is the only write of DS:A0F0. Its 46 reads build `dat\%c\sync.dat`
+(seg1:31D4), `%s\%d\%c\menu.bmp` (seg1:AD9B), `%s\%d\%c\%dcard_%.2d.bmp` (seg2:10D6,
+24AE, 2583, seg3:0474, 11EE), `%s\%c\bcards.sbs` (seg3:449F), `%s\europe_%c.tow`
+with the map directory (seg5:15A6), `%s\%c\views\%s` (seg6:4E6A), the intro,
+destination, Sieg and Bilanz voices plus `zeitung.bmp`, `banner.bmp`,
+`ziel\%s.bmp` (seg7, seg8:8C66 ff.), `%s\%d\%c\t.bmp` (seg8:04A7) and the frame
+name `dis_%c` (seg1:1908, DS:32CB). Four places compare the byte with case:
+seg1:766F / 77C4 (Statistik header: the text x advances by 0x84 / 0x6A for `d`
+only, else 0x7A / 0x92, so the German `D` takes the second pair), seg7:7EC1
+(`s_bann_d.bmp` only for `d` or `D`) and seg5:219C (`E` / `e` forces subtitles and
+turns the voice off).
+
+Failure: when lan.inf cannot be opened, seg6:027F returns 0, seg5:0225 calls the
+ERROR dialog seg6:0639 (template DS:164B) with the path and returns 0, and
+seg5:0058 ends the start. seg6:027F allocates size + 1 bytes with GlobalAlloc
+flags 0x42 (moveable, zero-initialised), so an empty file yields the letter 0, the
+library name becomes `Rally_` and its load fails in the same way.
+
+Rebuild (done): `src/data_paths.cpp` (no SDL, `tests/data_paths_test.cpp`) reads
+the letter once; `src/main.cpp` reads it together with the board and passes it to
+the play view, the towns file `map/europe_<c>.tow`, `runGameWindow` and through
+`GameScreen` to every view that builds a language path. Paths use the lower-case
+letter with the case-insensitive lookup; the stored byte is kept for the case
+comparisons (Statistik spacing, Sieg banner). A missing, empty or unreadable file
+stops the program with an error, as rally.exe does. Rebuild decision: a first
+byte that is not an ASCII letter is rejected at once, whereas rally.exe would use
+it and only fail if no `dat\<byte>\Rally_<byte>.dat` loads. Not rebuilt: the
+`E` / `e` subtitle rule of seg5:219C (only relevant with an English library). This
+does not lift the version gate; the English EXE stays unsupported.
 
 ## German installed-directory example, inspected 2026-11-23
 

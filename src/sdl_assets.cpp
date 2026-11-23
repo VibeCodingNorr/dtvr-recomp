@@ -29,25 +29,6 @@ Surface loadBmp(const fs::path& path) {
     return image;
 }
 
-fs::path findCaseInsensitive(const fs::path& root, const fs::path& relative) {
-    auto lower = [](std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return char(std::tolower(c)); });
-        return s;
-    };
-    fs::path current = root;
-    for (const auto& part : relative) {
-        const fs::path exact = current / part;
-        if (fs::exists(exact)) { current = exact; continue; }
-        if (!fs::is_directory(current)) return {};
-        fs::path found;
-        for (const auto& entry : fs::directory_iterator(current))
-            if (lower(entry.path().filename().string()) == lower(part.string())) { found = entry.path(); break; }
-        if (found.empty()) return {};
-        current = found;
-    }
-    return current;
-}
-
 Surface loadWorld(const fs::path& root, int month, bool views, bool seasons, std::vector<Tile>* tilesOut) {
     const int season = seasons ? seasonForMonth(month) : 1;
     std::vector<Tile> tiles;

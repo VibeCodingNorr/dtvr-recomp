@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The card window of rally.exe ("Karte einsetzen", seg3:0887; round 29): one
-// SBBUTTON per hand card with the picture bmp/<n>/d/<n>card_<type + 1>.bmp,
+// SBBUTTON per hand card with the picture bmp/<n>/<lang>/<n>card_<type + 1>.bmp,
 // arranged by cardWindowLayout. Evidence in docs/formats.md "Card window".
 #pragma once
 
@@ -18,7 +18,7 @@ namespace dtvr {
 
 class CardView {
 public:
-    CardView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout);
+    CardView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const ScreenLayout& layout);
     // The current player's hand; false (nothing opens) when it is empty (seg3:0922).
     // `mask` is DS:18 of seg3:0887(mask): a card is enabled when (category & mask) ==
     // category (seg3:0701, otherwise message 0x7ED(1) to its SBBUTTON); a negative
@@ -40,6 +40,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const ScreenLayout& layout_; // shared; the widescreen switch changes it
     SbButtonGroup buttons_;      // id = hand slot
     std::map<int, int> types_;   // hand slot -> card type

@@ -114,7 +114,7 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 }
 
 // The game from the recovered rules with slots and driver names (viewer and game window).
-static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, const dtvr::Board& board,
+static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, char language, const dtvr::Board& board,
                                                     const std::vector<dtvr::Town>& towns, int humans, int computers,
                                                     int rounds, unsigned seed) {
     if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
@@ -129,9 +129,9 @@ static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, const 
         std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), slots, rounds,
         uint16_t(seed));
     // Driver names from the language file (texts 120-127), when present.
-    const auto language = root / "dat/d/rally_d.dat";
-    if (std::filesystem::exists(language)) {
-        const auto texts = dtvr::readNeStrings(readFile(language));
+    const auto library = dtvr::findCaseInsensitive(root, dtvr::languageLibraryPath(language));
+    if (!library.empty()) {
+        const auto texts = dtvr::readNeStrings(readFile(library));
         std::array<std::string, dtvr::kPlayerSlots> names;
         for (int p = 0; p < dtvr::kPlayerSlots; ++p)
             if (auto it = texts.find(dtvr::kDriverNameText + p); it != texts.end())
@@ -284,11 +284,15 @@ static int run(int argc, char** argv) {
     std::vector<dtvr::Town> towns;
     int startField = 0;
     std::vector<int> targets;
+    // The letter of dat/lan.inf (seg5:0239), read with the board: the towns file and the
+    // game's language paths depend on it; rally.exe does not start without it.
+    char language = 0;
     if (view == View::World || fs::is_regular_file(root / "map/europe.inf")) {
+        language = dtvr::readLanguageLetter(root);
         const auto info = dtvr::parseBoardInfo(readFile(root / "map/europe.inf"));
         board = dtvr::parseBoard(readFile(root / "map/europe.str"), info.fields);
-        fs::path townFile;
-        for (const auto& candidate : findFiles(root / "map", ".tow")) townFile = candidate;
+        // seg5:15A6: "%s\europe_%c.tow" (DS:027E) with the map directory DS:6A.
+        const fs::path townFile = dtvr::findCaseInsensitive(root / "map", "europe_" + dtvr::languageDir(language) + ".tow");
         if (!townFile.empty()) towns = dtvr::parseTowns(readFile(townFile), info.towns);
         if (!towns.empty())
             for (size_t i = 0; i < board.fields.size(); ++i)
@@ -299,7 +303,7 @@ static int run(int argc, char** argv) {
     if (!overview->format->palette) throw std::runtime_error("map.bmp hat keine Palette");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) throw std::runtime_error(SDL_GetError());
     if (gameWindow) { // the game window as in rally.exe (src/game_screen.cpp)
-        auto game = makePlayView(root, board, towns, humans, computers, rounds, seed);
+        auto game = makePlayView(root, language, board, towns, humans, computers, rounds, seed);
         dtvr::GameWindowOptions options;
         options.canvasWidth = resolution;
         options.smokeTest = smoke;
@@ -352,7 +356,7 @@ static int run(int argc, char** argv) {
             std::string error;
             if (!dtvr::adoptFormerName(path, error)) std::cerr << "Daten von DTVR Recomb: " << error << '\n';
         }
-        const int code = dtvr::runGameWindow(*game, root, board, towns, options);
+        const int code = dtvr::runGameWindow(*game, root, language, board, towns, options);
         SDL_Quit();
         return code;
     }
@@ -421,7 +425,7 @@ static int run(int argc, char** argv) {
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
-        playView = makePlayView(root, board, towns, humans, computers, rounds, seed);
+        playView = makePlayView(root, language, board, towns, humans, computers, rounds, seed);
         graph = true;
     }
     load();

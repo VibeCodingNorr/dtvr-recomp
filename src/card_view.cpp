@@ -7,8 +7,8 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
-CardView::CardView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout)
-    : renderer_(renderer), root_(root), layout_(layout) {}
+CardView::CardView(SDL_Renderer* renderer, const fs::path& root, char language, const ScreenLayout& layout)
+    : renderer_(renderer), root_(root), language_(language), layout_(layout) {}
 
 bool CardView::open(const Game& game, int mask) {
     close();
@@ -43,7 +43,7 @@ SDL_Texture* CardView::picture(int type) {
         char name[32];
         std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, type + 1);
         Texture t(nullptr, SDL_DestroyTexture);
-        const fs::path path = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / "d" / name);
+        const fs::path path = findCaseInsensitive(root_, fs::path("bmp") / std::to_string(layout_.artDir) / languageDir(language_) / name);
         if (!path.empty()) {
             auto surface = loadBmp(path);
             t.reset(SDL_CreateTextureFromSurface(renderer_, surface.get()));

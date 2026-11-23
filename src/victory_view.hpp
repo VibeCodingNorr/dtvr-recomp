@@ -23,7 +23,7 @@ class VictoryView {
 public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
-    VictoryView(SDL_Renderer* renderer, const std::filesystem::path& root, const int& canvasWidth, const int& canvasHeight);
+    VictoryView(SDL_Renderer* renderer, const std::filesystem::path& root, char language, const int& canvasWidth, const int& canvasHeight);
     // `ranking` lists slots best first (seg1:8EE1); false when the pictures are missing.
     bool start(const std::vector<int>& ranking, Uint32 now);
     bool active() const { return active_; }
@@ -41,6 +41,7 @@ private:
     SpriteLookup borderSprites_;
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
+    char language_; // the lan.inf letter DS:A0F0 (seg5:028C)
     const int& canvasWidth_; // the shared layout's size (live widescreen switch)
     const int& canvasHeight_;
     int lift_ = 0;

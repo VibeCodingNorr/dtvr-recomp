@@ -55,27 +55,27 @@ std::string upper(std::string s) {
 
 GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
                        const Board& board, const std::vector<Town>& towns, const Game& game,
-                       std::map<int, std::string> texts)
-    : renderer_(renderer), root_(root), layout_(layout), board_(board), towns_(towns), game_(game),
-      texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, layout, texts_, text_),
+                       std::map<int, std::string> texts, char language)
+    : renderer_(renderer), root_(root), language_(language), layout_(layout), board_(board), towns_(towns), game_(game),
+      texts_(std::move(texts)), slot_(renderer, root), messages_(renderer, root, language, layout, texts_, text_),
       menu_(renderer, layout, text_, [this](const std::string& name) { return sprite(name); }),
-      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root), sight_(renderer, root, text_, layout.width, layout.height),
-      cards_(renderer, root, layout), cardShop_(renderer, root, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
+      mouseControl_(renderer, [this](const std::string& name) { return sprite(name); }), film_(renderer, root), sight_(renderer, root, language, text_, layout.width, layout.height),
+      cards_(renderer, root, language, layout), cardShop_(renderer, root, language, layout, texts_, text_), selectPlayer_(renderer, root, layout), flight_(renderer, root, layout, texts_, text_), nails_(renderer, root, layout, texts_, text_), invest_(renderer, root, layout, texts_, text_), risiko_(renderer, root, layout),
       estates_(renderer, layout, texts_, text_,
                [this](const std::string& name) {
                    SDL_Texture* t = name.rfind("PFEIL", 0) == 0 ? find(buyKeyed_, name) : find(buySprites_, name);
                    return t ? t : sprite(name);
-               }),
+               }, language),
       slots_(defaultSaveDirectory()),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
       setup_(renderer, root, layout, text_),
       stages_(renderer, root, layout, texts_, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
-      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, layout, text_),
-      finish_(renderer, root, layout.width, layout.height), victory_(renderer, root, layout.width, layout.height),
-      balance_(renderer, root, layout.width, layout.height),
-      stage_(renderer, root, layout.width, layout.height, board, towns), subtitles_(renderer, root, text_, texts_),
-      intro_(renderer, root, layout.width, layout.height) {
+      settings_(loadSettings(defaultSettingsFile())), options_(renderer, root, language, layout, text_),
+      finish_(renderer, root, language, layout.width, layout.height), victory_(renderer, root, language, layout.width, layout.height),
+      balance_(renderer, root, language, layout.width, layout.height),
+      stage_(renderer, root, language, layout.width, layout.height, board, towns), subtitles_(renderer, root, language, text_, texts_),
+      intro_(renderer, root, language, layout.width, layout.height) {
     stage_.setSubtitles(&subtitles_);
     messages_.setSprites([this](const std::string& name) { return sprite(name); });
     stage_.setSprites([this](const std::string& name) { return sprite(name); });
@@ -459,7 +459,7 @@ bool GameScreen::startVictory(Uint32 now) {
     constexpr int w = 0x1F0, h = 0x178; // seg7:738D
     subtitles_.voice("sieg.wav", SDL_Rect{(layout_.width - w) / 2, (layout_.height - h) / 2 - victory_.lift(), w, h}, now);
     // seg7:7BAB: "%s\%c\VOICE\SIEG\SIEG.WAV" (seg1:3579)
-    if (sound_) sound_->playVoice(0, findCaseInsensitive(root_, fs::path("butt") / "d" / "voice" / "sieg" / "sieg.wav"));
+    if (sound_) sound_->playVoice(0, findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / "voice" / "sieg" / "sieg.wav"));
     return true;
 }
 
@@ -750,7 +750,7 @@ void GameScreen::drawHandStack() {
     for (int k = n - 1; k >= 0; --k) {
         char name[32];
         std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, types[size_t(k)] + 1);
-        SDL_Texture* card = art(fs::path("bmp") / std::to_string(layout_.artDir) / "d" / name);
+        SDL_Texture* card = art(fs::path("bmp") / std::to_string(layout_.artDir) / languageDir(language_) / name);
         if (!card) continue;
         const SDL_Rect dst{x0 + 3 * k, y0 - 3 * k, w, h};
         SDL_RenderCopy(renderer_, card, nullptr, &dst);
@@ -831,7 +831,7 @@ void GameScreen::draw() {
         return;
     }
     if (title_) {
-        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / "d" / "t.bmp")) {
+        if (SDL_Texture* t = art(fs::path("butt") / std::to_string(layout_.artDir) / languageDir(language_) / "t.bmp")) {
             const SDL_Rect stage = toSdl(layout_.stage());
             SDL_RenderCopy(renderer_, t, nullptr, &stage);
         }
@@ -893,7 +893,7 @@ void GameScreen::draw() {
         subtitles_.close();
     }
     cardShop_.draw(game_);
-    cards_.draw(sprite("dis_d")); // "dis_%c" with the language letter DS:A0F0 (seg1:190D)
+    cards_.draw(sprite(std::string("dis_") + language_)); // "dis_%c" with the language letter DS:A0F0 (seg1:190D)
     selectPlayer_.draw();
     flight_.draw();
     if (nails_.isOpen()) nails_.draw(compassTexture());

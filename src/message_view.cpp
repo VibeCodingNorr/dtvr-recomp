@@ -9,9 +9,9 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
-MessageView::MessageView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
+MessageView::MessageView(SDL_Renderer* renderer, const fs::path& root, char language, const ScreenLayout& layout,
                          const std::map<int, std::string>& texts, TextRenderer& text)
-    : renderer_(renderer), root_(root), layout_(layout), texts_(texts), text_(text) {}
+    : renderer_(renderer), root_(root), language_(language), layout_(layout), texts_(texts), text_(text) {}
 
 SDL_Texture* MessageView::bitmap(const fs::path& relative, int& w, int& h) {
     const std::string key = relative.generic_string();
@@ -43,7 +43,7 @@ MessageView::Geometry MessageView::geometry() {
     if (n.cardPicture >= 0) { // DS:1A6C: "%s\%d\%c\%dcard_%.2d.bmp" instead of the showmaster
         char name[32];
         std::snprintf(name, sizeof name, "%dcard_%02d.bmp", layout_.artDir, n.cardPicture + 1);
-        g.picture = bitmap(fs::path("bmp") / dir / "d" / name, g.pw, g.ph);
+        g.picture = bitmap(fs::path("bmp") / dir / languageDir(language_) / name, g.pw, g.ph);
     }
     if (!g.picture && n.picture == Notice::Picture::Drago) g.picture = bitmap(fs::path("bmp") / dir / "qp.bmp", g.pw, g.ph);
     if (!g.picture && n.picture == Notice::Picture::Professor) g.picture = bitmap(fs::path("butt") / "prof.bmp", g.pw, g.ph);

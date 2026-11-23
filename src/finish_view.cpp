@@ -73,15 +73,15 @@ void fillKeyed(SDL_Surface* src, SDL_Surface* dst, int x, int y) {
 
 } // namespace
 
-FinishView::FinishView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
-    : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
+FinishView::FinishView(SDL_Renderer* renderer, const fs::path& root, char language, const int& canvasWidth, const int& canvasHeight)
+    : renderer_(renderer), root_(root), language_(language), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool FinishView::start(char driverLetter, const std::string& oemTownName, Uint32 now) {
     active_ = false;
     const fs::path butt("butt");
     const fs::path zielFile = findCaseInsensitive(root_, butt / "ziel.bmp");
-    const fs::path bannerFile = findCaseInsensitive(root_, butt / "d" / "banner.bmp");
-    const fs::path photoFile = findCaseInsensitive(root_, butt / "d" / "ziel" / (finishPhotoName(oemTownName) + ".bmp"));
+    const fs::path bannerFile = findCaseInsensitive(root_, butt / languageDir(language_) / "banner.bmp");
+    const fs::path photoFile = findCaseInsensitive(root_, butt / languageDir(language_) / "ziel" / (finishPhotoName(oemTownName) + ".bmp"));
     if (zielFile.empty() || bannerFile.empty() || photoFile.empty()) return false; // seg7:26E8 / 298C
     Surface scene = loadBmp(zielFile);
     if (!scene || !scene->format->palette) return false;
