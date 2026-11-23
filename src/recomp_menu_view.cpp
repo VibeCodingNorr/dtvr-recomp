@@ -15,7 +15,6 @@ constexpr SDL_Color kGold{214, 170, 80, 255};
 constexpr SDL_Color kText{238, 226, 200, 255};
 constexpr SDL_Color kMuted{170, 150, 118, 255};
 constexpr SDL_Color kDark{34, 22, 12, 255};
-constexpr SDL_Color kWarn{244, 150, 64, 255};
 
 void fill(SDL_Renderer* r, const SDL_Rect& rect, SDL_Color c, Uint8 alpha) {
     SDL_SetRenderDrawColor(r, c.r, c.g, c.b, alpha);
@@ -216,15 +215,9 @@ void RecompMenuView::draw() {
                        TextStyle{px(24), true, false, false, true, 0, focused ? kGold : kMuted});
             break;
         }
-        std::string tag = item.original ? "ORIGINAL" : "";
-        SDL_Color tagColour = kMuted;
-        if (item.restart) {
-            tag = menu_.restartPending() ? "NEUSTART NÖTIG" : "AB NEUSTART";
-            tagColour = menu_.restartPending() ? kWarn : kMuted;
-        }
-        if (!tag.empty())
-            text_.draw(renderer_, tag, ScreenRect{row.x, row.y + (row.h - px(14)) / 2, tagRight - row.x, px(14)},
-                       TextStyle{px(12), true, false, false, true, 0, tagColour});
+        if (item.original)
+            text_.draw(renderer_, "ORIGINAL", ScreenRect{row.x, row.y + (row.h - px(14)) / 2, tagRight - row.x, px(14)},
+                       TextStyle{px(12), true, false, false, true, 0, kMuted});
     }
 
     // Footer: the focused entry's explanation and the keys.

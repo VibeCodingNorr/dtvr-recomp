@@ -27,7 +27,7 @@ class IntroView {
 public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
-    IntroView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
+    IntroView(SDL_Renderer* renderer, const std::filesystem::path& root, const int& canvasWidth, const int& canvasHeight);
     ~IntroView() { if (palette_) SDL_FreePalette(palette_); }
     IntroView(const IntroView&) = delete;
     IntroView& operator=(const IntroView&) = delete;
@@ -52,7 +52,8 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    int canvasWidth_, canvasHeight_;
+    const int& canvasWidth_; // the shared layout's size (live widescreen switch)
+    const int& canvasHeight_;
     SoundPlayer* sound_ = nullptr;
     SubtitleView* subtitles_ = nullptr;
     bool subtitlesOn_ = false;

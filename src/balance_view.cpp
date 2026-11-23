@@ -24,7 +24,7 @@ const SceneRecord kHold{80, 159, 0, 3, {"HEBEL02", "HEBEL03", "HEBEL02", "HEBEL0
 
 } // namespace
 
-BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
+BalanceView::BalanceView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans,

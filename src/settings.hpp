@@ -20,6 +20,9 @@ struct Settings {
     // [Extensions] (recomb only): ComputerExtraCards lets computers also play the
     // cards rally.exe's scores never pick (applied to new games, saved with them).
     bool computerExtraCards = false;
+    // [Extensions] AnimationTempo (recomb only): 1, 2 or 4 times the speed of event
+    // animations and the vehicles' drive (src/presentation_clock.hpp); others read as 1.
+    int animationTempo = 1;
     // [Default] Rounds (seg8:099B / 0A6A): the stage count the window TEMP offers and keeps.
     int rounds = 99;
     // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of

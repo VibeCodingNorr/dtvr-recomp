@@ -73,7 +73,7 @@ void fillKeyed(SDL_Surface* src, SDL_Surface* dst, int x, int y) {
 
 } // namespace
 
-FinishView::FinishView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
+FinishView::FinishView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool FinishView::start(char driverLetter, const std::string& oemTownName, Uint32 now) {

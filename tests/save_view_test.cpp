@@ -40,7 +40,8 @@ int main() {
     TextRenderer text;
     const std::map<int, std::string> texts;
     for (int width : {640, 800, 1024}) {
-        SaveView view(nullptr, layoutForCanvas(width), texts, text,
+        const ScreenLayout layout = layoutForCanvas(width); // the view keeps a reference
+        SaveView view(nullptr, layout, texts, text,
                       [](const std::string&) -> SDL_Texture* { return nullptr; });
         using Result = SaveView::Result;
         CHECK(key(view, SDLK_RETURN) == Result::None);

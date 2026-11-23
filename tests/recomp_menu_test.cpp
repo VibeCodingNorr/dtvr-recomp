@@ -50,13 +50,13 @@ int main() {
     CHECK(m.input(Input::Back) == Action::None && m.isOpen() && !m.inItems());
     CHECK(m.input(Input::Back) == Action::Resume && !m.isOpen());
 
-    // Breitbild needs a restart; turning it back clears the note.
+    // Breitbild switches at once (the game window relayouts).
     m.open(base, true);
     m.focusPage(graphics);
     m.focusItem(2);
     CHECK(m.pages()[size_t(graphics)].items[2].field == RecompMenu::Field::Widescreen);
-    CHECK(m.activate() == Action::Changed && m.settings().widescreen && m.restartPending());
-    CHECK(m.step(-1) == Action::Changed && !m.settings().widescreen && !m.restartPending());
+    CHECK(m.activate() == Action::Changed && m.settings().widescreen);
+    CHECK(m.step(-1) == Action::Changed && !m.settings().widescreen);
     // Schriftglättung cycles 0..2 in both directions.
     m.focusItem(3);
     CHECK(m.settings().textSmoothing == 1 && m.step(1) == Action::Changed && m.settings().textSmoothing == 2);
@@ -97,8 +97,13 @@ int main() {
     CHECK(m.isOpen() && m.page() == audio && m.inItems() && m.row() == 0);
     const int game = pageIndex(m, "Spiel");
     m.focusPage(game);
-    m.focusItem(1); // Wartezeit: four steps
+    m.focusItem(1); // Animationstempo: 1x, 2x, 4x
+    CHECK(m.settings().animationTempo == 1 && m.step(1) == Action::Changed && m.settings().animationTempo == 2);
+    CHECK(m.step(1) == Action::Changed && m.settings().animationTempo == 4 && m.step(1) == Action::Changed
+          && m.settings().animationTempo == 1 && m.step(-1) == Action::Changed && m.settings().animationTempo == 4);
+    m.focusItem(2); // Wartezeit: four steps, separate from the tempo
     CHECK(m.step(-1) == Action::Changed && m.settings().pause == 3 && m.step(1) == Action::Changed && m.settings().pause == 0);
+    CHECK(m.settings().animationTempo == 4);
 
     // The controls page has only info rows: no entry takes the focus.
     const int controls = pageIndex(m, "Steuerung");

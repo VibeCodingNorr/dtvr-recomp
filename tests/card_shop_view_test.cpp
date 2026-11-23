@@ -182,7 +182,8 @@ int main() {
     {
         Game single(board, towns, 2, 2, 3, 1);
         arrive(single);
-        CardShopView view(nullptr, assets.root, layoutForCanvas(640), texts, text);
+        const ScreenLayout layout640 = layoutForCanvas(640); // the view keeps a reference
+        CardShopView view(nullptr, assets.root, layout640, texts, text);
         view.open(single);
         key(view, single, SDLK_RIGHT);                              // Verkaufen
         CHECK(key(view, single, SDLK_RETURN).sound == 2);           // sell mode

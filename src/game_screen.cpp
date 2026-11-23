@@ -211,6 +211,18 @@ bool GameScreen::eventSceneActive(Uint32 now) const {
     return now - sceneStart_ < length;
 }
 
+void GameScreen::layoutChanged() {
+    origin_ = clampOrigin(origin_, viewSize());
+    const TilePoint around = clampOrigin(TilePoint{surroundOrigin_.x, surroundOrigin_.y}, viewSize());
+    surroundOrigin_ = SDL_Point{around.x, around.y};
+}
+
+void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
+    if (clock_.rate() != settings_.animationTempo) clock_.setRate(settings_.animationTempo, realNow);
+    clock_.setPaused(paused, realNow);
+    clock_.update(realNow);
+}
+
 void GameScreen::advanceVehicles(Uint32 now) {
     if (eventSceneActive(now)) { // Nessie: seg6:3064 on Loch Ness, then on the place
         const size_t pass = std::min(size_t((now - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
@@ -220,8 +232,9 @@ void GameScreen::advanceVehicles(Uint32 now) {
                 origin_ = centredOrigin(c.x, c.y, viewSize());
             }
     }
-    const Uint32 elapsed = lastAdvance_ == 0 ? 0 : now - lastAdvance_;
+    const Uint32 elapsed = advanced_ ? now - lastAdvance_ : 0;
     lastAdvance_ = now;
+    advanced_ = true;
     carry_ += elapsed;
     const int ticks = int(carry_ / kVehicleTickMs);
     carry_ %= kVehicleTickMs;
@@ -544,7 +557,7 @@ void GameScreen::drawMap() {
     // moves every sprite by (-16, -16) before seg2:1A91 draws it minus the origin.
     constexpr int kSpriteShift = 16; // seg2:3F21 ff.
     static const char* kFacing[5] = {"", "UP", "R", "DOWN", "L"};
-    const Uint32 tick = SDL_GetTicks() / kVehicleTickMs;
+    const Uint32 tick = presentationNow() / kVehicleTickMs; // the drive's passes follow the tempo
     SDL_RenderSetClipRect(renderer_, &target);
     for (int p = 0; p < kPlayerSlots; ++p) {
         if (!game_.players()[size_t(p)].status) continue;
@@ -566,8 +579,8 @@ void GameScreen::drawMap() {
                            target.y + (at.y + 2 - air.height - origin.y - kSpriteShift) * z, w * z, h * z};
         SDL_RenderCopy(renderer_, vehicle, nullptr, &box);
     }
-    if (eventSceneActive(SDL_GetTicks())) { // seg8:6E81: the record's frame at its position
-        const size_t pass = size_t((SDL_GetTicks() - sceneStart_) / kSceneStepMs);
+    if (eventSceneActive(presentationNow())) { // seg8:6E81: the record's frame at its position
+        const size_t pass = size_t((presentationNow() - sceneStart_) / kSceneStepMs);
         const SceneStep& step = sceneSteps_[std::min(pass, sceneSteps_.size() - 1)];
         const auto& frames = sceneFrames_[scene_->file];
         const auto it = step.frame ? frames.find(upperAscii(step.frame)) : frames.end();
@@ -794,7 +807,7 @@ void GameScreen::draw() {
     film_.draw();
     sight_.draw();
     menu_.draw();
-    if (!eventSceneActive(SDL_GetTicks())) messages_.draw(game_); // seg8:6EF2 after the animation
+    if (!eventSceneActive(presentationNow())) messages_.draw(game_); // seg8:6EF2 after the animation
 }
 
 void GameScreen::drawBackground(SDL_Texture* background) {

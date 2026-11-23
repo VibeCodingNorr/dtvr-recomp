@@ -46,7 +46,7 @@ private:
     int itemAt(int x, int y) const;
 
     SDL_Renderer* renderer_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     TextRenderer& text_;
     SpriteLookup sprite_;
     std::string name_;

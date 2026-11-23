@@ -27,7 +27,7 @@ const SceneRecord kLight{0, 0, 0, 1, {"licht1", "licht2"}};  // DS:4782 (delay 0
 
 } // namespace
 
-StageView::StageView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight,
+StageView::StageView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight,
                      const Board& board, const std::vector<Town>& towns)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight), board_(board),
       towns_(towns) {}

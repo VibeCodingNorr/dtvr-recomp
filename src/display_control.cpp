@@ -28,6 +28,15 @@ bool DisplayControl::apply(const Settings& settings) {
     return ok;
 }
 
+void DisplayControl::layoutChanged() {
+    if (!fullscreen()) {
+        int w = 0, h = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        if (h > 0) SDL_SetWindowSize(window_, h * layout_.width / layout_.height, h);
+    }
+    resetLogicalSize();
+}
+
 void DisplayControl::beginFrame() {
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderClear(renderer_);
@@ -36,13 +45,14 @@ void DisplayControl::beginFrame() {
     const float scale = std::min(sx, sy);
     const int factor = std::max(1, int(std::ceil(scale - 0.001f)));
     if (std::fabs(scale - float(factor)) < 0.001f) return; // whole number: no gaps
-    if (!canvas_ || canvasFactor_ != factor) {
+    if (!canvas_ || canvasFactor_ != factor || canvasWidth_ != layout_.width) {
         if (canvas_) SDL_DestroyTexture(canvas_);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear"); // the one downscale of the frame
         canvas_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
                                     layout_.width * factor, layout_.height * factor);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
         canvasFactor_ = factor;
+        canvasWidth_ = layout_.width;
         if (!canvas_) { std::cerr << "Leinwand: " << SDL_GetError() << "\n"; return; }
     }
     if (SDL_SetRenderTarget(renderer_, canvas_) != 0) return;

@@ -38,7 +38,7 @@ private:
     static constexpr int kOk = 6, kNo = 7; // DS:8D64
 
     SDL_Renderer* renderer_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const std::map<int, std::string>& texts_;
     TextRenderer& text_;
     SpriteLookup sprite_;

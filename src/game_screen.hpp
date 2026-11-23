@@ -11,6 +11,7 @@
 #include "film_view.hpp"
 #include "vehicle_air.hpp"
 #include "vehicle_anim.hpp"
+#include "presentation_clock.hpp"
 #include "sight_view.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
@@ -112,8 +113,16 @@ public:
     std::vector<EstateRow> estateRows() const;
     // Top-left world pixel shown in the viewport (follows the current player).
     SDL_Point viewOrigin() const;
+    // Animation tempo (recomb, [Extensions] AnimationTempo): the presentation time of
+    // event animations and the vehicles' drive; call once per frame with real time.
+    // `paused` (the recomb menu) stops it.
+    void tickPresentation(Uint32 realNow, bool paused);
+    Uint32 presentationNow() const { return clock_.now(); }
+    // The shared layout changed size (widescreen switch): keep the map origin valid.
+    void layoutChanged();
     // Smooth driving (round 31): the drawn vehicle runs after the game position at
-    // 4 pixels per 50 ms tick (seg2:1CB0: DS:19EA / 19F4 = 2, shifted by DS:34 = 1).
+    // 4 pixels per 20 ms tick (seg2:1CB0: DS:19EA / 19F4 = 2, shifted by DS:34 = 1).
+    // `now` is presentation time.
     void advanceVehicles(Uint32 now);
     // seg2:3216: centre the map on the current player (Space, zoom, turn start, spin).
     void centreOnPlayer();
@@ -172,7 +181,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const Board& board_;
     const std::vector<Town>& towns_;
     const Game& game_;
@@ -236,6 +245,8 @@ private:
     std::array<bool, kPlayerSlots> airSet_{};
     std::array<bool, kPlayerSlots> stepPending_{};  // a step began, its first tick is still due
     Uint32 lastAdvance_ = 0;
+    bool advanced_ = false;                         // lastAdvance_ is set
+    PresentationClock clock_;
     MapViewSize viewSize() const;
     TilePoint origin_{};          // DS:956A / 9568 outside Umfeld
     bool originSet_ = false;
@@ -257,6 +268,7 @@ struct GameWindowOptions {
     int aspectW = 0, aspectH = 0; // widescreen aspect; 0: the display's
     int recompMenuPage = -1;      // open the recomb menu on this page at start
     int windowW = 0, windowH = 0; // initial window size (tests of the scaled output)
+    std::string pressKeys;        // --press: scripted keys for smoke tests
     bool smokeTest = false;       // draw `frames` frames and exit
     int frames = 1;
     bool rollAtStart = false;     // spin at once (tests of the slot machine)

@@ -318,12 +318,17 @@ the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume
 save, load, original RIGHTBTN menu, quit with the original question),
 Grafik, Audio, Spiel and Steuerung. Switches marked ORIGINAL are those of the
 original options window; the others are recomb settings in `[Display]` /
-`[Extensions]`. Changes apply at once and persist, Breitbild at the next start. In
+`[Extensions]`. Changes apply at once and persist. In
 the original turn menu Escape did nothing; dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
 the recomb opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
 keep the original Escape (Weiter spielen, Zurück).
 The options window has a recomb entry "Weitere Einstellungen" that opens the menu.
+
+**Animationstempo** (Spiel page, `[Extensions] AnimationTempo` 1 / 2 / 4): event
+animations and the vehicles' drive at 1×, 2× or 4×; messages keep their reading
+time, and the time limit, slot machine, Risiko, music, speech and films keep real
+time. Game outcomes do not depend on it ([handoff](docs/animation-tempo.md)).
 
 **Audio** (also F8): Musik (the original MIDI switch), Klangset (installed complete
 Ogg sets; the change applies at the next piece), Musiklautstärke (slider, steps of
@@ -337,6 +342,16 @@ option Joystick is on: d-pad or left stick steer and move through menus, A confi
 **F11** or **Alt+Enter** switches the game window between window and fullscreen
 (`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or
 1024 × 768) is scaled by whole numbers with black borders; the window can be resized.
+
+**Widescreen** (optional recomb extension, off by default): `[Display] Widescreen=1`
+or `--widescreen` widens the canvas to the display's aspect (at most 21:9; `--aspect
+16:9` chooses one, `--no-widescreen` overrides the setting). The map window grows and
+shows more of the world; portrait, hand stack and info panel move to the right edge.
+Title, player setup, options and the overview keep their original 4:3 size, centred.
+The wide canvas always fills the display's height (`IntegerScale` applies to 4:3 only).
+At a fractional scale the frame is drawn at the next whole multiple and scaled to the
+display once (no gaps between window border pieces).
+Breitbild in the recomb menu switches at once (a window keeps its height).
 
 Settings live in `$XDG_CONFIG_HOME/dtvr-recomb/settings.ini` (else
 `~/.config/dtvr-recomb/settings.ini`): `[Setup]` the original options, `[Default]
@@ -356,16 +371,6 @@ players, together 1–8; one human alone gets a computer opponent; `--rounds N` 
 drive field by field (the opposite direction takes a step back) and **Enter** to
 end the turn after arriving. Before spinning, **1–8** plays the card in that
 hand slot (37 of 41 card types are playable, the other four are passive; with three or more players **T**
-**Widescreen** (optional recomb extension, off by default): `[Display] Widescreen=1`
-or `--widescreen` widens the canvas to the display's aspect (at most 21:9; `--aspect
-16:9` chooses one, `--no-widescreen` overrides the setting). The map window grows and
-shows more of the world; portrait, hand stack and info panel move to the right edge.
-Title, player setup, options and the overview keep their original 4:3 size, centred.
-The wide canvas always fills the display's height (`IntegerScale` applies to 4:3 only).
-At a fractional scale the frame is drawn at the next whole multiple and scaled to the
-display once (no gaps between window border pieces).
-Read at start.
-
 chooses the target; Nägel waits for an arrow key, Flugzeug flies to the current
 destination). When the professor or the football club makes an offer, **I**
 invests half the cash (rounded to 1,000) and **N** declines. After stopping in a town the terminal lists its
@@ -449,11 +454,15 @@ SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --smoke-test
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --tiles --smoke-test --screenshot /path/to/artifacts/tiles.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --sprites --smoke-test --screenshot /path/to/artifacts/sprites.bmp
 SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted --world --smoke-test --screenshot /path/to/artifacts/world.bmp
+SDL_VIDEODRIVER=dummy ./build/dtvr-recomb --data /path/to/extracted/program --game --no-title --press Escape,Left,Down,Right --smoke-test --frames 60 --screenshot /path/to/artifacts/menu.bmp
 ctest --test-dir build --output-on-failure
 python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analysis.json
 ```
 
-The smoke test renders one frame and exits, including without a desktop session.
+The smoke test renders one frame (`--frames N`: N frames) and exits, including without a
+desktop session. `--press` posts SDL key names, one every 10 frames, so interactive
+flows can be checked with the dummy driver; `--window-size WxH` and `--aspect W:H`
+reproduce display sizes.
 Screenshots use BMP format. The analysis reports file counts, the executable hash,
 NE segments, imported modules and the entry point. It never executes Windows code.
 

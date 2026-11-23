@@ -45,7 +45,7 @@ private:
     void compose(const Game& game);
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const Board& board_;
     SpriteLookup sprite_;
     MouseControlView mouse_;

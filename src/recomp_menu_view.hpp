@@ -41,7 +41,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     TextRenderer& text_;
     std::string version_;
     RecompMenu menu_;

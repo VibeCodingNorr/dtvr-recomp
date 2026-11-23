@@ -24,6 +24,9 @@ public:
     // printed) when the window mode could not be changed.
     bool apply(const Settings& settings);
     bool fullscreen() const;
+    // The shared layout changed size (widescreen switch): a window keeps its height
+    // and takes the new aspect; the canvas texture is rebuilt at the next frame.
+    void layoutChanged();
     // Saves the scaled output, borders included, as BMP; throws on failure.
     void screenshot(const std::string& path);
     // One frame of the canvas. At a fractional output scale every piece scaled on its
@@ -37,9 +40,9 @@ private:
     void resetLogicalSize();
     SDL_Window* window_;
     SDL_Renderer* renderer_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     SDL_Texture* canvas_ = nullptr; // owned; see ~DisplayControl
-    int canvasFactor_ = 0;
+    int canvasFactor_ = 0, canvasWidth_ = 0;
     bool drawing_ = false;
 public:
     ~DisplayControl() { if (canvas_) SDL_DestroyTexture(canvas_); }

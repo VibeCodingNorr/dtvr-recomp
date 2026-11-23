@@ -3,7 +3,7 @@
 ## Objective and current state
 
 Reconstruct Die total verrückte Rallye as a native Linux game using the user's
-original installation. Repository: https://github.com/VibeCodingNorr/dtvr-recomb.
+original installation. Repository: https://github.com/VibeCodingNorr/dtvr-recomp.
 Communicate with the user in German. Code and technical documentation may use English.
 
 ## Parallel work with Claude

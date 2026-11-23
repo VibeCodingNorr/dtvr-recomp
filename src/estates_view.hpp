@@ -67,7 +67,7 @@ private:
     void keepVisible(int count);
 
     SDL_Renderer* renderer_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     const std::map<int, std::string>& texts_; // language file, UTF-8
     TextRenderer& text_;
     SpriteLookup sprite_;

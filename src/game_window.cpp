@@ -10,6 +10,7 @@
 #include "music_menu.hpp"
 #include "display_control.hpp"
 #include "recomp_menu_view.hpp"
+#include "scripted_input.hpp"
 #include "ne_strings.hpp"
 
 #include <array>
@@ -42,10 +43,11 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     // optional widescreen extension widens it to the display's aspect.
     const bool widescreen = options.widescreen < 0 ? displaySettings.widescreen : options.widescreen != 0;
     const ScreenLayout baseLayout = layoutForScreen(display.w, display.h, options.canvasWidth);
-    const ScreenLayout layout =
-        widescreen ? widenLayout(baseLayout, widescreenExtra(baseLayout, options.aspectW ? options.aspectW : display.w,
-                                                             options.aspectH ? options.aspectH : display.h))
-                   : baseLayout;
+    const ScreenLayout wideLayout = widenLayout(baseLayout, widescreenExtra(baseLayout, options.aspectW ? options.aspectW : display.w,
+                                                                            options.aspectH ? options.aspectH : display.h));
+    // One layout shared by every view (they keep references): the widescreen switch of
+    // the recomb menu assigns it while the game runs.
+    ScreenLayout layout = widescreen ? wideLayout : baseLayout;
     const bool startFullscreen = options.fullscreen || (displaySettings.fullscreen && !options.smokeTest);
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
         SDL_CreateWindow("Die total verrueckte Rallye", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, layout.width,
@@ -89,11 +91,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     music.setEnabled(musicEnabled != 0);
     music.interrupt(options.title ? "i" : "a1");
     DisplayControl displayControl(window.get(), renderer.get(), layout);
+    ScriptedInput scripted(options.pressKeys); // --press (smoke tests)
     RecompMenuView recompMenu(renderer.get(), root, layout, screen.textRenderer(), DTVR_VERSION); // Esc (recomb)
     // Declare the audio device after the decoder so it closes before the decoder.
     SoundPlayer sound(root); // WaveMix (seg1:2C9B)
     sound.setMusic(&music.stream());
     screen.setSound(&sound);
+    auto menuSettings = [&] { // the layout in use (--[no-]widescreen may override the setting)
+        Settings s = screen.settings();
+        s.widescreen = layout.width != baseLayout.width;
+        return s;
+    };
     auto applySettings = [&](const Settings& s) { // saved; the OPTION window shows the same smoothing
         screen.applySettings(s);
         screen.options().setTextSmoothing(s.textSmoothing);
@@ -258,7 +266,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     if (options.zoom) screen.toggleZoom();
     if (options.openOptions) screen.options().open(screen.settings());
     if (options.recompMenuPage >= 0) {
-        recompMenu.menu().open(screen.settings(), true);
+        recompMenu.menu().open(menuSettings(), true);
         recompMenu.menu().focusPage(options.recompMenuPage);
         recompMenu.menu().activate(); // into the page's entries
     }
@@ -294,7 +302,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         if (!screen.title()) music.turn(play.game().eventClock().turns);
         music.tick();
         for (const auto& cue : play.game().takeMusic()) if (!screen.title()) music.interrupt(cue);
-        screen.advanceVehicles(SDL_GetTicks());
+        screen.tickPresentation(SDL_GetTicks(), recompMenu.isOpen());
+        screen.advanceVehicles(screen.presentationNow());
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         // The original handles a field when the vehicle has reached it (the arrival
         // runs after the drive), so its message waits for the drawn car like its sounds.
@@ -327,7 +336,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 if (screen.messages().frontSerial() != sceneSerial) {
                     sceneSerial = screen.messages().frontSerial();
                     if (const EventScene* scene = eventSceneForNotice(front->text))
-                        screen.startEventScene(*scene, front->focusX, front->focusY, front->variant, SDL_GetTicks());
+                        screen.startEventScene(*scene, front->focusX, front->focusY, front->variant, screen.presentationNow());
                 }
             } else {
                 screen.eventFocus(-1, -1);
@@ -406,7 +415,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             && !screen.film().active()) {
             const Uint32 wait = cur.demoEnding() ? 100 : Uint32(2500 * screen.settings().pauseFactor());
             // The wait starts with the window: an event's animation plays before it (seg8).
-            if (screen.eventSceneActive(SDL_GetTicks())) messageShown = 0;
+            if (screen.eventSceneActive(screen.presentationNow())) messageShown = 0;
             else if (messageShown == 0) messageShown = SDL_GetTicks();
             else if (SDL_GetTicks() - messageShown > wait) {
                 screen.messages().dismiss();
@@ -469,7 +478,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
                            || screen.sight().isOpen() || screen.intro().active()
                            // the slot machine and event animations run synchronously in rally.exe
-                           || screen.slotActive(SDL_GetTicks()) || screen.eventSceneActive(SDL_GetTicks())
+                           || screen.slotActive(SDL_GetTicks()) || screen.eventSceneActive(screen.presentationNow())
                            || screen.risiko().blinking(SDL_GetTicks());
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         // seg2:1618: after the field action (its message, town dialog, card dialog or card
@@ -506,6 +515,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             report();
         // seg2:8A30 every 80 ms while [Setup] Joystick is on: keys for the focused window.
         if (!options.smokeTest) controller.update(SDL_GetTicks(), screen.settings().value[Settings::Joystick] != 0);
+        scripted.pump(frame);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
@@ -546,9 +556,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             // (OPTION seg1:B60A, PLAYER); the options window has its own entry for it.
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F8
                 && (recompMenu.isOpen() || (!screen.options().isOpen() && !screen.setup().isOpen()))) {
-                if (event.key.repeat) {}
-                else if (recompMenu.isOpen()) recompMenu.menu().close();
-                else recompMenu.menu().openAt(screen.settings(), !screen.title(), "Audio");
+                if (event.key.repeat) {} else if (recompMenu.isOpen()) recompMenu.menu().close();
+                else recompMenu.menu().openAt(menuSettings(), !screen.title(), "Audio");
                 heldArrow = SDLK_UNKNOWN;
                 continue;
             }
@@ -557,6 +566,12 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 const Action a = recompMenu.handle(event);
                 if (a == Action::Changed) {
                     applySettings(recompMenu.menu().settings());
+                    if (const ScreenLayout& next = screen.settings().widescreen ? wideLayout : baseLayout;
+                        next.width != layout.width) { // widescreen on / off at once
+                        layout = next;
+                        displayControl.layoutChanged();
+                        screen.layoutChanged();
+                    }
                     displayControl.apply(screen.settings());
                     if (screen.options().isOpen()) screen.options().open(screen.settings()); // shows the same switches
                 } else if (a == Action::MusicChanged) {
@@ -575,7 +590,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             }
             if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow) heldArrow = SDLK_UNKNOWN;
             const bool click = event.type == SDL_MOUSEBUTTONDOWN;
-            if (screen.messages().open() && screen.eventSceneActive(SDL_GetTicks())) continue; // animation first
+            if (screen.messages().open() && screen.eventSceneActive(screen.presentationNow())) continue; // animation first
             if (screen.messages().question()) { // seg2:2404: obstacle question (text 600)
                 if (const int answer = screen.messages().handle(event); answer) {
                     const int text = screen.messages().frontText();
@@ -598,14 +613,14 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 // Recomb deviation: in MAIN, Escape would post the checked item "Neues Spiel"
                 // (seg5:543D); it opens the recomb menu instead. Other menus keep seg5:543D.
                 if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && menu.name() == "MAIN") {
-                    if (!event.key.repeat) recompMenu.menu().open(screen.settings(), false);
+                    if (!event.key.repeat) recompMenu.menu().open(menuSettings(), false);
                     continue;
                 }
                 const int id = menu.handle(event);
                 if (const int s = menu.takeSound(); s >= 0) sound.play(2, s);
                 if (id) command(id);
                 else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && !event.key.repeat)
-                    recompMenu.menu().open(screen.settings(), !screen.title()); // Escape does nothing here in rally.exe
+                    recompMenu.menu().open(menuSettings(), !screen.title()); // Escape does nothing here in rally.exe
                 continue;
             }
             const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
@@ -659,7 +674,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                 const OptionsView::Result r = screen.options().handle(toStage(event, layout));
                 if (const int fx = screen.options().takeSound(); fx >= 0) sound.play(2, fx);
                 if (r == OptionsView::Result::RecompMenu) { // graphics, sound sets and more (recomb)
-                    recompMenu.menu().openAt(screen.settings(), !screen.title(), "Grafik");
+                    recompMenu.menu().openAt(menuSettings(), !screen.title(), "Grafik");
                     continue;
                 }
                 if (r != OptionsView::Result::None) screen.applySettings(screen.options().settings());
@@ -961,7 +976,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             // seg4:01D1: Escape and Backspace open RIGHTBTN; the recomb menu takes Escape
             // (its entry "Originales Spielmenü" leads to RIGHTBTN).
             if (key == SDLK_ESCAPE && !risiko && !screen.title() && !event.key.repeat)
-                recompMenu.menu().open(screen.settings(), true);
+                recompMenu.menu().open(menuSettings(), true);
             else if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN");
             else if (play.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();
         }

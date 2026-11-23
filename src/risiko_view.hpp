@@ -41,7 +41,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     std::map<std::string, Texture> frames_;
     bool loaded_ = false;
     int pressed_ = 0;

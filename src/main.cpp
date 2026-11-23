@@ -168,6 +168,7 @@ static int run(int argc, char** argv) {
     int aspectW = 0, aspectH = 0;  // --aspect W:H
     int recompMenuPage = -1;       // --recomp-menu PAGE
     int windowW = 0, windowH = 0;  // --window-size WxH
+    std::string pressKeys;         // --press Key,Key,...
     int widescreen = -1;           // --widescreen / --no-widescreen (default: [Display] Widescreen)
     bool fullscreen = false;       // --game: start in fullscreen (F11 / Alt+Enter toggle)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
@@ -183,7 +184,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomb --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--press Escape,Down,Return] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
@@ -224,6 +225,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--zoom") zoomIn = true;
         else if (arg == "--options") openOptions = true;
         else if (arg == "--recomp-menu" && i + 1 < argc) recompMenuPage = std::stoi(argv[++i]);
+        else if (arg == "--press" && i + 1 < argc) pressKeys = argv[++i]; // Key,Key,... (smoke tests)
         else if (arg == "--window-size" && i + 1 < argc) { // WxH
             const std::string a = argv[++i];
             const size_t x = a.find('x');
@@ -307,6 +309,7 @@ static int run(int argc, char** argv) {
         options.zoom = zoomIn;
         options.openOptions = openOptions;
         options.recompMenuPage = recompMenuPage;
+        options.pressKeys = pressKeys;
         options.windowW = windowW;
         options.windowH = windowH;
         options.demo = demo;

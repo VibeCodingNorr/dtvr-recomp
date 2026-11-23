@@ -40,7 +40,7 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    ScreenLayout layout_;
+    const ScreenLayout& layout_; // shared; the widescreen switch changes it
     SbButtonGroup buttons_;      // id = hand slot
     std::map<int, int> types_;   // hand slot -> card type
     std::map<int, Texture> pictures_;

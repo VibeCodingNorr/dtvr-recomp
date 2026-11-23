@@ -55,7 +55,7 @@ bool towardsTarget(SDL_Color& c, const SDL_Color& target) {
 
 } // namespace
 
-IntroView::IntroView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
+IntroView::IntroView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 SDL_Rect IntroView::window() const {

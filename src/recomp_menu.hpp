@@ -20,7 +20,7 @@ public:
     // Settings the entries edit (Settings fields; Original = a switch of the OPTION window)
     // and the local music preferences (music.ini).
     enum class Field { None, Fullscreen, IntegerScale, Widescreen, TextSmoothing, Views, Animations, Colorcycle,
-                       Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards,
+                       Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards, AnimationTempo,
                        MusicPack, MusicVolume, MusicPlaying, MusicNote };
 
     // The installed Ogg sound sets (renderings of the original MIDI music or CD audio)
@@ -40,7 +40,6 @@ public:
         Field field = Field::None;
         Action command = Action::None; // Kind::Command
         std::vector<std::string> choices; // Kind::Choice (Toggle: Aus / An)
-        bool restart = false;             // applied at the next start
         bool original = false;            // a switch of the original OPTION window
         std::string value;                // Kind::Info: right column
     };
@@ -70,7 +69,6 @@ public:
     bool inItems() const { return inItems_; }
     // Value shown for an entry ("An", "Bildgröße", ...); empty for commands.
     std::string valueText(const Item& item) const;
-    bool restartPending() const { return restartPending_; }
 
 private:
     int fieldValue(Field f) const;
@@ -82,10 +80,10 @@ private:
     void moveRow(int delta);
 
     std::vector<Page> pages_;
-    Settings settings_, opened_;
+    Settings settings_;
     Music music_;
     int page_ = 0, row_ = 0;
-    bool inItems_ = false, open_ = false, restartPending_ = false, inGame_ = true;
+    bool inItems_ = false, open_ = false, inGame_ = true;
 };
 
 } // namespace dtvr

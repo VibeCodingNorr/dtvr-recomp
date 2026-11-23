@@ -20,7 +20,7 @@ Item command(std::string label, Action action, std::string hint) {
     return i;
 }
 
-Item toggle(std::string label, Field field, std::string hint, bool original = false, bool restart = false) {
+Item toggle(std::string label, Field field, std::string hint, bool original = false) {
     Item i;
     i.kind = Kind::Toggle;
     i.label = std::move(label);
@@ -28,7 +28,6 @@ Item toggle(std::string label, Field field, std::string hint, bool original = fa
     i.hint = std::move(hint);
     i.choices = {"Aus", "An"};
     i.original = original;
-    i.restart = restart;
     return i;
 }
 
@@ -71,7 +70,7 @@ void RecompMenu::build(bool inGame) {
         toggle("Ganzzahlige Skalierung", Field::IntegerScale,
                "Scharfe Pixel mit schwarzen Rändern; aus: so groß wie möglich. Im Breitbild immer bildfüllend."),
         toggle("Breitbild", Field::Widescreen,
-               "Breiteres Kartenfenster im Seitenverhältnis des Bildschirms (bis 21:9).", false, true),
+               "Breiteres Kartenfenster im Seitenverhältnis des Bildschirms (bis 21:9); wirkt sofort."),
         choice("Schriftglättung", Field::TextSmoothing, {"Original", "Bildgröße", "Bildschirmauflösung"},
                "Original: ohne Kantenglättung wie GDI mit 256 Farben (F12)."),
         toggle("Informationen", Field::Views, "Sehenswürdigkeiten auf der Karte (Option des Originals).", true),
@@ -105,6 +104,8 @@ void RecompMenu::build(bool inGame) {
     pages_.push_back(std::move(audio));
     pages_.push_back({"Spiel", {
         toggle("Zeitlimit", Field::TimeOut, "Begrenzte Zeit pro Zug (Option des Originals).", true),
+        choice("Animationstempo", Field::AnimationTempo, {"Original (1\u00d7)", "Schnell (2\u00d7)", "Sehr schnell (4\u00d7)"},
+               "Ereignis-Animationen und Fahrten. Meldungen, Zeitlimit, Musik und Sprache bleiben gleich."),
         choice("Wartezeit der Meldungen", Field::Pause, {"Normal", "1,5-fach", "2-fach", "3-fach"},
                "Wie lange Meldungen der Computer stehen bleiben (Tasten 1–4 des Originals)."),
         toggle("Intro beim Start", Field::ShowIntro, "Spielt das Intro vor dem Titelbild."),
@@ -126,7 +127,7 @@ void RecompMenu::build(bool inGame) {
 void RecompMenu::open(const Settings& settings, bool inGame) {
     inGame_ = inGame;
     build(inGame);
-    settings_ = opened_ = settings;
+    settings_ = settings;
     page_ = 0;
     row_ = 0;
     inItems_ = true; // the first entry, Weiterspielen, has the focus
@@ -171,6 +172,7 @@ int RecompMenu::fieldValue(Field f) const {
     case Field::Pause: return settings_.pause;
     case Field::ShowIntro: return settings_.showIntro;
     case Field::ExtraCards: return settings_.computerExtraCards;
+    case Field::AnimationTempo: return settings_.animationTempo == 4 ? 2 : settings_.animationTempo == 2 ? 1 : 0;
     case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;
     }
     return 0;
@@ -180,10 +182,7 @@ void RecompMenu::setFieldValue(Field f, int v) {
     switch (f) {
     case Field::Fullscreen: settings_.fullscreen = v != 0; break;
     case Field::IntegerScale: settings_.integerScale = v != 0; break;
-    case Field::Widescreen:
-        settings_.widescreen = v != 0;
-        restartPending_ = settings_.widescreen != opened_.widescreen;
-        break;
+    case Field::Widescreen: settings_.widescreen = v != 0; break;
     case Field::TextSmoothing: settings_.textSmoothing = v; break;
     case Field::Views: settings_.value[Settings::Views] = v; break;
     case Field::Animations: settings_.value[Settings::Animations] = v; break;
@@ -196,6 +195,7 @@ void RecompMenu::setFieldValue(Field f, int v) {
     case Field::Pause: settings_.pause = v; break;
     case Field::ShowIntro: settings_.showIntro = v; break;
     case Field::ExtraCards: settings_.computerExtraCards = v != 0; break;
+    case Field::AnimationTempo: settings_.animationTempo = v == 2 ? 4 : v == 1 ? 2 : 1; break;
     case Field::MusicPack: music_.pack = v; break;
     case Field::MusicVolume: music_.volume = std::clamp(v, 0, 100); break;
     case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;

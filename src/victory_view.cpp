@@ -67,7 +67,7 @@ int frameHeight(const std::map<std::string, Texture>& frames, const std::string&
 
 } // namespace
 
-VictoryView::VictoryView(SDL_Renderer* renderer, const fs::path& root, int canvasWidth, int canvasHeight)
+VictoryView::VictoryView(SDL_Renderer* renderer, const fs::path& root, const int& canvasWidth, const int& canvasHeight)
     : renderer_(renderer), root_(root), canvasWidth_(canvasWidth), canvasHeight_(canvasHeight) {}
 
 bool VictoryView::start(const std::vector<int>& ranking, Uint32 now) {

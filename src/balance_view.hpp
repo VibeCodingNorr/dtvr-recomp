@@ -25,7 +25,7 @@ class BalanceView {
 public:
     // B1-B8 of assorted.sbs for the 8-pixel border of seg6:1A68 (round 112).
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); }
-    BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, int canvasWidth, int canvasHeight);
+    BalanceView(SDL_Renderer* renderer, const std::filesystem::path& root, const int& canvasWidth, const int& canvasHeight);
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,
                Uint32 now);
     bool active() const { return active_; }
@@ -53,7 +53,8 @@ private:
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
-    int canvasWidth_, canvasHeight_;
+    const int& canvasWidth_; // the shared layout's size (live widescreen switch)
+    const int& canvasHeight_;
     Texture background_{nullptr, SDL_DestroyTexture};
     std::map<std::string, Texture> frames_;
     std::vector<Game::BalanceEntry> entries_;
