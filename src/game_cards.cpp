@@ -113,11 +113,9 @@ bool Game::playCard(int handSlot, int target) {
         messages_.push_back("Flugzeug: Zielstadt waehlen");
         return false;
     }
-    const double debt = -cash(current_); // Schulden: the amount passed on (text 11012)
-    if (kind == CardKind::Schulden && !economy_.passDebt(current_, victim)) {
-        messages_.push_back("Karte " + card + ": nur mit negativem Kontostand");
-        return false;
-    }
+    // Schulden (seg3:1790): the card can be played at any balance; only a negative one
+    // is passed on (seg3:17E0), and the message shows the amount, else 0.0 (DS:863E).
+    double debt = 0;
     declineInvestment();
     // seg3:0E83: with Verdoppeln active the card stays in the hand.
     if (doubleNext_ && kind != CardKind::Verdoppeln) doubleNext_ = false;
@@ -148,15 +146,21 @@ bool Game::playCard(int handSlot, int target) {
     }
     case CardKind::Konto: notice(11011, {moneyArg(economy_.balanceAccounts(activePlayers()))}); break;
     case CardKind::Zero: economy_.zero(current_); notice(11013, {playerArg(current_)}); break;
-    case CardKind::Schulden: // applied above
+    case CardKind::Schulden: // seg3:17B6 target, seg3:17CF cash < 0 -> seg2:5A47 twice
+        if (cash(current_) < 0) {
+            debt = -cash(current_);
+            economy_.passDebt(current_, victim);
+        }
         notice(11012, {playerArg(victim), playerArg(current_), moneyArg(debt), playerArg(current_)});
         break;
     case CardKind::Weihnachten: playWeihnachten(); return true; // ends the turn itself
     case CardKind::HauAb: playHauAb(); return true;
     case CardKind::Erdbeben: { // seg3:1BDE: damage in the town the player stands in
+        const int text = 5201 + rng_.random(2); // seg2:B74D(5201, 3) draws in any case
         const int town = townAt(here);
-        notice(5201 + rng_.random(2), {townArg(town)}); // seg2:B74D(5201, 3)
-        if (town >= 0) damageTown(town, 37);
+        if (town < 0) break; // seg3:1C27: no town, no message and no damage (round 147)
+        notice(text, {townArg(town)});
+        damageTown(town, 37);
         break;
     }
     case CardKind::Naegel: { // seg3:2096: two cells from the player, duration 4n; the turn goes on

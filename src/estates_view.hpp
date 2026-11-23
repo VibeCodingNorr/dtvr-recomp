@@ -39,6 +39,7 @@ public:
     // header item 0 is Verkaufen (text 360) and enters the sale mode 0x12.
     void openForcedSale(int player);
     bool forced() const { return forced_; }
+    void unlock() { locked_ = -1; } // seg1:5896: DS:3FB8 = 0xFF once the debt is settled
     // After a forced sale with `count` rows left (seg1:57FF ff.).
     void afterForcedSale(int count);
     void close() { town_ = -1; statistics_ = false; forced_ = false; saleMode_ = false; }

@@ -69,6 +69,17 @@ int main() {
     CHECK(eco.buy(1, 1, 0, BuyMode::BuyFromPlayer));
     CHECK(eco.money(2).cash == sellerBefore + 50000 && eco.town(1).entries[0].owner == 1);
     CHECK(!eco.buy(1, 1, 0, BuyMode::BuyFromPlayer));             // own entry
+    // Round 147, seg1:806C -> 8176: with Abkaufen a free entry is a normal purchase at
+    // its value; too little cash refuses it.
+    {
+        Economy free(towns, 2);
+        const double start = free.money(0).cash;
+        free.addMoney(0, 50000 - start - 1);
+        CHECK(!free.buy(0, 1, 0, BuyMode::BuyFromPlayer) && free.town(1).entries[0].owner == kNoOwner);
+        free.addMoney(0, 1);
+        CHECK(free.buy(0, 1, 0, BuyMode::BuyFromPlayer) && free.town(1).entries[0].owner == 0);
+        CHECK(free.money(0).cash == 0 && free.money(1).cash == start);
+    }
     CHECK(!eco.buy(-1, 0, 0, BuyMode::Normal) && !eco.buy(3, 0, 0, BuyMode::Normal));
 
     // Selling: own, not rented entries; x1.5 with the card.

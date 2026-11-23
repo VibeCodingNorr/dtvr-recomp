@@ -218,6 +218,18 @@ void GameWindow::updateFrame(int frame) {
         screen_.startBalance(SDL_GetTicks(), std::move(commands)); // without its bitmap no show (seg8:89C0)
         balanceShown_ = true;
     }
+    // seg1:58A7 / 58BB: the settled forced sale posts VK_BACK twice after 750 ms.
+    if (forcedCloseAt_ != 0 && SDL_GetTicks() >= forcedCloseAt_) {
+        forcedCloseAt_ = 0;
+        if (screen_.estates().isOpen() && screen_.estates().forced())
+            for (int i = 0; i < 2; ++i) {
+                SDL_Event back{};
+                back.type = SDL_KEYDOWN;
+                back.key.keysym.sym = SDLK_BACKSPACE;
+                back.key.keysym.scancode = SDL_SCANCODE_BACKSPACE;
+                SDL_PushEvent(&back);
+            }
+    }
     // seg8:88C6 returns when the show ends: the player change goes on.
     if (balanceShown_ && !screen_.balance().active()) {
         balanceShown_ = false;

@@ -411,7 +411,7 @@ computer players.
   | 3, 4, 5 | Kaufen, Gold, Platin | free entry; price value × 0.75 / 0.5 / 0.1 (DS:86A6/AE/B6) |
   | 6 | Mieten | another player's entry: landlord = owner, months = 12, owner = player |
   | 7 | Nimm | another player's entry: owner = player |
-  | 8 | Abkaufen | another player's entry; cash ≥ value; owner receives value, buyer pays |
+  | 8 | Abkaufen | another player's entry; cash ≥ value; owner receives value, buyer pays. A free entry goes on to the normal purchase at its value (seg1:806C → 8176, round 147); the mode stays |
   | 9 | Kredit | free entry; no cash check; value added to player +0x51A |
 
   Prices are not multiplied by inflation. After each purchase the whole-town
@@ -463,8 +463,11 @@ dialog.
   - Fiskus (seg3:14AD): target pays (cash + property value +0x5A) × 0.1 (DS:8636).
   - Konto (seg3:15B0): with more than one active player every cash balance is set
     to the average of all active players.
-  - Schulden (seg3:1790): only if the player's cash is negative; the target
-    takes the negative amount, the player's cash becomes 0.
+  - Schulden (seg3:1790): the target is chosen first (seg3:17B6); only if the
+    player's cash is negative (seg3:17E0) the target takes the negative amount and
+    the player's cash becomes 0. *Round 147:* the card can be played at any balance
+    (the card window checks only the category, seg3:0701); otherwise it is used up,
+    text 11012 shows the amount 0.0 (DS:863E) and the turn ends. The rebuild refused it.
   - Zero (seg3:18EA): the player's own cash becomes 0.
 - **Status cards** set a bit in the target's +0x40 flags and then post
   WM_COMMAND 0x2710 (one-reel spin, seg4:0A27), so the player still moves:
@@ -766,7 +769,8 @@ the types 0x400/0x800 follow in round 13).
   amount × 2.0 (DS:876E) is added (texts 5341/5421 + random(2)).
 - **Erdbeben** (card 17, seg3:1BDE): text via seg2:B74D (random(2)), town of the
   player's field (seg2:276B, 0xFF = none), then seg8:4F1B(town, 38 Versicherung)
-  and nextPlayer.
+  and nextPlayer. Without a town (seg3:1C27) neither the message nor the damage
+  follows, only the draw (round 147; the rebuild showed the text without a town).
 - **Nägel** (card 18, seg3:1C96 / 2096): the player chooses a direction with a
   road; the obstacle (type 0x900, duration 4n) lies two cells away. The turn
   continues (no nextPlayer).
@@ -2961,6 +2965,11 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   header, a selection past the end moves back (seg1:5816 / 5843); seg1:5857 lifts
   the lock once the cash is no longer negative or nothing is sellable. While
   locked, closing plays Zaehler2 (seg1:5748). Escape in 0x12 returns to the header.
+  *Round 147:* when the lock lifts in the forced variant ((DS:3FC2 & 0x30) = 0x10),
+  seg1:5896 sets DS:3FB8 = 0xFF, waits 750 ms (seg6:0F60(0x2EE)) and posts WM_KEYDOWN
+  VK_BACK twice (seg1:58A7 / 58BB): the first leaves the sale mode (seg1:53BE,
+  Plopp02), the second closes the dialog (seg1:5391), so the turn goes on by
+  itself. Rebuilt: `EstatesView::unlock` and two Backspace events after 750 ms.
   Computers (seg2:5C02) get state 14 (seg5:71B3(0xE) → seg5:70B5): seg5:962A lists
   their own, not rented entries without category 3, scored by seg5:990A plus the
   money record's +0x32 (10) when a player owns the whole town, bubble-sorts them

@@ -111,6 +111,7 @@ private:
     int finishSeen_, balanceSeen_, announceSeen_, risikoPressSeen_; // serials already shown
     bool victoryShown_ = false;
     bool balanceShown_ = false; // a year balance's show was started for Game::Phase::Balance
+    Uint32 forcedCloseAt_ = 0;  // seg1:589C: when the settled forced sale posts its two VK_BACK
     int shopSerial_ = -1;
     int targetCardSlot_ = -1; // hand slot waiting for the target choice (-2: Mitspieler)
     int flightCardSlot_ = -1; // hand slot of the Flugzeug card being booked

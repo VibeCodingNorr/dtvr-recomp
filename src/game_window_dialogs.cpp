@@ -189,6 +189,13 @@ bool GameWindow::handleEstates(const SDL_Event& event) {
         sound_.play(2, sold ? 2 : 7); // seg1:57F7 / 58DE
         if (sold) {
             estates.afterForcedSale(int(screen_.estateRows().size()));
+            // seg1:5857: no sellable value left or cash >= 0 in the forced variant: unlock,
+            // wait 750 ms (seg6:0F60(0x2EE)) and post VK_BACK twice (seg1:58A7 / 58BB):
+            // the first leaves the sale mode, the second closes the dialog (round 147).
+            if (estates.forced() && !g.forcedSaleLocked()) {
+                estates.unlock();
+                forcedCloseAt_ = SDL_GetTicks() + 750;
+            }
             report();
         }
     } else if (action.kind == Kind::Close && estates.forced()) { // seg1:5748: locked: Zaehler2

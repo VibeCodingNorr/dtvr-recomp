@@ -61,9 +61,16 @@ bool Economy::buy(int player, int town, int entry, BuyMode mode) {
         p.owner = me;
         break;
     case BuyMode::BuyFromPlayer: { // seg1:8097: buyer pays the owner the value
-        if (p.owner == kNoOwner || p.owner == me) return false;
         const double cost = value(town, entry);
-        if (buyer.cash < cost) return false;
+        if (p.owner == kNoOwner) { // seg1:806C -> 8176: a free entry is a normal purchase (round 147)
+            if (buyer.cash < cost) return false; // seg1:8287
+            buyer.cash -= cost;
+            p.owner = me;
+            break;
+        }
+        // The own entry (seg1:8093) or too little cash (seg1:80E4) reach seg1:8176 too,
+        // where seg1:8192 refuses an entry that is not free.
+        if (p.owner == me || buyer.cash < cost) return false;
         money_[p.owner].cash += cost;
         buyer.cash -= cost;
         p.owner = me;
