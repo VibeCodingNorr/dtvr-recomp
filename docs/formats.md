@@ -540,6 +540,47 @@ the stage placement uses distances to the new destination. Open: Konferenz,
 the event system with the passive cards, Tschüss, Punch, Erdbeben, Nägel,
 Risiko, Flugzeug, Steuerlos, the card field, property cards in the town dialog.
 
+### Dr. Drago's own vehicle on the map (round 139, analysis; not rebuilt)
+
+Dr. Drago is not only a portrait (`<n>pd.bmp`): rally.exe moves him as a sprite
+of his own that follows the vehicle he rides with. The rebuild draws nothing yet.
+
+- **Per tick** seg2:9F61, called from the movement tick seg2:1C71 whenever
+  DS:9CFC ≠ 0xFF (guard DS:3DE0 against re-entry). His pixel position is DS:9D01 /
+  9D03. It calls the step seg2:A0A5 several times per tick (DS:3D8C):
+  - travelling (DS:9CFE = 1) while his 64 × 64 rectangle (raised by 0x28 in form 2)
+    misses the view inflated by 5 (seg2:9ECB → seg2:42A4): steps without drawing
+    until he is visible, then 3 steps per tick;
+  - forms 0 and 1: 3 steps, 4 once the trail holds two or more entries
+    (seg2:4EC4 ≥ 2), back to 3 at one or none;
+  - form 2: 3 steps when |x − holder +0x16| or |y − holder +0x18| exceeds 0x90
+    pixels (_abs seg10:1DB2), otherwise 2.
+- **Trail** ring buffer of 1000 words at DS:2C, head DS:28, tail DS:2A, count
+  DS:26 (reset seg2:4CEB). seg2:4D3F appends a field unless it repeats the last
+  one; the drive appends at seg2:1FF5 and seg2:20C7 (leaving / reaching a field),
+  the form change at seg2:9A02 / 9A98, seg2:B33E / B38D elsewhere. seg2:4D9F /
+  4EE7 consume it; seg2:ADAB(field, x, y) heads for the trail's next field and
+  returns the direction DS:3D78. Within 0x30 pixels of the holder (both axes)
+  he stops following.
+- **Form change** seg2:B3A4 (start of the holder's turn): the music F1 / F2 / F3
+  (seg1:2A30, DS:3DE2 ff.) and seg2:9804(new form). It picks a start field
+  DS:94D8 with seg2:454E: a depth-first search over the links from the holder's
+  field, first direction random(3) (seg6:1343), taking the first field whose
+  7 × 7-cell neighbourhood (seg2:46C8: field cell inflated by 3) lies outside the
+  view; route seg2:9996 between it and the holder, DS:9CFE = 1, DS:94EC = the new
+  form. seg2:98D0 completes it (DS:9CFD = DS:94EC, seg2:9BAE, A0A5, AF38) and sets
+  DS:96A0 = 1, which ends the wait loop at seg2:B454.
+- **Pictures** (DS:3DAC ff.): form 0 `sbs\F_BIKE.sbs` (FAB… bicycle, FAR…),
+  form 1 `sbs\F_CAR.sbs` (FA…, FAF… flying, R… rockets), form 2
+  `sbs\F_BLIMP.sbs` (ZEP…, FAZ… in eight directions). The step looks at the cell
+  properties (seg2:3260) of his cell and its neighbours; bit 8 (water) selects
+  the alternative frame tables (DS:3C0E / 3C12 by direction × 0x14, DS:3B7E /
+  3BA2 by DS:3D76 × 4, set with seg2:AC89). The overview's Q_FL marks DS:9D01 /
+  9D03 (seg1:A6A7), not the holder's field.
+- **Not yet read:** seg2:A5AA (movement per form and frame choice), seg2:AB09 /
+  AB49 / AC89 / AD39 / AE77 (frame tables, animation), seg2:9BAE, seg2:AF38, the
+  drawing in the sprite list (seg2:3D9C / 3EB0) and the save state of DS:9D01 ff.
+
 ### Events and Eastern Europe (round 11)
 
 - **Trigger** seg8:1624, called inside nextPlayer after the month bookkeeping
