@@ -27,6 +27,10 @@ struct Settings {
     // [Extensions] ComputerTempo (recomp only): 1, 2 or 4 while a computer is the current
     // player; it also shortens the reading time of its messages. Others read as 1.
     int computerTempo = 1;
+    // [Audio] MasterVolume (recomp only, 0..100): one level for music, effects and voices.
+    // rally.exe only switches them on and off and runs both devices at full volume
+    // (seg5:2164 / 2194), so their relation stays the original's.
+    int masterVolume = 100;
     // [Default] Rounds (seg8:099B / 0A6A): the stage count the window TEMP offers and keeps.
     int rounds = 99;
     // [Setup] Pause (seg6:0D60, DS:1642, 0-3; keys 1-4 via seg6:0DA0): waits of

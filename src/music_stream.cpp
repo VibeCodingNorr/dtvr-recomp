@@ -26,7 +26,7 @@ struct MusicStream::Impl {
     uint64_t generation = 0, played = 0, origin = 0;
     MusicTrack track;
     bool quit = false, paused = false, eof = false;
-    int volume = 70;
+    int volume = 100;
     std::string error;
     std::thread worker;
 

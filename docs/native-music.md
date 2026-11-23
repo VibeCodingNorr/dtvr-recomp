@@ -25,7 +25,7 @@ game and title, Escape → Audio, or "Weitere Einstellungen" in the options wind
 | --- | --- |
 | Musik | Enable/disable music (the original music option) |
 | Klangset | Left / Right / click: select an installed complete sound set |
-| Musiklautstärke | Left / Right in 5 percent steps, or click on the bar |
+| Gesamtlautstärke | Left / Right in 5 percent steps, or click on the bar: music, effects and speech together (`[Audio] MasterVolume` in `settings.ini`) |
 | Es läuft | The current cue |
 
 The page shows the selected set and any pending change in its footer. A new set takes
@@ -37,7 +37,8 @@ regaining focus resumes it. The overlay is local presentation, not saved rule
 state. It blocks local input/AI like other current single-player modal dialogs;
 network pause policy is not implemented.
 
-Set ID and volume are stored separately in
+The music itself plays at full volume like rally.exe's MIDI device (round 132);
+the `Volume` of `music.ini` is no longer used. The set ID is stored separately in
 `$XDG_CONFIG_HOME/dtvr-recomp/music.ini` (default `~/.config/dtvr-recomp/music.ini`).
 The enable switch remains `[Setup] Midi` in `settings.ini` for compatibility with
 the existing options UI; it now controls Ogg playback. No settings affect RNG.

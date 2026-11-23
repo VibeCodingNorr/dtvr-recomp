@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "sound.hpp"
 
+#include "audio_mix.hpp"
 #include "sdl_assets.hpp"
 #include "music_stream.hpp"
 
@@ -57,6 +58,7 @@ void SoundPlayer::playFile(int channel, const fs::path& file) {
     std::vector<int16_t> samples;
     if (!convert(file, samples)) return;
     SDL_LockAudioDevice(device_);
+    if (effectsBlocked()) { SDL_UnlockAudioDevice(device_); return; } // WaveMix is not active
     for (Voice& v : voices_) if (v.samples == &fileSamples_) v = {};
     fileSamples_ = std::move(samples);
     voices_[size_t(channel)] = {&fileSamples_, 0, 0};
@@ -88,18 +90,35 @@ void SoundPlayer::play(int channel, int sound, int loops) {
     const std::vector<int16_t>* samples = load(sound);
     if (!samples) return;
     SDL_LockAudioDevice(device_);
-    voices_[size_t(channel)] = {samples, 0, loops == 0xFFFF ? -1 : loops};
+    if (!effectsBlocked()) voices_[size_t(channel)] = {samples, 0, loops == 0xFFFF ? -1 : loops}; // else WaveMix is off
+    SDL_UnlockAudioDevice(device_);
+}
+
+void SoundPlayer::flushEffects() { // with the device locked
+    for (size_t c = 0; c < voices_.size(); ++c)
+        if (int(c) != voiceChannel_) voices_[c] = {};
+}
+
+void SoundPlayer::setFocused(bool focused) {
+    if (!device_) { focused_ = focused; return; }
+    SDL_LockAudioDevice(device_);
+    focused_ = focused;
+    if (!focused) flushEffects(); // seg4:0D6E: WaveMixActivate(FALSE); a voice only pauses (0D4E)
     SDL_UnlockAudioDevice(device_);
 }
 
 void SoundPlayer::playVoice(int channel, const fs::path& file) {
     if (channel < 0 || channel > 7 || file.empty()) return;
     silentUntil_[size_t(channel)] = 0;
-    if (device_ && voiceEnabled_) {
-        const bool fx = enabled_;
-        enabled_ = true; // voices do not depend on Sound-F/X (seg1:3661)
-        playFile(channel, file);
-        enabled_ = fx;
+    if (device_ && voiceEnabled_) { // voices do not depend on Sound-F/X (seg1:3661)
+        std::vector<int16_t> samples;
+        if (!convert(file, samples)) return;
+        SDL_LockAudioDevice(device_);
+        voiceSamples_ = std::move(samples);
+        voiceChannel_ = channel;
+        flushEffects(); // seg1:33E6: WaveMixActivate(FALSE) before waveOutOpen
+        voices_[size_t(channel)] = {&voiceSamples_, 0, 0};
+        SDL_UnlockAudioDevice(device_);
         return;
     }
     stop(channel);
@@ -128,6 +147,7 @@ void SoundPlayer::stop(int channel) {
     if (!device_ || channel < 0 || channel > 7) return;
     SDL_LockAudioDevice(device_);
     voices_[size_t(channel)] = {};
+    if (channel == voiceChannel_) voiceChannel_ = -1; // seg1:3D86: WaveMix active again
     SDL_UnlockAudioDevice(device_);
 }
 
@@ -138,18 +158,26 @@ void SoundPlayer::callback(void* self, Uint8* stream, int len) {
 void SoundPlayer::mix(int16_t* out, size_t samples) {
     if (music_) music_->render(out, samples);
     else std::fill(out, out + samples, 0);
+    const int master = master_.load();
     for (size_t i = 0; i < samples; ++i) {
-        int sum = out[i];
-        for (Voice& v : voices_) {
+        int effects = 0, voice = 0; // WaveMix sums and clips its channels; the voice has its own device
+        for (size_t c = 0; c < voices_.size(); ++c) {
+            Voice& v = voices_[c];
             if (!v.samples) continue;
+            const bool isVoice = int(c) == voiceChannel_;
+            if (isVoice && !focused_) continue; // seg4:0D4E: waveOutPause
             if (v.pos >= v.samples->size()) {
-                if (v.loops == 0) { v = {}; continue; }
+                if (v.loops == 0) {
+                    v = {};
+                    if (isVoice) voiceChannel_ = -1; // seg1:3D86: WaveMixActivate(TRUE)
+                    continue;
+                }
                 if (v.loops > 0) --v.loops;
                 v.pos = 0;
             }
-            sum += (*v.samples)[v.pos++];
+            (isVoice ? voice : effects) += (*v.samples)[v.pos++];
         }
-        out[i] = int16_t(std::clamp(sum, -32768, 32767));
+        out[i] = int16_t(mixSample(out[i], effects, voice) * master / 100);
     }
 }
 

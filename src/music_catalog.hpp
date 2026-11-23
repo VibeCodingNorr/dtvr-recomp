@@ -24,7 +24,8 @@ std::vector<MusicPack> discoverMusicPacks(const std::filesystem::path& directory
 // Recovered event message families; no cue is invented for drought/e10.
 std::string musicForNotice(int text);
 
-struct MusicPreferences { std::string pack; int volume = 70; };
+// volume 100: rally.exe sets the MIDI device to full volume at start (seg5:2194).
+struct MusicPreferences { std::string pack; int volume = 100; };
 MusicPreferences loadMusicPreferences(const std::filesystem::path& file);
 bool saveMusicPreferences(const std::filesystem::path& file, const MusicPreferences& preferences,
                           std::string& error);

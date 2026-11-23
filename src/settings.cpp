@@ -37,6 +37,8 @@ std::string Settings::encode() const {
     o << "IntegerScale=" << int(integerScale) << '\n';
     o << "Widescreen=" << int(widescreen) << '\n';
     o << "TextSmoothing=" << textSmoothing << '\n';
+    o << "[Audio]\n";
+    o << "MasterVolume=" << masterVolume << '\n';
     o << "[Extensions]\n";
     o << "ComputerExtraCards=" << int(computerExtraCards) << '\n';
     o << "AnimationTempo=" << animationTempo << '\n';
@@ -64,6 +66,7 @@ Settings Settings::decode(const std::string& text) {
         if (name == "TextSmoothing") { s.textSmoothing = v >= 0 && v <= 2 ? v : 1; continue; }
         if (name == "ComputerExtraCards") { s.computerExtraCards = v != 0; continue; }
         if (name == "AnimationTempo") { s.animationTempo = v == 2 || v == 4 ? 2 : 1; continue; }
+        if (name == "MasterVolume") { s.masterVolume = v >= 0 && v <= 100 ? v : 100; continue; }
         if (name == "ComputerTempo") { s.computerTempo = v == 2 || v == 4 ? v : 1; continue; }
         for (int i = 0; i < kCount; ++i)
             if (name == key(i) && v >= 0 && v < states(i)) s.value[size_t(i)] = v;

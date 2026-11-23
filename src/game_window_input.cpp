@@ -31,8 +31,9 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     if (event.type == SDL_QUIT) running_ = false;
     controller_.handleEvent(event);
     if (event.type == SDL_WINDOWEVENT) {
-        if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) music_.setFocused(false);
-        if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) music_.setFocused(true);
+        // WM_ACTIVATEAPP (seg4:0CAE): music, voice and effects pause with the focus.
+        if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) { music_.setFocused(false); sound_.setFocused(false); }
+        if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) { music_.setFocused(true); sound_.setFocused(true); }
     }
     { // F11 / Alt+Enter, F12 and the window size (recomp, [Display])
         Settings s = screen_.settings();

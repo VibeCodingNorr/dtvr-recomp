@@ -10,7 +10,6 @@ RecompMenu::Music musicMenuState(const MusicPlayer& player, const std::vector<st
         m.ids.push_back(pack.id);
         m.names.push_back(pack.name);
     }
-    m.volume = player.preferences().volume;
     m.playing = player.cue();
     if (m.ids.empty())
         m.note = "Kein vollständiges Ogg-Klangset installiert. Im Installer ein Set aus einem eigenen Soundfont "
@@ -29,7 +28,6 @@ bool applyMusicChoice(MusicPlayer& player, const RecompMenu::Music& music, const
                       std::string& error) {
     if (music.pack >= 0 && music.pack < int(music.ids.size()) && music.ids[size_t(music.pack)] != player.preferences().pack)
         player.choosePack(music.ids[size_t(music.pack)]);
-    if (music.volume != player.preferences().volume) player.setVolume(music.volume);
     return saveMusicPreferences(preferences, player.preferences(), error);
 }
 

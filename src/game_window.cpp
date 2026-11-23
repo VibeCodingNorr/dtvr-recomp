@@ -71,6 +71,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     const fs::path musicConfig = defaultSettingsFile().parent_path() / "music.ini";
     MusicPlayer music(std::move(musicPacks), loadMusicPreferences(musicConfig));
     music.setEnabled(screen.settings().value[Settings::Midi] != 0);
+    music.setVolume(100); // like the MIDI device at full volume (seg5:2194); [Audio] MasterVolume scales all
     music.interrupt(options.title ? "i" : "a1");
     DisplayControl displayControl(window.get(), renderer.get(), layout);
     ScriptedInput scripted(options.pressKeys); // --press (smoke tests)

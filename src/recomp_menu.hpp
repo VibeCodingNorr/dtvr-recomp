@@ -21,14 +21,13 @@ public:
     // and the local music preferences (music.ini).
     enum class Field { None, Fullscreen, IntegerScale, Widescreen, TextSmoothing, Views, Animations, Colorcycle,
                        Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards, AnimationTempo, ComputerTempo,
-                       MusicPack, MusicVolume, MusicPlaying, MusicNote };
+                       MusicPack, MasterVolume, MusicPlaying, MusicNote };
 
     // The installed Ogg sound sets (renderings of the original MIDI music or CD audio)
     // and what plays; the caller keeps it current while the menu is open.
     struct Music {
         std::vector<std::string> ids, names; // complete sets only
         int pack = -1;                       // index of the chosen set, -1 none
-        int volume = 70;                     // percent, 0..100 in steps of 5
         std::string playing;                 // cue of the current piece
         std::string note;                    // pending switch, missing sets, errors
     };
@@ -75,7 +74,7 @@ private:
     void setFieldValue(Field f, int v);
     int fieldStates(const Item& item) const;
     bool selectable(const Item& item) const { return item.kind != Kind::Info; }
-    static bool musicField(Field f) { return f == Field::MusicPack || f == Field::MusicVolume; }
+    static bool musicField(Field f) { return f == Field::MusicPack; }
     void build(bool inGame);
     void moveRow(int delta);
 

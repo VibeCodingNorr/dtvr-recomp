@@ -62,33 +62,35 @@ int main() {
     CHECK(m.settings().textSmoothing == 1 && m.step(1) == Action::Changed && m.settings().textSmoothing == 2);
     CHECK(m.step(1) == Action::Changed && m.settings().textSmoothing == 0 && m.valueText(m.pages()[size_t(graphics)].items[3]) == "Original");
     CHECK(m.step(-1) == Action::Changed && m.settings().textSmoothing == 2);
-    // Original switches edit the [Setup] values; Musik is the original MIDI switch.
+    // Audio: the master volume first (steps of 5, no wrap-around), then the original
+    // MIDI switch; rally.exe only switches music, effects and voices on and off.
     const int audio = pageIndex(m, "Audio");
     m.focusPage(audio);
+    const auto& items = m.pages()[size_t(audio)].items;
+    CHECK(items[0].kind == RecompMenu::Kind::Slider && items[0].field == RecompMenu::Field::MasterVolume);
     m.focusItem(0);
-    CHECK(m.pages()[size_t(audio)].items[0].original && m.activate() == Action::Changed && m.settings().value[Settings::Midi] == 0);
-    // Without sound sets the Klangset row is information only.
+    CHECK(m.settings().masterVolume == 100 && m.step(1) == Action::None && m.valueText(items[0]) == "100 %");
+    CHECK(m.input(Input::Left) == Action::Changed && m.settings().masterVolume == 95);
+    CHECK(m.setSlider(42) == Action::Changed && m.settings().masterVolume == 40 && m.setSlider(-3) == Action::Changed
+          && m.settings().masterVolume == 0 && m.setSlider(1) == Action::None);
     m.focusItem(1);
-    CHECK(m.row() == 0 && m.valueText(m.pages()[size_t(audio)].items[1]) == "nicht installiert");
-    // With sets: choice of the set and the volume slider (steps of 5, no wrap-around).
+    CHECK(items[1].original && m.activate() == Action::Changed && m.settings().value[Settings::Midi] == 0);
+    // Without sound sets the Klangset row is information only.
+    m.focusItem(2);
+    CHECK(m.row() == 1 && m.valueText(items[2]) == "nicht installiert");
+    // With sets: the choice of the set.
     RecompMenu::Music music;
     music.ids = {"gm", "cd"};
     music.names = {"General MIDI", "CD-Audio"};
     music.pack = 0;
-    music.volume = 95;
     music.playing = "a1";
     m.setMusic(music);
-    const auto& items = m.pages()[size_t(audio)].items;
-    CHECK(items[1].kind == RecompMenu::Kind::Choice && items[2].kind == RecompMenu::Kind::Slider);
-    m.focusItem(1);
-    CHECK(m.valueText(items[1]) == "General MIDI" && m.step(1) == Action::MusicChanged && m.music().pack == 1);
-    CHECK(m.step(1) == Action::MusicChanged && m.music().pack == 0 && m.settings().value[Settings::Midi] == 0);
+    const auto& rebuilt = m.pages()[size_t(audio)].items;
+    CHECK(rebuilt[2].kind == RecompMenu::Kind::Choice);
     m.focusItem(2);
-    CHECK(m.step(1) == Action::MusicChanged && m.music().volume == 100 && m.step(1) == Action::None);
-    CHECK(m.input(Input::Left) == Action::MusicChanged && m.music().volume == 95 && m.valueText(items[2]) == "95 %");
-    CHECK(m.setSlider(42) == Action::MusicChanged && m.music().volume == 40 && m.setSlider(-3) == Action::MusicChanged
-          && m.music().volume == 0 && m.setSlider(1) == Action::None);
-    CHECK(m.valueText(items[3]) == "Stück a1");
+    CHECK(m.valueText(rebuilt[2]) == "General MIDI" && m.step(1) == Action::MusicChanged && m.music().pack == 1);
+    CHECK(m.step(1) == Action::MusicChanged && m.music().pack == 0 && m.settings().masterVolume == 0);
+    CHECK(m.valueText(rebuilt[3]) == "Stück a1");
     // Updating what plays keeps the focus; F8 opens the Audio page.
     music.playing = "b2";
     m.setMusic(music);

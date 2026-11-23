@@ -78,7 +78,13 @@ void RecompMenu::build(bool inGame) {
         toggle("Wellen und Jahreszeiten", Field::Colorcycle,
                "Farbzyklus des Wassers und Jahreszeiten der Karte (Option des Originals).", true),
     }});
+    Item volume;
+    volume.kind = Kind::Slider;
+    volume.label = "Gesamtlautstärke";
+    volume.field = Field::MasterVolume;
+    volume.hint = "Musik, Effekte und Sprache gemeinsam; das Original kennt nur Ein / Aus, ihr Verhältnis bleibt.";
     Page audio{"Audio", {
+        volume,
         toggle("Musik", Field::Midi, "Die MIDI-Musik des Originals, gespielt aus dem gewählten Klangset.", true),
     }};
     if (music_.ids.empty()) {
@@ -89,12 +95,6 @@ void RecompMenu::build(bool inGame) {
         audio.items.push_back(choice("Klangset", Field::MusicPack, music_.names,
                                      "Vollständige Ogg-Klangsets der installierten Musik. Wechsel beim nächsten Stück."));
     }
-    Item volume;
-    volume.kind = Kind::Slider;
-    volume.label = "Musiklautstärke";
-    volume.field = Field::MusicVolume;
-    volume.hint = "Lautstärke der Musik; Geräusche und Sprache bleiben unverändert.";
-    audio.items.push_back(std::move(volume));
     Item playing = info("Es läuft", "");
     playing.field = Field::MusicPlaying;
     audio.items.push_back(std::move(playing));
@@ -146,7 +146,6 @@ void RecompMenu::openAt(const Settings& settings, bool inGame, const std::string
 }
 
 void RecompMenu::setMusic(Music music) {
-    music.volume = std::clamp(music.volume, 0, 100);
     const bool rebuild = music.ids != music_.ids || music.names != music_.names;
     music_ = std::move(music);
     if (!rebuild) return;
@@ -158,7 +157,7 @@ void RecompMenu::setMusic(Music music) {
 int RecompMenu::fieldValue(Field f) const {
     switch (f) {
     case Field::MusicPack: return music_.pack;
-    case Field::MusicVolume: return music_.volume;
+    case Field::MasterVolume: return settings_.masterVolume;
     case Field::Fullscreen: return settings_.fullscreen;
     case Field::IntegerScale: return settings_.integerScale;
     case Field::Widescreen: return settings_.widescreen;
@@ -201,7 +200,7 @@ void RecompMenu::setFieldValue(Field f, int v) {
     case Field::AnimationTempo: settings_.animationTempo = v == 1 ? 2 : 1; break;
     case Field::ComputerTempo: settings_.computerTempo = v == 2 ? 4 : v == 1 ? 2 : 1; break;
     case Field::MusicPack: music_.pack = v; break;
-    case Field::MusicVolume: music_.volume = std::clamp(v, 0, 100); break;
+    case Field::MasterVolume: settings_.masterVolume = std::clamp(v, 0, 100); break;
     case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;
     }
 }

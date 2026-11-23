@@ -357,8 +357,8 @@ bool GameScreen::startFinish(int field, int player, Uint32 now) {
             if (towns_[t].x == board_.fields[size_t(field)].x && towns_[t].y == board_.fields[size_t(field)].y) town = int(t);
     if (town < 0 || player < 0 || player >= kPlayerSlots) return false;
     if (!finish_.start(kPortraitLetters[player], towns_[size_t(town)].name, now)) return false;
-    // seg7:2C48: butt/snd/z.wav (seg1:3579)
-    if (sound_) sound_->playFile(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
+    // seg7:2C48: butt/snd/z.wav through seg1:3579, the voice path (waveOut, WaveMix off)
+    if (sound_) sound_->playVoice(0, findCaseInsensitive(root_, fs::path("butt") / "snd" / "z.wav"));
     return true;
 }
 
@@ -720,6 +720,7 @@ void GameScreen::drawPlayerInfo() {
 void GameScreen::draw() {
     if (sound_) {
         sound_->setEnabled(settings_.value[Settings::Wave] != 0);
+        sound_->setMasterVolume(settings_.masterVolume);
         sound_->setVoiceEnabled(settings_.value[Settings::Voice] != 0); // DS:B5D4
     }
     if (intro_.active()) { // INTRO over the empty canvas (seg7:0000 runs before the title)

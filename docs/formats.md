@@ -2000,6 +2000,38 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg7:7CE9) WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN destroy the
   window; other keys and buttons do nothing. Centred by seg6:0000 (round 111), with the wooden border of seg6:1A68 (round 112).
 
+### Sound mixing (round 132)
+
+- **Device volume** seg5:2100 ff. (start): with Wave on and a wave device that has
+  a volume control (WAVECAPS bit 2), `waveOutSetVolume(0, 0xFFFFFFFF)` (seg5:2164);
+  with Midi on and MIDI device 1 able to (bit 0), `midiOutSetVolume(1, 0xFFFFFFFF)`
+  (seg5:2194). Both full; there are no other volume calls and the MCI strings
+  (DS:3357–34F9: `open sequencer!%s\midi\%s alias playerSnd`, `play … from %d
+  notify`, `status … position`, `stop`, `close`, `cdaudio`) set no level.
+- **WaveMix** seg1:2C10: MIXCONFIG { wSize 10, dwFlags 3, wChannels 1, wSamplingRate
+  11 } — mono, 11 kHz; channel session opened with WaveMixOpenChannel(…, 0, 1),
+  activated (seg1:2C82). The effect channels are summed by WaveMix without
+  attenuation.
+- **Voices** seg1:3579 → 3661 (with a wave device DS:9552 and Voice DS:B5D4): the WAV
+  is read with mmio and played with its own `waveOutOpen` (seg1:3476) after
+  `WaveMixActivate(FALSE)` (seg1:33E6); WaveMix is activated again when the voice
+  has ended (seg1:3D86). While a voice sounds the effects are silent; the MIDI
+  music goes on unchanged. The finish's `snd\z.wav` (seg7:2C48) takes this path too.
+- **Focus** WM_ACTIVATEAPP seg4:0CAE: losing it minimises the window, pauses a voice
+  (`waveOutPause`, seg4:0D4E) or deactivates WaveMix (seg4:0D6E) and calls
+  seg1:293F (music); gaining it restarts the voice or activates WaveMix (0CD7 /
+  0CEE) and calls seg1:299A.
+- **Rebuilt** (`src/sound.cpp`, rule in `src/audio_mix.{hpp,cpp}` with
+  `tests/audio_mix_test.cpp`): one 44.1 kHz stereo device; a voice flushes the
+  effect channels and new effects are ignored until it ends; without the focus the
+  effects stop and the voice pauses; music plays at 100 %, and one master volume
+  (`[Audio] MasterVolume`, recomp) scales the whole output, since rally.exe offers
+  only on / off switches. The effects are clipped to the sample range like
+  WaveMix's sum; music, effects and voice — separate devices in rally.exe that met
+  in the sound card's analogue mixer — are added and bent softly towards full scale
+  above 3/4 instead of being cut (**assumption** about the analogue mix; the
+  relative loudness of MIDI synthesis and samples depended on the hardware).
+
 ### Sounds (round 40)
 
 - **Table** seg1:2E90 ff. (locals [bp−0x12E] − 4 · n): sound n opens
