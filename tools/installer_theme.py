@@ -8,6 +8,8 @@ import subprocess
 import tkinter as tk
 from tkinter import font, ttk
 
+from branding_render import render_png
+
 NAVY = "#101c2e"
 BODY = "#f7f1e4"
 INK = "#183a39"
@@ -74,11 +76,9 @@ def branding_image(root, repository, name, width, height):
             source = Path(repository) / "assets/branding" / f"{name}-dark.svg"
             if not source.is_file():
                 source = Path(repository) / "assets/branding" / f"{name}.svg"
-            result = subprocess.run([renderer, "-w", str(width), "-h", str(height),
-                                     str(source)],
-                                    capture_output=True, check=True, timeout=5)
-            return tk.PhotoImage(master=root, data=base64.b64encode(result.stdout))
-        except (OSError, subprocess.SubprocessError, tk.TclError):
+            png = render_png(source, width, height)
+            return tk.PhotoImage(master=root, data=base64.b64encode(png))
+        except (OSError, ValueError, subprocess.SubprocessError, tk.TclError):
             pass
     return None
 

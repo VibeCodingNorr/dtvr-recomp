@@ -9,6 +9,8 @@ import struct
 import subprocess
 import tempfile
 
+from branding_render import render_png
+
 REPO = Path(__file__).resolve().parents[1]
 SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
 
@@ -27,15 +29,13 @@ def export(output):
         stage = Path(temporary) / "exports"
         stage.mkdir()
         sources = REPO / "assets/branding"
-        subprocess.run([renderer, str(sources / "logo.svg"), "-o", str(stage / "logo.png")], check=True)
+        (stage / "logo.png").write_bytes(render_png(sources / "logo.svg"))
         if (sources / "logo-dark.svg").is_file():
-            subprocess.run([renderer, str(sources / "logo-dark.svg"), "-o",
-                            str(stage / "logo-dark.png")], check=True)
+            (stage / "logo-dark.png").write_bytes(render_png(sources / "logo-dark.svg"))
         icons = []
         for size in SIZES:
             path = stage / f"icon-{size}.png"
-            subprocess.run([renderer, "-w", str(size), "-h", str(size),
-                            str(sources / "icon.svg"), "-o", str(path)], check=True)
+            path.write_bytes(render_png(sources / "icon.svg", size, size))
             if size <= 256:
                 icons.append((size, path.read_bytes()))
         # ICO permits PNG-encoded images; no imaging-library dependency is needed.

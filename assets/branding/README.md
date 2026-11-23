@@ -33,6 +33,11 @@ python3 tools/export_branding.py --output /path/to/branding-exports
 This optional packaging tool requires `rsvg-convert` (librsvg). It generates a
 standard and transparent dark banner PNGs, PNG icons from 16 to 512 pixels and a
 multi-resolution Windows ICO.
+`tools/branding_render.py` renders at four times the target dimensions and then
+halves the image twice through librsvg/Cairo, filtering color and alpha together.
+This reduces aliasing in the fine emblem contours, rounded icon corners and
+lettering mask. Source GUI rendering, standalone exports and AppImage packaging
+share this path; no additional imaging library is required on the user's host.
 The native installation ships the SVG icon in the standard hicolor scalable
 icon directory. The graphical installer prefers `<name>-dark.svg` when present
 and otherwise uses the standard SVG. Setup packaging makes the same selection

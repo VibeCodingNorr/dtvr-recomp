@@ -20,6 +20,7 @@ import tempfile
 from check_repository import check_file
 from installer_checks import REPO, digest, validate_output
 from project_version import read_version
+from branding_render import render_png
 
 
 def export_source(destination):
@@ -96,17 +97,13 @@ def build(python_runtime, appimagetool, runtime, output, arch):
         (appdir / "tk-runtime.sh").write_text("\n".join(tk_environment) + "\n")
         shutil.copy2(source / "packaging/AppRun", appdir / "AppRun")
         (appdir / "AppRun").chmod(0o755)
-        subprocess.run(["rsvg-convert", "-w", "256", "-h", "256",
-                        str(source / "assets/branding/icon.svg"), "-o",
-                        str(appdir / "dtvr-recomp-setup.png")], check=True)
+        (appdir / "dtvr-recomp-setup.png").write_bytes(render_png(source / "assets/branding/icon.svg", 256, 256))
         shutil.copy2(appdir / "dtvr-recomp-setup.png", appdir / ".DirIcon")
         for name, width, height in (("logo", 264, 88), ("icon", 64, 64)):
             artwork = source / f"assets/branding/{name}-dark.svg"
             if not artwork.is_file():
                 artwork = source / f"assets/branding/{name}.svg"
-            subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height),
-                            str(artwork), "-o",
-                            str(source / f"assets/branding/installer-{name}.png")], check=True)
+            (source / f"assets/branding/installer-{name}.png").write_bytes(render_png(artwork, width, height))
         (appdir / "dtvr-recomp-setup.desktop").write_text(
             "[Desktop Entry]\nType=Application\n"
             f"Name=DTVR Recomp Setup {version}\nExec=AppRun\nIcon=dtvr-recomp-setup\n"

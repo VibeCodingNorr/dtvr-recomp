@@ -40,6 +40,9 @@ rows. Fonts are selected case-insensitively, with a system-font fallback.
 Import/update behavior stays in `installer_gui.py`; `installer_layout.py` and
 `installer_theme.py` own presentation. Packaging renders the sidebar logo at
 264 × 88, including the transparent dark variant.
+Logo and icons use the shared supersampling renderer: four times the requested
+size, followed by two filtered half-size passes. Packaged PNGs and source GUI
+rendering therefore use the same edge smoothing without adding host dependencies.
 
 The project-owned folder chooser supports typed paths, directory navigation,
 hidden folders and selecting the current folder. Its optional **Systemdialog**
