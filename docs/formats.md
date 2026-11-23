@@ -232,6 +232,10 @@ Confirmed from code unless marked otherwise.
   (DS:9592 ≠ −1), steps taken = allowance or allowance = −1, the vehicle is
   aligned to the cell grid (seg2:2C0F: `(x | y) & 0xF == 0`) and DS:9EDE = 0. A
   move therefore only triggers a field when the full allowance is used.
+  *Checked in round 136:* the destination DS:A10D is read in seg2 only by the town
+  case of the field action (seg2:11A6 / 11BA / 11CD), the finish (1304 / 130B), 1542
+  and the route (9B73 / 9B8F) — never by the drive. Passing over the destination
+  with steps left triggers nothing; only a move that ends on it reaches the goal.
 - **Turn end after the field** (round 113): every field handler returns to
   seg2:1618, which calls the forced sale check seg1:4E39 and nextPlayer seg2:06FC
   directly. The handler's message, card dialog, town dialog or card shop runs
@@ -2694,6 +2698,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   361 + DS:8C48 (Alle, Industrie, Handel, Agrar, Risiko, Luxus, Sonstige) at
   x = 160 and the sort text 368 + DS:8C4A (Sortieren: Wert / Rendite / Stadt) at
   x = 266 (German offsets 0x84 / 0x6A when DS:A0F0 = 'd', otherwise 0x7A / 0x92).
+- **Eight rows always** (round 136): seg1:60D6 calls seg1:6119 for rows scroll …
+  scroll + 7 (`cmp 8` at seg1:60F5); its strip seg1:65A4 (GR_Z / ZW_Z, the selected
+  one GR_ZI / ZW_ZI) has no count check, while the owner icon (seg1:6160) and the
+  texts (seg1:6348) skip slots past the list (seg1:6180 / 635F). An empty statistics
+  therefore shows the header and eight empty strips (the rebuild drew only the
+  header) and the pages are eight rows high (the rebuild used nine).
 - **Rows** seg1:6E87: frames ZW_Z / ZW_ZI, owner icon at x = 0, Arial 17 weight
   400: entry name at x = 44, town name (record +6) at x = 200, value · 0.7
   (DS:868E) right-aligned in [339, 422], income in [430, 490], yield `%.1f%%`

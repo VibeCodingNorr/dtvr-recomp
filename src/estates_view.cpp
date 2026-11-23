@@ -10,7 +10,7 @@ namespace dtvr {
 namespace {
 
 constexpr int kWidth = 0x22E, kHeight = 0x1A4, kRow = 0x2A; // CreateWindow seg1:4CB6, rows of 42
-constexpr int kVisibleRows = kHeight / kRow - 1;            // below the header strip
+constexpr int kVisibleRows = 8; // seg1:60D6 draws rows scroll .. scroll + 7 (cmp 8 at seg1:60F5)
 constexpr int kTabX[3] = {18, 18 + 0x8E, 18 + 0x8E + 0xB0};  // seg1:7375, 73F5, 747B
 constexpr SDL_Color kBrown{67, 27, 0, 255}, kGray{123, 95, 27, 255}, kWhite{255, 255, 255, 255},
     kYellow{255, 247, 0, 255}; // palette 0x45, 0x43, 0xFF, 0x2C
@@ -253,15 +253,18 @@ void EstatesView::draw(const std::vector<EstateRow>& rows, const std::array<char
         text_.draw(renderer_, label, ScreenRect{b.x + kTabX[i], b.y + 10, 140, kRow},
                    TextStyle{20, false, false, false, false, 0, colour});
     }
-    // Rows seg1:65A7 / 6163: strip GR_Z (selected GR_ZI), owner icon at x 0, texts in
-    // Arial 18 weight 400 from x 0x54 + 10, y + 10.
-    for (int k = 0; k < kVisibleRows && scroll_ + k < int(rows.size()); ++k) {
+    // Rows seg1:60D6 -> 6119: always eight; the strip GR_Z (selected GR_ZI) of seg1:65A4
+    // has no count check, the owner icon (seg1:6160) and texts (seg1:6348) skip slots
+    // past the list (cmp / jge at 6180, 635F). Texts in Arial 18 weight 400 from
+    // x 0x54 + 10, y + 10.
+    for (int k = 0; k < kVisibleRows; ++k) {
         const int index = scroll_ + k;
-        const EstateRow& row = rows[size_t(index)];
         const int y = (k + 1) * kRow;
         const bool selected = index == selected_;
         if (statistics_) blit(selected ? "ZW_ZI" : "ZW_Z", 0, y); // seg1:6617: bit 0x10
         else blit(selected ? "GR_ZI" : "GR_Z", 0, y);
+        if (index >= int(rows.size())) continue;
+        const EstateRow& row = rows[size_t(index)];
         std::string icon = "0N";
         if (row.owner >= 0 && row.owner < 8)
             icon = std::string(1, ownerLetters[size_t(row.owner)]) + (row.wholeTown ? "_M" : "_N");
