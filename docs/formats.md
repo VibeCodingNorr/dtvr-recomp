@@ -209,6 +209,13 @@ Confirmed from code unless marked otherwise.
   `SaveSlots` loads with `SaveCodec::Random::Session` (the saved `rng` record stays
   for exact copies). *Corrects* the former fixed seed 1 and the restored generator,
   which made every load of a save roll the same.
+  *Round 143:* the program's initialisation seeds at seg5:0029 and only later
+  starts the intro (seg5:0174 reads ShowIntro, seg5:0188 calls seg7:0000), so the
+  intro's wipes draw from the time-seeded generator; a new game (PLAYER / TEMP)
+  and the demo (seg4:0DA9) do not seed again but draw on. Rebuilt: one session
+  generator, the running Game's (`Game::sessionRandom`); the intro draws from it
+  and `PlayView::newGame` builds the new game from its state. *Corrects* the intro's
+  seed 1 and the new time seed of every new game.
 - **Field distances** seg2:43A8(unused, start): breadth-first search over the
   field links up to 80 levels into a word array at DS:22; a field with
   `flagset & DS:A10F` ≠ 0 is not expanded (seg4:0E0B sets the mask to 0x4000).
@@ -2648,8 +2655,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   code (seg2:74E4) does not read it (+0x2E..+0x35 is the dirty rectangle).
 - Rebuilt in `src/intro_script.cpp` (no SDL, tested; the definitions compared
   with the data segment) and `src/intro_view.cpp` (8-bit scene composed in
-  software, palette fades on it). **Assumptions:** the wipe's rand() starts from
-  seed 1; the fade back steps each channel by 0x1E towards the bitmap colour; a
+  software, palette fades on it). The wipe draws from the session's generator,
+  seeded before the intro (round 143, see "Random numbers"). **Assumptions:** the fade back steps each channel by 0x1E towards the bitmap colour; a
   close stops the voice; the window is centred like the victory.
 
 ### Subtitles (round 88)

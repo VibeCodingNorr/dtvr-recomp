@@ -98,7 +98,7 @@ public:
     bool startBalance(Uint32 now);
     bool startVictory(Uint32 now);
     // seg5:0174 -> seg7:0000 before the title with [Setup] ShowIntro.
-    bool startIntro(Uint32 now);
+    bool startIntro(MsRandom& random, Uint32 now); // `random`: the session's generator
     IntroView& intro() { return intro_; }
     // Starts the finish sequence for a destination field and driver.
     bool startFinish(int field, int player, Uint32 now);

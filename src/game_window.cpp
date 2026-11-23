@@ -100,7 +100,7 @@ GameWindow::GameWindow(const GameWindowResources& r)
 
 void GameWindow::start() {
     introShown_ = options_.title && (options_.intro || (!options_.noIntro && screen_.settings().showIntro != 0))
-                      && screen_.startIntro(SDL_GetTicks());
+                      && screen_.startIntro(play_.game().sessionRandom(), SDL_GetTicks());
     if (options_.title && !introShown_) openTitle();
     if (options_.openSetup) { screen_.setTitle(true); menu_.close(); command(1020); }
     if (options_.openStages) { screen_.setTitle(true); menu_.close(); screen_.stages().open(screen_.settings().rounds); }
@@ -265,8 +265,8 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
         std::array<std::string, kPlayerSlots> names;
         for (int p = 0; p < kPlayerSlots; ++p) names[size_t(p)] = play_.game().playerName(p);
         std::string error;
-        const uint16_t seed = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr)));
-        if (!play_.newGame(status, names, seed, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
+        // The demo continues the session's generator as well (seg4:0DA9(1)).
+        if (!play_.newGame(status, names, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
         play_.game().setComputerExtraCards(screen_.settings().computerExtraCards);
         for (int p = 0; p < kPlayerSlots; ++p) screen_.setZoom(p, p == 0 || p == 4);
         startGame(true);

@@ -120,10 +120,9 @@ private:
     // WM_CLOSE). From MAIN1 (1064) a No opens MAIN1 again.
     bool quitReopensMain_ = false;
     int sceneSerial_ = -1; // message serial whose event scene has been started
-    // A new game between PLAYER and TEMP (seg4:0DA9): the setup's slots, names and seed.
+    // A new game between PLAYER and TEMP (seg4:0DA9): the setup's slots and names.
     std::array<uint8_t, kPlayerSlots> pendingStatus_{};
     std::array<std::string, kPlayerSlots> pendingNames_;
-    uint16_t pendingSeed_ = 0;
     bool cardsFromEstates_ = false; // the card window was opened by the town dialog's Karte (mask 1)
     bool introShown_ = false;
     SDL_Keycode heldArrow_ = SDLK_UNKNOWN; // seg4:01F2: DS:A77A held

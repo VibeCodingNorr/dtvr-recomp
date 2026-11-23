@@ -213,7 +213,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
             s.rounds = screen_.stages().stages();
             screen_.applySettings(s);
             std::string error;
-            if (play_.newGame(pendingStatus_, pendingNames_, pendingSeed_, error, s.rounds)) {
+            if (play_.newGame(pendingStatus_, pendingNames_, error, s.rounds)) {
                 play_.game().setComputerExtraCards(screen_.settings().computerExtraCards);
                 startGame(true);
             } else { std::cerr << "Neues Spiel: " << error << "\n"; openTitle(); }
@@ -230,7 +230,6 @@ void GameWindow::handleEvent(const SDL_Event& event) {
             screen_.applySettings(s);
         }
         if (r == SetupView::Result::Start) {
-            pendingSeed_ = uint16_t(SDL_GetTicks() ^ uint32_t(std::time(nullptr))); // seg1:02A9: time
             pendingStatus_ = screen_.setup().status();
             pendingNames_ = screen_.setup().names();
             // The extension's switch is kept in [Extensions] like the original's profile values.

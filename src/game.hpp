@@ -77,12 +77,20 @@ public:
     Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
          int rounds, uint16_t seed, int defaultCards = 1, const WorldMap* map = nullptr,
          const TileProperties* props = nullptr, bool soloOpponent = true);
+    // The same, continuing a running generator: rally.exe seeds rand() once at start
+    // (seg1:02A9 in seg5:0029) and a new game draws on from there (round 143).
+    Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
+         int rounds, MsRandom random, int defaultCards = 1, const WorldMap* map = nullptr,
+         const TileProperties* props = nullptr, bool soloOpponent = true);
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
     // Developer option --event (tests of the presentation): applies an event now, as
     // the event trigger would; the game's rules are those of the event itself.
     void triggerEvent(EventKind kind) { applyEvent(kind); }
+    // The program's one generator (DS:838E, seeded once at seg5:0029): the game's draws,
+    // and before a game the intro's wipe (seg7, round 143) draw from it.
+    MsRandom& sessionRandom() { return rng_; }
     // --drago FORM (tests): Dr. Drago joins as at a stage start, in form 0-2.
     void startDrago(int form) { placeDragoForStage(); drago_.form = form < 0 ? 0 : form > 2 ? 2 : form; }
     // seg2:69AD: a human may close the slot window of Würfeln (seg2:6426 flag DS:9AD8)

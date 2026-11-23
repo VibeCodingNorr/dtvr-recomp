@@ -23,8 +23,9 @@ public:
     // A new game with these slots (status 0 / 1 human / 2 computer) and names, handed
     // over into the existing Game object (save codec), so references stay valid.
     // `rounds` > 0 replaces the stage count (window TEMP, DS:A104 / A106).
+    // A new game continues the running game's generator (seg1:02A9 seeds only once).
     bool newGame(const std::array<uint8_t, kPlayerSlots>& slots, const std::array<std::string, kPlayerSlots>& names,
-                 uint16_t seed, std::string& error, int rounds = 0);
+                 std::string& error, int rounds = 0);
     std::string title() const;
     // Messages of the last command, the town's properties after arriving and the hand.
     void printLog(std::ostream& out) const;

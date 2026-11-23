@@ -447,9 +447,9 @@ bool GameScreen::startBalance(Uint32 now) {
                           sound_, now);
 }
 
-bool GameScreen::startIntro(Uint32 now) {
+bool GameScreen::startIntro(MsRandom& random, Uint32 now) {
     prepareSubtitles();
-    return intro_.start(sound_, &subtitles_, settings_.subtitle != 0 || sound_ == nullptr, now);
+    return intro_.start(sound_, &subtitles_, settings_.subtitle != 0 || sound_ == nullptr, random, now);
 }
 
 bool GameScreen::startVictory(Uint32 now) {

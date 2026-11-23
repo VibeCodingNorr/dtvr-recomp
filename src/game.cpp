@@ -37,7 +37,12 @@ Game::Game(const Board& board, const std::vector<Town>& towns, int humans, int r
 Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
            int rounds, uint16_t seed, int defaultCards, const WorldMap* map, const TileProperties* props,
            bool soloOpponent)
-    : board_(board), towns_(towns), rng_(seed), economy_(towns, kPlayerSlots), map_(map), props_(props) {
+    : Game(board, towns, slots, rounds, MsRandom(seed), defaultCards, map, props, soloOpponent) {}
+
+Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<uint8_t, kPlayerSlots>& slots,
+           int rounds, MsRandom random, int defaultCards, const WorldMap* map, const TileProperties* props,
+           bool soloOpponent)
+    : board_(board), towns_(towns), rng_(random), economy_(towns, kPlayerSlots), map_(map), props_(props) {
     if (map_ && props_) barriers_ = barrierLinks(board_, *map_, *props_);
     westValue_ = westPropertyValue(board_, towns_, 0x4000); // seg4:0E0B mask, then seg1:A15B
     loadedSeason_ = seasonForMonth(0);

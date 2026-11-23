@@ -46,6 +46,20 @@ int main() {
         for (int p = 1; p < kPlayerSlots; ++p) computers += solo.isComputer(p);
         CHECK(computers == 1);
     }
+    // seg1:02A9 seeds rand() once (round 143): a game built from a running generator
+    // is the game of that state, and a game after the intro's draws continues them.
+    {
+        const std::array<uint8_t, kPlayerSlots> slots{1, 2, 0, 0, 0, 0, 0, 0};
+        Game bySeed(board, towns, slots, 0, uint16_t(9)), byState(board, towns, slots, 0, MsRandom(9));
+        CHECK(SaveCodec::encode(bySeed) == SaveCodec::encode(byState));
+        MsRandom session(9);
+        for (int i = 0; i < 40; ++i) session.rand(); // e.g. the intro's wipe cells
+        Game after(board, towns, slots, 0, session);
+        CHECK(SaveCodec::encode(after) != SaveCodec::encode(bySeed));
+        MsRandom again(9);
+        for (int i = 0; i < 40; ++i) again.rand();
+        CHECK(SaveCodec::encode(Game(board, towns, slots, 0, again)) == SaveCodec::encode(after));
+    }
     // seg8:6FBF: a computer's investment offer waits for the human's answer in the
     // game window (the window ignores the timeout 0x7EF, round 138).
     {

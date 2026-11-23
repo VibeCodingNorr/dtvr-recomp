@@ -31,8 +31,10 @@ public:
     ~IntroView() { if (palette_) SDL_FreePalette(palette_); }
     IntroView(const IntroView&) = delete;
     IntroView& operator=(const IntroView&) = delete;
-    // False when club.bmp is missing. `subtitles` may be null.
-    bool start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitlesOn, Uint32 now);
+    // False when club.bmp is missing. `subtitles` may be null. The wipes draw from
+    // `random`, the program's generator, which seg5:0029 has already seeded with the
+    // time before the intro starts (seg5:0188); it must outlive the intro.
+    bool start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitlesOn, MsRandom& random, Uint32 now);
     bool active() const { return active_; }
     void stop();
     // Esc, Space, Enter or a click close it once the first pass ran (seg7:2118).
@@ -69,7 +71,7 @@ private:
     Texture texture_{nullptr, SDL_DestroyTexture};
     std::vector<IntroFrame> shown_;
     std::vector<WipeCell> wipe_;
-    MsRandom rand_{1};
+    MsRandom* rand_ = nullptr; // the session's generator (DS:838E)
     Effect effect_ = Effect::None;
     int effectStep_ = 0;
     Uint32 effectAt_ = 0, lastPass_ = 0;

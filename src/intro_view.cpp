@@ -73,7 +73,7 @@ bool IntroView::loadBackdrop(const fs::path& file) {
     return true;
 }
 
-bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitlesOn, Uint32 now) {
+bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitlesOn, MsRandom& random, Uint32 now) {
     active_ = false;
     sound_ = sound;
     subtitles_ = subtitles;
@@ -107,7 +107,7 @@ bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitle
     SDL_SetSurfacePalette(scene_.get(), palette_);
     sync_ = loadVoiceSync(root_, language_);
     script_ = IntroScript(&sync_);
-    rand_ = MsRandom(1); // assumption: the intro runs before any game seeds rand
+    rand_ = &random; // seg5:0029 seeds rand() with the time before the intro (seg5:0188)
     effect_ = Effect::None;
     shown_.clear();
     active_ = true;
@@ -167,7 +167,7 @@ void IntroView::apply(const IntroEvent& e, Uint32 now) {
         next_ = loadBmp(findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / (e.name + ".bmp"))); // DS:1376
         if (!next_ || next_->format->BitsPerPixel != 8) { stop(); break; }                     // seg7:1BA4
         SDL_SetSurfacePalette(next_.get(), palette_);
-        wipe_ = wipeMode4(kWidth, kHeight, rand_);
+        wipe_ = wipeMode4(kWidth, kHeight, *rand_);
         effect_ = Effect::Wipe;
         effectStep_ = 0;
         effectAt_ = now;
