@@ -1189,7 +1189,17 @@ shows while the player stands on the reached field (phase Arrived).
   count, seg2:7EAC) slides the window out and destroys it (seg2:6B08). For a
   computer the wait loop seg2:65C4 posts the key itself after more than 0x1E
   passes in state 4 (seg2:664E); for a human nothing does — the window stays
-  until Enter or Space. Rebuilt in `SlotView::key` (a pass is taken as 20 ms).
+  until Enter or Space. Rebuilt in `SlotView::key`.
+- **Tick length** (round 117): one animation tick of the slot machine is one
+  pass of its loop seg2:65C4: seg6:03F7 (messages), seg2:74E4 (draw), seg2:6DCB
+  (advance the records once), seg2:6F69 (blit), seg2:1C37 (idle pass). The idle
+  pass runs while DS:94C4 (a game) and DS:94E6 (the window is active) are set
+  and ends with seg6:0CDF(20), which waits until 20 ms of TOOLHELP.TimerCount
+  have passed since its previous call (5 ms with DS:16). seg2:6DCB has no other
+  caller than such loops (seg2:65F4, seg7 / seg8 scenes); the 50 ms timer of
+  seg5:01EB calls seg5:3BB9. A tick is therefore 20 ms (longer only when the
+  drawing takes more), like the event scenes' passes (seg8:6EB3); the earlier
+  50 ms assumption made reels, lever and the computer's wait 2.5 times too slow.
   *Round 116:* state 1 waits for the lever: a computer's loop posts the key at
   once (seg2:65B2), a human presses Enter or Space; seg2:6A09 then plays the
   lever record at (0x16, 0x70) — DS:2292 `slthad01`–`09`, follow-up DS:2338
@@ -1221,9 +1231,10 @@ shows while the player stands on the reached field (phase Arrived).
   `count_<d>` (definitions DS:2486 + 16·d, table DS:2E58). seg2:7EC2 finally sets
   DS:A778 to the sum. Reels 3–5 add gear animations (`slt5anl*`, `slt5anr*`,
   `slt5anu*` at (122, 82), (256, 56), …).
-- **Timers**: the game timer is 50 ms (seg5:01EB → seg5:02CF); others run every
-  1000 ms (seg2:3AF0) and 80 ms (seg2:8018). The slot loop (seg2:65C4) advances
-  the animations once per pass and synchronises with the game loop (seg2:1C37).
+- **Timers**: a 50 ms timer (seg5:01EB → seg5:02CF / 3BB9, the water's colour
+  cycle); others run every 1000 ms (seg2:3AF0) and 80 ms (seg2:8018). The slot
+  loop (seg2:65C4) advances the animations once per pass, and each pass waits
+  in seg2:1C37 for 20 ms (see "Tick length").
 
 Rebuilt in `src/slot_view.cpp`: housing, spinning and stopping reels and the sum
 display, started for every spin of the game (`Game::lastReels`). Assumptions:

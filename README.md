@@ -184,7 +184,8 @@ is claimed.
 108. The hand as a card stack under the portrait (seg3:0EE8); slot machine and event animations block the turn menu; ambient animations start staggered.
 109. Slot machine keys as seg2:6B4A: Enter / Space stop the reels, then let the window slide out; computers continue by themselves.
 110. The slot machine's lever: Enter / Space pulls it (computers at once); keys also shorten a computer's spin.
-111. *Next:* remaining presentation details (compare windows with rally.exe).
+111. Slot machine tick traced: 20 ms per loop pass (seg6:0CDF(20) in seg2:1C37), not 50 ms.
+112. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

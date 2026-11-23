@@ -36,13 +36,15 @@ public:
     // again at the end (seg2:67B8), one step per 20 ms (seg6:0CDF(20)).
     void draw(const ScreenRect& map, Uint32 now);
 
-    static constexpr Uint32 kTickMs = 50; // assumption: the 50 ms game timer (seg5:01EB)
+    // One tick is one pass of the loop seg2:65C4, which advances the records once
+    // (seg2:65F4 -> 6DCB) and ends in the idle pass seg2:1C37 with seg6:0CDF(20): at
+    // least 20 ms by TOOLHELP.TimerCount (round 117; earlier taken as 50 ms).
+    static constexpr Uint32 kTickMs = 20;
     static constexpr int kSlideSteps = 16, kSlideStep = 16; // seg2:675D: 0x100 >> 4 steps of 0x10
     static constexpr Uint32 kSlideMs = 20;                  // seg6:0CDF(0x14): TimerCount milliseconds
     static constexpr Uint32 kSlideTime = kSlideSteps * kSlideMs;
-    // seg2:6657: more than 0x1E passes of the loop seg2:65C4 in state 4; a pass is
-    // the idle pass of seg2:1C37, taken as 20 ms (assumption: seg6:0CDF(20)).
-    static constexpr Uint32 kComputerHold = 31 * 20;
+    // seg2:6657: more than 0x1E passes of the loop seg2:65C4 in state 4.
+    static constexpr Uint32 kComputerHold = 31 * kTickMs;
     static constexpr Uint32 kNever = 0xFFFFFFFFu;
     static constexpr int kLeverPullTicks = 9 * 2;      // DS:2292: 9 frames, delay 2
     // Ticks until reel i shows its final face: (i + 3) * 2 turns of four frames at
