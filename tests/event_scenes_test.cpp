@@ -4,6 +4,8 @@
 #include "event_scenes.hpp"
 
 #include <cstdio>
+#include <string>
+#include <utility>
 #include <cstring>
 
 using namespace dtvr;
@@ -80,6 +82,37 @@ int main() {
         CHECK(second > 25 && t[second].camera.x == 180 * 16 && t[second].camera.y == 83 * 16);
         CHECK(second > 25 && t[second].frame && t[second].at[0].x == 179 * 16 + 0x12 && t[second].at[0].y == 82 * 16 + 0x17);
         CHECK(second > 50 && !t[second - 1].frame); // the 1000 ms wait before
+    }
+    // Event WAVs (round 135): seg1:2D40(7, <data>\snd\<name>, loops) with the first frame
+    // of a phase — after the earthquake's 2000 ms wait, after the flood's wave, Nessie's
+    // E12 (one repetition) at Loch Ness, E12a / E12b with its last two phases.
+    {
+        auto sounds = [](const std::vector<SceneStep>& t) {
+            std::vector<std::pair<size_t, std::string>> out;
+            for (size_t i = 0; i < t.size(); ++i)
+                if (t[i].sound) out.push_back({i, std::string(t[i].sound) + "/" + std::to_string(t[i].soundLoops)});
+            return out;
+        };
+        const auto quake = sounds(eventSceneTimeline(*eventSceneForNotice(5201), 0x97, 0xCF, 0, 208, 208, 0));
+        CHECK(quake.size() == 1 && quake[0].first == 100 && quake[0].second == "E5/0");
+        const auto storm = sounds(eventSceneTimeline(*eventSceneForNotice(5041), 2, 3, 0, 208, 208, 0));
+        CHECK(storm.size() == 1 && storm[0].first == 0 && storm[0].second == "E1/0");
+        const auto floodT = eventSceneTimeline(*eventSceneForNotice(5241), 10, 10, 0, 208, 208, 0);
+        const auto flood = sounds(floodT);
+        CHECK(flood.size() == 1 && flood[0].second == "e7/0" && flood[0].first > 0
+              && std::string(floodT[flood[0].first].frame) == "RG02"                  // a new record advances at once,
+              && std::string(floodT[flood[0].first - 1].frame) == "RG00");          // after the flight of RG00
+        const auto nessieT = eventSceneTimeline(*eventSceneForNotice(5101), 50, 50, 0, 208, 208, 0);
+        const auto nessie = sounds(nessieT);
+        CHECK(nessie.size() == 3 && nessie[0].first == 25 && nessie[0].second == "E12/1");
+        CHECK(nessie.size() == 3 && std::string(nessieT[nessie[1].first].frame) == "NH09" && nessie[1].second == "E12a/0"
+              && std::string(nessieT[nessie[1].first - 1].frame) == "NH01"
+              && std::string(nessieT[nessie[2].first].frame) == "NH45" && nessie[2].second == "E12b/0"
+              && std::string(nessieT[nessie[2].first - 1].frame) == "NH43");
+        int withSound = 0;
+        for (int text : {5041, 5021, 5141, 5101, 5281, 5201, 5121, 5241, 5481, 5081})
+            withSound += eventSceneForNotice(text) && !eventSceneForNotice(text)->sounds.empty();
+        CHECK(withSound == 10);
     }
     CHECK(eventSceneForNotice(5481) && eventSceneForNotice(5243) && eventSceneForNotice(5021));
     CHECK(eventSceneForNotice(600) == nullptr && eventSceneForNotice(5001) == nullptr);

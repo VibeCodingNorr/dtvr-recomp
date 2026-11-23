@@ -1784,6 +1784,29 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   when the loop starts; after the message seg8:427F calls seg1:275E. Not yet rebuilt:
   the event WAVs (seg1:2D40 calls of seg8: 1D2F, 2102, 260A, 3336, 351B, 35F1, 3964,
   4064, 4553, 4E6F, 5664, 5C75).
+- **Event sounds** (round 135): every animated event plays a WAV with seg1:2D40(7,
+  `wsprintf(<base>\snd\<name>)`, loops) on WaveMix channel 7 — the files are
+  `butt/snd/<name>` without an extension (base DS:7A; Nessie's DS:82 holds the same
+  directory, as its other paths `%s\fuss.bmp` and the BILANZ voices show):
+
+  | Handler | Event (text) | WAV | When |
+  | --- | --- | --- | --- |
+  | seg8:1C01 | storm (5041) | `E1` (seg8:1D2F) | after the cue `e1`, with the first frame |
+  | seg8:1E70 | robbers (5021) | `e2` (2102) | after `e2`, first frame |
+  | seg8:2386 | drought (5141) | `e3` (260A) | after `e3`, first frame (the sun's descent) |
+  | seg8:2A32 | Nessie (5101) | `E12` loops 1 (3336), `E12a` (351B), `E12b` (35F1) | E12 after seg6:0F60(500) with the lake phase; E12a / E12b before the loops of the last two phases (seg8:353B, 3611) |
+  | seg8:36FD | volcano (5281/5301) | `e4` (3964) | before the cue `e4` and the zoom, first frame |
+  | seg8:3C0B | earthquake (5201) | `E5` (4064) | after seg6:0F60(2000), with the cracks |
+  | seg8:42B0 | rain (5121) | `e6` (4553) | after `e6`, with the flight |
+  | seg8:4964 | flood (5241) | `e7` (4E6F) | after the wave's flight (seg8:4DB0), with RG01 ff. |
+  | seg8:535E | snow (5481) | `e8` (5664) | after `e8`, with the flight |
+  | seg8:5A76 | rockfall (5081) | `e9` (5C75) | after `e9`, first frame |
+
+  The cue names pushed to seg1:2A30 (e1–e9, e11) were read at each call: `e3` is the
+  drought's (*corrects* the former mapping to Nessie's text 5101; Nessie starts no
+  cue but calls seg1:275E as well, seg8:36CC). Rebuilt as `SceneSound` entries of
+  the scenes (`src/event_scenes.cpp`), started by `GameScreen::advanceVehicles` with
+  the phase's first pass; tested in `tests/event_scenes_test.cpp`.
 - **Event music ends with the event** (round 133): every event handler that starts
   an `e` cue (seg8:1D03, 20D6, 25DE, 3970, 3E52, 4527, 4C01, 5638, 5C49, 6A10) calls
   seg1:275E after its message (seg8:1E42, 2355, 2A01, 3BDA, 427F, 4933, 4EEA, 5A45,

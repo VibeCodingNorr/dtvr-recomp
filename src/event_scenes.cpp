@@ -11,7 +11,7 @@ namespace {
 // SBS set, record +0xA and the position added to the place's cell * 16.
 // Sturm seg8:1C01: DS:5F0E.., sbs\sturm.sbs (DS:5F3A), repetitions 4, (8, -0x1D).
 using Motion = ScenePhase::Motion;
-const EventScene kStorm{"sturm.sbs", {{{"ST1", "ST2", "ST3", "ST4", "ST5", "ST6"}, 6, 4}}, 8, -0x1D};
+const EventScene kStorm{"sturm.sbs", {{{"ST1", "ST2", "ST3", "ST4", "ST5", "ST6"}, 6, 4}}, 8, -0x1D, 0, 0, false, false, {{0, "E1", 0}}};
 // Räuber seg8:1E70: sbs\raub.sbs (DS:60E7), the victim's field * 16 + (0xC, 4).
 const EventScene kRobbers{"raub.sbs",
                           {{{"RA01", "RA02", "RA03", "RA04", "RA05", "RA06", "RA07", "RA08", "RA09", "RA10",
@@ -19,7 +19,7 @@ const EventScene kRobbers{"raub.sbs",
                              "RA21", "RA16", "RA17", "RA18", "RA19", "RA20", "RA21", "RA16", "RA17", "RA18",
                              "RA19", "RA20", "RA21", "RA16", "RA17", "RA18", "RA22", "RA23", "RA24"},
                             5, 0}},
-                          0xC, 4};
+                          0xC, 4, 0, 0, false, false, {{0, "e2", 0}}};
 // Vulkan seg8:36FD: sbs\vulkan.sbs (DS:69FF), the place (DS:69F0) * 16 + (0xD, 0x11).
 const EventScene kVolcano{"vulkan.sbs",
                           {{{"V01", "V02", "V03", "V04", "V01", "V02", "V03", "V04", "V01", "V02", "V05", "V06",
@@ -28,7 +28,7 @@ const EventScene kVolcano{"vulkan.sbs",
                              "V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28", "V29", "V26", "V27",
                              "V28", "V29", "V26", "V27", "V28", "V29"},
                             5, 0}},
-                          0xD, 0x11};
+                          0xD, 0x11, 0, 0, false, false, {{0, "e4", 0}}};
 // Steinschlag seg8:5A76: sbs\stein.sbs (DS:717F), the place * 16 + (7, -0x17).
 const EventScene kRockfall{"stein.sbs",
                            {{{"st01", "st02", "st03", "st04", "st05", "st06", "st07", "st08", "st09", "st10",
@@ -36,14 +36,14 @@ const EventScene kRockfall{"stein.sbs",
                               "st21", "st22", "st23", "st24", "st25", "st26", "st27", "st28", "st29", "st30",
                               "st31", "st32", "st33"},
                              3, 0}},
-                           7, -0x17};
+                           7, -0x17, 0, 0, false, false, {{0, "e9", 0}}};
 // Erdbeben seg8:3C0B: equake.sbs (DS:6AC9); two records with the same definition
 // at the cracks of the place, seg6:0F60(2000) before and (500) after the loop.
 const EventScene kQuake{"equake.sbs",
                         {{{"BR01", "BR02", "BR03", "BR04", "BR05", "BR06", "BR07", "BR08", "BR09", "BR10",
                            "BR11", "BR12", "BR13", "BR14", "BR15", "BR15", "BR15", "BR15"},
                           5, 0}},
-                        0, 0, 2000, 500, true};
+                        0, 0, 2000, 500, true, false, {{0, "E5", 0}}};
 // Dürre seg8:2386: sonne.sbs (DS:6239); the sun S01/S02 (delay 7, repetitions 1000)
 // sinks from the view top - 0x14 by 2 per pass at x = town * 16 + 0x12 until it is
 // within 0x32 of the town row (seg8:27A3), then three definitions play there.
@@ -54,7 +54,7 @@ const EventScene kDrought{"sonne.sbs",
                             6, 0},
                            {{"S17", "S18", "S19", "S20"}, 6, 3},
                            {{"S21", "S22", "S23", "S24", "S01", "S02", "S01", "S02", "S01", "S02"}, 6, 0}},
-                          0x12, 0};
+                          0x12, 0, 0, 0, false, false, {{0, "e3", 0}}};
 // Nessie seg8:2A32: nessie.sbs (DS:680E); first at Loch Ness (record at 0x4D5 / 0x248,
 // centred on 0x4D0 / 0x240, seg6:0F60(500) before and (1000) after), then centred on
 // the place + 1 cell and three definitions at the place * 16 + (0x12, 0x17)
@@ -79,7 +79,7 @@ const EventScene kNessie{
      {{"NH44", "NH45", "NH46", "NH46", "NH46", "NH46", "NH46", "NH46", "NH45", "NH44", "NH43", "NH42", "NH42",
        "NH42", "NH42", "NH42", "NH42", "NH42", "NH42"},
       5, 0, Motion::None, 0, 1000}},
-    0x12, 0x17, 0, 0, false, true};
+    0x12, 0x17, 0, 0, false, true, {{0, "E12", 1}, {2, "E12a", 0}, {3, "E12b", 0}}};
 // The lake cells of seg8:2A32 (stack tables bp-0x2B8 / -0x2D2, index DS:680C).
 constexpr int kLakeX[13] = {18, 61, 82, 91, 78, 105, 112, 144, 146, 148, 179, 190, 133};
 constexpr int kLakeY[13] = {13, 67, 85, 93, 135, 107, 98, 83, 65, 33, 82, 82, 130};
@@ -92,7 +92,7 @@ const EventScene kRain{"regen.sbs",
                           "R19", "R20", "R14", "R15", "R16", "R09", "R17", "R18", "R19", "R20", "R14",
                           "R15", "R16", "R09", "R10", "R11", "R12", "R13", "R14", "R15", "R16"},
                          4, 1}},
-                       0, -0x11};
+                       0, -0x11, 0, 0, false, false, {{0, "e6", 0}}};
 // Schnee seg8:535E: schnee.sbs (DS:7017); SN01 flies to the obstacle * 16 + (5, -0x19),
 // then SN01-SN30 and SN31-SN46 (repetitions 2).
 const EventScene kSnow{"schnee.sbs",
@@ -104,7 +104,7 @@ const EventScene kSnow{"schnee.sbs",
                         {{"SN31", "SN32", "SN33", "SN34", "SN35", "SN36", "SN37", "SN38", "SN39", "SN40",
                           "SN41", "SN42", "SN43", "SN44", "SN45", "SN46"},
                          4, 2}},
-                       5, -0x19};
+                       5, -0x19, 0, 0, false, false, {{0, "e8", 0}}};
 // Hochwasser seg8:4964: flood.sbs (DS:6E1D); RG00 flies to the town * 16 - (0, 0x11),
 // then RG01-RG26 (46 frames, delay 8).
 const EventScene kFlood{"flood.sbs",
@@ -115,7 +115,7 @@ const EventScene kFlood{"flood.sbs",
                            "RG16", "RG17", "RG18", "RG19", "RG20", "RG21", "RG21", "RG22", "RG21", "RG21",
                            "RG22", "RG22", "RG23", "RG24", "RG25", "RG26"},
                           8, 0}},
-                        0, -0x11};
+                        0, -0x11, 0, 0, false, false, {{1, "e7", 0}}};
 
 // Per place (centre DS stack bp-0x66 / -0x7E = the quake places): crack A at
 // (ax + 1, ay + 1) * 16, crack B at (bx + 1, by + 1) * 16 when bx != 0.
@@ -223,6 +223,11 @@ std::vector<SceneStep> eventSceneTimeline(const EventScene& scene, int cellX, in
         } else {
             while (r.step(phase)) steps.push_back({phase.frames[size_t(r.frame)], at(rest)});
         }
+        for (const SceneSound& sound : scene.sounds) // seg1:2D40(7, <data>\snd\<name>, loops)
+            if (sound.phase == int(&phase - scene.phases.data()) && first < steps.size()) {
+                steps[first].sound = sound.file;
+                steps[first].soundLoops = sound.loops;
+            }
         if (phase.recentre && first < steps.size() + 1) {
             const ScenePoint camera = phase.cameraFixed ? phase.camera
                                                         : ScenePoint{cellX * 16 + phase.camera.x, cellY * 16 + phase.camera.y};

@@ -232,11 +232,12 @@ void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
 void GameScreen::advanceVehicles(Uint32 now) {
     if (eventSceneActive(now)) { // Nessie: seg6:3064 on Loch Ness, then on the place
         const size_t pass = std::min(size_t((now - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
-        for (; sceneCamera_ <= pass; ++sceneCamera_)
-            if (sceneSteps_[sceneCamera_].recentre) {
-                const ScenePoint c = sceneSteps_[sceneCamera_].camera;
-                origin_ = centredOrigin(c.x, c.y, viewSize());
-            }
+        for (; sceneCamera_ <= pass; ++sceneCamera_) {
+            const SceneStep& step = sceneSteps_[sceneCamera_];
+            if (step.recentre) origin_ = centredOrigin(step.camera.x, step.camera.y, viewSize());
+            if (step.sound && sound_) // seg1:2D40(7, "<data>\snd\<name>", loops): WaveMix channel 7
+                sound_->playFile(7, findCaseInsensitive(root_, fs::path("butt") / "snd" / step.sound), step.soundLoops);
+        }
     }
     const Uint32 elapsed = advanced_ ? now - lastAdvance_ : 0;
     lastAdvance_ = now;

@@ -138,10 +138,12 @@ std::vector<MusicPack> discoverMusicPacks(const fs::path& directory, std::vector
 }
 
 std::string musicForNotice(int text) {
-    // seg8:1D03,20D6,25DE,3970,3E52,4527,4C01,5638,5C49,6A10.
+    // seg8:1D03,20D6,25DE,3970,3E52,4527,4C01,5638,5C49,6A10 (cue string pushed there),
+    // each handler's text base: storm 0x13B1, robbers 0x139D, drought 0x1415 (round 135:
+    // e3 is the drought's, not Nessie's — Nessie seg8:2A32 starts no cue).
     if (text >= 5041 && text <= 5043) return "e1";
     if (text >= 5021 && text <= 5023) return "e2";
-    if (text >= 5101 && text <= 5103) return "e3";
+    if (text >= 5141 && text <= 5143) return "e3";
     if ((text >= 5281 && text <= 5283) || (text >= 5301 && text <= 5303)) return "e4";
     if (text >= 5201 && text <= 5203) return "e5";
     if (text >= 5121 && text <= 5123) return "e6";
@@ -150,6 +152,12 @@ std::string musicForNotice(int text) {
     if (text >= 5081 && text <= 5083) return "e9";
     if (text >= 5001 && text <= 5003) return "e11";
     return {};
+}
+
+bool noticeEndsEvent(int text) {
+    // The texts of the seg8 event handlers that call seg1:275E after their message:
+    // those with a cue and Nessie (seg8:36CC), text base 0x13ED.
+    return !musicForNotice(text).empty() || (text >= 5101 && text <= 5103);
 }
 
 MusicPreferences loadMusicPreferences(const fs::path& file) {

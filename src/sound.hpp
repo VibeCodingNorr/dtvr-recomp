@@ -39,7 +39,7 @@ public:
     void setEnabled(bool enabled) { enabled_ = enabled; } // [Setup] Wave (DS:B5D0)
     void play(int channel, int sound, int loops = 0);
     // seg1:3579: a WAV file by path (finish, voices); same channel rules.
-    void playFile(int channel, const std::filesystem::path& file);
+    void playFile(int channel, const std::filesystem::path& file, int loops = 0);
     // seg1:3579 / 3661: a voice plays with a wave device (DS:9552) and [Setup] Voice
     // (DS:B5D4), regardless of Sound-F/X; otherwise nothing sounds, but the channel
     // counts as busy for the voice's length (the TimerCount path of seg1:3E64), so

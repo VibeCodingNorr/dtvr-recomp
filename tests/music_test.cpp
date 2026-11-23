@@ -48,7 +48,8 @@ void controls() {
     player.nextBackground(); player.nextBackground(); player.nextBackground(); player.nextBackground();
     check(player.cue() == "g0", "playlist wraps");
     check(musicForNotice(5021) == "e2" && musicForNotice(5483) == "e8", "event mapping");
-    check(musicForNotice(5141).empty(), "no invented drought/e10 cue");
+    check(musicForNotice(5141) == "e3" && musicForNotice(5101).empty(), "e3 is the drought's; Nessie has no cue");
+    check(noticeEndsEvent(5101) && noticeEndsEvent(5143) && !noticeEndsEvent(600), "Nessie ends with the background too");
     check(validMusicPackId("1-gm") && !validMusicPackId("../bank"), "pack identity");
 }
 

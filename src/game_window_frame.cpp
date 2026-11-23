@@ -42,10 +42,8 @@ void GameWindow::updateFrame(int frame) {
     if (!screen_.title() && !moving_ && !screen_.risiko().blinking(SDL_GetTicks()))
         for (Notice& n : play_.game().takeNotices()) {
             noticesTaken_ = std::max(noticesTaken_, n.seq + 1);
-            if (const auto cue = musicForNotice(n.text); !cue.empty()) {
-                music_.interrupt(cue);
-                eventMusicNotice_ = n.seq; // its message ends the event music (seg1:275E)
-            }
+            if (const auto cue = musicForNotice(n.text); !cue.empty()) music_.interrupt(cue);
+            if (noticeEndsEvent(n.text)) eventMusicNotice_ = n.seq; // its message ends with seg1:275E
             // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
             // to the investment window, not to the message window.
             const bool offerText = n.text == 5321 || n.text == 5322 || n.text == 5401 || n.text == 5402;

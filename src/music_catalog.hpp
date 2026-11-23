@@ -23,6 +23,9 @@ std::vector<MusicPack> discoverMusicPacks(const std::filesystem::path& directory
                                         std::vector<std::string>& issues);
 // Recovered event message families; no cue is invented for drought/e10.
 std::string musicForNotice(int text);
+// The message of an event handler that switches to the next background cue when it
+// has been closed (seg1:275E): every event with a cue, and Nessie.
+bool noticeEndsEvent(int text);
 
 // volume 100: rally.exe sets the MIDI device to full volume at start (seg5:2194).
 struct MusicPreferences { std::string pack; int volume = 100; };

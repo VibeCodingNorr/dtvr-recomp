@@ -53,7 +53,7 @@ const std::vector<int16_t>* SoundPlayer::load(int sound) {
     return cache_[size_t(sound)].empty() ? nullptr : &cache_[size_t(sound)];
 }
 
-void SoundPlayer::playFile(int channel, const fs::path& file) {
+void SoundPlayer::playFile(int channel, const fs::path& file, int loops) {
     if (!device_ || !enabled_ || channel < 0 || channel > 7) return;
     std::vector<int16_t> samples;
     if (!convert(file, samples)) return;
@@ -61,7 +61,7 @@ void SoundPlayer::playFile(int channel, const fs::path& file) {
     if (effectsBlocked()) { SDL_UnlockAudioDevice(device_); return; } // WaveMix is not active
     for (Voice& v : voices_) if (v.samples == &fileSamples_) v = {};
     fileSamples_ = std::move(samples);
-    voices_[size_t(channel)] = {&fileSamples_, 0, 0};
+    voices_[size_t(channel)] = {&fileSamples_, 0, loops};
     SDL_UnlockAudioDevice(device_);
 }
 

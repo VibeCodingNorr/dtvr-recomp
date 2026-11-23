@@ -77,7 +77,7 @@ Further caller tracing identifies the named event cues:
 | --- | --- | --- |
 | e1 | Storm (category-4 town damage) | seg8:1D03 |
 | e2 | Robbers | seg8:20D6 |
-| e3 | Nessie | seg8:25DE |
+| e3 | Drought (corrected in round 135; Nessie seg8:2A32 starts no cue) | seg8:25DE |
 | e4 | Volcano | seg8:3970 |
 | e5 | Earthquake | seg8:3E52 |
 | e6 | Rain | seg8:4527 |
@@ -87,7 +87,9 @@ Further caller tracing identifies the named event cues:
 | e11 | Eastern borders opening | seg8:6A10 |
 
 These are routed from the corresponding message families, when the native event
-presentation is queued. There is no invented drought/e10 trigger. The form-change
+presentation is queued. No handler pushes `e10`, so it has no trigger. Every
+event handler, Nessie included, calls seg1:275E after its message: the event cue
+stops and the next background cue starts (round 133). The form-change
 branches at seg2:B3F6/B429/B442 map new Drago forms 1/2/0 to f2/f3/f1;
 the successful Hau ab transfer at seg2:B53B requests f3. Winner music starts with
 the winner presentation (seg7:71DC). Cue positions use native PCM frames, not

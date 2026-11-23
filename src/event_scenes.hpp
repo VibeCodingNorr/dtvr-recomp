@@ -25,6 +25,9 @@ struct ScenePhase {
     ScenePoint camera{};
 };
 
+// seg1:2D40(7, "<data>\snd\<file>", loops) of the handler, played with the first frame
+// of `phase` (round 135, docs/formats.md "Event sounds").
+struct SceneSound { int phase = 0; const char* file = ""; int loops = 0; };
 struct EventScene {
     const char* file;                 // in the sbs directory
     std::vector<ScenePhase> phases;   // played one after the other
@@ -32,6 +35,7 @@ struct EventScene {
     int waitBefore = 0, waitAfter = 0; // seg6:0F60(ms) around the whole loop
     bool quakeCracks = false;          // positions from the earthquake tables instead
     bool nessieLake = false;           // the place is the lake cell of the variant's index
+    std::vector<SceneSound> sounds;    // WAVs of butt/snd on channel 7
 };
 
 // One pass of 20 ms: the frame (nullptr while waiting) at world pixel positions,
@@ -41,6 +45,8 @@ struct SceneStep {
     std::vector<ScenePoint> at;
     bool recentre = false;
     ScenePoint camera{};
+    const char* sound = nullptr;       // a WAV starts with this pass (SceneSound)
+    int soundLoops = 0;
 };
 
 // The animation of an event message text, nullptr when it has none (yet).
