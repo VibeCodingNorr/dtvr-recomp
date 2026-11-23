@@ -27,6 +27,11 @@ public:
     // 3 the turning reels end their turn (seg2:6AA2; both play sound 2 on channel 1),
     // 2 after the count the window slides out (seg2:6B08); 0 when unused.
     int key(Uint32 now);
+    // seg2:69AD: Escape / Backspace (and the right button) close the window in state 1
+    // or 2 (DS:A780 <= 2: before the lever, or turning without a stop key). The game
+    // decides whether the spin may be taken back (Würfeln of a human).
+    bool cancellable(Uint32 now) const;
+    void close() { reels_.clear(); } // DestroyWindow at once, no slide (seg2:69F6)
     bool active(Uint32 now) const;
     // The lever's callback seg2:7671 has set the reels turning.
     bool running(Uint32 now) const { return !reels_.empty() && reelStart() != kNever && now >= reelStart(); }

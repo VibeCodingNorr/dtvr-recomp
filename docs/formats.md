@@ -1283,7 +1283,25 @@ display, started for every spin of the game (`Game::lastReels`).
   last frame (`slthad19`, `walze_<v>`), as before.
 
 Rebuilt in `src/slot_records.{hpp,cpp}` (no SDL, `tests/slot_records_test.cpp`), played
-from the lever pull by `SlotView`. Not yet: pulling the lever with the mouse.
+from the lever pull by `SlotView`.
+
+**Slot input (round 129):** the window procedure seg2:6855 (dispatch seg2:6BB1) takes
+the mouse with SetCapture at creation (seg2:68CE) and has no hit test on the lever:
+WM_LBUTTONDOWN sends itself WM_KEYDOWN VK_RETURN (seg2:695C), WM_RBUTTONDOWN and
+WM_RBUTTONDBLCLK send VK_BACK (seg2:6970); WM_LBUTTONDBLCLK is not handled. Keys
+Space / Return go to the state switch seg2:6A03, Escape / Backspace to seg2:69AD:
+while DS:A780 ≤ 2 (lever not pulled, or reels turning without a stop key), DS:9AD8
+is set and the current player is human (seg2:5C02 = 0), it plays sound 7 on
+channel 1, stops channel 3 (seg1:317D), destroys the window and calls seg2:068F
+(the turn menu). DS:9AD8 is seg2:6426's third argument: 1 only for Würfeln
+(seg4:091F, seg2:6426(1, 5, 1)); 0 for the reel cards (seg4:0A2D–0A82) and Risiko
+(seg7:6776). The reel values are drawn only when the lever ends (seg2:7671 → 776A),
+so the cancel before the lever leaves the random generator untouched and the one
+after it keeps that draw. Rebuilt as `Game::cancelRoll` (restores the state before
+the roll through the save codec, `tests/game_test.cpp`) and the slot block of
+`GameWindow::handleEvent`. **Deviation:** the simulation starts the move with the
+roll, rally.exe only at seg2:7EC2 (state 4); a roll that shut the player in (notices
+6003 / 6005 / 6009, turn end) is therefore not taken back.
 
 ### Vehicles on the map (round 24)
 

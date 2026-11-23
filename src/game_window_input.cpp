@@ -170,11 +170,25 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     }
     // SLOT (seg2:6855) has the focus while it is on the map: Enter and Space stop the
     // reels or let it slide out (seg2:6B4A); other input waits (modal).
+    // The window captures the mouse (seg2:68CE): a left click anywhere posts Enter
+    // (seg2:695C), the right button (also its double click) Backspace (seg2:6970); a
+    // second left click of a double click (WM_LBUTTONDBLCLK) is not handled.
     if (screen_.slotActive(screen_.presentationNow()) && !screen_.title()) {
-        if (event.type == SDL_KEYDOWN && !event.key.repeat
-            && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER
-                || event.key.keysym.sym == SDLK_SPACE))
-            screen_.slotKey(screen_.presentationNow());
+        const Uint32 now = screen_.presentationNow();
+        const SDL_Keycode key = event.type == SDL_KEYDOWN && !event.key.repeat ? event.key.keysym.sym : SDLK_UNKNOWN;
+        const bool left = event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
+                          && event.button.clicks % 2 == 1;
+        const bool right = event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT;
+        if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE || left) {
+            screen_.slotKey(now);
+        } else if (key == SDLK_ESCAPE || key == SDLK_BACKSPACE || right) {
+            // seg2:69AD: only the Würfeln of a human (DS:9AD8, seg2:5C02) is taken back.
+            Game& g = play_.game();
+            bool reelsDrawn = false;
+            if (g.rollCancellable() && !g.isComputer(g.currentPlayer()) && screen_.slotCancel(now, reelsDrawn)
+                && g.cancelRoll(reelsDrawn))
+                report(); // the turn menu opens again (seg2:068F)
+        }
         if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) return;
     }
     if (screen_.overview().isOpen()) { screen_.overview().handle(event); return; }

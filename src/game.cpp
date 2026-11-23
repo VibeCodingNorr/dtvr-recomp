@@ -2,6 +2,7 @@
 #include "game.hpp"
 
 #include "ai.hpp"
+#include "save.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -210,11 +211,26 @@ bool Game::startMove(int allowance) {
 bool Game::roll() {
     messages_.clear();
     if (phase_ != Phase::Roll || (computerControls() && !aiActing_)) return false;
+    // A human's roll can be taken back while the slot window turns (seg2:69AD).
+    rollUndo_ = computerControls() ? std::string() : SaveCodec::encode(*this);
+    const size_t noticesBefore = notices_.size();
     declineInvestment();
     int sum = 0;
     sum = spin(1, 5);
     messages_.push_back(playerName(current_) + " wuerfelt " + std::to_string(sum));
     startMove(sum); // seg2:66B9 -> seg2:61B7
+    if (phase_ != Phase::Move || notices_.size() != noticesBefore) rollUndo_.clear(); // shut in: not taken back
+    return true;
+}
+
+bool Game::cancelRoll(bool reelsDrawn) {
+    if (!rollCancellable() || counter_.history().size() != 0) return false;
+    std::string before;
+    before.swap(rollUndo_);
+    std::string error;
+    if (!SaveCodec::decode(*this, before, error)) return false;
+    if (reelsDrawn) spinReels(rng_, 1, 5); // seg2:776A has drawn the reel
+    messages_.push_back(playerName(current_) + " nimmt den Wurf zurueck");
     return true;
 }
 

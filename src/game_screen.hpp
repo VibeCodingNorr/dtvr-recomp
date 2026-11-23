@@ -141,6 +141,20 @@ public:
         if ((r == 1 || r == 3) && sound_) sound_->play(1, 2);
         return r != 0;
     }
+    // seg2:69AD for a human's Würfeln: the window closes at once with sound 7 on channel
+    // 1 and the reels' sound on channel 3 stops. Returns false when not possible; else
+    // `reelsDrawn` tells whether the lever had already set the reels turning.
+    bool slotCancel(Uint32 now, bool& reelsDrawn) {
+        if (!slot_.cancellable(now)) return false;
+        reelsDrawn = slot_.running(now);
+        slot_.close();
+        reelsPending_ = reelsSounding_ = false;
+        if (sound_) {
+            sound_->play(1, 7);
+            sound_->stop(3);
+        }
+        return true;
+    }
     bool vehicleMoving(int player) const;
     // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
     // edge strip or an arrow key moves it by a third of the view; a left click,

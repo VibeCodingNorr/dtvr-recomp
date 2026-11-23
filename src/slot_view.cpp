@@ -133,6 +133,11 @@ bool SlotView::active(Uint32 now) const {
     return out == kNever || now < out + kSlideTime;
 }
 
+bool SlotView::cancellable(Uint32 now) const {
+    if (reels_.empty() || now < slidIn_) return false;
+    return lever_ == kNever || (stopKeyPass_ < 0 && !stopped(now)); // states 1 and 2
+}
+
 int SlotView::key(Uint32 now) {
     // The procedure does not ask who plays: a key also shortens a computer's spin.
     if (reels_.empty() || now < slidIn_) return 0;

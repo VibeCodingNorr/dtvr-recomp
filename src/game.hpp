@@ -75,6 +75,14 @@ public:
 
     // Commands; each returns false when it is not allowed in the current state.
     bool roll();                 // slot machine, 1 reel 1..6 (WM_USER+6)
+    // seg2:69AD: a human may close the slot window of Würfeln (seg2:6426 flag DS:9AD8)
+    // with Escape / Backspace / the right button before the reels stop: the roll is
+    // taken back. In rally.exe the reel value is drawn when the lever ends (seg2:7671
+    // -> 776A), so `reelsDrawn` keeps that one draw of the random generator. Possible
+    // while the roll is the last command and left the player moving without messages
+    // (round 129: a shut-in roll is not taken back, see docs/formats.md).
+    bool rollCancellable() const { return !rollUndo_.empty() && phase_ == Phase::Move; }
+    bool cancelRoll(bool reelsDrawn);
     bool step(Direction d);      // one field; reversing undoes the last step
     bool endTurn();              // after arrival: next player, month bookkeeping
     // Yellow field with a full hand (seg3:1057): discard a card, then the card follows.
@@ -352,6 +360,7 @@ private:
     int timeLimitLeft_ = 0;       // DS:9470: seconds
     int timeLimitOver_ = 0;       // DS:8C02: seconds fined so far
     std::vector<int> lastReels_;            // DS:9584 (presentation only)
+    std::string rollUndo_;                  // the state before a human's roll (not saved)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
     std::vector<SoundCue> sounds_;

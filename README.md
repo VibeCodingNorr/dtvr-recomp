@@ -301,6 +301,8 @@ number of stages (1–300).
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
 | Escape | Recomp menu (pause, graphics, audio, game, controls; recomp) where rally.exe has no Escape action; in windows: back |
+| Slot machine: left click / right click | Like Enter (anywhere, the window captures the mouse) / like Escape |
+| Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |

@@ -3,6 +3,7 @@
 #include <memory>
 #include "estates.hpp"
 #include "game.hpp"
+#include "save.hpp"
 
 #include <cstdio>
 #include <stdexcept>
@@ -45,6 +46,32 @@ int main() {
         for (int p = 1; p < kPlayerSlots; ++p) computers += solo.isComputer(p);
         CHECK(computers == 1);
     }
+    // seg2:69AD: a human's roll is taken back while the slot window turns (round 129).
+    {
+        auto rngOf = [](const Game& g) { // the "rng" record of the save format
+            const std::string s = SaveCodec::encode(g);
+            const size_t at = s.find("\nrng ");
+            return uint32_t(std::stoul(s.substr(at + 5)));
+        };
+        Game ref(board, towns, 2, 0, 1), g(board, towns, 2, 0, 1);
+        ref.setRandomEvents(false);
+        g.setRandomEvents(false);
+        CHECK(!g.rollCancellable() && !g.cancelRoll(false));
+        const std::string before = SaveCodec::encode(g);
+        CHECK(g.roll() && g.rollCancellable());
+        // Before the lever: nothing has been drawn; the state is the one before.
+        CHECK(g.cancelRoll(false) && g.phase() == Game::Phase::Roll && !g.rollCancellable() && !g.cancelRoll(false));
+        CHECK(SaveCodec::encode(g) == before);
+        CHECK(g.roll() && ref.roll() && g.allowance() == ref.allowance()); // the same reel again
+        // After the lever: the reel's draw stays consumed.
+        const std::string rolled = SaveCodec::encode(g);
+        CHECK(g.cancelRoll(true) && g.phase() == Game::Phase::Roll);
+        CHECK(rngOf(g) == rngOf(ref)); // ref has drawn its one reel as well
+        CHECK(SaveCodec::encode(g) != rolled);
+        // After a step the roll cannot be taken back.
+        CHECK(g.roll() && g.step(Direction::Right) && !g.cancelRoll(false) && g.stepsTaken() == 1);
+    }
+
     Game game(board, towns, 2, 0, 1);
     game.setRandomEvents(false);
     CHECK(game.origin() == 0 && game.destination() == 12 && game.currentPlayer() == 0);
