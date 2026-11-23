@@ -163,6 +163,9 @@ public:
     const RisikoState& risiko() const { return risiko_; }
     bool risikoTick();
     bool risikoPress();
+    // Every CHANCE press (human or computer) with the light it met (presentation).
+    int risikoPressSerial() const { return risikoPresses_; }
+    int risikoPressLight() const { return risikoPressLight_; }
     bool risikoStop();
     int risikoTickMs() const;
     // Computer players (game_ai.cpp). Slots 0..humans-1 start as humans (status 1);
@@ -353,6 +356,7 @@ private:
     std::vector<Notice> notices_;
     std::vector<SoundCue> sounds_;
     std::vector<FilmCue> films_;
+    int risikoPresses_ = 0, risikoPressLight_ = 0; // not saved: presentation only
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
     bool eastOpen_ = false;        // DS:A10F == 0

@@ -907,9 +907,19 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
   y 0x50 while DS:A29E (CHANCE), x ≥ 0x64 from y 0x50 while DS:A0EE (STOP).
   Click areas (seg7:6C83): y 0x50–0x8C, x 4–0x50 press, x 0x98–0xE2 stop. The
   strings hutman-1 / hutman-2 follow, but risiko.sbs has no such frames. Rebuilt
-  in `src/risiko_view.cpp`; **assumptions:** the window centred with the frame
-  inside a black 8-pixel border, the pressed button shown for 150 ms, click
-  coordinates relative to the frame.
+  in `src/risiko_view.cpp` (centred by seg6:0000, the frame in the client of the
+  wooden border, rounds 111 / 112). *Round 117:* input sets DS:A29E (CHANCE) or
+  DS:A0EE (STOP) and is ignored while one is set (seg7:6C0D); the flags are
+  cleared only when a level starts (seg7:6874) and checked after the running wait
+  (seg7:68C5). A STOP repaints (button pressed) and shows text 41001. A CHANCE
+  press repaints, plays its sound and then toggles DS:9C92 by ±100 six times with
+  seg6:0CDF(400) between them (seg7:6A79–6AB6) — normal frame, light, normal, … —
+  before the steps are scored and the next level starts or the result text
+  follows; computers press through the same window input (SendMessage,
+  seg7:6957). Rebuilt: `RisikoView::blink`, `PlayView::holdRisiko` and the
+  window holding back the press's messages for those 2.4 s. **Assumption:** a
+  human's STOP shows its pressed button for 150 ms; click coordinates relative to
+  the frame.
   *Round 64 (texts and sounds):* a press plays sound 0x17 on channel 2 in the
   dark and 0x18 while lit (seg7:6A46); stop shows text 41001 (seg7:69DE), a press
   in the dark 41002 (seg7:6AE3) and the win after level 4 text 41003 (seg7:6B52),
@@ -1268,8 +1278,10 @@ reels and pulling the lever with the mouse.
 Rebuilt in `src/game_screen.cpp`: the vehicles of all drivers in play with the
 facing of their last step; the current driver's car animates while driving.
 **Smooth driving (round 31):** the drawn position follows the game position at
-4 pixels per 50 ms tick (velocity 2 from DS:19EA / 19F4 shifted by DS:34 = 1,
-seg2:1CB0); a held arrow key drives on (DS:A77A stays set while the key is
+4 pixels per idle pass of 20 ms (velocity 2 from DS:19EA / 19F4 shifted by DS:34,
+seg2:1CB0; round 117: DS:34 is loaded from DS:19FE = 1 at seg2:202D, and its only
+setter seg2:35FD has no caller in the relocation tables, so the speed never
+changes); a held arrow key drives on (DS:A77A stays set while the key is
 down, seg4:01F2), the next field step is taken when the car has reached its
 field. Only steps along a link are driven; other position changes (start,
 Flugzeug, Konferenz) are shown directly. The view origin follows the drawn

@@ -185,7 +185,8 @@ is claimed.
 109. Slot machine keys as seg2:6B4A: Enter / Space stop the reels, then let the window slide out; computers continue by themselves.
 110. The slot machine's lever: Enter / Space pulls it (computers at once); keys also shorten a computer's spin.
 111. Slot machine tick traced: 20 ms per loop pass (seg6:0CDF(20) in seg2:1C37), not 50 ms.
-112. *Next:* remaining presentation details (compare windows with rally.exe).
+112. Risiko: after every CHANCE press the light blinks six times (2.4 s) with the button held, as seg7:6A79; vehicle speed confirmed (4 pixels per 20 ms).
+113. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

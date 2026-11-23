@@ -746,7 +746,8 @@ void GameScreen::draw() {
         estates_.draw(estateRows(), letters);
     }
     // seg7:674D: the window follows the one-reel spin (seg2:6426).
-    if (game_.phase() == Game::Phase::Risiko && slot_.stopped(now)) risiko_.draw(game_.risiko().light, now);
+    if ((game_.phase() == Game::Phase::Risiko && slot_.stopped(now)) || risiko_.blinking(now))
+        risiko_.draw(game_.risiko().light, now);
     overview_.draw(game_);
     finish_.draw(SDL_GetTicks());
     victory_.draw(SDL_GetTicks());

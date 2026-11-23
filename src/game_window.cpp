@@ -171,7 +171,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
     std::array<uint8_t, kPlayerSlots> pendingStatus{};
     std::array<std::string, kPlayerSlots> pendingNames;
     uint16_t pendingSeed = 0;
-    bool cardsFromEstates = false; // the card window was opened by the town dialog's Karte (mask 1)
+    bool cardsFromEstates = false;
+    int risikoPressSeen = play.game().risikoPressSerial(); // the card window was opened by the town dialog's Karte (mask 1)
     auto command = [&](int id) { // WM_COMMAND of the main window (seg4:0B76)
         menu.close();
         switch (id) {
@@ -288,7 +289,13 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         const bool moving = screen.vehicleMoving(play.game().currentPlayer());
         // The original handles a field when the vehicle has reached it (the arrival
         // runs after the drive), so its message waits for the drawn car like its sounds.
-        if (!screen.title() && !moving)
+        // seg7:6A79: a CHANCE press blinks for 2.4 s before its result and the next level.
+        if (play.game().risikoPressSerial() != risikoPressSeen) {
+            risikoPressSeen = play.game().risikoPressSerial();
+            screen.risiko().blink(play.game().risikoPressLight(), SDL_GetTicks());
+            play.holdRisiko(SDL_GetTicks() + RisikoView::kBlinkMs);
+        }
+        if (!screen.title() && !moving && !screen.risiko().blinking(SDL_GetTicks()))
             for (Notice& n : play.game().takeNotices()) {
                 if (const auto cue = musicForNotice(n.text); !cue.empty()) music.interrupt(cue);
                 // seg8:6FBF: the offer text (5321 + random(2) / 5401 + random(2)) belongs
@@ -453,7 +460,8 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                            || screen.nails().isOpen() || screen.invest().isOpen() || screen.film().active()
                            || screen.sight().isOpen() || screen.intro().active()
                            // the slot machine and event animations run synchronously in rally.exe
-                           || screen.slotActive(SDL_GetTicks()) || screen.eventSceneActive(SDL_GetTicks());
+                           || screen.slotActive(SDL_GetTicks()) || screen.eventSceneActive(SDL_GetTicks())
+                           || screen.risiko().blinking(SDL_GetTicks());
         if (!modal && !moving && play.update(SDL_GetTicks(), true)) report();
         // seg2:1618: after the field action (its message, town dialog, card dialog or card
         // shop run modally) the original checks the forced sale (seg1:4E39) and calls
@@ -722,6 +730,7 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
                     button = screen.risiko().buttonAt(event.button.x, event.button.y);
                 else if (event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym != SDLK_F8)
                     button = event.key.keysym.sym == SDLK_ESCAPE ? 2 : 1;
+                if (screen.risiko().blinking(SDL_GetTicks())) button = 0; // seg7:6C0D: a press is pending
                 if (button) {
                     screen.risiko().press(button, SDL_GetTicks());
                     if (button == 1 ? play.game().risikoPress() : play.game().risikoStop()) report();

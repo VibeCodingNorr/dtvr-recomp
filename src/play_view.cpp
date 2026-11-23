@@ -146,6 +146,7 @@ bool PlayView::update(Uint32 now, bool stepwise) {
     if (stepwise && (g.computerTurnRunning() || computerDue)) return g.computerAdvance();
     if (computerDue) return g.runComputerTurn();
     if (g.phase() != Game::Phase::Risiko) { nextTick_ = 0; return false; }
+    if (int(now - risikoHold_) < 0) { nextTick_ = 0; return false; }
     if (!nextTick_) nextTick_ = now + Uint32(g.risikoTickMs());
     if (now < nextTick_) return false;
     nextTick_ = now + Uint32(g.risikoTickMs());

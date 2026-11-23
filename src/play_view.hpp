@@ -35,6 +35,8 @@ public:
     // `stepwise`: one stage of a computer turn per call (the game window drives the
     // computer's car field by field), otherwise the whole turn at once.
     bool update(Uint32 now, bool stepwise = false);
+    // The Risiko lights wait (the blink after a press, seg7:6A79) until `until`.
+    void holdRisiko(Uint32 until) { risikoHold_ = until; nextTick_ = 0; }
     // Origin, destination, obstacles, Dr. Drago and the players on the world view.
     void draw(SDL_Renderer* renderer, float x, float y, float zoom) const;
 
@@ -49,6 +51,7 @@ private:
     int pendingNails_ = -1;                   // hand slot waiting for a direction key
     int offerCursor_ = 0;                     // card field: selected offer (PgUp / PgDn)
     Uint32 nextTick_ = 0;                     // Risiko: time of the next light change
+    Uint32 risikoHold_ = 0;                   // Risiko: lights wait for the blink
 };
 
 } // namespace dtvr

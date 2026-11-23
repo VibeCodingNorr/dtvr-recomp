@@ -45,6 +45,8 @@ void RisikoView::draw(int light, Uint32 now) {
     const SDL_Rect window{wx, wy, kWindowW, kWindowH};
     drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thin); // seg6:1A68 (seg7:7138)
     const SDL_Rect f = frame(); // fills the client area: 0xF6 x 0x9E minus the border
+    if (blinking(now)) // seg7:6A85: the first step adds 100 (normal frame), the next takes it away
+        light = (now - blinkStart_) / kBlinkStepMs % 2 == 0 ? 1 : blinkLight_;
     const char* name = light == 0 ? "R-LIGHT0" : light == 2 ? "R-LIGHT2" : light == 3 ? "R-LIGHT3"
                      : light == 4 ? "R-LIGHT4" : "R-NORMAL"; // seg7:6E54
     if (const auto it = frames_.find(name); it != frames_.end()) SDL_RenderCopy(renderer_, it->second.get(), nullptr, &f);

@@ -52,6 +52,8 @@ bool Game::risikoPress() {
     if (phase_ != Phase::Risiko || (computerControls() && !aiActing_)) return false;
     messages_.clear();
     const int light = risiko_.light;
+    ++risikoPresses_;
+    risikoPressLight_ = light;
     sound(2, light ? 24 : 23); // seg7:6A46: 0x18 while lit, 0x17 in the dark
     // seg7:6ABE: seg2:7F14(light * steps / (light - 1)); a dark light gives 0.
     risiko_.steps = light ? light * risiko_.steps / (light - 1) : 0;

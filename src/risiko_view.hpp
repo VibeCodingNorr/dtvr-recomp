@@ -26,6 +26,12 @@ public:
     int buttonAt(int x, int y) const;
     // Shows a button pressed for a moment (DS:A29E / DS:A0EE while the input is handled).
     void press(int button, Uint32 now) { pressed_ = button; pressedUntil_ = now + 150; }
+    // seg7:6A79: after a CHANCE press the window toggles six times every 400 ms
+    // (seg6:0CDF(400)) between the normal frame and the light it met, the button
+    // pressed (DS:A29E stays set until the next level, seg7:6874).
+    static constexpr Uint32 kBlinkStepMs = 400, kBlinkMs = 6 * kBlinkStepMs;
+    void blink(int light, Uint32 now) { blinkStart_ = now; blinkLight_ = light; pressed_ = 1; pressedUntil_ = now + kBlinkMs; }
+    bool blinking(Uint32 now) const { return blinkStart_ != 0 && now - blinkStart_ < kBlinkMs; }
     void draw(int light, Uint32 now);
 
 private:
@@ -40,6 +46,8 @@ private:
     bool loaded_ = false;
     int pressed_ = 0;
     Uint32 pressedUntil_ = 0;
+    Uint32 blinkStart_ = 0;
+    int blinkLight_ = 0;
 };
 
 } // namespace dtvr
