@@ -90,6 +90,7 @@ bool Game::computerAdvance() {
     auto collect = [&] { log.insert(log.end(), messages_.begin(), messages_.end()); };
     auto finish = [&](bool result) { messages_ = log; return result; };
     if (spinPending()) return false; // the window finishes the spin (finishSpin)
+    if (offer_ != EventKind::None && investmentWindow_ && humansLeft()) return false; // a human answers
     if (!aiTurn_ && computerControls() && (phase_ == Phase::Move || phase_ == Phase::Arrived)) {
         // Mitspieler (seg2:5E93 -> seg5:6CE8 / 6BF2) handed a running human turn to the
         // computer: it drives the remaining fields (route as states 5 / 6) or, already
@@ -113,7 +114,7 @@ bool Game::computerAdvance() {
         // Steuerlos: seg2:0A6F clears the bit and seg5:A1CD sets DS:8D2A = 1.
         aiSteerless_ = players_[size_t(current_)].flags & kFlagSteerless;
         aiPlayer_ = current_;
-        declineInvestment(); // the computer's answer to an offer is not traced yet
+        declineInvestment(); // no window or no human to answer (see setInvestmentWindow)
         // State 1: card choice (seg5:7386); without a card the computer spins (state 2).
         const AiCardChoice card = aiChooseCard(aiState(aiSteerless_), aiPlayer_, obstacles_, rng_);
         if (card.slot < 0 || !playCard(card.slot, card.target)) roll();

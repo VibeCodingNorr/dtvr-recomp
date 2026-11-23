@@ -46,6 +46,20 @@ int main() {
         for (int p = 1; p < kPlayerSlots; ++p) computers += solo.isComputer(p);
         CHECK(computers == 1);
     }
+    // seg8:6FBF: a computer's investment offer waits for the human's answer in the
+    // game window (the window ignores the timeout 0x7EF, round 138).
+    {
+        const std::array<uint8_t, kPlayerSlots> slots{2, 1, 0, 0, 0, 0, 0, 0};
+        Game w(board, towns, slots, 0, 1), plain(board, towns, slots, 0, 1);
+        for (Game* g : {&w, &plain}) { g->setRandomEvents(false); g->triggerEvent(EventKind::Professor); }
+        w.setInvestmentWindow(true);
+        CHECK(w.currentPlayer() == 0 && w.isComputer(0) && w.investmentOffer() == EventKind::Professor);
+        CHECK(!w.computerAdvance() && w.phase() == Game::Phase::Roll && w.investmentOffer() == EventKind::Professor);
+        const double before = w.cash(0);
+        CHECK(w.invest(5000) && w.cash(0) == before - 5000 && w.investmentOffer() == EventKind::None);
+        CHECK(w.computerAdvance()); // the computer's turn goes on
+        CHECK(plain.computerAdvance() && plain.investmentOffer() == EventKind::None); // no window: declined
+    }
     // seg2:6426: with a slot window the move starts only when it has closed
     // (seg2:66B9 -> 61B7); seg2:69AD: a human's Würfeln is taken back before that
     // (rounds 129 / 131).

@@ -899,7 +899,14 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   sorts highest first and buys in order until one is too dear or the hand is
   full. seg3:4266 executes sales first.
 - **Investment offer** seg8:6FBF has no computer branch: the modal dialog waits
-  for input on any turn. Assumption here: computers decline.
+  for input on any turn. *Round 138:* the modal loop seg6:0FB4 posts 0x7EF to the
+  window after the computer wait, but the offer window's procedure (dispatch
+  seg8:7C9C, keys seg8:73AB) has no case for it, so it stays open: the human at
+  the keyboard answers for the computer, and the amount is taken from the
+  computer's cash. The game window now does the same (`Game::setInvestmentWindow`:
+  the computer's turn waits while the offer is open). **Assumption:** without any
+  human (a demo) or without a window the computer declines, where rally.exe would
+  wait for input.
 
 Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. Approximation: DS:22 is
 taken as the distances from the destination with the route mask (the array
@@ -1440,9 +1447,10 @@ round 84.
 
 Rebuilt in `Game::takeNotices` (text number and arguments from the simulation),
 `formatNotice` (src/panel.cpp) and `src/message_view.cpp` (window, paper,
-showmaster, word-wrapped text). Not yet: the remaining callers (cards, Dr.
-Drago, town and card fields, investments), the button variants and the
-showmaster's other portraits.
+showmaster, word-wrapped text). *Round 138:* all 73 callers of seg6:51EA pass
+buttons 0 except the obstacle question and the quit question (4); their pictures
+are the showmaster (an empty name) or a path built in DS:82 (Dr. Drago, card,
+professor, club), all rebuilt (`Notice::picture`, `cardPicture`).
 
 ### More messages (round 26)
 
@@ -1496,7 +1504,8 @@ Konto 11011 (new balance), Schulden 11012 (victim, player, amount, player),
 Zero 11013 (player), Konferenz 11022, "n Felder" 11030–11035 (player). The
 Erdbeben card uses the event texts 5201 + random(2) with the town (seg3:1C00).
 Nägel shows 5500 when the nails fall into water and Flugzeug 8300 for the fog
-over Brussels; both cases are not modelled yet. Cards without a text of their
+over Brussels; both are rebuilt (`Game::nailsInWater`, Platsch on channel 5;
+`FlightView` row 1 before the last stage). Cards without a text of their
 own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
 ### In-game menu (round 28)
 
@@ -2123,7 +2132,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   grayed row now only sounds. The save dialog: Fate01 on channel 6 when saving
   fails (seg8:B4DC), Zaehler2 when loading fails (seg8:B3F9).
 - **Round 51:** seg3 sounds: Weihnachten's card gift Hebel05 (seg3:1257);
-  Nägel into water Platsch (seg3:1C99, case not modelled); the Flugzeug choice
+  Nägel into water Platsch (seg3:1C99, rebuilt); the Flugzeug choice
   (seg3:3384) and the card shop (seg3:4643) Plopp02 / Zaehler2.
 
 ### Nägel direction (round 55)
@@ -2452,8 +2461,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** in `src/mouse_control_view.cpp` (regions tested) and the game
   window: a left click on the map in a human player's move or after arriving
   opens the cross; the key goes through the same path as the keyboard.
-  **Assumptions:** M1 is shown when the phase is Arrived; the cursor is not
-  confined, positions outside count as the nearest edge.
+  M1 is shown when the move is complete (DS:9D40 = DS:A778, `Game::arrivalDue`,
+  round 137) or after arriving. **Assumption:** the cursor is not confined,
+  positions outside count as the nearest edge.
 
 ### Joystick (round 79)
 

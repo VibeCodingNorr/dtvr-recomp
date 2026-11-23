@@ -103,6 +103,12 @@ public:
     // turned back. With setArrivalConfirm (the game window) step() leaves the arrival to
     // confirmArrival(); computers and windowless play arrive at once (round 137).
     void setArrivalConfirm(bool on) { arrivalConfirm_ = on; }
+    // seg8:6FBF has no computer branch and the offer window ignores the computer
+    // timeout 0x7EF of seg6:0FB4 (no case in seg8:7C9C), so a computer's offer waits
+    // for the human at the keyboard, whose answer counts for the computer. With
+    // setInvestmentWindow (the game window) a computer's turn waits while an offer is
+    // open; without humans, or without a window, it declines (round 138).
+    void setInvestmentWindow(bool on) { investmentWindow_ = on; }
     bool arrivalDue() const;     // the move is complete, Return would run the field
     bool confirmArrival();
     bool spinPending() const { return pendingAllowance_ >= 0; }
@@ -389,6 +395,7 @@ private:
     int pendingAllowance_ = -1;             // a spin waiting for its window (not saved)
     bool spinPresentation_ = false;         // a slot window shows the spins
     bool arrivalConfirm_ = false;           // a human accepts the field with Return
+    bool investmentWindow_ = false;         // a window answers the offers, also a computer's
     void moveAfterSpin(int allowance);      // startMove now or after the window
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
