@@ -194,6 +194,7 @@ public:
     const std::array<std::string, kPlayerSlots>& playerNames() const { return names_; }
     std::string playerName(int player) const;
     bool requestDemoEnd();
+    bool demoEnding() const { return demoEnd_; } // DS:16
     // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.
     bool atCardField() const;
     int handCount(int player) const; // seg2:3C00

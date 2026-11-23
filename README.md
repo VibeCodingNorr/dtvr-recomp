@@ -178,7 +178,9 @@ is claimed.
 102. The wooden window border of rally.exe (8 / 16 pixels, non-client) for the map, portrait and dialogs.
 103. The original name codes of the eighth driver: "Armin Gessert" (500,000) and "130663" (1,000,000 and a full hand).
 104. The overview inside its border; the message text 10 pixels right of the picture.
-105. *Next:* remaining presentation details (compare windows with rally.exe).
+105. The name plate under the portrait (NICKNAME).
+106. Messages close by themselves during computer turns (2.5 s × pause factor), as seg6:0FB4 does.
+107. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

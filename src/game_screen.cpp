@@ -584,6 +584,22 @@ void GameScreen::drawPortrait() {
     drawWindowBorder(renderer_, [this](const std::string& n) { return sprite(n); }, window, BorderSize::Thin);
     const SDL_Rect target{r.x + 8, r.y + 8, w, h};
     SDL_RenderCopy(renderer_, portrait, nullptr, &target);
+    // NICKNAME (seg2:3700 / procedure seg2:3852): bmp/<n>/mess.bmp centred under the
+    // portrait window, 5 pixels below it; the driver's name centred on one line
+    // (DT 0x125) in white (0xFF) with the shadow of seg2:314A, weight 600 at
+    // 13 / 12 / 11 (by seg6:12FA), the client rectangle's top moved up by 3.
+    SDL_Texture* plate = art(fs::path("bmp") / std::to_string(layout_.artDir) / "mess.bmp");
+    if (!plate) return;
+    int pw = 0, ph = 0;
+    SDL_QueryTexture(plate, nullptr, nullptr, &pw, &ph);
+    const SDL_Rect nick{window.x + window.w / 2 - pw / 2, window.y + window.h + 5, pw, ph};
+    SDL_RenderCopy(renderer_, plate, nullptr, &nick);
+    static constexpr int kNickSize[3] = {13, 12, 11};
+    const int res = layout_.width == 1024 ? 0 : layout_.width == 800 ? 1 : 2;
+    TextStyle style{kNickSize[res], true, false, true, false, 1, SDL_Color{255, 255, 255, 255}};
+    const int textH = text_.measure(game_.playerName(p), style).y;
+    text_.draw(renderer_, game_.playerName(p), ScreenRect{nick.x, nick.y - 3 + (nick.h - textH) / 2, nick.w, textH},
+               style);
 }
 
 void GameScreen::drawPlayerInfo() {

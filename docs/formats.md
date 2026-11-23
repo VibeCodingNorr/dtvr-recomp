@@ -1065,6 +1065,18 @@ Rebuilt in `src/panel.cpp` (SDL-free contents) and `src/text.cpp` (SDL2_ttf with
 Arial, else Liberation Sans; bold face for weight 600). Simplification: slot 6
 shows while the player stands on the reached field (phase Arrived).
 
+### Name plate (round 113)
+
+- seg2:3700 creates NICKNAME (procedure seg2:3852) as a child of the canvas
+  without a border: GetWindowRect of the portrait window DS:3E mapped to the
+  canvas, x = left + (right − left) / 2 − width / 2, y = bottom + 5, the size of
+  `%s\%d\mess.bmp` (DS:1AF6 / 1B17; 145 × 28 at 640 and 800, 185 × 36 at
+  1024). The paint draws mess.bmp at (0, 0) and the current player's name
+  (record +1) with seg6:04F9(13 / 12 / 11 by seg6:12FA, weight 600) into the
+  client rectangle with its top − 3, format 0x125 (centred, vertically centred,
+  single line, no clip), shadow 1, colour 0xFF (seg2:39CF). Rebuilt in
+  `GameScreen::drawPortrait`.
+
 ### Name codes (round 112)
 
 - seg2:6332, called for every new game after the deal (seg4:0E71), sets the
@@ -1230,6 +1242,12 @@ round 84.
 - **Text position** (round 113): seg6:5B59 inflates the client rectangle by −10
   and adds the picture width + 10 to its left edge (seg6:5B6F), so the text
   starts 10 pixels right of the picture (it was drawn at the picture's edge).
+- **Waiting** (round 113): the modal loop seg6:0FB4 closes the window by itself
+  only while the current player is a computer (seg2:5C02): after 2500 ms
+  (DS:85AE) times the pause factor (seg6:0E3A, keys 1–4), twice that while the
+  window DS:A7BE exists, 100 ms once a demo ends (DS:16), never while a FLIC
+  window is open (DS:A050); it posts 0x7EF to the window (seg6:10EE). For a
+  human it waits for a key or click. Replaces the assumed 2 s without humans.
 - **Paint** seg6:59C6: the paper fills the client area, the showmaster at
   (10, 10); the text goes into the client rectangle inflated by −10 with its left
   edge moved past the showmaster, in Arial weight 600 at {18, 16, 14}

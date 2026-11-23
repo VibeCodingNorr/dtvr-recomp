@@ -380,11 +380,17 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
             if (!screen.saveSlots().saveAuto(play.game(), error)) std::cerr << "Autosave: " << error << "\n";
             autosaved = play.game().turnSerial();
         }
-        // Without a human nobody answers the message window: it closes after a while
-        // (assumption: 2 s times the pause factor).
-        if (!screen.title() && !play.game().humansLeft() && screen.messages().open()) {
+        // seg6:0FB4: while a computer is the current player (seg2:5C02) the modal message
+        // window closes by itself after 2500 ms (DS:85AE) times the pause factor
+        // (seg6:0E3A), 100 ms once a demo ends (DS:16), not while a film runs (DS:A050);
+        // a human closes it.
+        const Game& cur = play.game();
+        const bool computerWaits = cur.currentPlayer() >= 0 && cur.isComputer(cur.currentPlayer());
+        if (!screen.title() && (computerWaits || !cur.humansLeft()) && screen.messages().open()
+            && !screen.film().active()) {
+            const Uint32 wait = cur.demoEnding() ? 100 : Uint32(2500 * screen.settings().pauseFactor());
             if (messageShown == 0) messageShown = SDL_GetTicks();
-            else if (SDL_GetTicks() - messageShown > Uint32(2000 * screen.settings().pauseFactor())) {
+            else if (SDL_GetTicks() - messageShown > wait) {
                 screen.messages().dismiss();
                 messageShown = 0;
             }
