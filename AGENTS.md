@@ -50,10 +50,13 @@ SBS animation playback or executable translation have been implemented.
   Keep it independent of original art. Export PNG/ICO with `tools/export_branding.py`
   into an external directory; never relax the original-asset checks for these exports.
 
-- Users supply an original ISO explicitly through `--iso`. All examples use
+- Users supply an original ISO explicitly through `--iso` or a complete original
+  game directory through `--directory`. Validate the supported EXE hash and record
+  directory input files with SHA-256; never accept an incomplete installed copy
+  solely because its EXE matches. All examples use
   generic placeholders; never commit machine-specific paths or rely on a local
   installation, mounted disc, download URL or symlink to original game content.
-- Distribution model: ship our installer/toolchain; users supply their original ISO.
+- Distribution model: ship our installer/toolchain; users supply their original data.
   Use `python3 tools/install.py --iso /path/to/dtvr.iso` to build a local installation.
   This currently produces the native viewer, not a playable translated executable.
 - Treat original files as read-only. Accept paths through `--data`; do not hardcode
@@ -219,6 +222,13 @@ simulation, explicit validated commands, authoritative random outcomes and a
 versioned serializable state. Local, AI and remote play must share this boundary.
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
+
+Future US English edition support is also an agreed user goal (2026-11-23), not
+a current capability. Handoff and verified input fingerprints are in
+`docs/media-variants.md`. Keep edition/resource selection explicit; validate
+the English EXE's rules and data before enabling it. Do not bypass the version
+gate or rename English resources to German paths. Coordinate engine changes
+with Claude's active game-window work; directory import is already separate.
 
 Next: continue the game window as in the original (agreed with the user: it must
 look like rally.exe; `--game`, src/game_screen.cpp): the remaining messages, menu,

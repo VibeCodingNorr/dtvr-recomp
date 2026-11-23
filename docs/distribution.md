@@ -1,7 +1,7 @@
 # Source-only distribution
 
 The repository distributes our native source, tools, synthetic tests and technical
-format documentation. A user supplies a supported original ISO to the installer.
+format documentation. A user supplies a supported original ISO or game directory to the installer.
 No developer's installed copy, mounted CD, local symlink or asset download is
 required to build and test this source.
 
@@ -19,11 +19,15 @@ or external images. Raster/ICO exports are generated outside the checkout with
 
 ## Installation boundary
 
-The installer receives an explicit `--iso` path and creates an external user-local
+The installer receives an explicit `--iso` or `--directory` path and creates an external user-local
 installation. By default it uses `$XDG_DATA_HOME/dtvr-recomb`, or
 `~/.local/share/dtvr-recomb` when that environment setting is unavailable or relative.
 An explicit `--output` also has to be outside the checkout, including after
-resolving symlinks. Original ISO and installed files are never modified in place.
+resolving symlinks. Original source files are never modified in place. Directory
+imports identify the supported executable and record SHA-256 hashes for every
+imported input file; see [installer validation](installer.md). Directory sources
+and installation destinations must not overlap. No source directory is discovered
+automatically or embedded as a machine-specific dependency.
 
 The native binary and its imported assets live together in the installation.
 The launcher resolves its own location, so it has no dependency on the checkout,

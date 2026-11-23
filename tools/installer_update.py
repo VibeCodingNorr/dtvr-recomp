@@ -75,7 +75,9 @@ def preserve_files(root, stage, previous, new_packs):
         after = path.stat()
         if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
             raise ValueError("Local files changed during update; close the game and retry")
-        if user_file and not old_pack:
+        # A retained pack may contain personal files absent from its manifest.
+        # Keep those mutable too; only its previously managed assets get hashes.
+        if user_file:
             excluded.append(name)
     return packs, excluded
 

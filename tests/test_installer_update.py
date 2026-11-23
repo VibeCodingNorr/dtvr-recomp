@@ -102,6 +102,31 @@ class UpdateTests(unittest.TestCase):
                 with publication_lock(self.old):
                     self.fail("lock must reject a second publisher")
 
+    def test_user_files_in_retained_music_packs_remain_mutable(self):
+        pack_file = self.old / "data/music/packs/custom/a1.ogg"
+        pack_file.parent.mkdir(parents=True)
+        pack_file.write_bytes(b"synthetic audio fixture")
+        pack = {"id": "custom", "directory": "data/music/packs/custom", "cue_count": 1}
+        previous = installation(self.old, packs=[pack])
+        notes = pack_file.with_name("notes.txt")
+        notes.write_text("personal music notes")
+
+        packs, excluded = preserve_files(self.old, self.stage, previous, [])
+        manifest = write_manifest(self.stage, {"project_version": read_version(),
+                                             "soundtrack_packs": packs}, excluded)
+        publish(self.stage, self.old, previous)
+
+        self.assertEqual(notes.read_text(), "personal music notes")
+        self.assertNotIn("data/music/packs/custom/notes.txt", manifest["files"])
+        self.assertIn("data/music/packs/custom/a1.ogg", manifest["files"])
+        notes.write_text("updated personal music notes")
+        updated = update_info(self.old)
+        next_stage = self.root / "next staging"
+        installation(next_stage, "next")
+        preserve_files(self.old, next_stage, updated, [])
+        self.assertEqual((next_stage / "data/music/packs/custom/notes.txt").read_text(),
+                         "updated personal music notes")
+
     def test_invalid_pack_metadata_is_rejected_before_building(self):
         manifest = self.old / "manifest.json"
         for catalog in (None, "not a list", [{"id": "../escape"}],

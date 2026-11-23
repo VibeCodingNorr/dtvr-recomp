@@ -7,6 +7,13 @@ python3 -m unittest discover -s tests -p 'test_installer*.py' -v
 python3 -m unittest discover -s tests -p 'test_appimage*.py' -v
 ```
 
+`test_installer_directory.py` also covers case-insensitive original-folder import,
+deterministic SHA-256 inventories, changed-source rejection, missing/unsupported
+inputs, linked/special entries, path collisions, depth/size bounds and disjoint
+destinations. Its installation/update pipeline uses the same real importer,
+manifest and publication code with synthetic files and controlled build tools.
+It checks source immutability, recorded input hashes, save preservation and backups.
+
 All media, build stubs, user files and output directories are generated in
 temporary directories outside the checkout. The pipeline tests use a real
 synthetic ISO9660 tree, actual importer/staging/manifest/publication code and real
@@ -36,6 +43,8 @@ Successful pipeline checks also verify executable permissions, complete managed-
 hashes, the default game launcher and isolated smoke-test XDG directories. Update
 tests preserve saves and local notes byte-for-byte and check external settings.
 Existing tests cover retained Ogg packs, changed managed files and competing publishers.
+Personal files inside retained Ogg packs remain excluded from managed-file hashes;
+editing them after one update must not prevent the next update.
 
 Permission and disk-full injection are intentional: the suite never fills a real
 disk, changes system permissions or requires root. Process tests have bounded
@@ -44,7 +53,8 @@ recovery from a power loss between the publication renames remains manual.
 
 ## Graphical installer checks
 
-Optional GUI checks exercise the custom folder chooser, system-dialog fallback,
+Optional GUI checks exercise the custom folder/file choosers, ISO filters,
+typed file paths, system-dialog fallback,
 dependency-command copying, update/version display and redacted export. Run with
 a Python interpreter that has working Tk and a graphical display, or through Xvfb:
 

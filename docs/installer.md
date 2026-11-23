@@ -1,7 +1,7 @@
-# Original ISO installation pipeline
+# Original-data installation pipeline
 
 The intended distribution is our native source/toolchain and an installer. Each
-user supplies their own original DTVR ISO. Original executables, extracted art,
+user supplies their own original DTVR ISO or original game directory. Original executables, extracted art,
 sound and generated outputs remain local and are not repository contents.
 
 ## Current implementation
@@ -12,7 +12,7 @@ and Python/Tk. The current project version is `0.0.1`; see
 
 Launch `./install.sh` for the native Tk assistant. It selects an available Python
 with a usable Tk runtime, shows our own project branding, and delegates to the
-same CLI backend used below. Choose ISO and destination. Original MIDI music is
+same CLI backend used below. Choose **Original-ISO** or **Spielverzeichnis**, then source and destination. Original MIDI music is
 enabled by default, using a detected local GM SoundFont. If none is found, select
 a bank under **Anpassen**. Skipping preparation is an explicit **Musikvorbereitung überspringen**
 choice; the original CD recordings alone do not provide a complete soundtrack.
@@ -29,8 +29,9 @@ and the form scrolls on smaller windows. Existing import/update behavior stays i
 
 The project-owned folder chooser supports typed paths, directory navigation,
 hidden folders and selecting the current folder. Its optional **Systemdialog**
-button opens the standard Tk/platform directory chooser instead. File selection
-for the ISO and SoundFont still uses the standard file chooser.
+button opens the standard Tk/platform directory chooser instead. ISO and
+SoundFont selection also use our own chooser, with case-insensitive file filters,
+typed paths, hidden entries and an optional **Systemdialog** fallback.
 
 Choose **Neu installieren** or **Vorhandene Installation aktualisieren** explicitly.
 Update mode shows the detected previous version and the target version; successful
@@ -65,6 +66,41 @@ or a graphical session, use the CLI:
 python3 tools/install.py --iso /path/to/dtvr.iso --output /path/to/new/installation
 /path/to/new/installation/play
 ```
+
+A directory is an alternative to the ISO, including for updates and `--check`:
+
+```sh
+python3 tools/install.py --directory /path/to/original-game --output /path/to/new/installation
+python3 tools/install.py --directory /path/to/original-game --output /path/to/installation --update --check
+```
+
+Select either the directory containing `rally.exe` or its parent containing
+`program/`; matching is case-insensitive. Only that program tree is imported.
+The source remains read-only and must not overlap the destination in either
+direction. Symbolic links, special files, control characters, backslashes and
+case-colliding names are rejected. Bounds are 20,000 entries, 16 directory levels,
+64 MiB per file and 2 GiB total file bytes. Names are normalized to lowercase.
+
+The known SHA-256 of `rally.exe` identifies the supported version, and the same
+required runtime assets as for ISO import must exist. Every input file gets a
+size and SHA-256 entry. The importer checks the inventory again before and after
+copying and verifies each copied file against it. The installation manifest
+stores `source_kind: directory`, `source_files` and `source_sha256`, a SHA-256 of
+the UTF-8 JSON file table (sorted keys, compact separators, default ASCII escaping).
+The fingerprint is independent of the source directory's absolute path, timestamps
+and entry order. Absolute source paths are not stored in the manifest.
+Input hashes include validation-only Windows files subsequently removed from the
+installation; `files` separately hashes the installed, managed runtime files.
+These input hashes document the supplied content. They do not authenticate all
+assets against a known original-disc file list.
+The inspected US English directory is a different, currently unsupported variant.
+Future support is an agreed user goal; edition selection, rule/data comparison
+and native validation remain pending. See
+[media variants and Claude integration handoff](media-variants.md#us-english-integration-handoff).
+
+Directory sources provide no CD audio regions; the manifest records
+`cd_audio.status: unavailable-from-directory` with null ISO hash/sector size.
+MIDI/SoundFont preparation works as usual. Updates preserve existing music packs.
 
 1. Check that the target is outside the checkout, is new or explicitly selected for update, and required
    build tools/SDL2 are available. Default to the user's XDG data directory.
@@ -166,7 +202,7 @@ python3 tools/install.py --iso /path/to/game.iso --output /path/to/installation 
 python3 tools/install.py --iso /path/to/game.iso --output /path/to/installation --update
 ```
 
-The ISO is still required. Update mode accepts verified version-2 installations
+Original data supplied via `--iso` or `--directory` is still required. Update mode accepts verified version-2 installations
 with a project version and refuses downgrades. Rebuilding the same version is
 allowed during development. Build/test failures leave the old installation in place.
 After successful tests, copy local files and existing Ogg packs into staging.

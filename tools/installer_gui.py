@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Native Linux installer assistant: select an ISO and compile automatically."""
+"""Native Linux installer assistant: select original data and compile automatically."""
 
 import json
 import os
@@ -20,12 +20,12 @@ from installer_checks import REPO, default_output
 from installer_process import InstallerProcess, installer_command, dependency_command
 from installer_diagnostics import DiagnosticLog
 from installer_dialogs import DependencyDialog
-from installer_folders import choose_directory
+from installer_folders import choose_directory, choose_file
 from project_version import read_version, version_tuple
 from installer_layout import InstallerLayout
 from soundfont_defaults import default_soundfont
 
-STAGES = {1: "ISO und Voraussetzungen prüfen", 2: "Originaldaten importieren",
+STAGES = {1: "Originaldaten und Voraussetzungen prüfen", 2: "Originaldaten importieren",
           3: "Ogg-Audio vorbereiten", 4: "Linux-Build kompilieren",
           5: "Build testen und installieren", 6: "Installation starten und prüfen",
           7: "Dateien prüfen und Installation abschließen"}
@@ -43,6 +43,7 @@ class InstallerWindow:
         self.detail = tk.StringVar()
         self.active_output = None
         self.iso = tk.StringVar()
+        self.source_kind = tk.StringVar(value="iso")
         self.output = tk.StringVar(value=str(default_output()))
         self.update = tk.BooleanVar(value=(default_output() / "manifest.json").is_file())
         self.audio = tk.StringVar(value="Vollständiges Ogg-Set aus Soundfont")
@@ -50,21 +51,31 @@ class InstallerWindow:
         self.bank = tk.StringVar(value=str(bank) if bank else "")
         self.music_hint = tk.StringVar()
         self.style = tk.StringVar(value="Classic — Hall und Chorus")
-        self.status = tk.StringVar(value="Original-ISO auswählen, dann prüfen oder installieren.")
+        self.status = tk.StringVar(value="Original-ISO oder Spielverzeichnis auswählen, dann prüfen oder installieren.")
         self.controls = []
         self.operation = None
         self.layout = InstallerLayout(self)
         self._soundfont_state()
         self.bank.trace_add("write", lambda *args: self._soundfont_state())
         self._mode_changed()
-        self.iso.trace_add("write", lambda *args: self.iso_hint.set("ISO ausgewählt. Mit „Nur prüfen“ die Ausgabe verifizieren."))
+        self.iso.trace_add("write", lambda *args: self.iso_hint.set("Quelle ausgewählt. Mit „Nur prüfen“ die Ausgabe verifizieren."))
         root.protocol("WM_DELETE_WINDOW", self._close)
         root.after(100, self._poll)
 
     def _choose_iso(self):
-        path = filedialog.askopenfilename(title="Eigene Original-ISO auswählen", filetypes=(("Disc-Abbild", "*.iso *.ISO *.bin"), ("Alle Dateien", "*")))
+        if self.source_kind.get() == "directory":
+            path = choose_directory(self.root, "Original-Spielverzeichnis auswählen", Path.home())
+        else:
+            path = choose_file(self.root, "Eigene Original-ISO auswählen",
+                               Path(self.iso.get()).expanduser() if self.iso.get() else Path.home(),
+                               (("Disc-Abbild", "*.iso *.bin"), ("Alle Dateien", "*")))
         if path:
             self.iso.set(path)
+
+    def _source_changed(self):
+        self.iso.set("")
+        self.iso_hint.set("Spielordner mit rally.exe oder übergeordneten Ordner mit program/ wählen. Dateien werden mit SHA-256 geprüft."
+                          if self.source_kind.get() == "directory" else "Wähle deine eigene Original-ISO.")
 
     def _choose_output(self):
         path = Path(self.output.get()).expanduser()
@@ -90,7 +101,7 @@ class InstallerWindow:
             self.install_button.configure(text="Update installieren  →")
             self.output_hint.set("Vorhandene Installation aktualisieren; eine vollständige Sicherung bleibt erhalten.")
         else:
-            self.detail.set("Eigene ISO erforderlich. Ein neuer Zielordner wird angelegt; vorhandene Installationen bleiben erhalten.")
+            self.detail.set("Eigene ISO oder Original-Spielverzeichnis erforderlich. Ein neuer Zielordner wird angelegt.")
             self.install_button.configure(text="Installieren  →")
             self.output_hint.set("Eine neue Installation wird hier angelegt.")
 
@@ -117,7 +128,9 @@ class InstallerWindow:
                 messagebox.showerror("Speichern fehlgeschlagen", str(error), parent=self.root)
 
     def _choose_bank(self):
-        path = filedialog.askopenfilename(title="Eigenen Soundfont auswählen", filetypes=(("SoundFont", "*.sf2 *.sf3"), ("Alle Dateien", "*")))
+        path = choose_file(self.root, "Eigenen Soundfont auswählen",
+                           Path(self.bank.get()).expanduser() if self.bank.get() else Path.home(),
+                           (("SoundFont", "*.sf2 *.sf3"), ("Alle Dateien", "*")))
         if path:
             self.bank.set(path)
 
@@ -125,7 +138,7 @@ class InstallerWindow:
         original = self.audio.get().startswith("Vollständiges")
         enabled = not self.busy and original
         if original:
-            self.music_hint.set("Originalmusik wird aus den MIDI-Dateien deiner ISO vorbereitet." if self.bank.get().strip()
+            self.music_hint.set("Originalmusik wird aus deinen originalen MIDI-Dateien vorbereitet." if self.bank.get().strip()
                                 else "Originalmusik ist vorgesehen. Unter „Anpassen“ bitte eine GM-SoundFont auswählen.")
         else:
             self.music_hint.set("Kein neues Klangset. Bei Updates bleiben vorhandene Sets erhalten; CD-Aufnahmen werden archiviert.")
@@ -156,11 +169,12 @@ class InstallerWindow:
                 raise ValueError("Für die Originalmusik fehlt eine GM-SoundFont. Bitte eine lokale Bank auswählen "
                                  "oder ausdrücklich „Musikvorbereitung überspringen“ einstellen.")
             command = installer_command(self.iso.get().strip(), self.output.get().strip(), bank,
-                                        "dry" if self.style.get().startswith("Dry") else "classic", check, self.update.get())
+                                        "dry" if self.style.get().startswith("Dry") else "classic", check, self.update.get(),
+                                        self.source_kind.get())
             self.active_output = Path(self.output.get().strip()).expanduser().resolve()
             self.operation = "check" if check else "install"
             self.progress.configure(value=0)
-            self.system_state.set("ISO und Voraussetzungen werden geprüft …")
+            self.system_state.set("Originaldaten und Voraussetzungen werden geprüft …")
             self.status.set("Voraussetzungen werden geprüft …" if check else "Installation wird vorbereitet …")
             self._append("\n--- Vorabprüfung ---\n" if check else "\n--- Installation ---\n")
             self.worker.start(command, check)
@@ -203,10 +217,13 @@ class InstallerWindow:
                         self.status.set("Prüfung erfolgreich. Bereit zum Installieren und Kompilieren.")
                         self.iso_hint.set("✓  Unterstützte Ausgabe erkannt")
                         self.system_state.set("✓  Voraussetzungen erfüllt")
-                        self._append(f"ISO erkannt: {report['program_files']} Dateien. Build-Werkzeuge und Zielordner geprüft.\n")
+                        self._append(f"Originaldaten erkannt: {report['program_files']} Dateien. Build-Werkzeuge und Zielordner geprüft.\n")
                         if report.get("update"):
                             self._append(f"Update von {report['previous_version']}; bisherige Installation wird als Sicherung behalten.\n")
-                        self._append("CD-Audioprofil erkannt.\n" if report["cd_audio_supported"] else "Kein bekanntes CD-Audioprofil; ein Soundfont kann das vollständige Ogg-Set liefern.\n")
+                        if report.get("source_kind") == "directory":
+                            self._append("Quelldateien mit SHA-256 erfasst. Verzeichnisse enthalten keine CD-Audiospuren; die MIDI-Musik bleibt nutzbar.\n")
+                        else:
+                            self._append("CD-Audioprofil erkannt.\n" if report["cd_audio_supported"] else "Kein bekanntes CD-Audioprofil; ein Soundfont kann das vollständige Ogg-Set liefern.\n")
                     elif data["ok"]:
                         self.installed = self.active_output
                         result = data.get("installation", {})

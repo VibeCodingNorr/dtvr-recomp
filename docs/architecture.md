@@ -22,6 +22,28 @@ and its algorithm/version along with the game state. Use simulation time or
 explicit authority events for deadlines, never client animation timing. Log
 resolved outcomes so replay need not depend on an unspecified platform RNG.
 
+## Editions and languages
+
+Future support for the US English edition is an agreed user goal (2026-11-23).
+It is not implemented: the current supported input is the identified German EXE.
+Verified fingerprints, resource differences and the engine handoff are recorded
+in [media variants](media-variants.md).
+
+Treat executable edition, original-data identity and presentation language as
+explicit information. Identify supported editions by verified EXE hashes and
+validate their required resource layout. An ISO and a complete original program
+directory are alternative sources; directory import records per-file SHA-256
+hashes. A matching executable alone does not establish asset completeness.
+
+For English support, load the original English text, art, town names and subtitle
+resources through an explicit profile rather than substituting German filenames.
+Compare gameplay tables and executable rules before declaring simulation
+compatibility. Share simulation rules where evidence establishes equivalence;
+represent confirmed edition differences explicitly instead of guessing them.
+Keep this work separate from the current game-window reconstruction until its
+integration is coordinated. Enabling a new profile requires native smoke checks
+and validation of a complete human turn using that edition's original data.
+
 ## Multiplayer
 
 One host owns the authoritative state. Clients send commands, not replacement
@@ -74,6 +96,8 @@ feature is deferred until state transitions and version compatibility are tested
 
 - Scalable interface, window/fullscreen support and readable text on modern displays.
 - Adjustable animation speed, fast AI presentation and reduced motion.
+  The user endorsed adjustable tempo; see the
+  [proposed controls, timing boundaries and implementation handoff](animation-tempo.md).
 - Autosave history and restore points.
 - A readable record of money changes and events with their causes.
 - Symbols or patterns in addition to field colors.
@@ -97,6 +121,7 @@ recovered gameplay or rendering layer they depend on exists.
 | --- | --- | --- |
 | Early | Key rebinding | Rebind an action, persist it across restart, detect conflicts and restore defaults. |
 | Early | Financial and event history | Show turn, player, amount, cause and resulting balance from authoritative events. |
+| Early, after scene timing separation | Animation tempo | Original/2×/4× presentation, persistent local preference, unchanged game outcomes and input deadlines; [handoff](animation-tempo.md). |
 | After input actions exist | Controller support | Complete a turn and navigate every required dialog without a mouse; handle disconnect without submitting actions. |
 | After scene/UI separation | Optional shader presets | Toggle effects at runtime, keep text readable and support an effects-free fallback. |
 | After suitable layers exist | Subtle parallax | Move background layers independently while board positions and hit targets remain aligned; honor reduced-motion settings. |

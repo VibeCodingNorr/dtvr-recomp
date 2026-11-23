@@ -56,15 +56,25 @@ def interface_font(directories=None):
 
 
 def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
-              music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False):
+              music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False,
+              directory=None):
     if type(jobs) is not int or not 1 <= jobs <= 256:
         raise ValueError("Build jobs must be between 1 and 256")
-    iso = iso.expanduser().resolve(strict=True)
-    if not iso.is_file():
-        raise ValueError("Choose a readable original ISO file")
+    if (iso is None) == (directory is None):
+        raise ValueError("Choose exactly one original ISO or directory")
     output = validate_output(output)
-    if output in iso.parents:
-        raise ValueError("Original ISO must be outside the installation destination")
+    if iso is not None:
+        iso = iso.expanduser().resolve(strict=True)
+        if not iso.is_file():
+            raise ValueError("Choose a readable original ISO file")
+        if output in iso.parents:
+            raise ValueError("Original ISO must be outside the installation destination")
+    else:
+        if directory.expanduser().is_symlink():
+            raise ValueError("Original directory must not be a symbolic link")
+        directory = directory.expanduser().resolve(strict=True)
+        if directory == output or output in directory.parents or directory in output.parents:
+            raise ValueError("Original directory and installation destination must not overlap")
     previous = None
     if update:
         from installer_update import update_info
@@ -73,17 +83,29 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
         previous = update_info(output)
     elif output.exists():
         raise ValueError(f"Target already exists; choose a new directory: {output}")
-    with IsoImage(iso) as image:
-        files = [entry for entry in image.files() if entry[0].parts[0] == "program"]
-        entry = next((entry for entry in files if str(entry[0]) == "program/rally.exe"), None)
-        if entry is None or hashlib.sha256(image.read(entry[1], entry[2])).hexdigest() != KNOWN_EXE:
-            raise ValueError("Unsupported original executable; this disc version is not supported")
-        required = {"program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"}
-        if not required.issubset({str(entry[0]) for entry in files}):
-            raise ValueError("Original disc is missing required game data")
-        sector_size = image.sector_size
-    iso_hash = digest(iso)
-    has_cd = audio_layout(iso_hash, iso.stat().st_size) is not None
+    source = {}
+    if directory is not None:
+        from installer_directory import inspect_directory
+        source = inspect_directory(directory, KNOWN_EXE)
+        program = Path(source["directory"])
+        if program == output or output in program.parents or program in output.parents:
+            raise ValueError("Original directory and installation destination must not overlap")
+        file_count = len(source["source_files"])
+        source_bytes = sum(entry["size"] for entry in source["source_files"].values())
+        iso_hash, sector_size, has_cd = None, None, False
+    else:
+        with IsoImage(iso) as image:
+            files = [entry for entry in image.files() if entry[0].parts[0] == "program"]
+            entry = next((entry for entry in files if str(entry[0]) == "program/rally.exe"), None)
+            if entry is None or hashlib.sha256(image.read(entry[1], entry[2])).hexdigest() != KNOWN_EXE:
+                raise ValueError("Unsupported original executable; this disc version is not supported")
+            required = {"program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"}
+            if not required.issubset({str(entry[0]) for entry in files}):
+                raise ValueError("Original disc is missing required game data")
+            sector_size = image.sector_size
+        file_count, source_bytes = len(files), sum(entry[2] for entry in files)
+        iso_hash = digest(iso)
+        has_cd = audio_layout(iso_hash, iso.stat().st_size) is not None
     banks = []
     if soundfonts:
         validate_identity(music_pack_id, music_pack_name, music_style)
@@ -99,13 +121,14 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     if not parent.is_dir() or not os.access(parent, os.W_OK | os.X_OK):
         raise ValueError("Installation destination is not writable")
     retained_bytes = sum(path.stat().st_size for path in output.rglob("*") if path.is_file()) if update else 0
-    reserve = 512 * 1024 * 1024 + 2 * sum(entry[2] for entry in files) + retained_bytes
+    reserve = 512 * 1024 * 1024 + 2 * source_bytes + retained_bytes
     free = shutil.disk_usage(parent).free
     if free < reserve:
         raise ValueError(f"Not enough free disk space: reserve {reserve // 2**20} MiB for import/build")
-    return {"iso": str(iso), "output": str(output), "iso_sha256": iso_hash,
+    return {**source, "source_kind": "directory" if directory is not None else "iso",
+            "iso": str(iso) if iso is not None else None, "output": str(output), "iso_sha256": iso_hash,
             "iso_sector_size": sector_size, "original_executable_sha256": KNOWN_EXE,
-            "program_files": len(files), "cd_audio_supported": has_cd,
+            "program_files": file_count, "cd_audio_supported": has_cd,
             "soundfonts": banks, "dependencies": requirements,
             "update": update, "previous_version": previous.get("project_version") if previous else None,
             "interface_font": font, "dependency_report": dependencies,

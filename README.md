@@ -19,8 +19,9 @@ is claimed.
 
 | Component | Status | Implemented / next step | Source or details |
 | --- | --- | --- | --- |
-| Source-only distribution | ✅ Implemented | User supplies the ISO; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
-| ISO installer and Linux build | ✅ Implemented | GUI selection, preflight, automatic compilation/tests, Ogg preparation, progress/cancel and game-window launch. Explicit local updates preserve user files and a complete backup. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
+| Source-only distribution | ✅ Implemented | User supplies an ISO or complete original game directory; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
+| Original-data installer and Linux build | ✅ Implemented | GUI selection of ISO or directory, preflight, directory input SHA-256 inventory, automatic compilation/tests, Ogg preparation, progress/cancel and game-window launch. Explicit local updates preserve user files and a complete backup. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
+| US English edition | ⬜ Planned | User-agreed future support. Different EXE and resource paths identified; edition selection, rule/data comparison and native validation remain pending. Currently rejected by the version gate. | [Variant evidence and handoff](docs/media-variants.md), [architecture](docs/architecture.md#editions-and-languages) |
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
@@ -190,19 +191,19 @@ is claimed.
 
 </details>
 
-Build flow: **user ISO → validated importer/converters → external native
+Build flow: **user ISO or complete original directory → validated importer/converters → external native
 installation → local launcher**. The repository supplies the tools and source;
-all original content comes from the user's ISO.
+all original content comes from the user's own data.
 
 ✅ = implemented within the stated scope; 🟡 = partial with known gaps;
 ⬜ = not implemented or planned. Update this table when a milestone is verified.
 
-## Install from your original ISO
+## Install from your original data
 
 Start the native graphical assistant:
 
 The planned release artifact is `DTVR-Recomb-Setup-0.0.1-x86_64.AppImage`.
-It bundles Python/Tk and our source; users still supply their ISO. The installer
+It bundles Python/Tk and our source; users still supply their original data. The installer
 automatically compiles the game using checked host build dependencies. No release
 download is published yet. For a source checkout, run:
 
@@ -210,7 +211,10 @@ download is published yet. For a source checkout, run:
 ./install.sh
 ```
 
-Select your ISO and an external installation folder. Original MIDI music is
+Select **Original-ISO** or **Spielverzeichnis**, your source and an external
+installation folder. A directory must contain `rally.exe` or a `program/` tree
+with all required assets; installed copies that still depend on CD files are
+insufficient. Original MIDI music is
 prepared by default with a detected local GM SoundFont; select a bank if none is
 found. **Musikvorbereitung überspringen** (`--no-music`) explicitly skips preparation;
 updates preserve existing music packs and playback preferences.
@@ -222,7 +226,7 @@ No manual CMake commands are needed. The starter selects an installed Python
 with working Tk support; CLI use does not require Tk.
 
 The repository provides the native source and installer. You supply your own
-original CD image; neither the ISO nor original game data is distributed here.
+original CD image or complete game directory; neither the ISO nor original game data is distributed here.
 Requires Python 3, CMake, a C++17 compiler, pkg-config, SDL2, SDL2_ttf,
 libvorbisfile and json-c >= 0.15 development files.
 Install a complete Arial or Liberation Sans font family for text in the game
@@ -240,6 +244,20 @@ The equivalent CLI installation is:
 python3 tools/install.py --iso /path/to/game.iso
 ~/.local/share/dtvr-recomb/play
 ```
+
+Alternatively, import a complete original game directory:
+
+```sh
+python3 tools/install.py --directory /path/to/original-game
+```
+
+The known EXE hash identifies the supported German version. Directory imports
+record every input file's size and SHA-256 and verify the copied data. The source
+stays unchanged. These hashes record supplied content; they do not authenticate
+every asset against a reference disc. The US English edition remains a
+[planned compatibility target](docs/media-variants.md#us-english-integration-handoff).
+Directories do not provide CD audio regions; original MIDI music can still be
+prepared with a local SoundFont.
 
 The installer reads the ISO without mounting it, extracts the `program` tree,
 validates the known original executable, builds and tests the native code, and

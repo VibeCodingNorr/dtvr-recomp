@@ -15,11 +15,14 @@ import threading
 REPO = Path(__file__).resolve().parents[1]
 
 
-def installer_command(iso, output, soundfont="", style="classic", check=False, update=False):
+def installer_command(iso, output, soundfont="", style="classic", check=False, update=False,
+                      source_kind="iso"):
+    if source_kind not in ("iso", "directory"):
+        raise ValueError("Unknown original data source")
     if not str(iso).strip() or not str(output).strip():
-        raise ValueError("Bitte Original-ISO und Zielordner auswählen.")
+        raise ValueError("Bitte Original-ISO oder Spielverzeichnis und Zielordner auswählen.")
     command = [sys.executable, "-u", str(REPO / "tools/install.py"),
-               "--iso", str(iso), "--output", str(output)]
+               "--" + source_kind, str(iso), "--output", str(output)]
     if soundfont:
         command += ["--soundfont", str(soundfont), "--music-style", style,
                     "--music-pack-id", "rendered-gm", "--music-pack-name", "SoundFont Ogg"]

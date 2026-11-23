@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Build a native DTVR installation from the user's original ISO, without root."""
+"""Build a native DTVR installation from an original ISO or game directory, without root."""
 
 import argparse
 import json
@@ -21,13 +21,17 @@ from installer_update import update_info, preserve_files, publish
 from installer_dependencies import DependencyError, dependency_report
 from installer_checks import interface_font
 from soundfont_defaults import soundfonts_for_install
+from installer_directory import import_directory
 
 
 def install(iso, output, jobs, soundfonts=None, music_style="classic",
-            music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False):
-    print("DTVR_STAGE:1:Checking original media and build dependencies", flush=True)
-    report = preflight(iso, output, jobs, soundfonts, music_style, music_pack_id, music_pack_name, update)
-    iso, output = Path(report["iso"]), Path(report["output"])
+            music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False,
+            directory=None):
+    print("DTVR_STAGE:1:Checking original data and build dependencies", flush=True)
+    source_args = {"directory": directory} if directory is not None else {}
+    report = preflight(iso, output, jobs, soundfonts, music_style, music_pack_id, music_pack_name, update, **source_args)
+    iso = Path(report["iso"]) if report["iso"] is not None else None
+    output = Path(report["output"])
     previous = update_info(output) if update else None
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".dtvr-install-", dir=output.parent) as temporary:
@@ -35,9 +39,13 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         data = stage / "data"
         data.mkdir(parents=True)
         print("DTVR_STAGE:2:Importing original game data", flush=True)
-        with IsoImage(iso) as image:
-            sector_size = image.sector_size
-            count = image.extract_program(data)
+        if directory is not None:
+            sector_size = None
+            count = import_directory(report, data)
+        else:
+            with IsoImage(iso) as image:
+                sector_size = image.sector_size
+                count = image.extract_program(data)
         analysis = inspect_game(data)
         if analysis["executable"]["sha256"] != KNOWN_EXE:
             raise ValueError("Unsupported rally.exe version; preserve this image for version analysis")
@@ -52,12 +60,12 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         print(f"Validated original executable; extracted {count} files.", flush=True)
         print("DTVR_STAGE:3:Preparing local Ogg audio", flush=True)
         iso_hash = report["iso_sha256"]
-        layout = audio_layout(iso_hash, iso.stat().st_size)
+        layout = audio_layout(iso_hash, iso.stat().st_size) if iso is not None else None
         if layout is not None:
             audio = convert_audio(iso, data / "music", layout)
         else:
-            audio = {"status": "no-known-layout", "regions": []}
-            print("No verified audio-region profile for this image; no CD audio converted.", flush=True)
+            audio = {"status": "unavailable-from-directory" if directory is not None else "no-known-layout", "regions": []}
+            print("No CD audio available from this source; no CD audio converted.", flush=True)
         packs = []
         if soundfonts:
             pack = render_pack(data / "program/snd/midi", soundfonts,
@@ -93,6 +101,9 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         if previous:
             packs, excluded = preserve_files(output, stage, previous, packs)
         write_manifest(stage, {"capability": "native-linux-prototype",
+                              "source_kind": "directory" if directory is not None else "iso",
+                              **({"source_sha256": report["source_sha256"],
+                                  "source_files": report["source_files"]} if directory is not None else {}),
                               "project_version": read_version(),
                               "iso_sha256": iso_hash, "iso_sector_size": sector_size,
                               "cd_audio": audio, "soundtrack_packs": packs,
@@ -110,7 +121,9 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DTVR Recomb Setup {read_version()}")
-    parser.add_argument("--iso", type=Path)
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--iso", type=Path)
+    source.add_argument("--directory", type=Path, help="Original game folder containing rally.exe, or its parent with program/")
     parser.add_argument("--dependencies", action="store_true",
                         help="List all host dependencies as JSON, without requiring an ISO or writing files")
     parser.add_argument("--output", type=Path, default=default_output(),
@@ -124,14 +137,14 @@ def main():
     parser.add_argument("--music-style", choices=("classic", "dry"), default="classic")
     parser.add_argument("--music-pack-id", default="rendered-gm")
     parser.add_argument("--music-pack-name", default="Rendered SoundFont")
-    parser.add_argument("--check", action="store_true", help="Check ISO, dependencies and destination without writing files")
+    parser.add_argument("--check", action="store_true", help="Check original data, dependencies and destination without writing files")
     parser.add_argument("--update", action="store_true", help="Update a verified installation and retain a complete backup; close the game first")
     args = parser.parse_args()
     if args.dependencies:
         print(json.dumps(dependency_report(interface_font(), audio=True, render=not args.no_music), indent=2))
         return
-    if args.iso is None:
-        parser.error("--iso is required for installation or media preflight")
+    if args.iso is None and args.directory is None:
+        parser.error("--iso or --directory is required for installation or media preflight")
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     if args.no_music and (args.music_style != "classic" or args.music_pack_id != "rendered-gm"
@@ -139,12 +152,13 @@ def main():
         parser.error("Music pack options cannot be combined with --no-music")
     try:
         soundfonts = soundfonts_for_install(args.soundfont, args.no_music)
+        source_args = {"directory": args.directory} if args.directory is not None else {}
         if args.check:
             print(json.dumps(preflight(args.iso, args.output, args.jobs, soundfonts,
-                                       args.music_style, args.music_pack_id, args.music_pack_name, args.update), indent=2))
+                                       args.music_style, args.music_pack_id, args.music_pack_name, args.update, **source_args), indent=2))
         else:
             install(args.iso, args.output, args.jobs, soundfonts, args.music_style,
-                    args.music_pack_id, args.music_pack_name, args.update)
+                    args.music_pack_id, args.music_pack_name, args.update, **source_args)
     except KeyboardInterrupt:
         parser.exit(130, "Installation cancelled; temporary staging was cleaned up.\n")
     except DependencyError as error:

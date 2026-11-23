@@ -28,7 +28,7 @@ class InstallerLayout:
         header.pack(fill="x")
         ttk.Label(header, text="WILLKOMMEN ZURÜCK AM START", style="Eyebrow.TLabel").pack(anchor="w")
         self.heading = tk.StringVar(value="Installation vorbereiten")
-        self.subtitle = tk.StringVar(value="Wähle deine Original-ISO. Der Installer erledigt Import und Build.")
+        self.subtitle = tk.StringVar(value="Wähle deine Originaldaten. Der Installer erledigt Import und Build.")
         ttk.Label(header, textvariable=self.heading, style="Heading.TLabel").pack(anchor="w", pady=(8, 6))
         subtitle = ttk.Label(header, textvariable=self.subtitle, style="Subtitle.TLabel", wraplength=810)
         subtitle.pack(anchor="w")
@@ -95,13 +95,13 @@ class InstallerLayout:
         for label in ("Deine Kopie.", "Dein Linux-Spiel."):
             tk.Label(bottom, text=label, bg=NAVY, fg="#f5edda", anchor="w",
                      font=(self.family, 13, "bold")).pack(fill="x")
-        for label in ("Original-ISO erforderlich.", "Deine Daten bleiben lokal.", f"Setup {read_version()}"):
+        for label in ("Eigene Originaldaten erforderlich.", "Deine Daten bleiben lokal.", f"Setup {read_version()}"):
             tk.Label(bottom, text=label, bg=NAVY, fg="#91a3b8", anchor="w",
                      font=(self.family, 9)).pack(fill="x", pady=(12 if label.startswith("Original") else 3, 0))
 
     def step(self, active):
         self.nav.delete("step")
-        for index, (title, subtitle) in enumerate((("Vorbereiten", "ISO, Ziel und Musik"),
+        for index, (title, subtitle) in enumerate((("Vorbereiten", "Quelle, Ziel und Musik"),
                                                  ("Installieren", "Import und Build"), ("Losspielen", "Alles bereit"))):
             y = 204 + index * 80
             current = index == active
@@ -168,7 +168,14 @@ class InstallerLayout:
             app.controls.append(choice)
         app.iso_hint = tk.StringVar(value="Wähle deine eigene Original-ISO.")
         app.output_hint = tk.StringVar(value="Eine neue Installation wird hier angelegt.")
-        self.path_row(self.card(self.prepare), "ORIGINAL-ISO", app.iso, app._choose_iso, app.iso_hint, "ISO auswählen")
+        sources = ttk.Frame(self.prepare, padding=(4, 4), style="Card.TFrame")
+        sources.pack(anchor="w", pady=(0, 8))
+        for label, value in (("Original-ISO", "iso"), ("Spielverzeichnis", "directory")):
+            choice = ttk.Radiobutton(sources, text=label, variable=app.source_kind, value=value,
+                                     command=app._source_changed, style="Segment.TRadiobutton")
+            choice.pack(side="left")
+            app.controls.append(choice)
+        self.path_row(self.card(self.prepare), "ORIGINALDATEN", app.iso, app._choose_iso, app.iso_hint, "Auswählen")
         entry, _ = self.path_row(self.card(self.prepare), "ZIELORDNER", app.output, app._choose_output, app.output_hint, "Ordner wählen")
         entry.bind("<FocusOut>", lambda e: app._mode_changed())
         music = self.card(self.prepare)
@@ -260,7 +267,7 @@ class InstallerLayout:
         if phase == "prepare":
             self.prepare.pack(fill="x")
             self.heading.set("Installation vorbereiten")
-            self.subtitle.set("Wähle deine Original-ISO. Der Installer erledigt Import und Build.")
+            self.subtitle.set("Wähle deine Originaldaten. Der Installer erledigt Import und Build.")
             self.app.check_button.pack(side="left", padx=(0, 10))
             self.app.install_button.pack(side="left")
             self.step(0)
