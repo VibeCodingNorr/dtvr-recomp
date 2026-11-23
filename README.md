@@ -183,7 +183,8 @@ is claimed.
 107. A human's turn ends when the field's message or dialog closes (seg2:1618), without another Enter.
 108. The hand as a card stack under the portrait (seg3:0EE8); slot machine and event animations block the turn menu; ambient animations start staggered.
 109. Slot machine keys as seg2:6B4A: Enter / Space stop the reels, then let the window slide out; computers continue by themselves.
-110. *Next:* remaining presentation details (compare windows with rally.exe).
+110. The slot machine's lever: Enter / Space pulls it (computers at once); keys also shorten a computer's spin.
+111. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

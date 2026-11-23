@@ -389,7 +389,9 @@ int runGameWindow(PlayView& play, const fs::path& root, const Board& board, cons
         if (!screen.title() && (computerWaits || !cur.humansLeft()) && screen.messages().open()
             && !screen.film().active()) {
             const Uint32 wait = cur.demoEnding() ? 100 : Uint32(2500 * screen.settings().pauseFactor());
-            if (messageShown == 0) messageShown = SDL_GetTicks();
+            // The wait starts with the window: an event's animation plays before it (seg8).
+            if (screen.eventSceneActive(SDL_GetTicks())) messageShown = 0;
+            else if (messageShown == 0) messageShown = SDL_GetTicks();
             else if (SDL_GetTicks() - messageShown > wait) {
                 screen.messages().dismiss();
                 messageShown = 0;

@@ -76,21 +76,33 @@ SDL_Texture* SlotView::frame(int reels, const std::string& name) {
 void SlotView::start(const std::vector<int>& reels, Uint32 now, bool computer) {
     reels_ = reels;
     if (reels_.size() > 5) reels_.resize(5);
-    started_ = now + kSlideTime; // seg2:6597: the window slides in first
+    slidIn_ = now + kSlideTime; // seg2:6597: the window slides in first
     computer_ = computer;
+    // State 1: a computer's loop posts the key at once (seg2:65B2), a human pulls the
+    // lever with Enter or Space (seg2:6A09).
+    lever_ = computer ? slidIn_ : kNever;
     stoppedEarly_ = 0;
     released_ = kNever;
 }
 
+Uint32 SlotView::reelStart() const {
+    // seg2:6A0D: the lever DS:2292, two ticks per frame; at its end seg2:6DCB calls the
+    // callback seg2:7671 (the reels turn) before it switches to the follow-up DS:2338
+    // (seg2:6EBA ff.), so the lever swings back while the reels already turn.
+    return lever_ == kNever ? kNever : lever_ + Uint32(kLeverPullTicks) * kTickMs;
+}
+
 Uint32 SlotView::stopTime() const {
-    const Uint32 regular = started_ + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs;
+    if (reelStart() == kNever) return kNever;
+    const Uint32 regular = reelStart() + Uint32(stopTick(int(reels_.size()) - 1)) * kTickMs;
     return stoppedEarly_ != 0 && stoppedEarly_ < regular ? stoppedEarly_ : regular;
 }
 
 Uint32 SlotView::releaseTime() const {
     // seg2:664E: a computer's loop posts the key after 30 passes in state 4; a human
     // presses Enter or Space (seg2:6B08 -> 67B8).
-    return computer_ ? stopTime() + kComputerHold : released_;
+    if (stopTime() == kNever) return kNever;
+    return computer_ ? std::min(stopTime() + kComputerHold, released_) : released_;
 }
 
 bool SlotView::stopped(Uint32 now) const {
@@ -104,19 +116,24 @@ bool SlotView::active(Uint32 now) const {
     return out == kNever || now < out + kSlideTime;
 }
 
-bool SlotView::key(Uint32 now) {
-    if (reels_.empty() || computer_ || now < started_) return false;
-    if (!stopped(now)) { // seg2:6AA2: state 2 ends the reels' runs at once (state 3)
+int SlotView::key(Uint32 now) {
+    // The procedure does not ask who plays: a key also shortens a computer's spin.
+    if (reels_.empty() || now < slidIn_) return 0;
+    if (lever_ == kNever) { lever_ = now; return 1; }            // state 1: the lever (seg2:6A09)
+    if (!stopped(now)) {
+        // seg2:6AA2: state 2 ends the reels' runs (state 3), except while the first
+        // lever definition DS:2292 still plays.
+        if (now < lever_ + Uint32(kLeverPullTicks) * kTickMs) return 0;
         stoppedEarly_ = now;
-        return true;
+        return 2;
     }
-    if (released_ == kNever) { released_ = now; return true; } // state 4: slide out
-    return false;
+    if (released_ == kNever) { released_ = now; return 2; }       // state 4: slide out
+    return 0;
 }
 
 int SlotView::slideOffset(Uint32 now) const {
-    const Uint32 in = started_ - kSlideTime;
-    if (now < started_) // seg2:6777: each step first moves, then waits
+    const Uint32 in = slidIn_ - kSlideTime;
+    if (now < slidIn_) // seg2:6777: each step first moves, then waits
         return kSlideStep * std::min(kSlideSteps, int((now - in) / kSlideMs) + 1);
     const Uint32 out = releaseTime();
     if (out == kNever || now < out) return kSlideStep * kSlideSteps;
@@ -143,7 +160,24 @@ void SlotView::draw(const ScreenRect& map, Uint32 now) {
             SDL_RenderCopy(renderer_, t, nullptr, &r);
         }
     };
-    const int tick = now < started_ ? 0 : int((now - started_) / kTickMs);
+    // The lever record at (0x16, 0x70) (seg2:6A61 / 6A6B).
+    if (lever_ != kNever && now >= lever_) {
+        static const char* const kPull[] = {"slthad01", "slthad02", "slthad03", "slthad04", "slthad05",
+                                            "slthad06", "slthad07", "slthad08", "slthad09"};          // DS:2292
+        static const char* const kBack[] = {"slthad10", "slthad11", "slthad12", "slthad12", "slthad12",
+                                            "slthad12", "slthad12", "slthad13", "slthad14", "slthad15",
+                                            "slthad16", "slthad17", "slthad18", "slthad19"};          // DS:2338
+        const int f = int((now - lever_) / kTickMs) / 2;
+        blit(f < 9 ? kPull[f] : f < 23 ? kBack[f - 9] : "slthad19", 0x16, 0x70);
+    }
+    const Uint32 reels = reelStart();
+    // Until the callback seg2:7671 the reel records are empty (seg2:6D1B): only the
+    // housing bitmap with its painted reels shows.
+    if (reels == kNever || now < reels) {
+        SDL_RenderSetClipRect(renderer_, nullptr);
+        return;
+    }
+    const int tick = int((now - reels) / kTickMs);
     int sum = 0;
     for (int i = 0; i < n; ++i) {
         const int stop = stopTick(i);

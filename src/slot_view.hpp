@@ -22,12 +22,13 @@ public:
     // `computer`: the window slides out by itself after the count (seg2:664E);
     // otherwise it waits for key().
     void start(const std::vector<int>& reels, Uint32 now, bool computer);
-    // Enter / Space of a human (seg2:6B4A): while the reels turn they stop at once
-    // (seg2:6AA2), after the count the window slides out (seg2:6B08). True if used.
-    bool key(Uint32 now);
+    // Enter / Space (seg2:6B4A, for every player): first the lever is pulled (seg2:6A09,
+    // returns 1), while the reels turn they stop at once (seg2:6AA2), after the
+    // count the window slides out (seg2:6B08; both return 2); 0 when unused.
+    int key(Uint32 now);
     bool active(Uint32 now) const;
     // The window has slid in and the reels turn (seg2:6597 returned).
-    bool running(Uint32 now) const { return !reels_.empty() && now >= started_; }
+    bool running(Uint32 now) const { return !reels_.empty() && reelStart() != kNever && now >= reelStart(); }
     // All reels show their final face (the count-up starts, seg2:7C83).
     bool stopped(Uint32 now) const;
     // Draws the window horizontally centred in the map window: created at y = -height
@@ -43,6 +44,7 @@ public:
     // the idle pass of seg2:1C37, taken as 20 ms (assumption: seg6:0CDF(20)).
     static constexpr Uint32 kComputerHold = 31 * 20;
     static constexpr Uint32 kNever = 0xFFFFFFFFu;
+    static constexpr int kLeverPullTicks = 9 * 2;      // DS:2292: 9 frames, delay 2
     // Ticks until reel i shows its final face: (i + 3) * 2 turns of four frames at
     // two ticks each (DS:2398), then walze_<v>h for four ticks (DS:23BE ff.).
     static int stopTick(int reel) { return (reel + 3) * 2 * 4 * 2 + 4; }
@@ -57,7 +59,9 @@ private:
     std::map<std::string, std::pair<int, int>> sizes_;
     std::map<std::string, Texture> textures_;               // per housing palette
     std::vector<int> reels_;
-    Uint32 started_ = 0;  // the reels start after the slide-in
+    Uint32 slidIn_ = 0;         // the window has slid in
+    Uint32 lever_ = kNever;     // the lever was pulled (state 1 -> 2)
+    Uint32 reelStart() const;
     bool computer_ = false;
     Uint32 stoppedEarly_ = 0;   // a human's key stopped the reels (0: not)
     Uint32 released_ = kNever;  // a human's key after the count

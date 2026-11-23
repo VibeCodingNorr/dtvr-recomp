@@ -1189,8 +1189,19 @@ shows while the player stands on the reached field (phase Arrived).
   count, seg2:7EAC) slides the window out and destroys it (seg2:6B08). For a
   computer the wait loop seg2:65C4 posts the key itself after more than 0x1E
   passes in state 4 (seg2:664E); for a human nothing does — the window stays
-  until Enter or Space. Rebuilt in `SlotView::key` (the human's lever is still
-  pulled by the spin command; a pass is taken as 20 ms). The paint (seg2:6C2B) only blits
+  until Enter or Space. Rebuilt in `SlotView::key` (a pass is taken as 20 ms).
+  *Round 116:* state 1 waits for the lever: a computer's loop posts the key at
+  once (seg2:65B2), a human presses Enter or Space; seg2:6A09 then plays the
+  lever record at (0x16, 0x70) — DS:2292 `slthad01`–`09`, follow-up DS:2338
+  `slthad10`–`19` (slthad12 five times), delay 2 each — with sound 2 on channel 1
+  (seg2:6A97). At the end of a definition seg2:6DCB first calls the record's
+  callback, then switches to the follow-up and clears both (seg2:6EBA–6F3B), so
+  seg2:7671 sets the reels turning when DS:2292 ends, while DS:2338 swings the
+  lever back. In state 2 a
+  key is ignored while DS:2292 still plays (seg2:6AA2). Until then the reel
+  records are empty (seg2:6D1B), so only the housing bitmap with its painted
+  reels shows. The procedure never asks who plays, so a key also shortens a
+  computer's spin and closes its window early. The paint (seg2:6C2B) only blits
   the slot DIB; palette entries 10–153 come from the slot bitmap (seg2:6C63).
   Computers pull the lever by posting 0x7EF.
 - **Reels** seg2:776A: value random(max) + 1 in DS:9584[i]; record 3 + i spins
@@ -1280,7 +1291,8 @@ round 84.
   (DS:85AE) times the pause factor (seg6:0E3A, keys 1–4), twice that while the
   window DS:A7BE exists, 100 ms once a demo ends (DS:16), never while a FLIC
   window is open (DS:A050); it posts 0x7EF to the window (seg6:10EE). For a
-  human it waits for a key or click. Replaces the assumed 2 s without humans.
+  human it waits for a key or click. Replaces the assumed 2 s without humans. The wait
+  starts when the window shows, after an event's animation (round 116).
 - **Paint** seg6:59C6: the paper fills the client area, the showmaster at
   (10, 10); the text goes into the client rectangle inflated by −10 with its left
   edge moved past the showmaster, in Arial weight 600 at {18, 16, 14}
