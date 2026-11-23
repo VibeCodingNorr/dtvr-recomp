@@ -19,7 +19,7 @@ def main():
         subprocess.run([sys.argv[2], "-nostdin", "-v", "error", "-f", "lavfi", "-i",
                         "sine=frequency=440:sample_rate=44100:duration=2.12", "-ac", "2",
                         "-c:a", "libvorbis", str(tone)], check=True)
-        for pack_id in ("tone", "dry", "missing", "linked", "corrupt", "unsafe"):
+        for pack_id in ("tone", "dry", "hybrid", "missing", "linked", "corrupt", "unsafe", "tail", "recorded"):
             pack = root / "packs" / pack_id
             (pack / "cues").mkdir(parents=True)
             catalog = {"schema_version": 1, "id": pack_id, "name": pack_id,
@@ -30,6 +30,15 @@ def main():
                 shutil.copyfile(tone, pack / "cues" / f"{cue}.ogg")
                 catalog["cues"][cue] = {"file": f"cues/{cue}.ogg", "nominal_end_seconds": 0.12,
                                         "media_duration_seconds": 2.12, "loop": False}
+            if pack_id in ("hybrid", "tail"):  # g0 from a CD recording: no rendered tail
+                catalog["source_kind"] = "cd-hybrid"
+                catalog["cues"]["g0"].update(source="cd-recording", nominal_end_seconds=2.12)
+                for cue in [c for c in CUES if c != "g0"]:
+                    catalog["cues"][cue]["source"] = "soundfont-render"
+            if pack_id == "tail":  # a recording must end with its media
+                catalog["cues"]["g0"]["nominal_end_seconds"] = 0.12
+            if pack_id == "recorded":  # recordings only in cd-hybrid sets
+                catalog["cues"]["g0"].update(source="cd-recording", nominal_end_seconds=2.12)
             if pack_id == "missing":
                 (pack / "cues/g2.ogg").unlink()
             if pack_id == "linked":

@@ -14,6 +14,7 @@ from inspect_game import inspect_game
 from iso9660 import IsoImage
 from cd_audio import audio_layout, convert_audio
 from soundtrack import render_pack
+from cd_soundtrack import PACK_ID as CD_PACK_ID, build_cd_hybrid
 from installer_checks import KNOWN_EXE, REPO, default_output, validate_output, digest, preflight
 from installation_manifest import write_manifest, verify_installation
 from project_version import read_version
@@ -73,6 +74,13 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
                                music_pack_id, music_pack_name, music_style)
             packs.append({"id": pack["id"], "name": pack["name"],
                           "directory": f"data/music/packs/{music_pack_id}", "cue_count": len(pack["cues"])})
+            # The recognised CD recordings with this rendering for the cues they lack
+            # (tools/cd_soundtrack.py); only when the image provides the CD audio.
+            if audio.get("regions") and music_pack_id != CD_PACK_ID:
+                hybrid = build_cd_hybrid(data / "music", data / "music/packs" / music_pack_id,
+                                         data / "music/packs" / CD_PACK_ID)
+                packs.append({"id": hybrid["id"], "name": hybrid["name"],
+                              "directory": f"data/music/packs/{CD_PACK_ID}", "cue_count": len(hybrid["cues"])})
         build = Path(temporary) / "build"
         print("DTVR_STAGE:4:Configuring and compiling the native Linux build", flush=True)
         subprocess.run(["cmake", "-S", str(REPO), "-B", str(build),

@@ -88,6 +88,47 @@ and the original CD track numbers are still unverified/unimplemented.
    correctly, and continues to work with the ISO absent. Handle unavailable music
    explicitly and verify that disabling it does not change gameplay.
 
+## Sound set "CD-Aufnahmen + MIDI-Ergänzungen" (round 134)
+
+The user recognised the CD recording as the music remembered from playing the
+original (region 01 against our GM rendering of `g0`). `tools/cd_soundtrack.py`
+composes a selectable set, source kind `cd-hybrid`, id `cd-hybrid`:
+
+| Cue | Asset | Evidence |
+| --- | --- | --- |
+| `g0` | `segment-01.ogg` | pitch-class similarity 0.456 (runner-up `g4` 0.228), time scale 1.0 |
+| `g1` | `segment-02.ogg` | 0.454 (`g0` 0.165), 1.0 |
+| `g3` | `segment-03.ogg` | 0.587 (`g2` 0.349), 1.0 |
+| `g4` | `segment-04.ogg` | 0.736 (`g0` 0.238), 1.0 |
+| `g5` | `segment-05.ogg` | 0.647 (`g2` 0.382), 1.0 |
+| the other 20 | the SoundFont rendering, marked `"source": "soundfont-render"` | no recording |
+
+The scores were reproduced on 2026-11-23 with `tools/inspect_music.py` on the
+imported segments of the supported image (same values as docs/music-research.md).
+`segment-06` is only the first 109 s of the 434 s intro `i` and does not replace it;
+`g2` and the short cues have no recording. A recorded cue ends with its media
+(`nominal_end_seconds` = media duration, `nominal_end_source` `cd-recording-end`), a
+rendered one 2 s before (the synth tail); the native catalog
+(`src/music_catalog.cpp`) checks both and accepts recordings only in `cd-hybrid`
+sets. The catalog keeps the CD layout's identity (`cd_audio`) and the supplement's
+pack id, settings, SoundFonts and tools; every cue keeps its Ogg hash (recordings
+also the source PCM hash). Unchanged: rally.exe plays its music from MIDI files
+(the CD routine seg1:2B44 has no caller), original track numbers are unknown, and
+the recordings are not stretched or cut.
+
+The installer builds the set after a rendering when the image provides CD audio.
+For an existing installation:
+
+```sh
+python3 tools/cd_soundtrack.py --music-dir /path/to/data/music \
+    --render-pack /path/to/data/music/packs/rendered-gm \
+    --output /path/to/data/music/packs/cd-hybrid
+```
+
+It is selected on the Audio page (F8) like any set; switching happens at the next
+piece. Tests: `tests/test_cd_soundtrack.py` (generated inputs) and the `hybrid` /
+`tail` / `recorded` packs of `tests/music_fixture.py`.
+
 ## Tests and format references
 
 `tests/test_cd_audio.py` uses generated tones, no original audio. It checks profile

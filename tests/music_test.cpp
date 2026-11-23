@@ -55,7 +55,11 @@ void controls() {
 void decoding(const fs::path& root) {
     std::vector<std::string> issues;
     auto packs = discoverMusicPacks(root, issues);
-    check(packs.size() == 2 && issues.size() == 4, "reject incomplete, linked, corrupt and unsafe packs");
+    check(packs.size() == 3 && issues.size() == 6,
+          "accept a cd-hybrid set; reject incomplete, linked, corrupt, unsafe and mistimed packs");
+    const auto hybrid = readMusicPack(root / "hybrid");
+    check(std::abs(hybrid.tracks.at("g0").nominalEnd - 2.12) < 1e-9 && std::abs(hybrid.tracks.at("g1").nominalEnd - 0.12) < 1e-9,
+          "a recording ends with its media, a rendering 2 s before");
     const auto pack = readMusicPack(root / "tone");
     const auto track = pack.tracks.at("g0");
     MusicStream stream;
