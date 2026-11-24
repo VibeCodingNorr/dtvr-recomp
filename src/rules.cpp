@@ -278,10 +278,9 @@ int startField(const Board& board, const std::vector<Town>& towns, const std::st
 
 int chooseDestination(const Board& board, const std::vector<PlayerSlot>& players, int origin,
                       int current, uint16_t mask, MsRandom& rng) {
-    std::vector<int> slots(60, -1);
-    int count = 0;
-    for (size_t i = 0; i < board.fields.size(); ++i)
-        if (board.fields[i].kind == 6 && count < 60) slots[size_t(count++)] = int(i);
+    std::vector<int> slots = destinationCandidates(board);
+    const int count = int(slots.size());
+    slots.resize(60, -1);
     bool possible = false;
     for (int i = 0; i < count; ++i)
         possible |= slots[size_t(i)] != origin && slots[size_t(i)] != current
@@ -298,6 +297,61 @@ int chooseDestination(const Board& board, const std::vector<PlayerSlot>& players
         return field;
     }
     return -1;
+}
+
+std::vector<int> destinationCandidates(const Board& board) {
+    std::vector<int> slots;
+    for (size_t i = 0; i < board.fields.size() && slots.size() < 60; ++i)
+        if (board.fields[i].kind == 6) slots.push_back(int(i));
+    return slots;
+}
+
+int lastStageDestination(const Board& board, const std::vector<Town>& towns, int current) {
+    auto fold = [](unsigned char c) { return c >= 'a' && c <= 'z' ? c - 32 : int(c); };
+    auto same = [&](const std::string& a, const char* b) { // USER.LSTRCMPI == 0
+        size_t i = 0;
+        for (; i < a.size() && b[i]; ++i)
+            if (fold(static_cast<unsigned char>(a[i])) != fold(static_cast<unsigned char>(b[i]))) return false;
+        return i == a.size() && !b[i];
+    };
+    auto search = [&](std::initializer_list<const char*> names) {
+        for (int field : destinationCandidates(board)) {
+            const Field& f = board.fields[size_t(field)];
+            for (const Town& t : towns) { // seg2:271C -> 276B: the first town at the cell
+                if (t.x != f.x || t.y != f.y) continue;
+                for (const char* n : names)
+                    if (same(t.name, n)) return field;
+                break;
+            }
+        }
+        return -1;
+    };
+    if (const int f = search({"BR\x9A" "SSEL", "br\x81" "ssel"}); f >= 0) return f;          // seg7:4B89
+    if (const int f = search({"BR\x9A" "SSEL", "br\x81" "ssel", "brussels"}); f >= 0) return f; // seg7:47AB
+    return current;
+}
+
+int startFacing(const Field& field) {
+    for (int k = 0; k < 4; ++k)
+        if (field.next[size_t(k)] != Field::kNone) return k + 1;
+    return 0;
+}
+
+std::array<int, kPlayerSlots> masterStartFields(const Board& board, const std::vector<PlayerSlot>& players,
+                                                 int first) {
+    std::array<int, kPlayerSlots> moved;
+    moved.fill(-1);
+    int index = first;
+    for (int p = 0; p < kPlayerSlots && size_t(p) < players.size(); ++p) {
+        if (!players[size_t(p)].status) continue;
+        if (index >= 0 && size_t(index) < kMasterStartCells.size()) {
+            const MapCell c = kMasterStartCells[size_t(index)];
+            for (size_t i = 0; i < board.fields.size(); ++i)
+                if (board.fields[i].x == c.x && board.fields[i].y == c.y) moved[size_t(p)] = int(i);
+        }
+        ++index; // seg2:5E84: also when no field matched
+    }
+    return moved;
 }
 
 StageResult reachDestination(int remaining, double inflation) {

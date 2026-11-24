@@ -193,6 +193,37 @@ int startField(const Board& board, const std::vector<Town>& towns, const std::st
 // index; this mirrors the original code. Returns -1 if no candidate exists.
 int chooseDestination(const Board& board, const std::vector<PlayerSlot>& players, int origin,
                       int current, uint16_t mask, MsRandom& rng);
+// The candidate list DS:1A (seg5:1D70): the kind-6 fields in field order, at most 60.
+std::vector<int> destinationCandidates(const Board& board);
+
+// The last stage's destination (round R3a). The announcement seg7:372F(3) never stores
+// its draw (seg7:3755) in DS:A10D; it searches the list DS:1A in order for the town
+// name (seg2:271C, the first town at the field's cell) "BRÜSSEL" or "brüssel"
+// (DS:4E4B / 4E53, code page 850) with lstrcmpi at the end (seg7:4B89-4C22), after
+// the same search with "brussels" (DS:4E11 / 4E19 / 4E21, seg7:47AB-4867) once the
+// first voice is done. Returns that field, otherwise `current` (DS:A10D unchanged).
+// lstrcmpi is modelled as ASCII case folding with other bytes compared exactly;
+// the German towns match "brüssel" by ASCII folding alone.
+int lastStageDestination(const Board& board, const std::vector<Town>& towns, int current);
+
+// seg2:5067: the start facing of a vehicle on `field`: the first direction (1 up, 2
+// right, 3 down, 4 left) with a link (record +2 + 2k != 0xFFFF, seg2:5107-5123);
+// 0 when the field has no link (seg2:51D8 leaves the animation unchanged).
+int startFacing(const Field& field);
+
+// seg2:5CDE: before the last stage the players in play are moved, in slot order, to
+// consecutive cells of a 12-cell table starting at `first` = random(12 - players in
+// play) (seg2:5D51-5D66). x at [bp-0xE], y at [bp-0x1A] (seg2:5CF2-5D4D).
+struct MapCell { uint8_t x = 0, y = 0; };
+constexpr std::array<MapCell, 12> kMasterStartCells{{
+    {0x05, 0x05}, {0x14, 0xE2}, {0x37, 0xF5}, {0x44, 0xFD}, {0x51, 0xFD}, {0x70, 0xFD},
+    {0x94, 0xFA}, {0xA0, 0xF5}, {0xA0, 0xEA}, {0xBF, 0xDC}, {0xD3, 0xD7}, {0xC7, 0xC0}}};
+// Per slot the field the player is moved to: of all fields at the slot's cell the
+// last in field order (the loop seg2:5D9B-5E81 does not stop at a match), -1 for
+// slots not in play and for a cell without a field (the player stays). `first` is
+// the draw; the table index of the n-th player in play is first + n.
+std::array<int, kPlayerSlots> masterStartFields(const Board& board, const std::vector<PlayerSlot>& players,
+                                                 int first);
 
 // Stages: DS:A104 = remaining stages from [MAIN] Rounds (new-game default 99).
 struct StageResult {

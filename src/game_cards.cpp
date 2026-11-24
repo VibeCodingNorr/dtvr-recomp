@@ -202,7 +202,7 @@ bool Game::playCard(int handSlot, int target) {
         break;
     }
     case CardKind::Flugzeug: { // seg3:31D5: fly to a town, then the town's field action
-        players_[size_t(current_)].field = fieldOfTown(target);
+        setPosition(current_, fieldOfTown(target)); // seg3:3302 -> seg2:04AD
         counter_ = MoveCounter(0);
         phase_ = Phase::Move;
         messages_.push_back("Flug nach " + townName(fieldOfTown(target)));
@@ -254,7 +254,7 @@ void Game::playPunch() {
                 if (facing - d - 1 == 0) d = d >= 3 ? 0 : d + 1;
             }
         }
-        players_[size_t(p)].field = at;
+        setPosition(p, at); // seg3:2F26 -> seg2:04AD
         messages_.push_back("Punch! " + playerName(p) + " landet auf " + townName(at));
         return;
     }
@@ -314,7 +314,7 @@ void Game::playTschuess(int target) {
     const Field& at = board_.fields[size_t(players_[size_t(target)].field)];
     const int field = pickHiddenField(board_, routeMask(), viewAround(at), rng_);
     if (field < 0) return;
-    players_[size_t(target)].field = field;
+    setPosition(target, field); // seg3:2CBC -> seg2:04AD
     messages_.push_back("Tschuess! " + playerName(target) + " landet bei " + townName(field));
 }
 

@@ -107,6 +107,43 @@ void Game::placeDragoForStage() {
     messages_.push_back("Dr. Drago steigt bei Spieler " + std::to_string(chosen + 1) + " ein");
 }
 
+void Game::setPosition(int player, int field) {
+    // seg2:04AD: +0x16 / +0x18 from the field's cell, +0x3C = +0x3E = field, then
+    // seg2:5067 (start facing; a field always lies on its own cell, so the player is
+    // never taken out of play there) and seg2:0590: seg2:9C97 for Dr. Drago's holder.
+    players_[size_t(player)].field = field;
+    if (const int f = startFacing(board_.fields[size_t(field)])) lastDirection_[size_t(player)] = f;
+    ++jumps_[size_t(player)];
+    if (player == drago_.holder) {
+        placeDrago(drago_, player, rng_);
+        ++dragoPlacements_;
+    }
+}
+
+void Game::startMasterRallye() {
+    // seg2:5CDE: first = random(12 - players in play) (seg2:5D51-5D66); the players in
+    // play are put, in slot order, on the fields at consecutive cells of the table,
+    // each with seg2:5067 (seg2:5E4D). Dr. Drago is not re-placed there.
+    const int first = rng_.random(12 - activePlayerCount(players_));
+    const auto fields = masterStartFields(board_, players_, first);
+    for (int p = 0; p < kPlayerSlots; ++p) {
+        if (fields[size_t(p)] < 0) continue;
+        players_[size_t(p)].field = fields[size_t(p)];
+        if (const int f = startFacing(board_.fields[size_t(fields[size_t(p)])])) lastDirection_[size_t(p)] = f;
+        ++jumps_[size_t(p)];
+    }
+    // seg2:5FCA: seg2:5FF7 recomputes the property value +0x5A of every slot (the same
+    // pass Economy::poorest makes before its ranking), seg1:8EE1 sorts the players in
+    // play by +0x42 + +0x5A; DS:957A, the first, gets Dr. Drago (seg2:146D -> 9C97).
+    economy_.poorest(activePlayers());
+    const std::vector<int> order = ranking();
+    if (order.empty()) return;
+    placeDrago(drago_, order.front(), rng_);
+    ++dragoPlacements_;
+    messages_.push_back("Master-Rallye: alle Fahrer an den Start, Dr. Drago steigt bei Spieler "
+                        + std::to_string(order.front() + 1) + " ein");
+}
+
 bool Game::playWeihnachten() {
     const std::string who = playerName(current_);
     if (unsigned(calendar_.month) % 12 != 11) { // only in December (seg3:1174)

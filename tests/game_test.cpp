@@ -160,16 +160,15 @@ int main() {
     CHECK(game.phase() == Game::Phase::GameOver);
     CHECK(game.cash(game.currentPlayer()) >= kStartingCash + 300000.0);
 
-    // With one stage left the first arrival continues with a new destination; it is
-    // neither the old stage start nor the reached town (round 49: seg7:3755 chooses
-    // before DS:A10B moves to the reached field). A third destination town (field 6)
-    // keeps a candidate.
+    // With one stage left the first arrival continues with the last stage. seg7:3755
+    // still draws (round 49: before DS:A10B moves to the reached field), but the last
+    // stage's destination is Brussels (seg7:4B89, round R3a), here field 6.
     Board threeTowns = board;
     threeTowns.fields[6].kind = 6;
     std::vector<Town> threeTownList = towns;
     threeTownList.push_back(Town{});
     threeTownList.back().x = 6;
-    threeTownList.back().name = "Paris";
+    threeTownList.back().name = "Br\x81ssel";
     Game stages(threeTowns, threeTownList, 1, 1, 3, 1, nullptr, nullptr, false); // solo variant
     stages.setRandomEvents(false);
     const int firstOrigin = stages.origin(), firstGoal = stages.destination();
@@ -180,7 +179,7 @@ int main() {
     }
     CHECK(stages.remainingStages() == 0 && stages.phase() != Game::Phase::GameOver);
     CHECK(firstOrigin == 0 && stages.origin() == firstGoal);
-    CHECK(stages.destination() >= 0 && stages.destination() != firstOrigin && stages.destination() != firstGoal);
+    CHECK(stages.destination() == 6 && stages.announceMode() == 3);
 
     // Cards: a movement card from the starting hand replaces the spin.
     Game cardGame(board, towns, 1, 0, 1, 8, nullptr, nullptr, false);

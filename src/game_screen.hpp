@@ -266,6 +266,7 @@ private:
     SDL_Point surroundOrigin_{};                    // DS:956A / 9568 in tiles while in Umfeld
     std::array<SDL_Point, kPlayerSlots> shown_{};   // drawn world pixel of each vehicle
     std::array<int, kPlayerSlots> shownField_{};    // field the drawn position belongs to
+    std::array<int, kPlayerSlots> shownJumps_{};    // Game::positionJumps already shown
     std::array<VehicleAir, kPlayerSlots> air_{};    // plane state +0x2D / height +0x2E
     std::array<VehicleAnimation, kPlayerSlots> anim_{}; // animation +0x20 and its frame +0x2C
     std::array<bool, kPlayerSlots> airSet_{};
