@@ -162,6 +162,7 @@ static int run(int argc, char** argv) {
     bool finish = false;           // --game: show the finish sequence (screenshots)
     bool victory = false;          // --game: show the victory sequence (screenshots)
     bool balance = false;          // --game: show the year balance (screenshots)
+    bool statement = false;        // --game: show the monthly statement STAT (screenshots)
     bool announce = false;         // --game: show the destination announcement (screenshots)
     bool cardShop = false;         // --game: open the card shop (screenshots)
     bool selectPlayer = false;     // --game: open the target choice (screenshots)
@@ -246,6 +247,7 @@ static int run(int argc, char** argv) {
         else if (arg == "--finish") finish = true;
         else if (arg == "--victory") victory = true;
         else if (arg == "--balance") balance = true;
+        else if (arg == "--statement") statement = true;
         else if (arg == "--announce") announce = true;
         else if (arg == "--card-shop") cardShop = true;
         else if (arg == "--select-player") selectPlayer = true;
@@ -331,6 +333,7 @@ static int run(int argc, char** argv) {
         options.finish = finish;
         options.victory = victory;
         options.balance = balance;
+        options.statement = statement;
         options.announce = announce;
         options.cardShop = cardShop;
         options.selectPlayer = selectPlayer;
@@ -347,7 +350,7 @@ static int run(int argc, char** argv) {
         // The title menu comes first unless a test option asks for a specific state.
         options.title = !noTitle && loadSlot < 0 && menuName.empty() && !openCards && !holdRight && !openSave
                         && !openStatistics && openEstates < 0 && !rollAtStart && !openOverview && !openSetup && !openStages
-                        && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !announce && !cardShop && !selectPlayer && !flight && !nails && !invest;
+                        && !openSurroundings && !zoomIn && !openOptions && !finish && !victory && !balance && !statement && !announce && !cardShop && !selectPlayer && !flight && !nails && !invest;
         options.openEstates = openEstates;
         options.screenshot = screenshot.string();
         // Settings, music preferences and saves of the former name DTVR Recomb, copied once.

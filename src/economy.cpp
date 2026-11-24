@@ -64,15 +64,15 @@ bool Economy::buy(int player, int town, int entry, BuyMode mode) {
         const double cost = value(town, entry);
         if (p.owner == kNoOwner) { // seg1:806C -> 8176: a free entry is a normal purchase (round 147)
             if (buyer.cash < cost) return false; // seg1:8287
-            buyer.cash -= cost;
+            pay(buyer, -cost);                   // seg1:82D0 -> seg2:5A47
             p.owner = me;
             break;
         }
         // The own entry (seg1:8093) or too little cash (seg1:80E4) reach seg1:8176 too,
         // where seg1:8192 refuses an entry that is not free.
         if (p.owner == me || buyer.cash < cost) return false;
-        money_[p.owner].cash += cost;
-        buyer.cash -= cost;
+        pay(money_[p.owner], cost); // seg1:8115 -> seg2:59E6
+        pay(buyer, -cost);          // seg1:8150 -> seg2:5A47
         p.owner = me;
         break;
     }
@@ -87,7 +87,7 @@ bool Economy::buy(int player, int town, int entry, BuyMode mode) {
             buyer.creditDebt += cost; // paid later; no cash check (seg1:828B)
         } else {
             if (buyer.cash < cost) return false;
-            buyer.cash -= cost;
+            pay(buyer, -cost); // seg1:82D0 -> seg2:5A47
         }
         p.owner = me;
         break;
@@ -102,7 +102,7 @@ bool Economy::sell(int player, int town, int entry, bool withCard) {
     PropertyState& p = states_[size_t(town)].entries[size_t(entry)];
     if (p.owner != uint8_t(player) || p.landlord != kNoOwner) return false;
     p.owner = kNoOwner;
-    money_[size_t(player)].cash += value(town, entry) * (withCard ? 1.5 : 1.0);
+    pay(money_[size_t(player)], value(town, entry) * (withCard ? 1.5 : 1.0)); // seg1:846A / 84A4 -> seg2:59E6
     updateWholeOwner(town);
     return true;
 }
@@ -110,7 +110,7 @@ bool Economy::sell(int player, int town, int entry, bool withCard) {
 void Economy::chargeCredits(const std::vector<int>& activePlayers) {
     for (int p : activePlayers) {
         PlayerMoney& m = money_[size_t(p)];
-        if (m.creditDebt > 0) m.cash -= m.creditDebt;
+        if (m.creditDebt > 0) pay(m, -m.creditDebt); // seg1:8B2D -> seg2:5A47
     }
 }
 
@@ -122,7 +122,7 @@ void Economy::clearCredits() {
 double Economy::fiskus(int target) {
     PlayerMoney& m = money_[size_t(target)];
     const double tax = (m.cash + m.propertyValue) * 0.1; // DS:8636
-    m.cash -= tax;
+    pay(m, -tax); // seg3:159A -> seg2:5A47
     return tax;
 }
 
@@ -131,17 +131,24 @@ double Economy::balanceAccounts(const std::vector<int>& activePlayers) {
     double sum = 0;
     for (int p : activePlayers) sum += money_[size_t(p)].cash;
     const double average = sum / double(activePlayers.size());
-    for (int p : activePlayers) money_[size_t(p)].cash = average;
+    for (int p : activePlayers) { // seg3:16D1 / 1700: the difference through 5A47 / 59E6, then
+        PlayerMoney& m = money_[size_t(p)]; // the average written directly (seg3:1715)
+        m.monthFlow += average - m.cash;
+        m.cash = average;
+    }
     return average;
 }
 
-void Economy::zero(int player) { money_[size_t(player)].cash = 0; }
+void Economy::zero(int player) { // seg3:191F: seg2:5A47(player, cash)
+    PlayerMoney& m = money_[size_t(player)];
+    pay(m, -m.cash);
+}
 
 bool Economy::passDebt(int player, int target) {
     PlayerMoney& m = money_[size_t(player)];
     if (m.cash >= 0) return false;
-    money_[size_t(target)].cash += m.cash; // target takes the negative balance
-    m.cash = 0;
+    pay(money_[size_t(target)], m.cash); // seg3:1810: 5A47(target, -cash), takes the negative balance
+    pay(m, -m.cash);                     // seg3:1839: 5A47(player, cash): 0
     return true;
 }
 
@@ -163,13 +170,13 @@ Economy::PropertyRef Economy::pickProperty(uint8_t owner, double limit, MsRandom
 
 void Economy::sellWithFactor(int player, PropertyRef p, double factor) {
     states_[size_t(p.town)].entries[size_t(p.entry)].owner = kNoOwner;
-    money_[size_t(player)].cash += value(p.town, p.entry) * factor;
+    pay(money_[size_t(player)], value(p.town, p.entry) * factor); // seg1:8383 -> seg2:59E6
     updateWholeOwner(p.town);
 }
 
 void Economy::buyWithFactor(int player, PropertyRef p, double factor) {
     states_[size_t(p.town)].entries[size_t(p.entry)].owner = uint8_t(player);
-    money_[size_t(player)].cash -= value(p.town, p.entry) * factor;
+    pay(money_[size_t(player)], -(value(p.town, p.entry) * factor)); // seg1:7E4C -> seg2:5A47
     updateWholeOwner(p.town);
 }
 
@@ -263,9 +270,9 @@ void Economy::settleMonth(const std::vector<int>& activePlayers, int year) {
                 PlayerMoney& m = money_[player];
                 if (p.burden != 0) {
                     p.burden -= income;
-                    if (p.burden < 0) { m.cash -= p.burden; p.burden = 0; } // surplus paid out
+                    if (p.burden < 0) { pay(m, -p.burden); p.burden = 0; } // surplus paid out (seg1:88AC)
                 } else {
-                    m.cash += income;
+                    pay(m, income); // seg1:88ED -> seg2:59E6
                     m.monthlyIncome += income;
                 }
                 if (p.landlord != kNoOwner && --p.monthsLeft == 0) {
@@ -276,14 +283,18 @@ void Economy::settleMonth(const std::vector<int>& activePlayers, int year) {
         }
         PlayerMoney& m = money_[player];
         m.yearRent = int32_t(uint32_t(m.yearRent) + uint32_t(ftol(m.monthlyIncome))); // seg1:8A07
-        // seg1:8A33 adds ftol(+0x4A) to +0x62 (the month's cash flow, not modelled: not shown).
+        m.yearFlow = int32_t(uint32_t(m.yearFlow) + uint32_t(ftol(m.monthFlow))); // seg1:8A1C..8A37
         if (year >= 0 && year < kWorthYears) // seg1:8A3B: DS:A102 <= 300
             m.worth[size_t(year)] = ftol(double(ftol(m.propertyValue)) + m.cash); // seg1:8A52..8A97
     }
 }
 
 void Economy::clearYearRent() {
-    for (auto& m : money_) m.yearRent = 0; // seg1:8BC6 (also +0x62, not modelled)
+    for (auto& m : money_) m.yearRent = m.yearFlow = 0; // seg1:8BC6: +0x66 and +0x62
+}
+
+void Economy::clearMonth() {
+    for (auto& m : money_) m.monthlyIncome = m.monthFlow = 0; // seg1:8CED / 8D04
 }
 
 bool Economy::restore(const std::vector<TownState>& towns, const std::vector<PlayerMoney>& money) {

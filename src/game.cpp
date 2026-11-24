@@ -86,7 +86,7 @@ Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<
 
 void Game::applyNameCodes() {
     constexpr int kSlot = 7; // seg2:634C: DS:94E2 = 7 for the duration
-    auto setCash = [&](double value) { economy_.addMoney(kSlot, value - economy_.money(kSlot).cash); };
+    auto setCash = [&](double value) { economy_.setCash(kSlot, value); }; // direct writes: +0x4A stays
     if (names_[kSlot] == "Armin Gessert") setCash(500000.0); // seg2:6361: _fstrcmp, then DS:861E
     if (names_[kSlot] != "130663") return;                    // seg2:6397
     setCash(1000000.0);                                       // DS:8626
@@ -422,6 +422,7 @@ void Game::arrive() {
             if (r.gameOver) {
                 phase_ = Phase::GameOver;
                 messages_.push_back("Spielende.");
+                openStatement(current_, true); // seg2:12A3: STAT before the victory (seg7:71C4)
                 return;
             }
             remaining_ = r.remaining;
@@ -560,9 +561,8 @@ void Game::advanceTurn() {
     }
     timeLimitActive_ = false; // seg2:0716 -> seg2:3A8E: DS:12 = 0, the timer stops
     const auto change = nextPlayer(players_, current_, calendar_, rng_, turnHooks());
-    if (change.suspended) { // the year balance's show decides its remaining draws
-        balanceTurn_ = change;
-        phase_ = Phase::Balance;
+    if (change.suspended) { // the year balance's show decides its remaining draws, or STAT
+        suspendTurn(change);
         return;
     }
     completeTurn(change);
@@ -574,6 +574,8 @@ TurnHooks Game::turnHooks() {
     hooks.settleMonth = [this] { economy_.settleMonth(activePlayers(), calendar_.year); }; // DS:A102
     hooks.clearYearRent = [this] { economy_.clearYearRent(); };
     hooks.clearCredits = [this] { economy_.clearCredits(); };
+    hooks.monthStatement = [this](int player) { return openStatement(player, false); }; // seg2:07E1
+    hooks.clearMonth = [this] { economy_.clearMonth(); };                                // seg2:07E6
     // seg8:88C6 draws rand() % 7 at once and rand() % 5, rand() % 4 when its window
     // is up (seg8:8C49 / 8C57), then rand() % 4 for each player's announcement
     // (seg8:8E38) and, in the closing part, rand() % 2 for its voice (seg8:9605)
@@ -646,7 +648,7 @@ bool Game::balanceFinish() { // seg8:88C6 returns: seg1:8BC6, 8B41 and the rest 
     rest.monthsAdvanced += before.monthsAdvanced;
     rest.yearsEnded += before.yearsEnded;
     if (rest.suspended) {
-        balanceTurn_ = rest;
+        suspendTurn(rest);
         return true;
     }
     completeTurn(rest);
@@ -654,13 +656,7 @@ bool Game::balanceFinish() { // seg8:88C6 returns: seg1:8BC6, 8B41 and the rest 
 }
 
 void Game::completeTurn(const TurnChange& change) {
-    for (int p : change.satOut) messages_.push_back(playerName(p) + " setzt aus");
-    for (const auto& [text, p] : change.texts) {
-        notice(text, {playerArg(p)});
-        if (text >= 3251 && text < 3256) notices_.back().picture = Notice::Picture::Drago; // qp.bmp (seg2:C040)
-        if (text >= 1000 && text < 1010) sound(5, 15);      // Zucker: Sfx08 (seg2:095B)
-        else if (text >= 1010 && text < 1020) sound(5, 20); // Schlafen: Schlaf01 (seg2:09F9)
-    }
+    announceChange(change);
     if (change.yearsEnded) messages_.push_back("Neues Jahr, Inflation " + std::to_string(calendar_.inflation));
     if (change.player < 0) { phase_ = Phase::GameOver; return; }
     if (demoEnd_ && !humansLeft()) { // seg2:0869: no human and DS:16 == 1

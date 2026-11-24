@@ -64,8 +64,9 @@ class Game {
     friend class SaveCodec; // src/save.cpp reads and restores the complete state
 public:
     // Balance (round 144): the year balance's show is running inside the player change;
-    // never saved (rally.exe's window is modal), so the save format keeps 0..Risiko.
-    enum class Phase { Roll, Move, Arrived, GameOver, Risiko, Balance };
+    // Statement (round R1): the monthly statement STAT is open. Neither is saved (rally.exe's
+    // windows are modal), so the save format keeps 0..Risiko.
+    enum class Phase { Roll, Move, Arrived, GameOver, Risiko, Balance, Statement };
 
     // `map` and `props` are optional; without them border barriers and the sea
     // route test of the robbers are not applied. A single human gets a computer
@@ -338,6 +339,16 @@ public:
     bool balanceFinish();     // the show has ended: the player change goes on
     size_t balanceAnnounced() const { return balanceAnnounced_; }
     size_t balanceSpoken() const { return balanceSpoken_; }
+    // The statement STAT (seg1:972F, round R1): seg2:07E1 opens it after the settlement of
+    // months 0..10 (not after December's, whose year end shows the balance) with the new
+    // player, seg2:12A3 after the Master-Rallye reward's message, before the victory. It is
+    // modal and draws nothing. With setStatementWindow the player change waits in
+    // Phase::Statement until statementFinish (then seg1:8CBA clears +0x52 / +0x4A); after the
+    // Master-Rallye the game is over once it has closed. Without a window nothing waits.
+    void setStatementWindow(bool on) { statementWindow_ = on; }
+    bool statementFinish();
+    int statementSerial() const { return statementSerial_; } // statements opened (not saved)
+    int statementPlayer() const { return statementPlayer_; } // DS:94E2 while it is open
     // The destination announcement seg7:372F(mode) (not saved): 2 at the game start,
     // 1 for a new stage, 3 before the last stage; variant 'a' + it of the voices
     // Part01-04 (mode 1: the rand() % 5 of seg7:3B4E, otherwise 3).
@@ -476,6 +487,13 @@ private:
     TurnChange balanceTurn_;                // the suspended player change
     TurnHooks turnHooks();
     void completeTurn(const TurnChange& change);
+    // game_statement.cpp: a change waiting for the balance or the statement; the texts and
+    // sit-outs found so far are announced before the window (their messages are modal).
+    void suspendTurn(TurnChange change);
+    void announceChange(const TurnChange& change);
+    bool openStatement(int player, bool master);
+    bool statementWindow_ = false, statementMaster_ = false;
+    int statementSerial_ = 0, statementPlayer_ = -1;
     int announceSerial_ = 0, announceMode_ = 2, announceVariant_ = 3;
     std::vector<BalanceEntry> balance_;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;

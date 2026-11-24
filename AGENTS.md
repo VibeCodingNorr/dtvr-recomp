@@ -125,6 +125,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window;
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
   `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
+  `src/stat_sheet.{hpp,cpp}` (no SDL) and `src/stat_view.{hpp,cpp}`: the monthly statement STAT,
+  `src/game_statement.cpp` its pause in the game and `src/game_window_statement.cpp` in the window;
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
   `src/stages_view.{hpp,cpp}`: the stage count window TEMP with the slider;
   `src/overview_view.{hpp,cpp}`: the overview map; `src/recomp_menu.{hpp,cpp}` (no SDL) and

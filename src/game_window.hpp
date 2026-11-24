@@ -70,6 +70,9 @@ private:
     void command(int id);
     // game_window_frame.cpp
     void updateFrame(int frame);
+    // game_window_statement.cpp: the monthly statement STAT (seg1:972F)
+    void updateStatement();
+    bool handleStatementEvent(const SDL_Event& event); // true when STAT took the event
     // game_window_input.cpp
     void handleEvent(const SDL_Event& event);
     void handleRecompMenu(const SDL_Event& event);
@@ -113,6 +116,8 @@ private:
     int finishSeen_, balanceSeen_, announceSeen_, risikoPressSeen_; // serials already shown
     bool victoryShown_ = false;
     bool balanceShown_ = false; // a year balance's show was started for Game::Phase::Balance
+    int statementSeen_;         // Game::statementSerial already shown
+    bool statementShown_ = false; // STAT was opened for Game::Phase::Statement
     Uint32 forcedCloseAt_ = 0;  // seg1:589C: when the settled forced sale posts its two VK_BACK
     int shopSerial_ = -1;
     int targetCardSlot_ = -1; // hand slot waiting for the target choice (-2: Mitspieler)

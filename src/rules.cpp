@@ -193,18 +193,21 @@ int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view
 }
 
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
-                      const TurnHooks& hooks, int resumePlayer) {
+                      const TurnHooks& hooks, int resumePlayer, bool afterStatement) {
     auto call = [](const std::function<void()>& f) { if (f) f(); };
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
     int player = resumePlayer >= 0 ? resumePlayer : current;
     bool resuming = resumePlayer >= 0;
     for (;;) {
-        if (resuming) { // back from the year balance: seg1:8BC6, 8B41 and the month
+        if (resuming) { // back from the year balance (seg1:8BC6, 8B41) or the statement
             resuming = false;
-            call(hooks.clearYearRent);
-            call(hooks.clearCredits);
-            ++change.yearsEnded;
+            if (!afterStatement) {
+                call(hooks.clearYearRent);
+                call(hooks.clearCredits);
+                ++change.yearsEnded;
+            }
+            call(hooks.clearMonth); // seg2:07E6
             ++calendar.month;
             ++change.monthsAdvanced;
         } else {
@@ -227,8 +230,15 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
                     call(hooks.clearCredits);  // seg2:07CF
                     ++change.yearsEnded;
                 } else {
-                    call(hooks.settleMonth);
+                    call(hooks.settleMonth);   // seg2:07DC
+                    if (hooks.monthStatement && hooks.monthStatement(player)) { // seg2:07E1, modal
+                        change.suspended = true;
+                        change.statement = true;
+                        change.resumePlayer = player;
+                        return change;
+                    }
                 }
+                call(hooks.clearMonth); // seg2:07E6: +0x52 and +0x4A of all slots
                 ++calendar.month;
                 ++change.monthsAdvanced;
             }

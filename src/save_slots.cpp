@@ -76,8 +76,19 @@ std::string SaveSlots::description(int slot) const {
     return it == index.end() ? std::string("?") : it->second;
 }
 
+namespace {
+// The year balance and the monthly statement run inside a suspended player change that the
+// save format does not hold (rally.exe's windows are modal): no save is written then.
+bool unsavable(const Game& game, std::string& error) {
+    if (game.phase() != Game::Phase::Balance && game.phase() != Game::Phase::Statement) return false;
+    error = "waehrend Jahresbilanz oder Monatsabschluss nicht speicherbar";
+    return true;
+}
+} // namespace
+
 bool SaveSlots::save(int slot, const Game& game, const std::string& description, std::string& error) const {
     if (slot < 0 || slot >= kSaveSlots) { error = "ungueltiger Spielstand"; return false; }
+    if (unsavable(game, error)) return false;
     std::error_code ec;
     fs::create_directories(directory_, ec);
     if (ec) { error = "Verzeichnis " + directory_.string() + ": " + ec.message(); return false; }
@@ -93,6 +104,7 @@ bool SaveSlots::save(int slot, const Game& game, const std::string& description,
 }
 
 bool SaveSlots::saveAuto(const Game& game, std::string& error) const {
+    if (unsavable(game, error)) return false;
     std::error_code ec;
     fs::create_directories(directory_, ec);
     if (ec) { error = "Verzeichnis " + directory_.string() + ": " + ec.message(); return false; }

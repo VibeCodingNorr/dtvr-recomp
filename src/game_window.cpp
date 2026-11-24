@@ -92,10 +92,12 @@ GameWindow::GameWindow(const GameWindowResources& r)
       displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), menu_(r.screen.menu()),
       cards_(r.screen.cards()), musicEnabled_(r.screen.settings().value[Settings::Midi]),
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
-      announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()) {
+      announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()),
+      statementSeen_(r.play.game().statementSerial()) {
     play_.game().setSpinPresentation(true); // moves start after the slot window (seg2:6426)
     play_.game().setArrivalConfirm(true);   // a human accepts the field with Return (seg2:0BC3)
     play_.game().setBalanceWindow(true);    // the year balance's draws follow the show (seg8:8E38 / 9605)
+    play_.game().setStatementWindow(true);  // the player change waits for STAT (seg2:07E1, 12A3)
     play_.game().setInvestmentWindow(true); // a computer's offer waits for the human (seg8:6FBF)
 }
 
@@ -119,6 +121,7 @@ void GameWindow::start() {
     if (options_.demo) { menu_.close(); command(1024); }
     if (options_.victory) { music_.interrupt("s"); screen_.startVictory(SDL_GetTicks()); }
     if (options_.balance) screen_.startBalance(SDL_GetTicks());
+    if (options_.statement) screen_.statement().open(statSheet(play_.game()), SDL_GetTicks());
     if (options_.announce) screen_.startAnnouncement(2, 3, SDL_GetTicks());
     if (options_.cardShop) screen_.cardShop().open(play_.game());
     if (options_.nails) screen_.nails().open(play_.game().nailsDirections());
@@ -151,7 +154,8 @@ int GameWindow::run() {
     for (int frame = 1; running_; ++frame) {
         updateFrame(frame);
         SDL_Event event;
-        while (SDL_PollEvent(&event)) handleEvent(event);
+        while (SDL_PollEvent(&event))
+            if (!handleStatementEvent(event)) handleEvent(event); // STAT first: it is modal
         displayControl_.beginFrame();
         screen_.draw();
         if (recompMenu_.isOpen()) recompMenu_.menu().setMusic(musicMenuState(music_, musicIssues_));

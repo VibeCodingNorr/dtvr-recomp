@@ -141,6 +141,54 @@ int main() {
     cards.zero(1);
     CHECK(cards.money(1).cash == 0);
 
+    // The month's cash flow +0x4A (round R1): every change through seg2:59E6 / 5A47.
+    {
+        Economy f(towns, 3);
+        CHECK(f.money(0).monthFlow == 0 && f.money(0).yearFlow == 0);
+        f.addMoney(0, 1500);                                      // money field, reward (59E6)
+        f.addMoney(0, -500);                                      // fine, card purchase (5A47)
+        CHECK(f.money(0).cash == 31000 && f.money(0).monthFlow == 1000);
+        CHECK(f.buy(0, 0, 1, BuyMode::Normal) && f.money(0).monthFlow == 1000 - 20000);  // seg1:82D0
+        CHECK(f.buy(1, 0, 1, BuyMode::BuyFromPlayer));                                   // 8115 / 8150
+        CHECK(f.money(0).monthFlow == 1000 && f.money(1).monthFlow == -20000);
+        CHECK(f.buy(2, 1, 0, BuyMode::Credit) && f.money(2).monthFlow == 0);            // debt only
+        CHECK(f.sell(1, 0, 1, true) && f.money(1).monthFlow == -20000 + 30000);         // 846A: x1.5
+        f.setCash(2, 99999);                                      // direct write (seg2:63B3)
+        CHECK(f.money(2).cash == 99999 && f.money(2).monthFlow == 0);
+        // Settlement: the income is paid through 59E6 (seg1:88ED); +0x62 takes ftol(+0x4A).
+        CHECK(f.buy(0, 0, 0, BuyMode::Discount10) && f.money(0).monthFlow == 1000 - 10000);
+        f.settleMonth({0, 1, 2}, 0);
+        const double income = 100000 * 0.001 * 4;                 // the Cafe, town 0 not whole
+        CHECK(f.money(0).monthlyIncome == income && f.money(0).monthFlow == 1000 - 10000 + income);
+        CHECK(f.money(0).yearFlow == int32_t(1000 - 10000 + income) && f.money(1).yearFlow == 10000);
+        CHECK(f.money(2).monthFlow == 50000 * 0.001 * 2.0 && f.money(2).yearFlow == 100); // Rom on credit
+        f.addMoney(0, 0.75);
+        f.clearMonth();                                           // seg1:8CBA
+        CHECK(f.money(0).monthFlow == 0 && f.money(0).monthlyIncome == 0 && f.money(0).cash == 31000 - 10000 + income + 0.75);
+        f.addMoney(0, -100.9);
+        f.settleMonth({0}, 0);                                   // ftol truncates towards 0
+        CHECK(f.money(0).yearFlow == int32_t(1000 - 10000 + income) + int32_t(-100.9 + income));
+        f.clearYearRent();                                        // seg1:8BC6 clears +0x62 too
+        CHECK(f.money(0).yearFlow == 0 && f.money(1).yearFlow == 0);
+        // Year end: the credit through 5A47 (seg1:8B2D).
+        f.clearMonth();
+        f.chargeCredits({2});
+        CHECK(f.money(2).monthFlow == -50000);
+        // Money cards: Fiskus 5A47 (seg3:159A), Konto the difference (seg3:16D1 / 1700),
+        // Schulden 5A47 twice (seg3:1810 / 1839), Null 5A47(cash) (seg3:191F).
+        Economy c(towns, 3);
+        c.addMoney(0, 60000);                                     // 90000, 30000, 30000
+        c.clearMonth();
+        c.balanceAccounts({0, 1, 2});
+        CHECK(c.money(0).monthFlow == -40000 && c.money(1).monthFlow == 20000 && c.money(2).monthFlow == 20000);
+        c.clearMonth();
+        CHECK(c.fiskus(2) == 5000 && c.money(2).monthFlow == -5000);
+        c.addMoney(0, -80000);                                    // -30000, flow -80000
+        CHECK(c.passDebt(0, 1) && c.money(0).monthFlow == -80000 + 30000 && c.money(1).monthFlow == -30000);
+        c.zero(1);                                                // 20000 -> 0
+        CHECK(c.money(1).monthFlow == -30000 - 20000 && c.money(1).cash == 0);
+    }
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("economy_test: OK");
     return failures != 0;

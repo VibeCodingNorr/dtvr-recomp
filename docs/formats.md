@@ -512,13 +512,14 @@ computer players.
   settled (seg1:86B5); afterwards +0x66, +0x62 and the year's worth +0x6A are updated
   (see "Year balance", the board). The use of +0x4A: the cash flow of the month
   (seg2:59E6 / 5A47 add to it); seg1:8CBA clears +0x52 and +0x4A of all slots after
-  every month (seg2:07E6).
+  every month (seg2:07E6). *Round R1:* +0x4A is modelled (`PlayerMoney::monthFlow`) and
+  shown by the statement STAT, see "Monthly statement".
 
 Rebuilt in `src/economy.cpp` and wired into the game: starting cash, purchases
 in all modes above (the game exposes the normal purchase after stopping in a
 town), whole-town bonus, monthly settlement, rent expiry.
 
-Open: how a burden arises, the use of player +0x4A, the entry category and
+Open: how a burden arises, the entry category and
 +0x20 word, whether visitors pay anything to owners, and the rest of the town
 dialog.
 
@@ -574,7 +575,7 @@ dialog.
     (the card window checks only the category, seg3:0701); otherwise it is used up,
     text 11012 shows the amount 0.0 (DS:863E) and the turn ends. The rebuild refused it.
   - Zero (seg3:18EA): the player's own cash becomes 0 through seg2:5A47(player,
-    cash) (seg3:191F), which also subtracts from +0x4A (not modelled). *Round 151:*
+    cash) (seg3:191F), which also subtracts from +0x4A (modelled since round R1). *Round 151:*
     the following seg5:607B(0xFFFF) (seg3:1929) is the PLINFO panel refresh: with no
     panel window (DS:3C = 0) it creates PLINFO (seg5:6119, class DS:39F6), with
     0xFFFF it sets DS:3930 = 0xFF and repaints the whole panel (seg5:614D..6173),
@@ -1439,8 +1440,8 @@ keeps it. The rebuild formerly showed it only in phase Arrived; now
   windows have the film's size (DS:8D3C / 8D3E) while the paint blits the whole
   film at (0, 0) of the client (seg7:65D9), so 16 pixels are cut off right and
   below.
-- Rebuilt in `src/window_border.cpp` for all of them except JOY / STAT (not
-  rebuilt). OUTLINE keeps the window size for its source (DS:8C5A / 8C5C =
+- Rebuilt in `src/window_border.cpp` for all of them except JOY (not rebuilt);
+  STAT since round R1. OUTLINE keeps the window size for its source (DS:8C5A / 8C5C =
   DS:9C88 − 9C84 etc., seg1:A30C) and stretches it to that size at (0, 0) of the
   client (seg1:AA80), clipped to the client (round 113). Replaces the black frames assumed for the scene windows.
 
@@ -2507,11 +2508,12 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
     before DS:A102 + 1 (seg2:0795 / 079A): for each slot in play (seg1:862C) +0x52 and
     +0x5A are cleared in that slot's own pass (seg1:8644 / 865B), entries 0..7 of every
     town are settled (seg1:86B5), +0x66 += _ftol(+0x52) (seg1:8A07), +0x62 += _ftol(+0x4A)
-    (seg1:8A33; the month's cash flow of seg2:59E6 / 5A47; not modelled, the board never
-    shows +0x62 itself). After every month seg1:8CBA (called at seg2:07E6) clears +0x52
-    and +0x4A of all slots 0..7 (seg1:8CED / 8D04); the rebuild keeps `monthlyIncome`
-    (+0x52) until the next settlement, which nothing reads (the statistics window that
-    reads +0x52 at seg1:9FF7 is not rebuilt) and, while DS:A102 ≤ 300,
+    (seg1:8A33; the month's cash flow of seg2:59E6 / 5A47; modelled since round R1 as
+    `monthFlow` / `yearFlow`, the board never shows +0x62 itself). After every month
+    seg1:8CBA (called at seg2:07E6) clears +0x52 and +0x4A of all slots 0..7 (seg1:8CED /
+    8D04; rebuilt in round R1 as `Economy::clearMonth`, before it the rebuild kept +0x52
+    until the next settlement); the statement STAT reads both first (see "Monthly
+    statement"). While DS:A102 ≤ 300,
     worth[A102] = +0x6A + 4·A102 = _ftol(_ftol(+0x5A) + +0x42) (seg1:8A3B..8A97). seg1:8BC6
     clears +0x66 and +0x62 after the balance (seg2:07CA), seg1:8C26 the 300 worth entries
     at a game start (seg4:0DE9 → seg1:8C8E). Rebuilt in `Economy::settleMonth(active, year)` (rules
@@ -2553,6 +2555,96 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg8:9605 (round 141/144), the subtitles, the players' part (round 148) and the
   closing part (round 150) are rebuilt pass by pass since; no minimum voice length
   remains.
+
+### Monthly statement (round R1)
+
+- **Callers.** nextPlayer (seg2:06FC): when the order reaches the first active slot
+  (seg2:1A41 = DS:94E2, seg2:0766) and DS:A100 % 12 ≠ 11, seg2:07DC settles (seg1:85F9),
+  seg2:07E1 calls seg1:972F (STAT), seg2:07E6 seg1:8CBA, seg2:07EB DS:A100 + 1, then the
+  event trigger (seg8:1624). December's branch (seg2:0784..07D9: credits, settlement,
+  DS:A102 + 1, inflation, BILANZ, seg1:8BC6, 8B41, seg1:275E) has no STAT and jumps to
+  seg2:07E6 too. The second caller is the Master-Rallye (DS:A104 = 0) at seg2:12A3: after
+  the finish (seg2:11DF → seg7:2628), the reward 300,000 × inflation (seg2:11FF → 59E6),
+  its message 354 + random(2) (seg2:1285) and the modal loop seg2:1297; after STAT another
+  loop (seg2:12A8), then the victory seg7:71C4 and WM_COMMAND 0x424. No other caller.
+- **seg1:972F.** seg1:8EE1 (the ranking into DS:957A..9581, 0xFF for empty places),
+  CreateWindow(class / name "STAT" DS:4084 / 407F, style 0x44000000, x / y two
+  never-written locals, 0x24E × 0x1C4 = 590 × 452, parent the canvas DS:40); DS:96A0 (the
+  main window's input) is saved and cleared; seg1:9AA2 and seg1:9DE2 paint the DIB once;
+  BringWindowToTop, ShowWindow(5), InvalidateRect, UpdateWindow, SetFocus; seg6:0FB4(&DS:A7BE)
+  and seg6:03F7 until no message is left; DS:96A0 restored. No sound, voice or music call
+  and no random draw in seg1:972F..A15A.
+- **Procedure seg1:97F8** (dispatch seg1:9A43): WM_CREATE (seg1:9812) opens `%s\buy.sbs`
+  (DS:4089, sbs directory DS:76/78) and creates a 0x230 × 420 WinG DIB (header DS:AD8C; the height is 420 times the
+  run-time orientation DS:A06A, which seg2:913A handles both ways) with the palette DS:9CD2, then centres the window with seg6:0000 (seg1:98BF);
+  WM_DESTROY frees both and clears DS:A7BE; WM_PAINT (seg1:992D) WinGBitBlts the client
+  rectangle (558 × 420) from (0, 0) of the DIB; WM_ERASEBKGND returns 1; WM_NCCALCSIZE /
+  WM_NCPAINT go to seg6:1E83 (16-pixel border BS1–BS8, seg1:9A0A); WM_KEYDOWN (seg1:98CA)
+  with 0x20, 0x0D, 0x1B or 0x08 and WM_LBUTTONDOWN (0x201, seg1:9A7A) call DestroyWindow;
+  0x30F / 0x311 go to seg5:3941 (palette); all else to DefWindowProc. There is no case for
+  WM_RBUTTONDOWN, other keys or timers.
+- **Closing on a computer's turn.** seg6:0FB4 with DS:A7BE ≠ 0 doubles its timeout
+  (DS:859E = 2.0): while the current player DS:94E2 is a computer (seg2:5C02) it posts
+  0x7EF after _ftol(_ftol(pause × 2500 (DS:85AE)) × 2) ms, or 100 × 2 once a demo ends
+  (DS:16); seg1:0176 turns 0x7EF into WM_KEYDOWN 8 (VK_BACK), which destroys STAT.
+  seg1:00D2 drops 0x100–0x102 and 0x201–0x204 / 0x206 while a computer is the current
+  player; seg1:01D7 receives the dropped Escape / WM_RBUTTONDOWN (the end of a demo).
+  The current player is the new month's first slot at seg2:07E1 and the winner at seg2:12A3.
+  *Recomp addition:* like the message window's wait, the rebuild divides this time by
+  `[Extensions] ComputerTempo` (Computerzüge 1 / 2 / 4), so 5000 ms × pause becomes 2500 or
+  1250 ms; the demo end's 200 ms is not divided.
+- **Paint, header (seg1:9AA2).** Frame `KO_Z` (seg6:406D) copied opaque by seg2:913A at
+  (0, 0) and (0, 42) of the DIB (a plain row copy with clipping, index 0 included: KO_Z has
+  82, the drivers' frames 80 such pixels). seg6:04F9(24, 0, 600, 0) (Arial 24 weight 600),
+  rectangle (0x3A, 10, 0x22E, 0x2A + 10): sprintf `"%s %s"` (DS:4099) of LoadString 340
+  (`Monatsabschluß für`) and 301 + DS:A100 % 12 (the month that ends; DS:A100 is counted
+  afterwards), seg2:314A format 0x100, shadow 2, colour 0xFF. Then Arial 20 weight 400,
+  top + 42: 341 at left 58, 342 at 208, 343 at 328 (format 0x100), 344 with right 0x224
+  (format 0x102), all shadow 1, colour 0xFF.
+- **Paint, ranks (seg1:9DE2).** Arial 18 weight 400; for rank i = 0..7 the rectangle
+  (0, (i + 2) · 42, 42, + 20): `KO_Z` at (0, (i + 2) · 42); if DS:957A + i ≠ 0xFF the frame
+  `"%c_m"` (DS:40A4, letter seg2:2D43 `DFEMUJIV`) at the same place, top + 10, then
+  seg6:137F amounts, format 0x102, shadow 0, colour 0x45 (also when negative): +0x4A with
+  right 142, +0x52 with right 252, +0x42 with right 392, +0x42 + +0x5A with right 542.
+- **+0x4A, the month's cash flow.** Writes: seg2:59E6 adds and seg2:5A47 subtracts the
+  same amount on +0x42 and +0x4A (seg2:5A28 / 5A89); seg1:8CBA clears it (seg1:8D04) after
+  every month and at a game start (seg4:0DE9 → seg1:8C8E → 8CBA). No other write (searched
+  all segments for stores and `lea di` copies to +0x42..+0x4F indexed by a player record;
+  block copies of whole records, e.g. by a load, were not searched). Callers of
+  59E6 / 5A47 (34): purchases and sales seg1:7E4C, 8115, 8150, 82D0, 8383, 846A, 84A4, 85D9;
+  the settlement's surplus and income seg1:88AC / 88ED; credits seg1:8B2D; money fields
+  seg2:0E6D / 0FFD; rewards seg2:11FF / 133D; time-limit fines seg2:3B8A / 3BB2 / 3BD1;
+  Dr. Drago seg2:BB02, BF38, BF55; cards seg3:12F5, 159A, 16D1 / 1700 (Konto: the difference
+  to the average, then the average written directly at seg3:1715), 1810 / 1839 (Schulden),
+  191F (Null), card shop seg3:4896 / 49B1; robbers seg8:22A4; investments seg8:6491, 6629,
+  735F. The only direct writes of +0x42 are the start cash (seg2:0178), the name codes
+  (seg2:6374 / 63B3) and Konto's seg3:1715; they leave +0x4A alone. seg1:8A1C..8A37 adds
+  _ftol(+0x4A) to the DWORD +0x62 in the settlement; seg1:8BC6 clears +0x62 (seg1:8C16);
+  +0x62 itself is never read (seg8:9D01 reads it only as worth[A102 − 2]).
+- **Rebuilt (round R1):** `Economy::addMoney` (59E6 / 5A47) and every economy rule update
+  `PlayerMoney::monthFlow` / `yearFlow`; `Economy::setCash` is the direct write;
+  `Economy::clearMonth` is seg1:8CBA (also +0x52, which the rebuild had kept until the next
+  settlement). nextPlayer's hook `monthStatement` suspends the change after the settlement
+  (`TurnChange::statement`), `clearMonth` runs at seg2:07E6 in both branches. With
+  `Game::setStatementWindow` (the game window) the game waits in `Phase::Statement` until
+  `statementFinish` (`src/game_statement.cpp`); without a window (headless, AI tests) nothing
+  waits and no draw differs (`tests/statement_test.cpp`). Sit-out texts of the players reached
+  before the wrap to the first slot are announced before STAT (and before BILANZ): their
+  modal messages are shown inside seg2:089D (seg6:51EA at seg2:096F / 0A0D, Dr. Drago's
+  block seg2:C00C at 08DC), whose non-zero result jumps back (seg2:0819) to the search
+  before the month test seg2:0766. The first slot's own sit-out text comes after STAT, since
+  its seg2:089D runs after seg2:07E1. *Saving:* no save is written in `Phase::Statement` or
+  `Phase::Balance` (`SaveSlots::save` / `saveAuto` refuse, the save dialog plays Fate01); a
+  save dialog opened from the recomp menu keeps its input over STAT. The sheet: `src/stat_sheet.cpp`;
+  the window: `src/stat_view.cpp`, wired in `src/game_window_statement.cpp`
+  (`--statement` shows it with the values of the started game). Save format 7 (`flow`), rules
+  revision 46.
+- **Not reproduced exactly / assumptions:** the window rectangle is centred on the
+  rebuild's canvas like the other centred windows; the DIB's last two columns (560 − 558) are
+  not shown in rally.exe either. Under seg1:00D2 a human's input during a computer's STAT is
+  dropped; what seg1:01D7 does with them besides the end of a demo (seg2:5CAD, a sound through
+  seg1:2C9B) was not traced further and is not rebuilt for STAT. The recomp display keys (F11,
+  Alt+Return, F12) and F8 stay available while STAT is open.
 
 ### Victory sequence (round 46)
 
