@@ -132,7 +132,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
-  `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance;
+  `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance with `src/balance_players.{hpp,cpp}` (no SDL) its players' part;
   `src/stage_view.{hpp,cpp}`: the destination announcement; `src/card_shop_view.{hpp,cpp}`: the card shop;
   `src/select_player_view.{hpp,cpp}`: the target choice; `src/flight_view.{hpp,cpp}`: the Flugzeug booking;
   `src/nails_view.{hpp,cpp}`: the Nägel direction; `src/invest_view.{hpp,cpp}`: the investment offer;
@@ -142,7 +142,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   (no SDL): event animation table and timing; `src/mouse_control_view.{hpp,cpp}`: the MCTRL
   mouse steering cross; `src/controller.{hpp,cpp}`: game controllers as the original joystick; `src/flc.{hpp,cpp}` (no SDL): FLC film decoder;
   `src/film_view.{hpp,cpp}`: the FLIC window; `src/sight_view.{hpp,cpp}`: the Tourism sights window; `src/voice_sync.{hpp,cpp}` (no SDL): sync.dat subtitle timing; `src/subtitle_view.{hpp,cpp}`: the SUBTITLE window; `src/intro_script.{hpp,cpp}` (no SDL): the start intro state machine; `src/ambient.{hpp,cpp}` (no SDL): the ambient map animations; `src/intro_view.{hpp,cpp}`: the INTRO window; `src/vehicle_air.{hpp,cpp}` (no SDL): the plane transformation on sea routes; `src/drago_vehicle.{hpp,cpp}` (no SDL): Dr. Drago's own vehicle following his holder;
-  `src/scene.{hpp,cpp}`: their animation records.
+  `src/scene.{hpp,cpp}` and `src/scene_record.hpp`: their animation records.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
 - `src/rules.{hpp,cpp}`: MS C rand, slot machine, tile properties (europe.pit),
