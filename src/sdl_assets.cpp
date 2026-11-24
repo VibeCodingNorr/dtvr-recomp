@@ -74,7 +74,7 @@ void loadSbsTextures(SDL_Renderer* renderer, const fs::path& file, const SDL_Pal
         for (int y = 0; y < frame.height; ++y)
             std::copy_n(&frame.pixels[size_t(y) * frame.width], frame.width,
                         static_cast<uint8_t*>(surface->pixels) + y * surface->pitch);
-        SDL_SetColorKey(surface.get(), SDL_TRUE, Uint32(transparent));
+        if (transparent >= 0) SDL_SetColorKey(surface.get(), SDL_TRUE, Uint32(transparent));
         into.emplace(upperAscii(frame.name),
                      Texture(SDL_CreateTextureFromSurface(renderer, surface.get()), SDL_DestroyTexture));
     }

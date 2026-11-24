@@ -443,6 +443,12 @@ bool GameScreen::startAnnouncement(int mode, int variant, Uint32 now) {
 
 bool GameScreen::startBalance(Uint32 now, BalanceView::Commands commands) {
     prepareSubtitles();
+    // The board reads the players' values when it is painted (seg8:9B93); they do not
+    // change while the show runs, so they are taken once here.
+    std::array<BalanceSheet, kPlayerSlots> sheets;
+    for (int p = 0; p < kPlayerSlots; ++p) sheets[size_t(p)] = balanceSheet(game_, p, texts_);
+    balance_.setBoard(std::move(sheets), balanceGraph(game_));
+    balance_.setText(&text_);
     return balance_.start(game_.balanceIntro(), game_.balanceEntries(), game_.balanceClosing(), game_.humansLeft(),
                           sound_, now, std::move(commands));
 }

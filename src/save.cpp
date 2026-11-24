@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "save.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -116,6 +117,14 @@ std::string SaveCodec::encode(const Game& g) {
         const PlayerMoney& m = g.economy_.money(int(p));
         o << "money " << p << ' ' << hexDouble(m.cash) << ' ' << hexDouble(m.creditDebt) << ' '
           << hexDouble(m.monthlyIncome) << ' ' << hexDouble(m.propertyValue) << '\n';
+    }
+    for (size_t p = 0; p < g.economy_.playerCount(); ++p) { // format 6: +0x66 and +0x6A
+        const PlayerMoney& m = g.economy_.money(int(p));
+        size_t count = m.worth.size();
+        while (count > 0 && m.worth[count - 1] == 0) --count;
+        o << "worth " << p << ' ' << m.yearRent << ' ' << count;
+        for (size_t i = 0; i < count; ++i) o << ' ' << m.worth[i];
+        o << '\n';
     }
     o << "drago " << g.drago_.holder << ' ' << g.drago_.form << ' ' << g.drago_.countdown << '\n';
     o << "events " << g.events_.turns << ' ' << g.events_.countdown << ' ' << g.events_.hold << '\n';
@@ -239,6 +248,14 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
                 PlayerMoney& m = money[size_t(p)];
                 ok = r.real(m.cash) && r.real(m.creditDebt) && r.real(m.monthlyIncome) && r.real(m.propertyValue);
             }
+        } else if (key == "worth") {
+            long long p = 0, count = 0;
+            ok = r.integer(p, 0, (long long)money.size() - 1);
+            if (ok) {
+                PlayerMoney& m = money[size_t(p)];
+                ok = r.get(m.yearRent, INT32_MIN, INT32_MAX) && r.integer(count, 0, kWorthYears);
+                for (long long i = 0; ok && i < count; ++i) ok = r.get(m.worth[size_t(i)], INT32_MIN, INT32_MAX);
+            }
         } else if (key == "drago") ok = r.get(drago.holder, -1, kPlayerSlots - 1) && r.get(drago.form, 0, 2)
                                        && r.get(drago.countdown, -1000000, 1000000);
         else if (key == "events") ok = r.get(events.turns, 0, 1ll << 31) && r.get(events.countdown, -1000000, 1000000)
@@ -302,6 +319,8 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     if (version >= 3 && seen["demo"] != 1) return fail("Eintrag 'demo' fehlt oder ist doppelt");
     if (version >= 4 && seen["stages"] != 1) return fail("Eintrag 'stages' fehlt oder ist doppelt");
     if (version >= 5 && seen["extensions"] != 1) return fail("Eintrag 'extensions' fehlt oder ist doppelt");
+    if (version >= 6 ? seen["worth"] != int(money.size()) : seen["worth"] != 0)
+        return fail("Eintraege 'worth' unvollstaendig");
     if ((Game::Phase(phase) == Game::Phase::Risiko) != (risiko.level != 0)) return fail("Risiko-Zustand passt nicht zur Phase");
     if (seen["player"] != kPlayerSlots || seen["hand"] != kPlayerSlots || seen["town"] != int(towns.size())
         || seen["money"] != int(money.size()))

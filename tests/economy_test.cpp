@@ -101,6 +101,34 @@ int main() {
     credit.clearCredits();
     CHECK(credit.money(1).creditDebt == 0);
 
+    // seg1:85F9 (round 149): only slots in play, values cleared in the player's own
+    // pass, the year's rent (+0x66, truncated) and the worth of the year (+0x6A).
+    {
+        Economy y(towns, 3);
+        y.addMoney(1, 200000);
+        CHECK(y.buy(1, 0, 1, BuyMode::Normal));              // player 1 owns the hotel (20000)
+        CHECK(y.buy(0, 0, 1, BuyMode::Rent));                // player 0 rents it: landlord 1 > tenant 0
+        y.addMoney(2, 200000);
+        CHECK(y.buy(2, 1, 0, BuyMode::Normal));              // player 2 owns the museum (50000)
+        const double cash2 = y.money(2).cash;
+        y.settleMonth({0, 1}, 0);                            // slot 2 not in play
+        CHECK(y.money(2).cash == cash2 && y.money(2).yearRent == 0 && y.money(2).worth[0] == 0);
+        // Player 0's pass adds the hotel to landlord 1, whose own pass clears it again.
+        CHECK(y.money(1).propertyValue == 0 && y.money(0).propertyValue == 0);
+        CHECK(y.money(0).yearRent == 40 && y.money(0).worth[0] == int32_t(y.money(0).cash));
+        CHECK(y.money(1).worth[0] == int32_t(y.money(1).cash));
+        y.settleMonth({0, 1}, 0);
+        CHECK(y.money(0).yearRent == 80);
+        // Year 300 is the last entry written (seg1:8A3B); in rally.exe it aliases the low
+        // DWORD of +0x51A, the rebuild keeps it separate (docs/formats.md, the board).
+        y.settleMonth({1, 2}, 300);
+        CHECK(y.money(2).worth[300] == int32_t(y.money(2).cash + 50000) && y.money(2).yearRent == 100); // whole town: x2
+        y.settleMonth({2}, 301);                             // seg1:8A3B: not written above 300
+        CHECK(y.money(2).yearRent == 200);
+        y.clearYearRent();                                   // seg1:8BC6
+        CHECK(y.money(0).yearRent == 0 && y.money(2).yearRent == 0 && y.money(0).worth[0] != 0);
+    }
+
     // Money cards.
     Economy cards(towns, 3);
     cards.addMoney(0, 60000);                                     // 90000, 30000, 30000

@@ -33,7 +33,7 @@ Surface loadWorld(const std::filesystem::path& root, int month, bool views, bool
 // The frames of an SBS file as textures keyed by their upper-case names (rally.exe
 // looks frames up without regard to case, seg6:406D), colours from `palette`,
 // `transparent` as the colour key (0 for the game's sets, 0xFF for the finish and
-// victory scenes). Frames already in `into` are kept.
+// victory scenes, -1 for none: opaque frames). Frames already in `into` are kept.
 void loadSbsTextures(SDL_Renderer* renderer, const std::filesystem::path& file, const SDL_Palette* palette,
                      std::map<std::string, Texture>& into, int transparent = 0);
 std::string upperAscii(std::string s);

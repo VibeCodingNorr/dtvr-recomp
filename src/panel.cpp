@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "panel.hpp"
 
+#include <cstdint>
+
 #include <cstdio>
 
 namespace dtvr {
 
 std::string formatMoney(double value) {
+    // seg6:137F: sprintf("$%li", _ftol(value)) (seg10:368A truncates, low 32 bits); for a
+    // negative value (seg6:13BC) the first two characters swap ("$-" -> "-$", but "$0"
+    // -> "0$" for -1 < value < 0), then a '.' after every three digits (seg6:13FF ff.).
     char raw[32];
-    std::snprintf(raw, sizeof raw, "$%li", long(value)); // seg10:368A truncates
+    std::snprintf(raw, sizeof raw, "$%ld", long(int32_t(uint32_t(uint64_t(int64_t(value))))));
     const std::string s = raw;
     std::string out;
     size_t from;
-    if (value < 0) { out = "-$"; from = 2; } else { out = "$"; from = 1; }
+    if (value < 0) { out = {s[1], s[0]}; from = 2; } else { out = s.substr(0, 1); from = 1; }
     int group = int((s.size() - from) % 3);
     if (group == 0) group = 3;
     for (size_t i = from; i < s.size(); ++i) {

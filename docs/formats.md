@@ -425,6 +425,12 @@ computer players.
   a non-zero burden is reduced by the income first (a surplus is paid out and
   the burden cleared), otherwise the income is paid and added to +0x52; a rented
   entry counts down its months and returns to the landlord at 0.
+  *Correction (round 149):* the reset of +0x52 / +0x5A happens once per player at the
+  start of his own pass (seg1:8644 / 865B), not per town; only entries 0..7 are
+  settled (seg1:86B5); afterwards +0x66, +0x62 and the year's worth +0x6A are updated
+  (see "Year balance", the board). The use of +0x4A: the cash flow of the month
+  (seg2:59E6 / 5A47 add to it); seg1:8CBA clears +0x52 and +0x4A of all slots after
+  every month (seg2:07E6).
 
 Rebuilt in `src/economy.cpp` and wired into the game: starting cash, purchases
 in all modes above (the game exposes the normal purchase after stopping in a
@@ -2240,11 +2246,70 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   humans 301 passes after `pos_` / `neg_` started. The draw order (seg8:88DF, 8C49,
   8C57, one seg8:8E38 per announced player, seg8:9605) is unchanged; the rebuild only
   moved `Next_` before the lever. Rules revision and save format are unchanged (the
-  show is presentation; its draws were already commands). *Not rebuilt:* the board
-  text that the repaint with DS:8D5E = slot draws (seg8:9B93 ff.: texts 8001 ff. of the
-  language file, the player's name and money values, colour 0x45 / 0xED by sign;
-  DS:8D5E = 0xA in the closing part, seg8:954C). The players' part runs one pass per
-  20 ms at most and does not catch up after a stall (a pass of rally.exe waits 20 ms).
+  show is presentation; its draws were already commands). The players' part runs one
+  pass per 20 ms at most and does not catch up after a stall (a pass of rally.exe waits
+  20 ms).
+- **The board (round 149,** `src/balance_board.cpp`, drawn by `src/balance_board_view.cpp`,
+  tested in `tests/balance_board_test.cpp`). WM_PAINT of BILANZ (seg8:9AB8) copies
+  `bil_leer.bmp` into the WinG surface (seg2:913A at seg8:9B8B), draws the board chosen
+  by DS:8D5E, then every record (seg8:A651, seg6:41A2) and blits the surface. DS:8D5E is
+  0xFFFF at the start (seg8:88F8: an empty board), the slot from the players' Hebel01 on
+  (seg8:8FC7, InvalidateRect / UpdateWindow at once) and 0xA from the closing Hebel01 on
+  (seg8:954C); other values draw nothing (seg8:9B93 / A1E5). Colours are PALETTEINDEX in
+  the game palette DS:9CD2 (0x45 = (67, 27, 0), 0xED = (255, 0, 0), equal in
+  `bil_leer.bmp`, `bilanz.bmp` and `bmp/slot*.bmp`).
+  - *Sheet of slot s* (seg8:9BA5..A1E2): rectangle left 0xBB, top 0x3C, right 0xBB + 0xF6,
+    bottom 0x3C + 0x100; DrawText through seg2:314A (shadow 0), labels format 0x100 (left),
+    values 0x102 (right). Title: CreateFont(−18, 0, 0, 0, 400, …, FF_SWISS 0x20,
+    "MS Sans Serif" DS:7DD5), text 8001 (`Bilanz für %Fs`) through sprintf (seg10:18DC) with
+    the name at player +1, colour 0x45; top + 0x2D. Then seg6:04F9(16, 0, 400, 0)
+    (Arial 16): text 8002 with the growth (below), + 0x19; 8003 with +0x66 (always 0x45),
+    + 0x19; 8007 with +0x51A (credit debt), + 0x37; 8004 with +0x5A, + 0x19; 8005 with
+    +0x42, + 0x23; then seg6:04F9(16, 0, 600, 0): 8006 with +0x42 + +0x5A. Values through
+    seg6:137F (`$%li` of the truncated value, the first two characters swapped when the
+    value is below 0, a '.' every three digits), colour 0xED when the value is below 0.0
+    (DS:8786), else 0x45. Growth (seg8:9C91): with DS:A102 ≥ 2 the DWORDs
+    +0x66 + 4·A102 − +0x62 + 4·A102, i.e. worth[A102 − 1] − worth[A102 − 2]; otherwise
+    +0x66 + 4·A102 − 30000 (seg2:033A returns DS:85BE = 30000.0): worth[0] − 30000 after the
+    first year (the year's rent − 30000 for A102 = 0, only reachable with `--balance`).
+  - *Graph* (seg8:A1EE..A64C): maximum from 30000.0, minimum from 0.0 over worth[i],
+    i < DS:A102, of the slots in play; scale = 190 (DS:878E) / (max − min). Per slot in
+    play: CreatePen(6 = PS_INSIDEFRAME, 2, PALETTERGB from the table seg8:9942: 0B5337,
+    2F2F2F, C30000, 736F6F, DB531B, 075B9F, 9F3793, 87634F as RRGGBB) with NULL_BRUSH,
+    MoveTo(0xBB, (max − 30000)·scale + 67), LineTo(0xBB + (i + 1)·0xEB / A102 (seg10:20A0),
+    (max − worth[i])·scale + 67) for every year (y through `_ftol`, DS:8796 = 67); then the
+    `bilanz.sbs` frame `"DFEMUJIV"[slot]` (seg2:2D43, found by seg6:406D) copied opaque
+    26 × 26 to (0xC0 + 30·k, 0x107), k counting the slots in play. Then a pen of width 1,
+    PALETTERGB(A7, A3, 6B): for k = 0, 5, … < 0xBE the lines (0xB7, 0x43 + k)–(0xBF, …)
+    and (0xBB + k, scale·max + 64)–(…, scale·max + 72) (DS:879E / 87A6); then width 2,
+    PALETTERGB(8B, 87, 57): the axis (0xBB, 0x43)–(0xBB, 0x101) and the zero line
+    (0xBB, scale·max + 68)–(0x1A6, …) (DS:87AE).
+  - *The values* come from seg1:85F9, run every month (seg2:07DC) and at the year end
+    before DS:A102 + 1 (seg2:0795 / 079A): for each slot in play (seg1:862C) +0x52 and
+    +0x5A are cleared in that slot's own pass (seg1:8644 / 865B), entries 0..7 of every
+    town are settled (seg1:86B5), +0x66 += _ftol(+0x52) (seg1:8A07), +0x62 += _ftol(+0x4A)
+    (seg1:8A33; the month's cash flow of seg2:59E6 / 5A47; not modelled, the board never
+    shows +0x62 itself). After every month seg1:8CBA (called at seg2:07E6) clears +0x52
+    and +0x4A of all slots 0..7 (seg1:8CED / 8D04); the rebuild keeps `monthlyIncome`
+    (+0x52) until the next settlement, which nothing reads (the statistics window that
+    reads +0x52 at seg1:9FF7 is not rebuilt) and, while DS:A102 ≤ 300,
+    worth[A102] = +0x6A + 4·A102 = _ftol(_ftol(+0x5A) + +0x42) (seg1:8A3B..8A97). seg1:8BC6
+    clears +0x66 and +0x62 after the balance (seg2:07CA), seg1:8C26 the 300 worth entries
+    at a game start (seg4:0DE9 → seg1:8C8E). Rebuilt in `Economy::settleMonth(active, year)` (rules
+    revision 42: the settlement now skips slots not in play, settles entries 0..7 only and
+    clears a slot's values in its own pass: the tenant's pass adds a rented entry's value
+    to the landlord's +0x5A, so a landlord with a higher index than his tenant loses it
+    again in his own later pass, one with a lower index keeps it; the supplied town data
+    has no entries 8 or 9) and `clearYearRent`; saved as `worth` records (format 6).
+  - *Not reproduced exactly:* "MS Sans Serif" is drawn with the text renderer's Arial /
+    Liberation Sans; worth[300] aliases in rally.exe the low DWORD of the credit-debt
+    double (+0x6A + 4·300 = +0x51A), the rebuild keeps a separate entry (only reachable in
+    year 300); GDI's nearest-colour choice for PALETTERGB is replaced by the nearest
+    palette entry in RGB distance; the width-2 pens are drawn as 2 × 2 squares along the
+    line (GDI's geometric pen shape not traced). Worth entries past year 300 and DS:A102
+    above 301 (reads beyond the table) are not modelled. The disassembly shows no write
+    to DS:A102 other than the increment at seg2:079A (a reset by a block copy, e.g. when
+    loading, was not searched); the rebuild starts every game at year 0.
 - **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
   and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.
   In the players' part DS:8D5C stops the opening voice (seg8:8D17) or lets the

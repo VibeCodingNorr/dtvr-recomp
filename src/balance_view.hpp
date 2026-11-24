@@ -9,11 +9,13 @@
 
 #include "window_border.hpp"
 
+#include "balance_board.hpp"
 #include "balance_players.hpp"
 #include "game.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
 #include "subtitle_view.hpp"
+#include "text.hpp"
 
 #include <SDL.h>
 
@@ -42,6 +44,13 @@ public:
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,
                Uint32 now, Commands commands = {});
     bool active() const { return active_; }
+    // The board's contents (seg8:9AB8, round 149): the sheets of the eight slots and the
+    // worth graph, from the game state at the year balance; text through `text`.
+    void setBoard(std::array<BalanceSheet, kPlayerSlots> sheets, BalanceGraph graph) {
+        sheets_ = std::move(sheets);
+        graph_ = std::move(graph);
+    }
+    void setText(TextRenderer* text) { text_ = text; }
     void setSubtitles(SubtitleView* subtitles) { subtitles_ = subtitles; }
     // seg8:8BDB: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
     int lift() const { return subtitles_ && subtitles_->enabled() ? 22 : 0; }
@@ -68,6 +77,12 @@ private:
     bool voiceDone(Uint32 now, Uint32 minimum) const;
     // Players' part: one pass at least every kSceneStepMs (seg6:0CDF(20), seg8:91F0).
     void runPlayers(Uint32 now);
+    // WM_PAINT's board (seg8:9B93 ff.) at the bitmap origin (ox, oy).
+    void drawBoard(int ox, int oy);
+    void drawSheet(const BalanceSheet& sheet, int ox, int oy);
+    void drawGraph(int ox, int oy);
+    SDL_Color paletteColour(int index) const;
+    SDL_Color nearestColour(BalanceGraph::Rgb rgb) const; // PALETTERGB
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
@@ -76,6 +91,13 @@ private:
     const int& canvasHeight_;
     Texture background_{nullptr, SDL_DestroyTexture};
     std::map<std::string, Texture> frames_;
+    std::map<std::string, Texture> legend_;  // bilanz\bilanz.sbs (DS:7C9E), drawn opaque
+    std::vector<SDL_Color> palette_;         // bil_leer.bmp's (the game palette DS:9CD2)
+    std::array<BalanceSheet, kPlayerSlots> sheets_;
+    BalanceGraph graph_;
+    TextRenderer* text_ = nullptr;
+    static constexpr int kBoardGraph = 0xA;
+    int board_ = -1; // DS:8D5E: -1 none (seg8:88F8), a slot, or kBoardGraph (seg8:954C)
     Commands commands_;
     SoundPlayer* sound_ = nullptr;
     SubtitleView* subtitles_ = nullptr;
