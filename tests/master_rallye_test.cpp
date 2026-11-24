@@ -146,8 +146,10 @@ int main() {
             const int town = g.destination() == 1 ? 2 : 1; // not the destination
             const int placements = g.dragoPlacements();
             CHECK(g.playCard(plane, town));
-            CHECK(g.playerField(0) == g.fieldOfTown(town) && g.positionJumps(0) == 1);
-            CHECK(g.dragoPlacements() == placements + 1);
+            // seg3:3272: seg3:28ED first sets the player down out of view (seg3:2CBC), then
+            // the flight lands (seg3:3302): two seg2:04AD calls, Dr. Drago placed twice.
+            CHECK(g.playerField(0) == g.fieldOfTown(town) && g.positionJumps(0) == 2);
+            CHECK(g.dragoPlacements() == placements + 2);
             done = true;
         }
         CHECK(done);

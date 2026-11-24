@@ -16,6 +16,24 @@ bool Game::setComputer(int player, bool computer) {
     return true;
 }
 
+bool Game::switchDriver(int player) {
+    // seg4:0804: SELPLAYER (seg2:51EA(0xFF)) -> seg2:5E93. MAIN1 is reachable only through
+    // ONFIELD's Hauptmenü (seg4:09DE), and ONFIELD opens at the turn start (seg2:0864 ->
+    // 068F) and again after its own entries, never after the spin (seg4:0B76 closes it).
+    if (phase_ != Phase::Roll || spinPending() || aiTurn_) return false;
+    if (player < 0 || player >= kPlayerSlots || !players_[size_t(player)].status) return false;
+    players_[size_t(player)].status = players_[size_t(player)].status == 2 ? 1 : 2; // seg2:5EB4-5EDD
+    if (player == current_) {
+        // seg2:5EEB-5EF5: seg5:6CE8 clears the state machine (DS:8CDC / 8CDE / 4E5C /
+        // 4E5E / 8D2A = 0); seg5:6BF2 sets state 1 (card choice) when the player is now a
+        // computer. computerAdvance starts there; a human simply goes on with ONFIELD.
+        aiTurn_ = false;
+        aiSteerless_ = false;
+        aiRoute_.clear();
+    }
+    return true;
+}
+
 bool Game::isComputer(int player) const {
     return player >= 0 && player < kPlayerSlots && players_[size_t(player)].status == 2;
 }
@@ -70,8 +88,7 @@ AiState Game::aiState(bool steerless) const {
 }
 
 bool Game::runComputerTurn() {
-    const bool takeover = phase_ == Phase::Move || phase_ == Phase::Arrived; // Mitspieler (seg2:5E93)
-    if ((phase_ != Phase::Roll && !takeover) || !computerControls()) return false;
+    if (phase_ != Phase::Roll || !computerControls()) return false;
     std::vector<std::string> log;
     bool changed = false;
     for (int guard = 0; guard < 10000; ++guard) {
@@ -91,24 +108,6 @@ bool Game::computerAdvance() {
     auto finish = [&](bool result) { messages_ = log; return result; };
     if (spinPending()) return false; // the window finishes the spin (finishSpin)
     if (offer_ != EventKind::None && investmentWindow_ && humansLeft()) return false; // a human answers
-    if (!aiTurn_ && computerControls() && (phase_ == Phase::Move || phase_ == Phase::Arrived)) {
-        // Mitspieler (seg2:5E93 -> seg5:6CE8 / 6BF2) handed a running human turn to the
-        // computer: it drives the remaining fields (route as states 5 / 6) or, already
-        // arrived, continues with its town / card field plan. Assumption: the original's
-        // state machine restart is not traced for a turn in progress.
-        aiTurn_ = true;
-        aiPlayer_ = current_;
-        aiSteerless_ = false;
-        aiRoute_.clear();
-        if (phase_ == Phase::Move) {
-            const AiGraph graph = buildAiGraph(board_, routeMask(), obstacles_);
-            const auto dist = aiDistances(graph, destination_);
-            aiRoute_ = aiChooseRoute(aiState(false), aiPlayer_, counter_.allowance() - counter_.taken(), graph, dist,
-                                     rng_);
-            std::reverse(aiRoute_.begin(), aiRoute_.end());
-        }
-        return finish(true);
-    }
     if (!aiTurn_) {
         if (phase_ != Phase::Roll || !computerControls()) return false;
         // Steuerlos: seg2:0A6F clears the bit and seg5:A1CD sets DS:8D2A = 1.

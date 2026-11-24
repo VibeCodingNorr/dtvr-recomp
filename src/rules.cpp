@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "rules.hpp"
 
+#include "layout.hpp"
+#include "map_scroll.hpp"
+
 #include <algorithm>
 #include <set>
 #include <stdexcept>
@@ -193,10 +196,18 @@ int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view
         const int f = rng.random(count - 1);
         const Field& field = board.fields[size_t(f)];
         const CellRect r{field.x - 3, field.y - 3, field.x + 4, field.y + 4};
-        const bool visible = r.left < view.right && view.left < r.right && r.top < view.bottom && view.top < r.bottom;
+        // seg2:42A4: overlap with <= on all four sides (a shared edge counts as visible).
+        const bool visible = r.left <= view.right && view.left <= r.right && r.top <= view.bottom && view.top <= r.bottom;
         if (!visible && !(field.flags & routeMask)) return f;
     }
     return -1;
+}
+
+CellRect carryView(const Field& at, int canvasWidth) {
+    const ScreenRect full = layoutForCanvas(canvasWidth).viewport; // seg5:13AF: map window - 16
+    const MapViewSize view{full.w >> 1, full.h >> 1, true};        // seg6:2F0F: halved with zoom 1
+    const TilePoint o = centredOrigin(at.x * 16, at.y * 16, view);  // +0x16 / +0x18 = cell * 16 (seg2:04AD)
+    return {o.x, o.y, o.x + (view.width >> 4), o.y + (view.height >> 4)};
 }
 
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,

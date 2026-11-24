@@ -268,16 +268,32 @@ int main() {
     CHECK(cardKind(36) == CardKind::Unsupported && cardKind(26) == CardKind::Risiko && cardStatusFlag(CardKind::Zucker) == 0x02);
     CHECK(cardNeedsTarget(CardKind::Fiskus) && !cardNeedsTarget(CardKind::Konto));
 
-    // Mitspieler (round 86, seg2:5E93): a human who rolled hands the turn to the
-    // computer, which finishes it; switching back makes the slot human again.
+    // Mitspieler (round R7, seg4:0804 -> seg2:5E93): only at the turn start (MAIN1 opens
+    // from ONFIELD only); a computer then plays the whole turn from its card choice
+    // (seg5:6BF2: state 1), exactly like a slot that was a computer from the start.
     {
-        Game swap(board, towns, 2, 0, 5, 1, nullptr, nullptr, false);
+        Game swap(board, towns, 2, 0, 5, 1, nullptr, nullptr, false), born(board, towns, 2, 0, 5, 1, nullptr, nullptr, false);
         swap.setRandomEvents(false);
-        CHECK(swap.roll() && swap.phase() == Game::Phase::Move && swap.currentPlayer() == 0);
-        CHECK(swap.setComputer(0, true) && swap.isComputer(0));
+        born.setRandomEvents(false);
+        CHECK(!swap.switchDriver(2) && !swap.switchDriver(-1));     // empty slot, no slot
+        CHECK(swap.switchDriver(0) && swap.isComputer(0));
+        CHECK(born.setComputer(0, true));
         for (int guard = 0; guard < 50 && swap.currentPlayer() == 0; ++guard) swap.runComputerTurn();
+        for (int guard = 0; guard < 50 && born.currentPlayer() == 0; ++guard) born.runComputerTurn();
         CHECK(swap.currentPlayer() == 1 && swap.phase() == Game::Phase::Roll);
-        CHECK(swap.setComputer(0, false) && !swap.isComputer(0));
+        CHECK(swap.sessionRandom().state() == born.sessionRandom().state());
+        CHECK(swap.playerField(0) == born.playerField(0) && swap.cash(0) == born.cash(0));
+        CHECK(swap.roll() && swap.phase() == Game::Phase::Move);
+        CHECK(!swap.switchDriver(0) && !swap.switchDriver(1));       // after the spin: no MAIN1
+        CHECK(swap.isComputer(0) && !swap.isComputer(1));
+    }
+    {
+        // Back to human at the computer's own turn start: the state machine is reset
+        // (seg5:6CE8) and nothing is played for the slot any more.
+        Game back(board, towns, 2, 0, 5, 1, nullptr, nullptr, false);
+        back.setRandomEvents(false);
+        CHECK(back.setComputer(0, true) && back.switchDriver(0) && !back.isComputer(0));
+        CHECK(!back.runComputerTurn() && back.currentPlayer() == 0 && back.phase() == Game::Phase::Roll);
     }
 
     // The year balance as a phase (round 144): with a window the player change waits;

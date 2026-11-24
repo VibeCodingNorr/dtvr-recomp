@@ -202,6 +202,9 @@ bool Game::playCard(int handSlot, int target) {
         break;
     }
     case CardKind::Flugzeug: { // seg3:31D5: fly to a town, then the town's field action
+        // seg3:326C / 3272: after the booking DS:2EAE = 1 and seg3:28ED carries the
+        // current player away first (the same draws as Tschüss, no player change).
+        carryAway(current_);
         setPosition(current_, fieldOfTown(target)); // seg3:3302 -> seg2:04AD
         counter_ = MoveCounter(0);
         phase_ = Phase::Move;
@@ -308,13 +311,29 @@ bool Game::sellCard(int handSlot) {
     return true;
 }
 
+bool Game::setMapCanvas(int canvasWidth) {
+    if (canvasWidth != 640 && canvasWidth != 800 && canvasWidth != 1024) return false;
+    mapCanvas_ = canvasWidth;
+    return true;
+}
+
+int Game::carryAway(int player) {
+    // seg3:28ED: zoom 1 and the view centred on the player (seg3:2978 / 29E7), then
+    // seg2:47D2 draws the field (cell + 3 out of that view, not masked), seg3:2A0A
+    // random(3) the corner the carrier comes from, and seg2:04AD (seg3:2CBC) sets the
+    // player down there (Dr. Drago anew when he carries him).
+    const Field& at = board_.fields[size_t(players_[size_t(player)].field)];
+    const int field = pickHiddenField(board_, routeMask(), carryView(at, mapCanvas_), rng_);
+    if (field < 0) return -1;
+    rng_.random(3); // seg3:2A0A: start corner of the carrier (presentation only)
+    setPosition(player, field);
+    return field;
+}
+
 void Game::playTschuess(int target) {
-    // seg3:28ED: the target is picked up and set down on a random field that is
-    // not visible (seg2:47D2, then seg2:04AD); afterwards nextPlayer.
-    const Field& at = board_.fields[size_t(players_[size_t(target)].field)];
-    const int field = pickHiddenField(board_, routeMask(), viewAround(at), rng_);
+    // seg3:28ED with DS:2EAE = 0: the target is carried away; afterwards nextPlayer.
+    const int field = carryAway(target);
     if (field < 0) return;
-    setPosition(target, field); // seg3:2CBC -> seg2:04AD
     messages_.push_back("Tschuess! " + playerName(target) + " landet bei " + townName(field));
 }
 

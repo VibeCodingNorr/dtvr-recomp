@@ -230,6 +230,12 @@ public:
     // setComputer switches a slot to status 2. runComputerTurn plays the current
     // turn when it belongs to a computer or the player is under Steuerlos.
     bool setComputer(int player, bool computer);
+    // Mitspieler (menu 1066, seg4:0804 -> seg2:5E93): toggles the slot between human
+    // and computer. Only possible from MAIN1, which opens from the turn menu ONFIELD
+    // (seg4:09DE), i.e. at the start of a turn before the spin: false otherwise. For
+    // the current player the computer's state machine restarts (seg5:6CE8, 6BF2):
+    // a computer then plays the turn from its card choice (state 1).
+    bool switchDriver(int player);
     bool isComputer(int player) const;
     bool computerControls() const;
     bool runComputerTurn();
@@ -265,9 +271,12 @@ public:
     bool sellCard(int handSlot);
     // DS:3FC6 town dialog mode set by property cards 1-8 (card type + 1), 0xFF = none.
     int propertyMode() const { return propertyMode_; }
-    // Visible map area in cells (seg2:46C8 uses the window); Tschüss avoids it.
-    // Default: 40 x 30 cells centred on the target (assumption, see docs).
-    static CellRect viewAround(const Field& f) { return {f.x - 20, f.y - 15, f.x + 20, f.y + 15}; }
+    // The original canvas width (640, 800 or 1024, seg5:1227) whose map window
+    // decides the area Tschüss and Flugzeug avoid (seg2:46C8, see carryView). A
+    // session setting like the resolution in rally.exe: not saved, kept by newGame
+    // and loading; the widescreen extension does not change it. Default 1024.
+    bool setMapCanvas(int canvasWidth);
+    int mapCanvas() const { return mapCanvas_; }
     // Sell an own entry of the town the player stopped in (seg1:832A, full value).
     bool sellProperty(int entry);
     const Hand& hand(int player) const { return hands_[size_t(player)]; }
@@ -382,6 +391,7 @@ private:
     void playHauAb();            // seg3:3EFB
     void playPunch();            // seg3:2D17 (game_cards.cpp)
     void playTschuess(int target); // seg3:28ED
+    int carryAway(int player);     // seg3:28ED: the player is set down out of view
     void discard(int player, int handSlot); // seg2:3C62: back to the deck
     void giveYellowCard();                  // seg2:1127: draw, text random(13), Dr. Drago
     int spin(int reels, int maximum);       // seg2:6426 / 776A: sum of the reels
@@ -446,6 +456,7 @@ private:
     bool obstacleConfirmed_ = false;
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
+    int mapCanvas_ = 1024;                  // canvas width of the map view (session setting, not saved)
     bool computerExtraCards_ = false;       // recomp extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
     bool forcedSale_ = false;     // the statistics in sale mode 0x10 are open

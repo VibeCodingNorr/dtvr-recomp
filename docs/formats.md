@@ -973,7 +973,12 @@ the types 0x400/0x800 follow in round 13).
   DS:A104 = 0 shows text 8300 instead (seg3:33F2). The chosen name is matched
   against the towns with `_fstricmp` (seg3:32CE ff.), then the player flies
   there (seg2:04AD) and the field action follows. Rebuilt in
-  `src/flight_view.cpp`. **Input** (round 101, from
+  `src/flight_view.cpp`.
+  *Round R6:* after the booking window (seg3:3264, modal) seg3:326C sets DS:2EAE = 1
+  and seg3:3272 calls the Tschüss carrier seg3:28ED for the current player: the
+  plane takes him to a field out of view with the same draws as Tschüss (seg2:47D2,
+  random(3), seg2:04AD with Dr. Drago anew), then seg3:3302 lands him in the town
+  (seg2:04AD again). Rebuilt in `Game::carryAway` before the landing. **Input** (round 101, from
   `docs/original-flight-dialog-audit.md`, checked at seg3:3971 / 3565 / 346D):
   only WM_KEYDOWN and WM_LBUTTONDOWN; Up / Down clamp at the first / last row and
   play Plopp02 on channel 2 when the row changes (seg3:34A8 / 34F6); Enter books
@@ -1025,6 +1030,23 @@ Risiko, card fields, Nebel, computer players.
   masked (DS:A10F) and its cell rectangle inflated by 3 (seg2:46C8, INFLATERECT)
   does not intersect the visible map rectangle (DS:956A/9568 + window size >> 4,
   seg2:42A4). Then nextPlayer (if DS:2EAE = 0).
+  *Round R6:* the visible rectangle is fixed by the canvas, not by the player's
+  scrolling: seg3:2978 forces zoom 1 (seg6:2E54(2): DS:9C70 = 1, viewport DS:94DE /
+  94E0 = (map window − 16) / 2, seg6:2F0F) and seg3:29E7 centres the view on the
+  target (seg2:3216 → seg6:3064 with +0x16 / +0x18 = cell · 16, clamp seg6:2B19)
+  before seg3:2A00 calls seg2:47D2. The rectangle is (origin, origin + size >> 4):
+  13 cells at 640, 17 at 800, 21 at 1024 wide. seg2:42A4 compares inclusively
+  (`view.right ≥ field.left`, `field.top ≤ view.bottom`, …), so a touching cell is
+  visible. Then seg3:2A0A draws random(3), the corner (four start offsets at
+  bp−0x3C / −0x44) the carrier flies in from; the flight loops (seg2:343E, 4F7D,
+  3D9C, 3EB0, ADAB, AE77, seg6:0CDF / 4420 / 03F7) draw nothing; seg2:04AD follows
+  (Dr. Drago random(3) when the target carries him), the zoom is restored when it
+  was changed (seg3:2CDE) and, with DS:2EAE = 0, nextPlayer. With DS:2EAE = 1
+  (set only by Flugzeug, seg3:326C; cleared by every card, seg3:0E25) the target is
+  the current player and seg5:71B3(0xB) follows instead of nextPlayer. The redraws
+  of the centring (seg2:05A8 → seg8:7F7D) restart the ambient animations with
+  random draws (seg8:82DA); like all ambient draws these depend on presentation
+  timing and are not reproduced (seg8:7F7D, see `src/ambient.hpp`).
 - **Steuerlos** (card 13, seg3:1994): sets bit 0x20 of the target's +0x40 and
   spins (WM_COMMAND 10000). At the target's turn seg2:0A6F/0AB8 saves its status
   byte in DS:10, sets it to 2 (computer) and clears the bit; seg5:7509 (computer
@@ -1034,9 +1056,11 @@ Risiko, card fields, Nebel, computer players.
   rebuilt in round 19 (seg10:1DDE is `rand()`, not a clock as first noted).
 
 Rebuilt in `src/game_cards.cpp`, `src/game.cpp` and `src/rules.cpp`
-(`resolveAnyTarget`, `pickHiddenField`). Assumption: the visible map area is
-40 × 30 cells centred on the Tschüss target (a 640 × 480 view; the original uses
-the actual window and scroll position, so its random sequence can differ).
+(`resolveAnyTarget`, `pickHiddenField`, `carryView`, `Game::carryAway`). The canvas
+width is a session setting of the simulation (`Game::setMapCanvas`, default 1024 as
+the largest canvas of seg5:1227; the game window passes its original canvas, the
+widescreen extension does not widen it). Like the resolution in rally.exe it is not
+saved: a loaded game uses the current window's canvas.
 Open: Steuerlos (computer players), Risiko (mini-game), card fields, Nebel.
 
 ### Card fields and the deck return (round 15)
@@ -1897,11 +1921,23 @@ own: the property cards, status cards, Walzen, Risiko, Tschüss, Punch.
   opens SELPLAYER with all drivers (seg2:51EA(0xFF)) and passes the choice to
   seg2:5E93, which toggles its status between 1 (human) and 2 (computer) and, for
   the current driver, redraws the portrait (seg2:2D8D) and restarts the computer
-  state machine (seg5:6CE8, 6BF2). Rebuilt in `src/game_window.cpp`; a turn handed
-  over after the spin is finished by the computer from its move or town plan
-  (`Game::computerAdvance`; **assumption:** the restart within a turn in progress
-  is not traced, the route over the remaining fields draws its numbers as a normal
-  route plan).
+  state machine (seg5:6CE8, 6BF2). *Round R7:* seg5:6CE8 clears the state DS:8CDC /
+  8CDE, DS:4E5C / 4E5E and the Steuerlos scoring DS:8D2A; seg5:6BF2 sets state 1
+  (card choice, seg5:71B3(1)) when the current player is now a computer (seg2:5C02),
+  and only for a computer off the fields (+0x3C = 0xFFFF) it also places him
+  (seg2:5067, 4C7D) or makes him human and calls nextPlayer. The menu is reachable
+  only at the turn start: MAIN1 opens solely from ONFIELD's Hauptmenü 1033
+  (seg4:09DE) and after a declined Rallye beenden (seg4:0851); ONFIELD opens at the
+  turn start (seg2:0864 → 068F), after its own entries (seg4 callers of 068F), after a
+  cancelled slot machine (seg2:69FB) and the blocked-card text (seg2:0BA9), never
+  during a move, and every command closes it first (seg4:0B76). A computer taking
+  over therefore plays the whole turn from its card choice, as at any turn start; a
+  computer switched back to human leaves the turn to ONFIELD. Rebuilt as
+  `Game::switchDriver` (refused after the spin); the former takeover within a move
+  (route over the remaining fields) is removed. Not rebuilt: rally.exe also opens
+  ONFIELD at a computer's turn start (seg2:0864 has no seg2:5C02 test), so a quick
+  player could switch a computer back before its first command; the recomp's
+  computer acts at once and shows no ONFIELD.
 
 Rebuilt in `src/ne_strings.cpp` (readNeMenu) and `src/menu_view.cpp`; flow in
 `src/game_screen.cpp`. Simplifications: ONFIELD opens whenever a human player is

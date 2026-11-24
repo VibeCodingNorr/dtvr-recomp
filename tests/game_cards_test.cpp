@@ -304,12 +304,22 @@ int main() {
     }
     CHECK(nimm);
 
-    // Tschüss (19): the target lands on a field outside the 40 x 30 view.
-    if (auto g = gameWithCard(board, towns, 2, 0, 19, slot)) {
-        CHECK(g->playCard(slot, 1) && g->currentPlayer() == 1);
-        const int f = g->playerField(1);
-        CHECK(f >= 3 && f <= 12);                     // x >= 30: the inflated cell misses x -20..20
-    } else CHECK(false);
+    // Tschüss (19, seg3:28ED): the target lands on the first drawn field outside the
+    // zoomed view of the canvas around it (seg2:47D2), then random(3) for the carrier's
+    // corner (seg3:2A0A). London (0, 0): at 640 fields up to x = 16 touch the view of 13
+    // cells, at 1024 up to x = 24 (21 cells).
+    for (const int canvas : {640, 1024}) {
+        if (auto g = gameWithCard(board, towns, 2, 0, 19, slot)) {
+            CHECK(!g->setMapCanvas(700) && g->setMapCanvas(canvas) && g->mapCanvas() == canvas);
+            MsRandom expect = g->sessionRandom();
+            const int field = pickHiddenField(board, 0x4000, carryView(board.fields[0], canvas), expect);
+            expect.random(3);
+            CHECK(g->playCard(slot, 1) && g->currentPlayer() == 1);
+            CHECK(g->playerField(1) == field && field >= (canvas == 640 ? 2 : 3));
+            expect.rand(); // the player change that follows draws once
+            CHECK(g->sessionRandom().state() == expect.state());
+        } else CHECK(false);
+    }
 
     // Card field (kind 5): every field between London and Rom is a card shop.
     {
