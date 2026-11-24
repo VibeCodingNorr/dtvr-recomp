@@ -89,28 +89,26 @@ void Game::dragoAct(int player) {
     if (action == DragoAction::Block) notice(3351); // seg2:BFD6: text 3351, no picture (DS:3E2F "")
 }
 
-void Game::placeDragoForStage() {
-    // seg2:1495-1535: one active player -> first active; otherwise the player with
-    // the largest field distance (assumed: distance to the new destination).
-    int chosen = firstActivePlayer(players_);
-    if (activePlayerCount(players_) > 1) {
-        const auto dist = fieldDistances(board_, destination_);
-        int best = 0;
-        for (int p = 0; p < kPlayerSlots; ++p) {
-            if (!players_[size_t(p)].status) continue;
-            const int d = dist[size_t(players_[size_t(p)].field)];
-            if (d > best) { best = d; chosen = p; }
-        }
-    }
+void Game::placeDragoForStage(int reached) {
+    // seg2:1495-1535 (rules stageDragoPlayer). DS:22 is recomputed only after the
+    // placement (seg2:154A): it still holds the distances from the destination just
+    // reached (`reached`, the old DS:A10D) with the current mask (round R3b). Not
+    // modelled (timing): a pending vehicle route of Dr. Drago (seg2:98D0 / 990B) that
+    // starts during ZIEL rebuilds it from the new destination first (docs/formats.md).
+    const int chosen = stageDragoPlayer(players_, dtvr::distanceTable(board_, reached, routeMask()));
     placeDrago(drago_, chosen, rng_);
     ++dragoPlacements_;
     messages_.push_back("Dr. Drago steigt bei Spieler " + std::to_string(chosen + 1) + " ein");
 }
 
+std::vector<uint16_t> Game::distanceTable() const {
+    return dtvr::distanceTable(board_, destination_, routeMask());
+}
+
 void Game::setPosition(int player, int field) {
     // seg2:04AD: +0x16 / +0x18 from the field's cell, +0x3C = +0x3E = field, then
     // seg2:5067 (start facing; a field always lies on its own cell, so the player is
-    // never taken out of play there) and seg2:0590: seg2:9C97 for Dr. Drago's holder.
+    // never taken out of play there) and seg2:058C / 0597: seg2:9C97 for Dr. Drago's holder.
     players_[size_t(player)].field = field;
     if (const int f = startFacing(board_.fields[size_t(field)])) lastDirection_[size_t(player)] = f;
     ++jumps_[size_t(player)];

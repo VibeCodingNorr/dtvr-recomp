@@ -63,9 +63,9 @@ AiState Game::aiState(bool steerless) const {
     s.extraCards = computerExtraCards_;
     s.nailsDirections = nailsDirections();
     s.airports = airports_;
-    // DS:22 holds the last distances of seg2:43A8; during play they come from the
-    // stage destination with the route mask (approximation, see docs).
-    for (int d : fieldDistances(board_, destination_, routeMask())) s.fieldDist.push_back(d < 0 ? 0xFFFF : uint16_t(d));
+    // DS:22 as the computer's code reads it (seg5:7386 / 7E4F / 9B0B): during a turn
+    // it always holds the distances from DS:A10D with the mask DS:A10F (round R3b).
+    s.fieldDist = distanceTable();
     return s;
 }
 

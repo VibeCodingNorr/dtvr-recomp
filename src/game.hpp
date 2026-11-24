@@ -95,7 +95,7 @@ public:
     // and before a game the intro's wipe (seg7, round 143) draw from it.
     MsRandom& sessionRandom() { return rng_; }
     // --drago FORM (tests): Dr. Drago joins as at a stage start, in form 0-2.
-    void startDrago(int form) { placeDragoForStage(); drago_.form = form < 0 ? 0 : form > 2 ? 2 : form; }
+    void startDrago(int form) { placeDragoForStage(destination_); drago_.form = form < 0 ? 0 : form > 2 ? 2 : form; }
     // seg2:69AD: a human may close the slot window of Würfeln (seg2:6426 flag DS:9AD8)
     // with Escape / Backspace / the right button before the reels stop: the roll is
     // taken back. In rally.exe the reel value is drawn when the lever ends (seg2:7671
@@ -210,6 +210,9 @@ public:
     // once instead of driving it. Presentation only, not saved.
     int positionJumps(int player) const { return jumps_[size_t(player & 7)]; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
+    // DS:22 outside the stage change: distances from the destination DS:A10D with the
+    // mask DS:A10F, 0xFFFF unreached (seg2:43A8; rules.hpp distanceTable).
+    std::vector<uint16_t> distanceTable() const;
     // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
     // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),
     // pressing while dark loses them all, stopping keeps them. The presentation
@@ -369,9 +372,9 @@ private:
     std::vector<int> activePlayers() const;
     // game_drago.cpp
     void dragoAct(int player);   // seg2:B58C after field actions and sit-outs
-    void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
+    void placeDragoForStage(int reached); // seg2:14B1: farthest from `reached` gets Dr. Drago
     // seg2:04AD(player, field): the player is put on the field, the start facing is set
-    // (seg2:5067) and Dr. Drago is placed anew when the player carries him (seg2:0590).
+    // (seg2:5067) and Dr. Drago is placed anew when the player carries him (seg2:058C / 0597).
     void setPosition(int player, int field);
     // seg2:5CDE + seg2:5FCA / 9C97 before the last stage (round R3a).
     void startMasterRallye();
@@ -490,6 +493,7 @@ private:
     // game_statement.cpp: a change waiting for the balance or the statement; the texts and
     // sit-outs found so far are announced before the window (their messages are modal).
     void suspendTurn(TurnChange change);
+    void announceSitOut(int text, int player); // seg2:096F / 0A0D / B74D
     void announceChange(const TurnChange& change);
     bool openStatement(int player, bool master);
     bool statementWindow_ = false, statementMaster_ = false;

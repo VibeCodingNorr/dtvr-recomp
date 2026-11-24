@@ -223,6 +223,54 @@ Confirmed from code unless marked otherwise.
   and from `from` repeatedly takes the first neighbour (up, right, down, left)
   with a smaller distance, recording each field via seg2:4D3F into a 1,000-entry
   ring buffer at DS:2C. seg1:A4E4 draws such a route with GDI `MoveTo`/`LineTo`.
+- **DS:22 as state (round R3b).** seg2:43A8(from, to) returns 0 without touching
+  the array when either argument is 0xFFFF (seg2:43BC–43CF); otherwise it fills
+  DS:9CFA words with 0xFFFF, sets `to` to 0 and searches from `to` only (`from`
+  is not used further) level 1..0x50 (seg2:4449 `ja`): for each frontier field
+  (DS:9AE0 list, count DS:B62E) whose record word +0xE & DS:A10F is 0
+  (seg2:44A4–44C2), each link +2 + 2k ≠ 0xFFFF whose word is still 0xFFFF gets
+  the level and joins the next list (DS:ABFC, count DS:A124); an empty next list
+  ends the search (seg2:44FD). It is the only writer of the array: every other
+  `les si, DS:22` (seg1:A506 / A569, seg2:14FB / 151A / 4846 / 4932 / 99E3 / 9A5A,
+  seg5:6ADC / 7845–7C08 / 7FAA / 9BBF, seg8:5FB5 / 5FCE / 602A) is followed by a
+  read or compare; seg5:25D1 only frees it. Callers and their `to`: seg2:0076
+  (new game, A10D = A10B), seg2:154A (stage change, after Dr. Drago), seg4:0EA4
+  (new game after seg7:372F(2)), seg8:AF82 (load), seg8:612A (event code) and seg8:6C66 (the
+  East opening, after DS:A10F = 0 at 6C46) with (A10B, A10D); seg1:A4E4 (player
+  +0x3E, A10D), seg1:A5BD (A10B, A10D), seg8:5FA8 (player +0x3C, A10D); and the
+  route seg2:9996(from, to) with DS:A10F = 0 (seg2:99B0), which restores the mask
+  and recomputes (A10B, A10D) on both exits (seg2:9B6D–9B7B, 9B89–9B97). DS:A10F
+  changes only at seg4:0E0B, seg8:6C46 and inside seg2:9996. So during play the
+  array holds the distances from DS:A10D with the current mask; the exception is
+  the stage change, where seg7:372F writes the new A10D (seg7:3D7D / 3F46 / 45E7 /
+  4867 / 4C1F) before the placement at seg2:1495 and the recompute at seg2:154A.
+  Between seg2:1486 and 154A run seg1:2A30, seg7:372F, seg2:0368, 1A41 and 9C97
+  (9C97 calls seg2:9BAE, 4CEB, B477, 9CF9 and reaches no seg2:43A8 caller).
+  **Timing-dependent exception:** seg7:372F's loops call the map tick seg2:1C37
+  (seg7:44A0 in modes 1 / 2, after A10D was stored at 3D7D / 3F46; seg7:4B27 in
+  mode 3; both only when DS:94C4 and DS:94E6 ≠ 0). 1C37 → seg2:9F61 (Dr. Drago's
+  vehicle, nothing when DS:9CFC = 0xFF; while off-screen, seg2:9ECB = 0, it
+  repeats seg2:A0A5) → A0A5 calls seg2:98D0 when the vehicle's route ring is
+  empty (DS:2A = DS:28, seg2:A11B; similar at A176 / A271 / A2C1 / A64E / A7D7 /
+  A959 / A9EB). 98D0 computes a route seg2:9996(DS:94D8, holder +0x3C) at seg2:990B
+  only for a pending request (DS:9566 = 0 and DS:94EC ≠ 0xFF), which only seg2:9804
+  sets (98BF / 98C2): Dr. Drago's form change at a turn start (seg2:B400 / B433 /
+  B44C), after the leaving route seg2:98A2. 9996 then rebuilds DS:22 from the
+  current A10B / A10D (9B7B / 9B97). So when the arriving player's turn began with
+  a form change and the vehicle's leaving route had not ended before seg7:372F
+  stored the new A10D, the placement at seg2:1495 sees the distances from the
+  **new** destination with the mask. Whether that happens depends on the ticks
+  (vehicle speed, view, the time the player took), as with the ambient and
+  destination-light draws; not modelled — the rebuild always uses the reached
+  destination. The route itself draws no random number.
+  **Assumption:** the overview (seg1:A240, from the RALLY command handler seg4:08DC /
+  099F) is not opened while the ZIEL window (seg7:372F holds the focus, seg7:37C1)
+  has stored the new A10D; if it were, seg1:A4E4 / A5BD would rebuild the array
+  from the new destination before seg2:1495. The early exit of seg2:9996's restore
+  (A10B or A10D = 0xFFFF) does not occur with fields. Rebuilt as
+  `distanceTable` (src/rules.cpp) and `Game::distanceTable`, used by the computer
+  (seg5:7386 / 7E4F / 9B0B), the PLINFO distance (seg5:6AB2) and, with the reached
+  destination, the stage placement.
 
 ### Horn while driving (roadmap R2)
 
@@ -377,7 +425,17 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   "last stage" message seg7:372F(3)), sets the origin to the reached field and
   draws a new destination; then seg2:9C97 gives **Dr. Drago** to the active
   player with the largest value in the distance array DS:22 (first active on a
-  tie or with one player). *Correction (round 10): this was first read as the
+  tie or with one player). *Round R3b:* seg2:14B1–1535 starts from 0 with the
+  first active (seg2:1A41) and takes a slot only when DS:22[+0x3C] is larger,
+  unsigned (`jbe` at seg2:1506): ties keep the earlier slot, a field the search
+  did not reach (0xFFFF: beyond 80 levels or behind the mask) wins, and all 0
+  gives the first active. DS:22 still holds the distances from the destination
+  just reached with the current mask (see "DS:22 as state", also for the
+  timing-dependent exception after a form change of Dr. Drago); it is rebuilt from
+  the new destination at seg2:154A. No random draw before seg2:9C97. Rebuilt as
+  `stageDragoPlayer` (src/rules.cpp) from `Game::placeDragoForStage(reached)`;
+  *corrects* the earlier rebuild (distances from the new destination, no mask,
+  unreached fields skipped). *Correction (round 10): this was first read as the
   player who starts the stage; seg2:9C97 places Dr. Drago (DS:9CFC).* With A104 = 0 the reward is 300,000 × inflation and WM_COMMAND
   0x424 ends the game (seg4:075B tears down the game windows).
 - **Last stage / Master-Rallye (round R3a).** When A104 becomes 0 (seg2:1441) the
@@ -388,8 +446,11 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   name of seg2:271C equal to `BRÜSSEL`, `brüssel` or `brussels` (DS:4E11 / 4E19 /
   4E21, lstrcmpi, seg7:47AB–4867) and at the end again for `BRÜSSEL` / `brüssel`
   (DS:4E4B / 4E53, code page 850, seg7:4B89–4C22), writing the field to A10D. The
-  German towns match `brüssel` (europe_d.tow `Br\x81ssel`, field 239). No further
-  draw in mode 3 (only seg1 voice and seg2 drawing calls; seg1 has no rand call).
+  German towns match `brüssel` (europe_d.tow `Br\x81ssel`, name at file offset
+  0x67C0, field 239). Mode 3 has no rule draw of its own (seg1 has no rand call);
+  its loop calls seg2:1C37 (seg7:4B15–4B27, when DS:94C4 and DS:94E6 ≠ 0), whose
+  ambient animation seg8:83A0 draws seg6:1343 at seg8:8465 — a timing-dependent
+  draw like the destination light's, not modelled.
   Then A10B = the reached field (seg2:145B) and **seg2:5CDE**: k = random(12 − n)
   (n = players in play, seg2:5D51–5D66); the players in play, in slot order, get
   the fields at cells k, k + 1, … of the table x = 05 14 37 44 51 70 94 A0 A0 BF D3
@@ -653,7 +714,11 @@ negative balance.
   have empty handlers — they are used by the event system (`schnee.sbs`,
   `nessie.sbs`, …), which is not analysed yet.
 - **Sit-out texts** consume random(2) (seg2:0915/09B3); the yellow field text
-  random(13) (seg2:1127).
+  random(13) (seg2:1127). *Round R3b:* within one sit-out the sound (seg2:095B /
+  09F9) starts first, then the modal message (seg2:096F / 0A0D), then Dr. Drago
+  acts (seg2:0977 / 0A15). The rebuild shows each text where `nextPlayer` reaches
+  it (`TurnHooks::announce` → `Game::announceSitOut`), before the sit-out hook and
+  before a later player's event; the random sequence is unchanged.
 
 Rebuilt: Dr. Drago state, placement, form countdown and changes, meetings, all
 six actions, Weihnachten, Hau ab, the block flag in nextPlayer and these text
@@ -931,7 +996,7 @@ player leaves play (seg2:50B7). Callers: the new game for all eight slots
 seg5:6C47 (a computer off the fields) and loading (seg8:B021). seg2:04AD, the
 position setter of Tschüss (seg3:2CBC), Punch (seg3:2F26) and Flugzeug
 (seg3:3302), also places Dr. Drago anew (seg2:9C97, a random(3) draw) when the
-moved player carries him (seg2:0590). Rebuilt as `Game::setPosition`; loading keeps
+moved player carries him (compare with DS:9CFC at seg2:058C, call seg2:9C97 at 0597). Rebuilt as `Game::setPosition`; loading keeps
 the saved facing and Dr. Drago's countdown (not seg8:B021 / B06A); the viewer invests
 half the cash rounded to 1,000 with I and flies to the current destination with
 Flugzeug. Open: property cards 1–8 (town dialog modes), Steuerlos, Tschüss,
@@ -1151,9 +1216,10 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   human (a demo) or without a window the computer declines, where rally.exe would
   wait for input.
 
-Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. Approximation: DS:22 is
-taken as the distances from the destination with the route mask (the array
-holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
+Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. DS:22 is the distances
+from the destination with the route mask (`Game::distanceTable`): round R3b
+showed that the array holds exactly that whenever the computer's code runs (see
+"DS:22 as state"). Not rebuilt: Risiko.
 
 ### Risiko, Nebel and the player setup (round 19)
 
