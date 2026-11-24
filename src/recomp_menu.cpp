@@ -120,9 +120,10 @@ void RecompMenu::build(bool inGame) {
         info("Würfeln, bestätigen", "Enter / Leertaste"),
         info("Fahren", "Pfeiltasten"),
         info("Audio und Klangset", "F8"),
-        info("Vollbild", "F11 / Alt+Enter"),
-        info("Schriftglättung", "F12"),
-        info("Gamepad", "Steuerkreuz, A = Enter, B = Esc"),
+        info("Vollbild / Schriftglättung", "F11, Alt+Enter / F12"),
+        // The pad (docs/formats.md "Recomp pad layer"); eight rows fit the page.
+        info("Gamepad", "Kreuz/Stick, A Enter, B Esc, X Rücktaste, Start Menü"),
+        info("Gamepad", "Ansicht Spielmenü, Y Karte, LB/RB Tab, R-Stick Umfeld"),
     }});
 }
 

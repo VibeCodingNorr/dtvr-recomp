@@ -30,9 +30,16 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     SaveView& saveDialog = screen_.saveDialog();
     if (event.type == SDL_QUIT) { desktopClose(); return; }
     controller_.handleEvent(event);
+    // The held arrow ends with its key-up whichever window is in front (pad release,
+    // keyboard), and with the focus (recomp: no key-up arrives while unfocused).
+    if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow_) heldArrow_ = SDLK_UNKNOWN;
     if (event.type == SDL_WINDOWEVENT) {
         // WM_ACTIVATEAPP (seg4:0CAE): music, voice and effects pause with the focus.
-        if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) { music_.setFocused(false); sound_.setFocused(false); }
+        if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+            music_.setFocused(false);
+            sound_.setFocused(false);
+            heldArrow_ = SDLK_UNKNOWN;
+        }
         if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) { music_.setFocused(true); sound_.setFocused(true); }
     }
     { // F11 / Alt+Enter, F12 and the window size (recomp, [Display])
@@ -79,7 +86,6 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         return;
     }
     if (recompMenu_.isOpen()) { handleRecompMenu(event); return; }
-    if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow_) heldArrow_ = SDLK_UNKNOWN;
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
     if (screen_.messages().open() && screen_.eventSceneActive(screen_.sceneNow())) return; // animation first
     if (screen_.messages().question()) { handleQuestion(event); return; }
@@ -200,7 +206,10 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) return;
     }
     if (screen_.overview().isOpen()) { screen_.overview().handle(event); return; }
-    if (screen_.handleSurroundings(event)) return;
+    if (screen_.handleSurroundings(event)) {
+        if (!screen_.surroundings()) heldArrow_ = SDLK_UNKNOWN; // left: no drive from its keys
+        return;
+    }
     if (screen_.stages().isOpen()) { // seg8:08D6, modal (seg6:0FB4)
         const StagesView::Result r = screen_.stages().handle(event);
         if (const int fx = screen_.stages().takeSound(); fx >= 0) sound_.play(2, fx);

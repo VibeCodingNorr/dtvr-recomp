@@ -89,6 +89,8 @@ private:
     bool handleGameDialog(const SDL_Event& event);
     bool handleCardWindow(const SDL_Event& event);
     bool handleEstates(const SDL_Event& event);
+    // game_window_pad.cpp: the game controllers' tick and the recomp pad buttons
+    void updatePad();
 
     PlayView& play_;
     const std::vector<Town>& towns_;

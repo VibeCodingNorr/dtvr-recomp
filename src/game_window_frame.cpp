@@ -302,7 +302,7 @@ void GameWindow::updateFrame(int frame) {
         && !play_.game().isComputer(play_.game().currentPlayer()) && play_.handleKey(heldArrow_, 0))
         report();
     // seg2:8A30 every 80 ms while [Setup] Joystick is on: keys for the focused window.
-    if (!options_.smokeTest) controller_.update(SDL_GetTicks(), screen_.settings().value[Settings::Joystick] != 0);
+    if (!options_.smokeTest) updatePad();
     scripted_.pump(frame);
 }
 

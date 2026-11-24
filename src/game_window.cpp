@@ -176,7 +176,9 @@ bool GameWindow::waitLogo(bool hold) {
         const Uint32 now = SDL_GetTicks();
         // Recomp addition: rally.exe has no timer, the logo stays for its loading time.
         if (!hold && now - logo_.shownAt() >= kLogoMinimumMs) return true;
-        if (!options_.smokeTest) controller_.update(now, screen_.settings().value[Settings::Joystick] != 0);
+        if (!options_.smokeTest) // keys only; the recomp pad actions wait for the game window
+            controller_.update(now, screen_.settings().value[Settings::Joystick] != 0,
+                               (SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS) != 0, PadContext{});
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) { running_ = false; return false; }
