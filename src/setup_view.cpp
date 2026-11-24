@@ -13,7 +13,7 @@ constexpr size_t kNameMax = 0x13 - 1; // GetWindowText(..., 0x13) (seg1:0BB7)
 
 bool inside(const ScreenRect& r, int x, int y) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h; }
 SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
-constexpr int kStar = 100, kStop = 101;
+constexpr int kStar = 100, kStop = 101, kName = 200; // kName + slot: the SBINPUT fields
 
 size_t utf8Length(const std::string& s) {
     size_t n = 0;
@@ -31,10 +31,16 @@ void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std:
     names_ = names;
     editing_ = -1;
     open_ = true;
+    // In creation order, the z-order the arrow keys walk (seg1:2474 ff.): star (seg1:05C9),
+    // stop (0687), then for the slots 7 down to 0 the name field SBINPUT (071E, id 0x139C
+    // + slot) and the driver button (0830, id 0x1392 + slot).
     std::vector<SbButton> buttons;
-    for (int p = 0; p < kPlayerSlots; ++p) buttons.push_back({p, rect(geometry_.driver[size_t(p)]), true});
     buttons.push_back({kStar, rect(geometry_.start), anyPlayer()}); // disabled without players
     buttons.push_back({kStop, rect(geometry_.stop), true});
+    for (int p = kPlayerSlots - 1; p >= 0; --p) {
+        buttons.push_back({kName + p, rect(geometry_.name[size_t(p)]), true, true});
+        buttons.push_back({p, rect(geometry_.driver[size_t(p)]), true});
+    }
     buttons_.reset(std::move(buttons), kStar); // seg1:0409: SetFocus(DS:A6E8) = the star (index 8, seg1:083B)
     sound_ = -1;
 }
@@ -42,6 +48,12 @@ void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std:
 void SetupView::stopEditing() {
     if (editing_ >= 0) SDL_StopTextInput();
     editing_ = -1;
+}
+
+void SetupView::followFocus() { // a name field gets the keyboard focus through the walk
+    if (!buttons_.fieldFocused()) { stopEditing(); return; }
+    if (editing_ < 0) SDL_StartTextInput();
+    editing_ = buttons_.focus() - kName;
 }
 
 void SetupView::close() {
@@ -95,9 +107,8 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
         const int x = event.button.x, y = event.button.y;
         for (int p = 0; p < kPlayerSlots; ++p)
             if (inside(geometry_.name[size_t(p)], x, y)) { // the SBINPUT field takes the focus
-                if (editing_ < 0) SDL_StartTextInput();
-                editing_ = p;
-                buttons_.setFocus(-1);
+                buttons_.setFocus(kName + p);
+                followFocus();
                 return Result::None;
             }
         // The star is disabled with EnableWindow (seg1:0853): its clicks go to PLAYER,
@@ -105,8 +116,8 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
         const SDL_Rect star = rect(geometry_.start);
         const SDL_Point at{x, y};
         if (!anyPlayer() && SDL_PointInRect(&at, &star)) return Result::None;
-        stopEditing();
-        in = buttons_.mouseDown(x, y);
+        in = buttons_.mouseDown(x, y); // a button takes the focus; elsewhere it stays
+        followFocus();
     } else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
         in = buttons_.mouseUp(event.button.x, event.button.y);
     } else if (event.type == SDL_TEXTINPUT && editing_ >= 0) {
@@ -128,10 +139,18 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
             if (!name.empty()) name.pop_back();
             return Result::None;
         }
+        if (editing_ >= 0) { // SBINPUT (seg1:21E5): other keys, Escape too, do nothing
+            in = buttons_.fieldKey(key, event.key.keysym.mod);
+            sound_ = in.sound;
+            if (in.moved) followFocus();
+            if (key == SDLK_RETURN || key == SDLK_KP_ENTER) // posted on to PLAYER (seg1:2190)
+                return anyPlayer() ? Result::Start : Result::None; // seg1:0C3B
+            return Result::None;
+        }
         if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return anyPlayer() ? Result::Start : Result::None; // seg1:0C3B
         if (key == SDLK_ESCAPE) return Result::Cancel;
-        if (editing_ >= 0) return Result::None; // other keys belong to the name field
         in = buttons_.key(key, event.key.keysym.mod, false);
+        if (in.moved) followFocus();
     }
     sound_ = in.sound;
     if (in.cancel) return Result::Cancel;
@@ -149,6 +168,7 @@ void SetupView::draw() {
     if (!open_) return;
     if (SDL_Texture* back = bitmap("menu.bmp")) SDL_RenderCopy(renderer_, back, nullptr, nullptr);
     for (const SbButton& b : buttons_.buttons()) {
+        if (b.field) continue; // the names are drawn below
         const std::string file = b.id == kStar ? "star.bmp" : b.id == kStop ? "stop.bmp"
                                : std::string(1, kLetters[b.id]) + std::to_string(status_[size_t(b.id)]) + ".bmp";
         if (SDL_Texture* t = bitmap(file)) {

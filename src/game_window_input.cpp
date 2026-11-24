@@ -28,7 +28,7 @@ bool isArrow(SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK
 
 void GameWindow::handleEvent(const SDL_Event& event) {
     SaveView& saveDialog = screen_.saveDialog();
-    if (event.type == SDL_QUIT) running_ = false;
+    if (event.type == SDL_QUIT) { desktopClose(); return; }
     controller_.handleEvent(event);
     if (event.type == SDL_WINDOWEVENT) {
         // WM_ACTIVATEAPP (seg4:0CAE): music, voice and effects pause with the focus.
@@ -43,6 +43,12 @@ void GameWindow::handleEvent(const SDL_Event& event) {
             heldArrow_ = SDLK_UNKNOWN;
             return;
         }
+    }
+    // Recomp: the quit question of a desktop close is drawn over every window
+    // (GameScreen::draw) and takes the input before the modal ones (film, sight, MCTRL).
+    if (quitAsked_ && screen_.messages().question() && screen_.messages().frontText() == 700) {
+        handleQuestion(event);
+        return;
     }
     if (screen_.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
         return; // the FLIC window runs modally (seg6:0FB4)
@@ -76,20 +82,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     if (event.type == SDL_KEYUP && event.key.keysym.sym == heldArrow_) heldArrow_ = SDLK_UNKNOWN;
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
     if (screen_.messages().open() && screen_.eventSceneActive(screen_.sceneNow())) return; // animation first
-    if (screen_.messages().question()) { // seg2:2404: obstacle question (text 600)
-        if (const int answer = screen_.messages().handle(event); answer) {
-            const int text = screen_.messages().frontText();
-            screen_.messages().dismiss();
-            sound_.play(0, 2); // seg6:5627: Plopp02 when the window closes
-            if (text == 700) { // seg4:0F20
-                if (answer == 6) running_ = false;
-                else if (quitReopensMain_) openMenu("MAIN1");
-            } else if (play_.game().answerObstacle(answer == 6)) {
-                report();
-            }
-        }
-        return;
-    }
+    if (screen_.messages().question()) { handleQuestion(event); return; }
     if (screen_.messages().open()) {
         // INFO (seg6:5492): WM_KEYDOWN closes only with Return / Space, and Escape /
         // Backspace (after VK_RIGHT for a No), with Plopp02 on channel 0 (seg6:579F ->
@@ -149,11 +142,14 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (screen_.victory().closes(event, SDL_GetTicks())) screen_.victory().stop();
         return;
     }
-    if (screen_.finish().active()) { // ZIEL seg7:50D6: DS:A29C = 0 ends the loop seg7:3536..3677
+    if (screen_.finish().active()) { // ZIEL seg7:4D0A / 4D35: DS:A29C = 0 ends the loop seg7:3536..3677
         const SDL_Keycode k = event.type == SDL_KEYDOWN ? event.key.keysym.sym : SDLK_UNKNOWN;
         if (k == SDLK_ESCAPE || k == SDLK_SPACE || k == SDLK_RETURN || k == SDLK_KP_ENTER
             || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)) {
-            sound_.stop(0); // seg5:607B(-1)
+            // seg5:607B(-1) there only repaints PLINFO. The loop's clean-up destroys the
+            // window (seg7:3715); ZIEL's WM_DESTROY (seg7:4E28) calls seg1:3C3B, whose
+            // waveOutReset stops z.wav (30 s, longer than the scene).
+            sound_.stop(0);
             screen_.finish().stop();
         }
         return;
@@ -277,6 +273,38 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     handleKey(event);
 }
 
+// The Yes / No message window: obstacle question (seg2:2404, text 600) or the quit
+// question (seg4:0EDF, text 700).
+void GameWindow::handleQuestion(const SDL_Event& event) {
+    const int answer = screen_.messages().handle(event);
+    if (!answer) return;
+    const int text = screen_.messages().frontText();
+    screen_.messages().dismiss();
+    sound_.play(0, 2); // seg6:5627: Plopp02 when the window closes
+    if (text == 700) { // seg4:0F20
+        quitAsked_ = false;
+        if (answer == 6) running_ = false;
+        else if (quitReopensMain_) openMenu("MAIN1");
+    } else if (play_.game().answerObstacle(answer == 6)) {
+        report();
+    }
+}
+
+// Recomp: closing the desktop window (or SIGINT / SIGTERM, which SDL turns into SDL_QUIT). rally.exe's
+// main window (WS_POPUP | WS_CLIPCHILDREN, seg5:1BEA) has no system menu, and its WM_CLOSE
+// posts WM_QUIT only after a Yes to the quit question (DS:88, seg4:02F8 / 0F26); without it
+// the close is ignored. Here a close asks the same question (text 700, seg4:0EDF); a second
+// close while it is pending, or a close during the intro (no game window yet), ends at once.
+void GameWindow::desktopClose() {
+    if (screen_.intro().active() || (quitAsked_ && screen_.messages().open())) {
+        running_ = false;
+        return;
+    }
+    if (recompMenu_.isOpen()) recompMenu_.menu().close(); // the question takes the input
+    heldArrow_ = SDLK_UNKNOWN;
+    askQuit(false);
+}
+
 // The recomp menu over the paused game (docs/pause-menu.md).
 void GameWindow::handleRecompMenu(const SDL_Event& event) {
     using Action = RecompMenu::Action;
@@ -333,6 +361,9 @@ void GameWindow::handleKey(const SDL_Event& event) {
         return;
     }
     if (key == SDLK_q && !screen_.title()) { askQuit(false); return; } // seg4:0259: Q -> seg4:0EDF
+    // WM_SYSKEYDOWN VK_F4 of the main window (seg4:0048): the quit question, also at the
+    // title; the SBBUTTON windows swallow it (seg1:0F4B passes on only F10).
+    if (key == SDLK_F4 && (event.key.keysym.mod & KMOD_ALT)) { askQuit(false); return; }
     if (key == SDLK_SPACE && play_.game().phase() != Game::Phase::Risiko && !screen_.title()) {
         screen_.centreOnPlayer(); // seg4:01B2 -> seg2:3216, 05A8
         return;

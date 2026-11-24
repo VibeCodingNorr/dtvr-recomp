@@ -31,8 +31,9 @@ public:
     bool start(char driverLetter, const std::string& oemTownName, Uint32 now);
     bool active() const { return active_; }
     void stop() { active_ = false; }
-    // Ends by itself when the car has left the scene (seg7:3546).
-    void update(Uint32 now);
+    // Ends by itself when the car has left the scene (seg7:3546); true in the call that
+    // ends it (the window is destroyed: ZIEL's WM_DESTROY stops the voice, seg7:4E28).
+    bool update(Uint32 now);
     void draw(Uint32 now);
 
 private:

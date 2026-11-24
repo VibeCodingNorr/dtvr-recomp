@@ -43,8 +43,11 @@ void OptionsView::open(const Settings& settings) {
     settings_ = settings;
     open_ = true;
     std::vector<SbButton> buttons;
-    for (int i = 0; i < Settings::kCount; ++i) buttons.push_back({i, rect(geometry_.driver[size_t(i)]), true});
+    // In creation order (the z-order the arrow keys walk): the star (seg1:AECC), then the
+    // switches 7 down to 0 (seg1:AF76 / B090). rally.exe loads stop.bmp (seg1:AEF2) but
+    // creates no stop window; the rebuild's stop comes last.
     buttons.push_back({kStar, rect(geometry_.start), true});
+    for (int i = Settings::kCount - 1; i >= 0; --i) buttons.push_back({i, rect(geometry_.driver[size_t(i)]), true});
     buttons.push_back({kStop, rect(geometry_.stop), true});
     buttons_.reset(std::move(buttons), kStar); // seg1:AD49: SetFocus(DS:A6E8) = the star (index 8, seg1:AE1F)
     sound_ = -1;

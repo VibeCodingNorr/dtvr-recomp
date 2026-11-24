@@ -103,8 +103,10 @@ bool FinishView::start(char driverLetter, const std::string& oemTownName, Uint32
 
 int FinishView::steps(Uint32 now) const { return int((now - started_) / kSceneStepMs); }
 
-void FinishView::update(Uint32 now) {
-    if (active_ && records()[kCar].x - 2 * steps(now) < -160) active_ = false; // 0xFF60
+bool FinishView::update(Uint32 now) {
+    if (!active_ || records()[kCar].x - 2 * steps(now) >= -160) return false; // 0xFF60
+    active_ = false;
+    return true;
 }
 
 void FinishView::draw(Uint32 now) {

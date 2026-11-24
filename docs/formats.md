@@ -544,8 +544,20 @@ dialog.
   eligible slot at x (size + 5) · (n − 1) + 5 and each following one size + 5
   further left (seg2:53BD ff.); button id 0x1392 + slot. Rebuilt in
   `src/select_player_view.cpp` for the cards with a target in the game window
-  (background `%s\%d\p.bmp` (DS:1BA3) assumed; Escape or the right button
-  cancel, an assumption; the window centred).
+  (background `%s\%d\p.bmp` (DS:1BA3) assumed; the window centred).
+  *Round R4:* there is **no cancel**. The procedure (seg2:562C, dispatch seg2:598E)
+  has no WM_KEYDOWN and no right-button case; WM_COMMAND (seg2:566A → 56E6) acts
+  only on 0x1392–0x1399 (notification 2: focus change, the name area repaints,
+  seg2:5670; otherwise DS:94BC = slot and DestroyWindow, seg2:56B9). Escape /
+  Backspace on a button post WM_COMMAND 0xFFFF (seg1:0F77), the right button on a
+  button posts VK_BACK to itself (seg1:0F37) — both reach DefWindowProc (seg2:56CC).
+  Alt+F4 is swallowed by the focused SBBUTTON (WM_SYSKEYDOWN seg1:0F4B passes on
+  only F10); the window is a child (style 0x44000000, seg2:538D) without a system
+  menu. The modal loop seg6:0FB4 ends only when WM_DESTROY clears DS:A2A0
+  (seg2:5780), i.e. after a choice. The card has been used up before (dispatcher
+  seg3:0E94 → seg2:3C62), so it cannot be taken back; Mitspieler (seg4:0803 →
+  51EA(0xFF) → seg2:5E93) must toggle one driver too. Rebuilt: the right button,
+  Escape and Backspace do nothing in SELPLAYER.
 - **Money cards** (each handler calls nextPlayer seg2:06FC afterwards, so the
   card replaces the turn):
   - Fiskus (seg3:14AD): target pays (cash + property value +0x5A) × 0.1 (DS:8636).
@@ -567,10 +579,9 @@ dialog.
     panel window (DS:3C = 0) it creates PLINFO (seg5:6119, class DS:39F6), with
     0xFFFF it sets DS:3930 = 0xFF and repaints the whole panel (seg5:614D..6173),
     otherwise the item's rectangle (seg5:6176 ff., mask table DS:3920). No rule
-    effect; the rebuild draws the panel from the state every frame. Open: ZIEL's keys
-    (seg7:4D22 / 4D37) and the announcement call seg5:607B(−1) too, which
-    `src/game_window_input.cpp` and `src/stage_view.cpp` rebuild as a voice stop; this
-    function stops no voice, so where those voices stop is not traced yet.
+    effect; the rebuild draws the panel from the state every frame. ZIEL's keys
+    (seg7:4D22 / 4D37) call it too; where the finish and announcement voices really
+    stop is traced in "Finish" and "Destination announcement" (round R4).
 - **Status cards** set a bit in the target's +0x40 flags and then post
   WM_COMMAND 0x2710 (one-reel spin, seg4:0A27), so the player still moves:
   Zucker (seg3:19E5) bit 0x02 and Schlafen (seg3:1B0A) bit 0x04 → sit out once
@@ -1211,11 +1222,23 @@ holds whatever seg2:43A8 computed last). Not rebuilt: Risiko.
 - **Quit question** (round 66): seg4:0EDF loads text 700 ("Soll D.T.V.R.
   wirklich beendet werden?") and calls seg6:51EA with buttons 4 and the empty
   picture DS:B6 (showmaster); answer 6 sets DS:88 = 1 and posts WM_CLOSE to the
-  main window (seg4:0F26). Callers: title menu 1025 (seg4:055E), MAIN1 1064
-  (seg4:073F, MAIN1 again when it returns 0), seg4:0837 (after seg4:0803, Mitspieler;
-  not traced further), the key Q
-  of the main window (seg4:01A6) and seg4:0050. Rebuilt in `src/game_window.cpp`
-  (askQuit) for 1025, 1064 and Q; closing the desktop window still quits at once.
+  main window (seg4:0F26). Callers (round R4, WM_COMMAND jump tables seg4:0BE4 /
+  0C21): title menu 1025 (seg4:0733 → 073F; a No runs seg8:0DBD, the title menu),
+  MAIN1 1064 (seg4:082B → 0837; a No opens MAIN1 again, seg4:0851), command id 100
+  (seg4:055E), the key Q of the main window (seg4:01A6) and WM_SYSKEYDOWN with
+  VK_F4 (Alt+F4, seg4:0048; no title test). RALLY's WM_CLOSE (seg4:02F8) posts
+  WM_QUIT only when DS:88 ≠ 0, which only seg4:0F26 sets: any other close is
+  ignored. The main window is WS_POPUP | WS_CLIPCHILDREN (0x82000000, CreateWindow
+  seg5:1BEA) without a caption or system menu. Alt+F4 reaches seg4:0048 only while
+  the main window has the keyboard focus; the SBBUTTON windows swallow it (seg1:0F4B).
+  The modal pump seg6:03F7 does not test WM_QUIT. Rebuilt in `src/game_window.cpp`
+  (askQuit) for 1025, 1064, Q and Alt+F4 in the main window's key handler.
+  **Recomp addition:** closing the desktop window (SDL_QUIT, also SIGINT / SIGTERM) asks the
+  same question instead of being ignored; a second close while it is pending, or a
+  close during the intro, ends at once (`GameWindow::desktopClose`). The question is
+  drawn over every window, OPTION, PLAYER, TEMP and the credits picture included
+  (`GameScreen::draw`), and takes the input before the modal film, sight and MCTRL
+  windows; an open recomp menu is closed first.
 - **Nebel**: texts 5180–5183 ("--- Event Nebel ---", the road stays closed) exist
   in the string resources, but no code adds the base 5181 (all other events add
   their text base after random(2), e.g. `add ax, 0x13B1` at seg8:1DFD) and the
@@ -1869,9 +1892,22 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   GetNextWindow(GW_HWNDPREV / GW_HWNDNEXT) to the first one with the same top,
   down (25A0) / up (267F) to the same left, else the adjacent sibling; a found
   button with an id in 0x1388–0x1770 gets the focus and sound 8 on channel 2.
-  Rebuilt in `src/card_view.cpp`; **approximation:** the neighbours are chosen
-  by position (nearest in the row / column) instead of the sibling z-order;
-  Return activates the focused card.
+  Rebuilt in `src/card_view.cpp`; Return activates the focused card.
+  *Round R8:* the walk follows the siblings' z-order (`SbButtonGroup`, entries
+  topmost first): right / left take the first sibling with the same top towards the
+  top / bottom of the z-order and stop at the first match; down / up the first with
+  the same left, else the adjacent sibling; nothing wraps around; Tab is right,
+  Shift+Tab left. Orders: the card window brings each card to the top as it is
+  created from slot 7 down to 0 (BringWindowToTop seg3:0A26), so the lowest
+  occupied slot is topmost; SELPLAYER creates slot 0 first (seg2:53EB), PLAYER the
+  star, the stop and per slot 7…0 the SBINPUT name field and the driver
+  (seg1:05C9, 0687, 071E, 0830), OPTION the star and the switches 7…0 (seg1:AECC,
+  B090). **Assumption (Windows, not in rally.exe):** CreateWindow places a new
+  child below its siblings, so creation order is z-order from the top (the dialog
+  manager's tab order); the rows in SELPLAYER and the card window then walk in
+  screen direction. The id range test is not modelled (all rebuilt entries are SB
+  controls with ids in range). OPTION loads `pl_menu\stop.bmp` (seg1:AEF2) but
+  creates no stop window; the rebuild shows one (not changed in R8).
 - **SBBUTTON users** (round 62): CreateWindow with class SBBUTTON occurs at
   seg1:057C, 063A, 07E3 (player setup PLAYER: drivers, star, stop), seg1:AE7F,
   B043 (OPTION: star / stop and the op_menu switches), seg2:549E (SELPLAYER, ids
@@ -2203,9 +2239,14 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   and the car has arrived. The window is centred on the canvas (seg6:0000, round
   111) with the wooden border of seg6:1A68 (round 112). **Assumptions:** records draw with their top-left corner at the position.
   **Input** (round 94): the window ZIEL (seg7:50D6) takes Escape, Space, Enter
-  and the left button: seg5:607B(−1) and DS:A29C = 0 end the loop seg7:3536..3677
-  (set to 1 on its first pass, seg7:35F0); the window is destroyed with the clean-up
-  at seg7:3680. The loop also ends when record 8 has left (x < −0xA0, seg7:3546).
+  and the left button: seg5:607B(−1) (only the PLINFO repaint) and DS:A29C = 0 end
+  the loop seg7:3536..3677 (set to 1 on its first pass, seg7:35F0); the window is
+  destroyed with the clean-up at seg7:3680..3715. The loop also ends when record 8
+  has left (x < −0xA0, seg7:3546 → DestroyWindow 3555). *Round R4:* the voice
+  `snd\z.wav` (30.3 s, longer than the scene) stops in both cases through ZIEL's
+  WM_DESTROY (seg7:4DF1): seg1:3C3B (seg7:4E28) calls waveOutReset when a wave device
+  and [Setup] Voice are on (seg1:3C4F..3C71). Rebuilt: `sound_.stop(0)` on the key
+  and when `FinishView::update` ends the scene.
 
 ### Destination announcement (round 49)
 
@@ -2237,15 +2278,29 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   mode-3 order (Master1, search, Master2), the show master's frames between the
   states, at most 20 s per voice.
 - **Input** (round 91): ZIEL (seg7:50D6) handles WM_KEYDOWN with Escape, Space or
-  Enter and WM_LBUTTONDOWN only: seg5:607B(−1) stops the voices and DS:A29C = 0
-  ends the current loop. Modes 1 / 2 run the loop seg7:3BB5..46E8 with the
-  sub-state [bp−0x34] (1 Part01, 2 lever, 3 Part02, 4 Part03, 5 town, 6 Part04):
-  seg7:44B1 restarts the final part (state 4, seg7:46A7) when the key comes before
-  it or while Part03 plays, otherwise the loop and the announcement end (jump to
-  seg7:4C28). Mode 3 runs seg7:4730..4B85: during Master1 (state 0) seg7:4B38 sets
-  the flag again, so only the voice stops; later the loop ends and 60 passes
-  follow (seg7:4B89). Rebuilt in `StageView::skip`. The loop seg7:3536..3677 that
-  also tests DS:A29C belongs to the code before seg7:372F, not to the announcement.
+  Enter and WM_LBUTTONDOWN only: seg5:607B(−1) (the PLINFO repaint, no voice
+  effect) and DS:A29C = 0 end the current loop. Modes 1 / 2 run the loop
+  seg7:3BB5..46E8 with the sub-state [bp−0x34] (1 Part01, 2 lever, 3 Part02, 4
+  Part03, 5 town, 6 Part04): in the states below 4 and in state 4 — the test at
+  seg7:44CA (`mov ax, seg seg1 / or ax, 0x3E64 / je`) checks the far address of
+  seg1:3E64, never 0, not whether Part03 plays — seg7:44D4..46BC puts the light on
+  the destination (DS:A10D = [bp−0x38], seg7:45E7), sets state 4 (46A7) and stops
+  the voice with seg1:38B7, which sets DS:3E44 = 1; it starts no voice. In the next
+  pass state 4 (seg7:4045) finds seg1:3E64 = 0 (DS:3E44 set, seg1:3E78) and goes to
+  state 5 with the town's name (seg7:4078..4176), then Part04: *correction (round
+  R4):* a key before or during Part03 skips Part03. In states 5 / 6 the loop and the
+  announcement end (jump to seg7:4C28). Mode 3 runs seg7:4730..4B85: during Master1 (state 0) seg7:4B38 sets
+  the flag again, so only the voice stops; later the loop ends. *Correction (round
+  R4):* seg7:4B89..4C22 is no wait of 60 passes but a search over the 60 slots of
+  the destination list DS:1A for the field whose town name equals `BRÜSSEL` /
+  `brüssel` (DS:4E4B / 4E53, lstrcmpi), which becomes DS:A10D — the last stage
+  always leads to Brussels (not rebuilt in `src/game.cpp`; see the R4 notes); then
+  the clean-up follows at once. **Voice stop (round R4):** where a loop goes on,
+  seg1:38B7 (waveOutReset, DS:3E48 = −1) stops the voice at seg7:46BC / 4B59; where
+  it ends, the clean-up destroys ZIEL (seg7:4CC2) and its WM_DESTROY calls seg1:3C3B
+  (seg7:4E28, waveOutReset). Either way the voice stops at once. Rebuilt in
+  `StageView::skip`. The loop seg7:3536..3677 that also tests DS:A29C is the finish
+  (seg7:2628), not the announcement.
 
 ### Year balance (round 44)
 
@@ -3107,7 +3162,7 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg1:02A9 with the time) and hands it over into the running Game object
   through the save codec. The names are drawn as SBINPUT does (below; since
   round 109). **Assumptions:** a bar as caret; a disabled star is drawn
-  unchanged; Escape cancels; non-ASCII characters pass as letters.
+  unchanged; Escape cancels from a button (WM_COMMAND 0xFFFF, seg1:0F77) but does nothing in a name field (round R8); non-ASCII characters pass as letters.
 - **[Player] P0–P7** (round 142): seg1:02CE ff. reads the slots with
   GetPrivateProfileInt (seg5:22C0) from `rally.ini`, defaults P0 = 1, P1 = 2, others
   0, into the player records +0x00 before PLAYER opens. The window cycles a record's
@@ -3122,10 +3177,14 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   −15 by seg6:12FA, weight 600, *italic*, family 0x20 (seg1:1D04); length limit
   0x13 (window word +0xC). WM_PAINT: TextOut at (0, 0), transparent, no text
   colour (black), caret after the text. WM_CHAR accepts IsCharAlphaNumeric or a
-  space while below the limit (seg1:1F31). WM_KEYDOWN: Backspace deletes, Tab and
-  Enter move the focus to the next / previous SB control (ids 0x1388–0x1770,
-  sound 8), Left / Right / Up / Down move the caret, and only Enter is posted on
-  to the parent (seg1:2190); other keys do nothing.
+  space while below the limit (seg1:1F31). WM_KEYDOWN (dispatch seg1:21E5):
+  Backspace deletes; Tab goes to the adjacent sibling, with Shift GW_HWNDNEXT, else
+  GW_HWNDPREV (seg1:209E), Enter to GW_HWNDPREV (seg1:2144), each only to an id in
+  0x1388–0x1770 with sound 8; *correction (round R8):* Left / Right / Up / Down call
+  the SBBUTTON walks seg1:250A / 2474 / 267F / 25A0 (seg1:21AA..21D4), they do not
+  move a caret; only Enter is posted on to the parent (seg1:2190); other keys,
+  Escape too, do nothing. Rebuilt in `src/setup_view.cpp` with the fields as
+  `SbButtonGroup` entries.
 
 ### Stage count window (round 108)
 

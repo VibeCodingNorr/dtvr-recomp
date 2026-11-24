@@ -57,11 +57,12 @@ private:
     std::array<uint8_t, kPlayerSlots> status_{};
     std::array<std::string, kPlayerSlots> names_{};
     int editing_ = -1; // name field with the keyboard focus
-    SbButtonGroup buttons_; // ids: slot, kStar, kStop
+    SbButtonGroup buttons_; // ids: slot, kStar, kStop, kName + slot (fields)
     int sound_ = -1;
     bool extraCards_ = false;
     SDL_Rect extraRect() const;
     void stopEditing();
+    void followFocus();
 };
 
 } // namespace dtvr

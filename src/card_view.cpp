@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "card_view.hpp"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace fs = std::filesystem;
@@ -27,6 +28,9 @@ bool CardView::open(const Game& game, int mask) {
         buttons.push_back({b.slot, SDL_Rect{b.rect.x, b.rect.y, b.rect.w, b.rect.h}, mask < 0 || (category & mask) == category});
         types_[b.slot] = type;
     }
+    // seg3:0A26: BringWindowToTop after each card (created slot 7 down to 0), so the
+    // siblings' z-order runs from the lowest occupied slot at the top (sb_button walk).
+    std::reverse(buttons.begin(), buttons.end());
     // seg3:0A77: SetFocus on every occupied slot 0..7 in turn, the last one keeps it.
     int focus = -1;
     for (int s = 0; s < 8; ++s)
