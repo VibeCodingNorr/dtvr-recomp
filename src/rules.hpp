@@ -201,9 +201,15 @@ int resolveTarget(const std::vector<PlayerSlot>& players, int current, int reque
 int resolveAnyTarget(const std::vector<PlayerSlot>& players, int requested);
 
 // seg2:47D2: random(fields - 1) until the field is not masked (DS:A10F) and its
-// cell, inflated by 3 (seg2:46C8), does not intersect the visible map area.
+// cell, inflated by 3 (seg2:46C8), does not touch the visible map area (seg2:42A4
+// compares inclusively).
 struct CellRect { int left = 0, top = 0, right = 0, bottom = 0; };
 int pickHiddenField(const Board& board, uint16_t routeMask, const CellRect& view, MsRandom& rng);
+// The visible map area in cells while seg3:28ED carries a player away (Tschüss,
+// Flugzeug): zoom 1 (seg6:2E54(2) halves the viewport DS:94DE / 94E0 of the original
+// canvas, 640 / 800 / 1024 wide), centred on the player's cell (seg2:3216 ->
+// seg6:3064, clamped by seg6:2B19); seg2:46C8 takes origin .. origin + size >> 4.
+CellRect carryView(const Field& at, int canvasWidth);
 constexpr uint16_t kFlagCardsBlocked = 0x08; // checked at seg2:0B29, texts 1020-1022
 constexpr uint16_t kFlagSteerless = 0x20;    // card Steuerlos (seg3:1994), used at seg2:0A6F
 

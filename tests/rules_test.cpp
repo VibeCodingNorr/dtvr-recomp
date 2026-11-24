@@ -196,20 +196,36 @@ int main() {
         ps[3].status = 0;
         CHECK(resolveAnyTarget(ps, -1) == 0);
     }
-    // seg2:47D2: only fields whose cell +-3 lies outside the view and that are not masked.
+    // seg2:47D2: only fields whose cell +-3 lies outside the view and that are not masked;
+    // seg2:42A4 compares inclusively, so a shared edge counts as visible.
     {
         Board hb;
         hb.fields.resize(4);
-        hb.fields[0].x = 10; hb.fields[1].x = 14; hb.fields[2].x = 15; hb.fields[3].x = 40;
+        hb.fields[0].x = 10; hb.fields[1].x = 15; hb.fields[2].x = 16; hb.fields[3].x = 40;
         hb.fields[3].flags = 0x4000;
         const CellRect view{0, 0, 12, 12};
         MsRandom hr(5);
         for (int i = 0; i < 50; ++i) {
             const int f = pickHiddenField(hb, 0x4000, view, hr);
-            CHECK(f == 2);                    // 14 - 3 = 11 still intersects, 40 is masked
+            CHECK(f == 2);                    // 15 - 3 = 12 touches the edge, 40 is masked
         }
-        hb.fields[2].x = 11;
+        hb.fields[2].x = 15;
         CHECK(pickHiddenField(hb, 0x4000, view, hr) == -1);
+    }
+    // seg3:28ED view: zoom 1 (half of the map window - 16), centred on the cell (seg6:3064)
+    // and clamped (seg6:2B19); width in cells = (half size) >> 4.
+    {
+        Field mid; mid.x = 100; mid.y = 100;
+        const CellRect v640 = carryView(mid, 640), v800 = carryView(mid, 800), v1024 = carryView(mid, 1024);
+        CHECK(v640.left == 94 && v640.top == 94 && v640.right == 107 && v640.bottom == 107);    // 216 px: 13 cells
+        CHECK(v800.left == 92 && v800.top == 92 && v800.right == 109 && v800.bottom == 109);    // 272 px: 17
+        CHECK(v1024.left == 90 && v1024.top == 90 && v1024.right == 111 && v1024.bottom == 111); // 344 px: 21
+        Field corner;                                         // (0, 0): origin clamped to 0
+        const CellRect c = carryView(corner, 640);
+        CHECK(c.left == 0 && c.top == 0 && c.right == 13 && c.bottom == 13);
+        Field far; far.x = 250; far.y = 250;                   // x <= 0xFF - 14, y <= 0x100 - 14
+        const CellRect e = carryView(far, 640);
+        CHECK(e.left == 241 && e.top == 242 && e.right == 254 && e.bottom == 255);
     }
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

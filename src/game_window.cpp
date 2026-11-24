@@ -67,6 +67,9 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     // The Flugzeug rows 5602 + i as towns (seg3:32CE: _fstricmp on the names), for the
     // extension's computers; the same mapping as the booking below.
     play.game().setAirports(flightAirports(screen.texts(), towns));
+    // Tschüss / Flugzeug avoid the map view of the original canvas (seg2:46C8), not
+    // the widescreen extension's wider map.
+    play.game().setMapCanvas(baseLayout.baseWidth);
     // The command-line game (not a loaded one) takes the extension from the settings.
     if (options.loadSlot < 0)
         play.game().setComputerExtraCards(screen.settings().computerExtraCards || options.computerExtraCards);
