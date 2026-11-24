@@ -49,6 +49,8 @@ public:
         virtual void playVoice(const std::string& name) = 0; // seg1:3579 / 37EA, butt/<c>/voice/bilanz
         virtual void playHebel() = 0;     // seg1:3579 with %s\FX\HEBEL01.wav (DS:7D37)
         virtual int announce(size_t index) = 0; // seg8:8E38 rand() % 4: the Next_ variant
+        // seg8:95E5..9613 (closing part): the closing letter, 4 / 5 or rand() % 2 + 4.
+        virtual int close() { return -1; }
     };
 
     // seg8:8982 / 8C9C / 8CA1: state 0, pass counter 0, the first player; record 0 is
