@@ -80,6 +80,34 @@ Host migration, matchmaking, accounts and a public server browser are deferred.
 Host disconnection initially ends the connection; a persisted session enables
 manual recovery, not automatic host migration.
 
+### Presentation draft (2026-11-24, not implemented)
+
+A design draft discussed with the user; it is not a commitment and nothing of it
+exists yet. It keeps the original windows unchanged and adds network play as a
+recomp feature.
+
+- **Entry:** through the recomp menu (Escape / F8), "Host game" / "Join game".
+  The original menus come from the language file and stay unchanged.
+- **Lobby:** a window in the original style (wooden border, SBBUTTON buttons,
+  game font), modelled on the player setup's eight slots. Each slot is local
+  human, remote human, computer or open; the host assigns slots and starts the
+  game. Joining shows whether protocol version, `kRulesRevision` and the
+  gameplay data manifest match.
+- **During play:** everyone sees the active player's turn live (slot machine,
+  driving, horn, events, announcements, year balance). Only the owner of the
+  active slot can act; others see whose turn it is. Each client receives only
+  its own hand cards. A player affected by another's action (target choice,
+  Punch, Fiskus, Risiko, investment offers) gets the original message or window
+  on his own screen; the game waits for him where rally.exe waits for a human.
+- **Disconnects:** pause with a waiting notice; rejoin with the session identity
+  and an authoritative snapshot; the host may hand the slot to a computer player
+  only by explicit choice.
+
+Open decisions for the user before implementation: chat (none, text, or the
+show master's phrases as emotes), spectators without a slot, a per-turn time
+limit (none, the original `[Setup] TimeOut`, or configurable), and whether
+Internet play gets a relay service or stays with direct connections.
+
 ## Save files and event history
 
 Use a versioned native save format, independent of whether original saves are
