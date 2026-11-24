@@ -341,6 +341,7 @@ struct GameWindowOptions {
     bool title = false;           // start with the title menu MAIN (seg8:0DB0)
     bool intro = false;           // play the intro before the title even with ShowIntro=0
     bool noIntro = false;         // skip the intro (seg7:0000) before the title
+    bool logo = false;            // tests: keep the loading logo BB.bmp until a key or left click
     bool computerExtraCards = false; // --computer-cards: the recomp extension for this game
     int loadSlot = -1;            // load this save slot first (until the title menu exists)        // tests: open the save dialog at the start
     int openEstates = -1;         // tests: show the town dialog of this town (no stop needed)

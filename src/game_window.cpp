@@ -45,6 +45,10 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     if (SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height) != 0
         || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale && layout.extra() == 0 ? SDL_TRUE : SDL_FALSE) != 0)
         throw std::runtime_error(SDL_GetError());
+    // seg5:0151 -> seg6:0A4D("BB.bmp", 0): the Blue Byte logo over the canvas while the
+    // rest loads (language file, art, sounds, the intro's files).
+    LogoView logo(renderer.get(), root, layout);
+    if (logo.show()) logo.present();
     ControllerInput controller; // joystick 1 of the original (seg2:8A30), any SDL game controller
     std::map<int, std::string> texts; // language file (texts in UTF-8)
     std::vector<uint8_t> language;    // also holds the menu resources
@@ -81,7 +85,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     sound.setMusic(&music.stream());
     screen.setSound(&sound);
     GameWindow flow({play, towns, options, window.get(), renderer.get(), layout, baseLayout, wideLayout, language, screen,
-                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu});
+                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu, logo});
     return flow.run();
 }
 
@@ -89,7 +93,7 @@ GameWindow::GameWindow(const GameWindowResources& r)
     : play_(r.play), towns_(r.towns), options_(r.options), window_(r.window), renderer_(r.renderer), layout_(r.layout),
       baseLayout_(r.baseLayout), wideLayout_(r.wideLayout), language_(r.language), screen_(r.screen), music_(r.music),
       musicIssues_(r.musicIssues), musicConfig_(r.musicConfig), sound_(r.sound), controller_(r.controller),
-      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), menu_(r.screen.menu()),
+      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), logo_(r.logo), menu_(r.screen.menu()),
       cards_(r.screen.cards()), musicEnabled_(r.screen.settings().value[Settings::Midi]),
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
       announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()),
@@ -104,6 +108,9 @@ GameWindow::GameWindow(const GameWindowResources& r)
 void GameWindow::start() {
     introShown_ = options_.title && (options_.intro || (!options_.noIntro && screen_.settings().showIntro != 0))
                       && screen_.startIntro(play_.game().sessionRandom(), SDL_GetTicks());
+    // The intro removes the logo once its files are loaded (seg7:044D), the set-up
+    // before the title (seg5:020C); both -> seg6:0B37.
+    logo_.hide();
     if (options_.title && !introShown_) openTitle();
     if (options_.openSetup) { screen_.setTitle(true); menu_.close(); command(1020); }
     if (options_.openStages) { screen_.setTitle(true); menu_.close(); screen_.stages().open(screen_.settings().rounds); }
@@ -149,13 +156,74 @@ void GameWindow::start() {
     heldArrow_ = options_.holdRight ? SDLK_RIGHT : SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
 }
 
+bool GameWindow::swallowLogoSkip(const SDL_Event& event) {
+    if (logoSkipKey_ != SDLK_UNKNOWN && (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+        && event.key.keysym.sym == logoSkipKey_) {
+        if (event.type == SDL_KEYUP) logoSkipKey_ = SDLK_UNKNOWN;
+        return true;
+    }
+    if (logoSkipButton_ && event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+        logoSkipButton_ = false;
+        return true;
+    }
+    return false;
+}
+
+bool GameWindow::waitLogo(bool hold) {
+    if (!logo_.shown()) return true;
+    if (options_.smokeTest && !hold) return true; // smoke runs keep their frame counts
+    for (int frame = 1;; ++frame) {
+        const Uint32 now = SDL_GetTicks();
+        // Recomp addition: rally.exe has no timer, the logo stays for its loading time.
+        if (!hold && now - logo_.shownAt() >= kLogoMinimumMs) return true;
+        if (!options_.smokeTest) controller_.update(now, screen_.settings().value[Settings::Joystick] != 0);
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) { running_ = false; return false; }
+            controller_.handleEvent(event);
+            if (swallowLogoSkip(event)) continue;
+            if (event.type == SDL_WINDOWEVENT) { // WM_ACTIVATEAPP as in handleEvent
+                if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) { music_.setFocused(false); sound_.setFocused(false); }
+                if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) { music_.setFocused(true); sound_.setFocused(true); }
+            }
+            Settings s = screen_.settings(); // F11 / Alt+Enter, F12 (recomp, [Display])
+            bool changed = false;
+            if (displayControl_.handle(event, s, changed)) {
+                if (changed) applySettings(s);
+                continue;
+            }
+            // PICT seg6:0B66: WM_KEYDOWN and WM_LBUTTONDOWN destroy the window (controller
+            // buttons arrive as Return / Escape). The rest of that input is dropped.
+            // Shift / Ctrl / Alt / GUI alone do not (Alt+Enter is the fullscreen key; Alt is
+            // WM_SYSKEYDOWN in rally.exe, which PICT does not handle).
+            if (event.type == SDL_KEYDOWN && !isModifierKey(event.key.keysym.sym)) {
+                logoSkipKey_ = event.key.keysym.sym;
+                return true;
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                logoSkipButton_ = true;
+                return true;
+            }
+        }
+        displayControl_.beginFrame();
+        logo_.draw();
+        displayControl_.endFrame();
+        const bool last = options_.smokeTest && frame >= options_.frames;
+        if (!options_.screenshot.empty() && last) displayControl_.screenshot(options_.screenshot);
+        SDL_RenderPresent(renderer_);
+        if (last) { running_ = false; return false; }
+        SDL_Delay(16);
+    }
+}
+
 int GameWindow::run() {
+    if (!waitLogo(options_.logo)) return 0;
     start();
     for (int frame = 1; running_; ++frame) {
         updateFrame(frame);
         SDL_Event event;
         while (SDL_PollEvent(&event))
-            if (!handleStatementEvent(event)) handleEvent(event); // STAT first: it is modal
+            if (!swallowLogoSkip(event) && !handleStatementEvent(event)) handleEvent(event); // STAT first: it is modal
         displayControl_.beginFrame();
         screen_.draw();
         if (recompMenu_.isOpen()) recompMenu_.menu().setMusic(musicMenuState(music_, musicIssues_));

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "game_screen.hpp"
 
+#include "logo_view.hpp"
+
 #include "scene.hpp"
 
 #include "panel.hpp"
@@ -818,9 +820,10 @@ void GameScreen::draw() {
         sound_->setMasterVolume(settings_.masterVolume);
         sound_->setVoiceEnabled(settings_.value[Settings::Voice] != 0); // DS:B5D4
     }
-    if (intro_.active()) { // INTRO over the empty canvas (seg7:0000 runs before the title)
-        SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
-        SDL_RenderClear(renderer_);
+    if (intro_.active()) { // INTRO (seg7:0000, before the title) as a child of the canvas, which
+        // already paints bk.bmp (created and shown at seg5:1C59 / 1C81, WM_PAINT seg8:01B7)
+        if (SDL_Texture* background = art(fs::path("butt") / std::to_string(layout_.artDir) / "bk.bmp"))
+            drawBackground(background);
         intro_.draw();
         subtitles_.draw();
         return;
@@ -929,18 +932,7 @@ void GameScreen::draw() {
 }
 
 void GameScreen::drawBackground(SDL_Texture* background) {
-    if (layout_.extra() == 0) { SDL_RenderCopy(renderer_, background, nullptr, nullptr); return; }
-    // Widescreen extension: the bevelled edges keep their size, the wood between them
-    // (horizontal grain) is stretched to the wide canvas.
-    int w = 0, h = 0;
-    SDL_QueryTexture(background, nullptr, nullptr, &w, &h);
-    constexpr int kEdge = 16;
-    const SDL_Rect leftSrc{0, 0, kEdge, h}, midSrc{kEdge, 0, w - 2 * kEdge, h}, rightSrc{w - kEdge, 0, kEdge, h};
-    const SDL_Rect leftDst{0, 0, kEdge, layout_.height}, midDst{kEdge, 0, layout_.width - 2 * kEdge, layout_.height},
-        rightDst{layout_.width - kEdge, 0, kEdge, layout_.height};
-    SDL_RenderCopy(renderer_, background, &leftSrc, &leftDst);
-    SDL_RenderCopy(renderer_, background, &midSrc, &midDst);
-    SDL_RenderCopy(renderer_, background, &rightSrc, &rightDst);
+    drawCanvasBackground(renderer_, background, layout_); // shared with the loading logo
 }
 
 std::vector<EstateRow> GameScreen::estateRows() const {
