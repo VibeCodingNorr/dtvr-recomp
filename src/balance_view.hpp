@@ -10,6 +10,7 @@
 #include "window_border.hpp"
 
 #include "balance_board.hpp"
+#include "balance_closing.hpp"
 #include "balance_players.hpp"
 #include "game.hpp"
 #include "sdl_assets.hpp"
@@ -59,24 +60,24 @@ public:
     // voice it stops (seg8:8D17), later the show master goes on, in the closing
     // part the show ends (seg8:986C).
     void click();
-    // Escape or a right click clear DS:A6F2: the players' part jumps to the closing
-    // part (seg8:9253), the closing part ends (seg8:984E). On that jump DS:8D5C is not
-    // cleared (only seg8:8E1A does), so a pending click ends the closing part after its
-    // first pass (seg8:986C).
+    // Escape or a right click clear DS:A6F2 (seg8:99B4 / 99DC): the players' part jumps to
+    // the closing part at its end test (seg8:9253), the closing part ends (seg8:984E). On
+    // that jump DS:8D5C is not cleared (only seg8:8E1A does), so a pending click ends the
+    // closing part after its first pass (seg8:986C).
     void escape(Uint32 now);
     void update(Uint32 now);
     void draw(Uint32 now);
 
 private:
     SpriteLookup borderSprites_;
-    enum class Stage { Players, Closing, ClosingPull, ClosingResult, ClosingWait };
+    enum class Stage { Players, Closing };
     class PlayersIo; // BalancePlayers::Io on this window's sound and sync.dat
-    bool closingPart() const { return stage_ >= Stage::Closing; }
-    void enter(Stage stage, Uint32 now);
+    bool closingPart() const { return stage_ == Stage::Closing; }
+    void enterClosing(); // seg8:925C
+    void finish();       // seg8:9875 ff.: seg1:3C3B resets the wave output, the window goes
     void voice(const std::string& name);
-    bool voiceDone(Uint32 now, Uint32 minimum) const;
-    // Players' part: one pass at least every kSceneStepMs (seg6:0CDF(20), seg8:91F0).
-    void runPlayers(Uint32 now);
+    // One pass at least every kSceneStepMs (seg6:0CDF(20) at seg8:91F0 / 97EB).
+    void runPasses(Uint32 now);
     // WM_PAINT's board (seg8:9B93 ff.) at the bitmap origin (ox, oy).
     void drawBoard(int ox, int oy);
     void drawSheet(const BalanceSheet& sheet, int ox, int oy);
@@ -103,22 +104,17 @@ private:
     SubtitleView* subtitles_ = nullptr;
     int intro_ = 0, closing_ = 4;
     bool humans_ = true, active_ = false;
+    bool endAfterPass_ = false; // DS:8D5C still set when Escape jumped to the closing part
     BalancePlayers players_;
+    BalanceClosing closingPart_;
     // The voice that seg1:3E64 / 4071 look at in the players' part: its sync.dat
     // record (nullptr when none or stopped) and the pass in which it started.
     const VoiceSyncRecord* voiceSync_ = nullptr;
     int pass_ = 0, voicePass_ = 0;
     Uint32 nextPass_ = 0;
-    bool hebelPlayed_ = false; // closing part: Hebel01 started at pass 35 (seg8:94E7)
-    // Closing part before the lever: record 0 = DS:4938 (seg8:92A7), held on frame 0 with
-    // countdown 2 in every pass in which Next_a_a talks (seg1:4071) or has ended
-    // (seg8:9408-9436). The last such pass (-1: none yet) and the passes processed.
-    std::vector<VoiceSyncRecord> sync_;
-    const VoiceSyncRecord* nextSync_ = nullptr;
-    int holdPass_ = -1, passesSeen_ = 0;
-    const char* closingHoldFrame(int pass) const;
+    std::vector<VoiceSyncRecord> sync_; // dat/<c>/sync.dat
     Stage stage_ = Stage::Players;
-    Uint32 started_ = 0, stageStart_ = 0;
+    Uint32 started_ = 0;
 };
 
 } // namespace dtvr

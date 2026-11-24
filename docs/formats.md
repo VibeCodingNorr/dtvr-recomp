@@ -2206,6 +2206,43 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   with the talk intervals of `dat/<c>/sync.dat`. Rebuilt in `BalanceView`: the closing
   lever's pass timing, Hebel01 on the voice path, the pending click on Escape and the
   500 passes counted from the `pos_` voice.
+  *Round 150, the closing part pass by pass* (`src/balance_closing.cpp`, tested in
+  `tests/balance_closing_test.cpp`; replaces the time-based stages of rounds 141 / 146).
+  Setup seg8:925C..93CA: seg1:38B7 stops the voice, `Next_a_a` (DS:7D85) starts, state
+  [bp−0x6E] = 0, counter [bp−0x6C] = 0, DS:A6F2 = 1; record 0 = DS:4938 at (0x50, 0x9F),
+  follow-up 0, repetitions 999, frame 0, countdown 0 (seg8:92A7..9323); record 2 = the
+  lever DS:4AE8 at (0x96, 0xB8), repetitions 999, countdown 0x190 (seg8:932B..93B2).
+  One pass of seg8:93CF..9871:
+  1. seg8:93CF: record 2 countdown = 0x190 (its single frame stays); counter + 1 up to
+     0x7530; the subtitles.
+  2. seg8:9408: (seg1:4071 talking, or seg1:3E64 = 0) and state 0 → record 0 countdown
+     2, frame 0.
+  3. seg8:943B: state 0 and the voice ended → state 1, counter 0; record 0 = DS:4A30,
+     follow-up DS:4968, repetitions 0, frame 0, countdown 0; record 2 cleared (seg8:94D7).
+  4. seg8:94E7: state 1, DS:4A30 on frame 9 with countdown 1 → Hebel01 (DS:7DA5) through
+     the voice path; DS:8D5E = 0xA and a repaint (the graph).
+  5. seg8:956A: state 1, the voice ended and (DS:4A30 with frame > 13 or DS:4968) →
+     record 0 = DS:4938, countdown 0, frame 0, repetitions 999 (seg8:95BF..95DF); the
+     letter (4 → 5, 5 → 4, else rand() % 2 + 4, seg8:95E5..9613) and `pos_<a + letter>`
+     (DS:7DB7); state 2, counter 0. No hold in state 2: DS:4938 runs while `pos_` plays.
+  6. seg8:965B: state 2 and the voice ended → in every such pass record 0 = DS:4968
+     (HEBEL03, follow-up 0, repetitions 999, frame 0, countdown 0, at (0x50, 0x9F)) and
+     record 2 = the lever again (seg8:96F3..977A); the state stays 2.
+  7. seg2:74E4, 6DCB, 6F69, seg6:0CDF(20), the blit, the pump seg6:03F7 (input), then the
+     end tests: DS:A6F2 = 0 (Escape / right click, seg8:984E), or counter ≥ 500 and
+     seg2:5C5A (seg8:9857), or DS:8D5C (Enter / Space / left click, seg8:986C) end the
+     loop; seg6:6554 closes the subtitles and seg1:3C3B (seg8:98B3) resets the wave output
+     (waveOutReset), so a voice still playing stops; the rebuild stops its voice channel.
+  The voices end when seg1:3E64 reports it: with a wave device and [Setup] Voice the
+  device's position (seg1:3F1F), otherwise TimerCount against the sync.dat record's
+  length (seg1:3EB1..3F19); `SoundPlayer::busy` uses the device, or without one the
+  WAV's own length (round 102). The former minimum of 1.5 s per
+  voice is gone. Not in rally.exe: a voice counts as ended after 60 s (3000 passes, the
+  longest show voice lasts 19.6 s) so a stalled audio device cannot hold a show without
+  humans. Input (seg8:99AC..99DC) reaches the loop only through the pump right before the
+  end tests, so the rebuild applies Escape and clicks between passes: the closing part
+  ends at once; Escape in the players' part starts the closing part (its end test,
+  seg8:9253), and a click still pending then ends it after the closing part's first pass.
   *Round 148, the players' part pass by pass* (`src/balance_players.cpp`, tested in
   `tests/balance_players_test.cpp`). Before the loop seg8:8A48 sets record 0 (DS:30)
   to DS:4800 at (0x4F, 0x9B), repetitions 999, frame 0, countdown 0, and record 2 to the
@@ -2331,11 +2368,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Subtitles (seg6:6596, window SUBTITLE) only with `[Setup] Subtitle`.
 - **Rebuilt (round 47):** the per-player draws (rules revision 29) and the show
   (`src/balance_view.cpp`, data `Game::balanceEntries`). *Superseded:* the draw of
-  seg8:9605 (round 141/144), the subtitles and the players' part's records (round 148)
-  are rebuilt since. **Still simplified:** the closing part's `pos_` voice shows the
-  speaking record DS:4800 and its wait DS:4938, while seg8:95BF sets DS:4938 for the
-  voice and seg8:9673 DS:4968 with the lever record restored (seg8:96F3) once it ended
-  (not yet traced in full); the closing stages still wait at least 1.5 s per voice.
+  seg8:9605 (round 141/144), the subtitles, the players' part (round 148) and the
+  closing part (round 150) are rebuilt pass by pass since; no minimum voice length
+  remains.
 
 ### Victory sequence (round 46)
 
