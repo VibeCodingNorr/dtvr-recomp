@@ -2197,12 +2197,54 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   seg1:3E64 reports it ended, seg8:9428 / 9436 set the record's countdown to 2 and
   its frame to 0 before seg2:6DCB steps; between the intervals it runs on. The
   rebuild showed the speaking record DS:4800 there; `BalanceView` now holds DS:4938
-  with the talk intervals of `dat/<c>/sync.dat`. **Players' part, not rebuilt yet:**
-  Hebel01 there plays through the voice path at lever frame 9 with countdown 1
-  (seg8:8F7F–8FBF, like seg7:3CE4), and `Next_` starts already when the show master
-  goes on (seg8:8E55–8E70); the rebuild plays Hebel01 as an effect at the lever's
-  start and `Next_` after the lever. Rebuilt in `BalanceView`: the closing lever's pass timing, Hebel01 on the voice path, the
-  pending click on Escape and the 500 passes counted from the `pos_` voice.
+  with the talk intervals of `dat/<c>/sync.dat`. Rebuilt in `BalanceView`: the closing
+  lever's pass timing, Hebel01 on the voice path, the pending click on Escape and the
+  500 passes counted from the `pos_` voice.
+  *Round 148, the players' part pass by pass* (`src/balance_players.cpp`, tested in
+  `tests/balance_players_test.cpp`). Before the loop seg8:8A48 sets record 0 (DS:30)
+  to DS:4800 at (0x4F, 0x9B), repetitions 999, frame 0, countdown 0, and record 2 to the
+  lever DS:4AE8 (seg8:8B49); seg8:8C8F starts `Bilanz_`, state [bp−0x6E] = 0,
+  [bp−0x6] = the first slot in play (seg8:8CA1). One pass of seg8:8CC5..9258: the pass
+  counter [bp−0x6C] + 1 (up to 0x7530), the subtitles, then in this order
+  (phase = state % 3, every test reads the state as the earlier steps left it):
+  1. seg8:8D03: state 0, seg1:3E64 playing and DS:8D5C → clear it, seg1:38B7 stops
+     the opening voice.
+  2. seg8:8D2B: seg1:4071 (a sync.dat talk interval) in phase 0 or 1 → record 0
+     countdown 2, frame 0.
+  3. seg8:8D65: phase 0 and the voice ended → frame 4 when record 0 is DS:4938, else
+     frame 0; countdown 2 (the show master waits on HEBEL04).
+  4. seg8:8DC8: phase 0, the voice ended, and DS:8D5C, or state 0, or more than 300
+     passes and seg2:5C5A → clear DS:8D5C; slot 8 → the closing part (seg8:8E28; also
+     with no player in play); else rand() % 4 (seg8:8E38, `Game::balanceAnnounce`) and
+     at once `Next_<A + r>_<A + state / 3>` (DS:7D15, seg8:8E70); state + 1, counter 0.
+  5. seg8:8E85: phase 1 and `Next_` ended → state + 1, counter 0; record 0 = DS:4A30
+     (23 frames, delay 3, repetitions 0), follow-up DS:4968 (HEBEL03 × 3, delay 9999),
+     frame 0, countdown 0, at (0x50, 0x9F); record 2 is cleared (seg8:8F3D) and stays
+     so for the rest of the players' part (the closing part sets it again, seg8:932B).
+  6. seg8:8F47: phase 2, record 0 = DS:4A30 on frame 9 with countdown 1 (pass 35 of
+     the pull) → `%s\FX\HEBEL01.wav` (DS:7D37) through the voice path seg1:3579 /
+     37EA; DS:8D5E = the slot and InvalidateRect / UpdateWindow (seg8:8FC4).
+  7. seg8:8FE2: phase 2, seg1:3E64 = 0 (Hebel01 ended) and (DS:4A30 with frame > 13,
+     from pull pass 53, or DS:4968) → record 0 = DS:4938, countdown 0, frame 0,
+     repetitions 999 (the follow-up field is left); `pos_` / `neg_` (seg8:9075) with the
+     letter, letter + 1 mod 7 (seg8:913D); state + 1, counter 0; the next slot in play
+     (seg8:9168).
+  Then seg2:74E4, 6DCB (step: `old = countdown--`; at old ≤ 0 countdown = delay,
+  frame + 1; past the last frame frame 0 and a repetition used, without one the
+  follow-up replaces the definition with the countdown kept, seg2:6E2B–6F51) and
+  6F69 (show), seg6:0CDF(20), the blit, the message pump and the end test DS:A6F2.
+  So per player: `Next_` starts when the show master goes on, the lever follows when
+  it has played out, Hebel01 at lever pass 35, `pos_` / `neg_` in the first pass from
+  53 on in which Hebel01 has played out; a click given earlier (during `Next_`, the
+  pull or `pos_`) is kept and lets him go on as soon as `pos_` / `neg_` ends; without
+  humans 301 passes after `pos_` / `neg_` started. The draw order (seg8:88DF, 8C49,
+  8C57, one seg8:8E38 per announced player, seg8:9605) is unchanged; the rebuild only
+  moved `Next_` before the lever. Rules revision and save format are unchanged (the
+  show is presentation; its draws were already commands). *Not rebuilt:* the board
+  text that the repaint with DS:8D5E = slot draws (seg8:9B93 ff.: texts 8001 ff. of the
+  language file, the player's name and money values, colour 0x45 / 0xED by sign;
+  DS:8D5E = 0xA in the closing part, seg8:954C). The players' part runs one pass per
+  20 ms at most and does not catch up after a stall (a pass of rally.exe waits 20 ms).
 - **Input** (round 92, procedure seg8:992E, dispatch seg8:A829): WM_KEYDOWN Escape
   and WM_RBUTTONDOWN clear DS:A6F2; Enter, Space and WM_LBUTTONDOWN set DS:8D5C.
   In the players' part DS:8D5C stops the opening voice (seg8:8D17) or lets the
@@ -2213,20 +2255,22 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   master speaking (DS:4800, intro\redet, 79/155), his foot (DS:4798 red_foot,
   74/276) and the lever (DS:4AE8 HEBEL, 150/184). Opening voice
   `Bilanz_<A + rand() % 4>`; then for every player in play (slot order): the
-  show master waits (DS:4938 / 4968 at 80/159) for a click (DS:8D5C) or, without
-  a human, 300 passes (seg8:8DF4; the first player follows at once), pulls the
-  lever (DS:4A30, HEBEL05–13, and FX HEBEL01) and announces
-  `Next_<A + rand() % 4>_<A + i>` (seg8:8E38: one draw per player, independent
-  of timing) and `pos_` / `neg_<A + letter>`: positive when cash + property value
+  show master waits (DS:4938 at 80/159) for a click (DS:8D5C) or, without
+  a human, 300 passes (seg8:8DF4; the first player follows at once), announces
+  `Next_<A + rand() % 4>_<A + i>` (seg8:8E38: one draw per player), pulls the
+  lever (DS:4A30, HEBEL05–13, and HEBEL01 on the voice path) and says
+  `pos_` / `neg_<A + letter>` (order and timing: round 148 above): positive when cash + property value
   reach the value of the ranking's middle entry (index (count − 1) / 2,
   seg8:9075); the letter starts at the rand() % 7 of seg8:88DF and advances by one
   per player modulo 7 (seg8:913D). The voices are under butt/<lang>/voice/bilanz.
   Subtitles (seg6:6596, window SUBTITLE) only with `[Setup] Subtitle`.
 - **Rebuilt (round 47):** the per-player draws (rules revision 29) and the show
-  (`src/balance_view.cpp`, data `Game::balanceEntries`). **Simplifications:** the
-  timing-dependent draw of seg8:9605 and its pos voice variant, the subtitles and
-  the exact switching of the show master's records are not modelled; voices end
-  a stage when they have played out (at least 1.5 s).
+  (`src/balance_view.cpp`, data `Game::balanceEntries`). *Superseded:* the draw of
+  seg8:9605 (round 141/144), the subtitles and the players' part's records (round 148)
+  are rebuilt since. **Still simplified:** the closing part's `pos_` voice shows the
+  speaking record DS:4800 and its wait DS:4938, while seg8:95BF sets DS:4938 for the
+  voice and seg8:9673 DS:4968 with the lever record restored (seg8:96F3) once it ended
+  (not yet traced in full); the closing stages still wait at least 1.5 s per voice.
 
 ### Victory sequence (round 46)
 

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The year balance BILANZ of rally.exe (seg8:88C6; round 47): butt/bil_leer.bmp with
 // the show master (intro\redet.sbs, ziel\hebel.sbs), his foot and the lever; he
-// opens with Bilanz_<A..D>, then per player pulls the lever and announces
-// Next_<variant>_<a..h> and pos_ / neg_<letter> (voices of butt/<lang>/voice/bilanz).
+// opens with Bilanz_<A..D>, then per player announces Next_<variant>_<a..h>, pulls
+// the lever (Hebel01) and says pos_ / neg_<letter> (voices of butt/<lang>/voice/bilanz;
+// the players' part's passes in balance_players.cpp).
 // Evidence and simplifications in docs/formats.md "Year balance".
 #pragma once
 
 #include "window_border.hpp"
 
+#include "balance_players.hpp"
 #include "game.hpp"
 #include "sdl_assets.hpp"
 #include "sound.hpp"
@@ -58,11 +60,14 @@ public:
 
 private:
     SpriteLookup borderSprites_;
-    enum class Stage { Intro, Wait, Pull, Next, Result, Closing, ClosingPull, ClosingResult, ClosingWait };
+    enum class Stage { Players, Closing, ClosingPull, ClosingResult, ClosingWait };
+    class PlayersIo; // BalancePlayers::Io on this window's sound and sync.dat
     bool closingPart() const { return stage_ >= Stage::Closing; }
     void enter(Stage stage, Uint32 now);
     void voice(const std::string& name);
     bool voiceDone(Uint32 now, Uint32 minimum) const;
+    // Players' part: one pass at least every kSceneStepMs (seg6:0CDF(20), seg8:91F0).
+    void runPlayers(Uint32 now);
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;
@@ -71,14 +76,17 @@ private:
     const int& canvasHeight_;
     Texture background_{nullptr, SDL_DestroyTexture};
     std::map<std::string, Texture> frames_;
-    std::vector<Game::BalanceEntry> entries_;
     Commands commands_;
     SoundPlayer* sound_ = nullptr;
     SubtitleView* subtitles_ = nullptr;
     int intro_ = 0, closing_ = 4;
-    bool skipped_ = false; // the opening voice was stopped by a click
-    size_t index_ = 0;
-    bool humans_ = true, clicked_ = false, active_ = false;
+    bool humans_ = true, active_ = false;
+    BalancePlayers players_;
+    // The voice that seg1:3E64 / 4071 look at in the players' part: its sync.dat
+    // record (nullptr when none or stopped) and the pass in which it started.
+    const VoiceSyncRecord* voiceSync_ = nullptr;
+    int pass_ = 0, voicePass_ = 0;
+    Uint32 nextPass_ = 0;
     bool hebelPlayed_ = false; // closing part: Hebel01 started at pass 35 (seg8:94E7)
     // Closing part before the lever: record 0 = DS:4938 (seg8:92A7), held on frame 0 with
     // countdown 2 in every pass in which Next_a_a talks (seg1:4071) or has ended
@@ -87,7 +95,7 @@ private:
     const VoiceSyncRecord* nextSync_ = nullptr;
     int holdPass_ = -1, passesSeen_ = 0;
     const char* closingHoldFrame(int pass) const;
-    Stage stage_ = Stage::Intro;
+    Stage stage_ = Stage::Players;
     Uint32 started_ = 0, stageStart_ = 0;
 };
 

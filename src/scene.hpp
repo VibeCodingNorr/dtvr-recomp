@@ -4,6 +4,7 @@
 // definition of delay and frames, advanced once per 20 ms step.
 #pragma once
 
+#include "scene_record.hpp"
 #include "sdl_assets.hpp"
 
 #include <SDL.h>
@@ -13,11 +14,6 @@
 #include <vector>
 
 namespace dtvr {
-
-struct SceneRecord {
-    int x = 0, y = 0, first = 0, delay = 1;
-    std::vector<const char*> frames;
-};
 
 constexpr Uint32 kSceneStepMs = 20; // seg6:0CDF(20) per pass
 
