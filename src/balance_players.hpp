@@ -66,12 +66,15 @@ public:
     int state() const { return state_; }       // [bp-0x6E]
     int counter() const { return counter_; }   // [bp-0x6C]
     size_t next() const { return next_; }      // the entry of the slot [bp-0x6]
+    // DS:8D5E: the slot whose sheet the board shows, -1 (0xFFFF, seg8:88F8) before the
+    // first Hebel01; set with Hebel01 (seg8:8FC4) and repainted at once.
+    int board() const { return board_; }
 
 private:
     std::vector<Game::BalanceEntry> entries_;
     ShowRecord master_;
     bool lever_ = true, click_ = false;
-    int state_ = 0, counter_ = 0;
+    int state_ = 0, counter_ = 0, board_ = -1;
     size_t next_ = 0;
 };
 

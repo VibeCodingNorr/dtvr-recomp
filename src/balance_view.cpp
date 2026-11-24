@@ -41,6 +41,11 @@ bool BalanceView::start(int intro, const std::vector<Game::BalanceEntry>& entrie
     frames_.clear();
     for (const char* file : {"ziel/hebel.sbs", "intro/red_foot.sbs", "intro/redet.sbs"}) // DS:7C4A ff.
         loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / file), scene->format->palette, frames_, 0xFF);
+    legend_.clear(); // the graph's frames D, F, E, M, U, J, I, V, copied opaque by seg2:913A
+    loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / "bilanz" / "bilanz.sbs"), scene->format->palette,
+                    legend_, -1);
+    palette_.assign(scene->format->palette->colors, scene->format->palette->colors + scene->format->palette->ncolors);
+    board_ = -1; // seg8:88F8
     commands_ = std::move(commands);
     sync_ = loadVoiceSync(root_, language_); // dat/<c>/sync.dat: the talk intervals (seg1:4071)
     nextSync_ = findVoiceSync(sync_, "next_a_a.wav");
@@ -137,6 +142,7 @@ void BalanceView::update(Uint32 now) {
         const int t = int((now - stageStart_) / kSceneStepMs);
         if (!hebelPlayed_ && t >= kClosingHebelPass) {
             hebelPlayed_ = true;
+            board_ = kBoardGraph; // seg8:954C: DS:8D5E = 0xA, InvalidateRect / UpdateWindow
             if (sound_) sound_->playVoice(kVoiceChannel, findCaseInsensitive(root_, fs::path("snd") / "fx" / "hebel01.wav"));
         }
         const bool played = !sound_ || !sound_->busy(kVoiceChannel) || now - stageStart_ > 20000;
@@ -190,6 +196,7 @@ void BalanceView::runPlayers(Uint32 now) {
         nextPass_ += kSceneStepMs;
         const bool closing = players_.pass(io);
         ++pass_;
+        board_ = players_.board(); // DS:8D5E, repainted at once (seg8:8FCA UpdateWindow)
         if (closing) { // seg8:8E28 -> 925C
             enter(Stage::Closing, now);
             return;
@@ -217,6 +224,7 @@ void BalanceView::draw(Uint32 now) {
     const SDL_Rect area{ox, oy, kWidth, kHeight};
     SDL_RenderCopy(renderer_, background_.get(), nullptr, &area);
     SDL_RenderSetClipRect(renderer_, &area);
+    drawBoard(ox, oy); // WM_PAINT draws the board before the records (seg8:9B93, A651)
     const int t = int((now - stageStart_) / kSceneStepMs);
     bool lever = stage_ != Stage::ClosingPull;
     if (stage_ == Stage::Players) { // records 0 and 2 as the last pass left them

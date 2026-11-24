@@ -202,6 +202,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
     for (;;) {
         if (resuming) { // back from the year balance: seg1:8BC6, 8B41 and the month
             resuming = false;
+            call(hooks.clearYearRent);
             call(hooks.clearCredits);
             ++change.yearsEnded;
             ++calendar.month;
@@ -222,7 +223,8 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
                         change.resumePlayer = player;
                         return change;
                     }
-                    call(hooks.clearCredits);
+                    call(hooks.clearYearRent); // seg2:07CA
+                    call(hooks.clearCredits);  // seg2:07CF
                     ++change.yearsEnded;
                 } else {
                     call(hooks.settleMonth);

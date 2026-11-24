@@ -228,16 +228,33 @@ void Economy::updateWholeOwner(int town) {
     if (any) t.wholeOwner = owner;
 }
 
+namespace {
+// seg10:368A (_ftol): truncation through a 64-bit fistp, the low 32 bits are kept.
+int32_t ftol(double v) { return int32_t(uint32_t(uint64_t(int64_t(v)))); }
+} // namespace
+
 void Economy::settleMonth() {
-    for (auto& m : money_) { m.monthlyIncome = 0; m.propertyValue = 0; }
-    // Loop order of seg1:85F9: players outside, towns inside. A rent that expires
-    // hands the entry back immediately, so a landlord with a higher index already
-    // collects it in the same month.
-    for (size_t player = 0; player < money_.size(); ++player) {
+    std::vector<int> all;
+    for (size_t p = 0; p < money_.size(); ++p) all.push_back(int(p));
+    settleMonth(all, -1);
+}
+
+void Economy::settleMonth(const std::vector<int>& activePlayers, int year) {
+    // seg1:85F9: players outside (seg1:862C skips a slot not in play), towns inside. A
+    // player's +0x52 and +0x5A are cleared at the start of his own pass (seg1:8644 /
+    // 865B), so a landlord's property value collected from an earlier tenant's pass is
+    // cleared again, one from a later tenant's pass is kept. A rent that expires hands
+    // the entry back immediately, so a landlord with a higher index already collects it
+    // in the same month.
+    for (int pi : activePlayers) {
+        if (pi < 0 || size_t(pi) >= money_.size()) continue;
+        const size_t player = size_t(pi);
+        money_[player].monthlyIncome = 0;
+        money_[player].propertyValue = 0;
         for (size_t t = 0; t < states_.size(); ++t) {
             TownState& town = states_[t];
             const double factor = town.wholeOwner == player ? kWholeTownFactor : 1.0;
-            for (int e = 0; e < 10; ++e) {
+            for (int e = 0; e < 8; ++e) { // seg1:86B5: entries 0..7
                 PropertyState& p = town.entries[size_t(e)];
                 if (!entryExists(int(t), e) || p.owner != player) continue;
                 const double income = value(int(t), e) * kIncomeRate * incomeFactor(int(t), e) * factor;
@@ -257,7 +274,16 @@ void Economy::settleMonth() {
                 }
             }
         }
+        PlayerMoney& m = money_[player];
+        m.yearRent = int32_t(uint32_t(m.yearRent) + uint32_t(ftol(m.monthlyIncome))); // seg1:8A07
+        // seg1:8A33 adds ftol(+0x4A) to +0x62 (the month's cash flow, not modelled: not shown).
+        if (year >= 0 && year < kWorthYears) // seg1:8A3B: DS:A102 <= 300
+            m.worth[size_t(year)] = ftol(double(ftol(m.propertyValue)) + m.cash); // seg1:8A52..8A97
     }
+}
+
+void Economy::clearYearRent() {
+    for (auto& m : money_) m.yearRent = 0; // seg1:8BC6 (also +0x62, not modelled)
 }
 
 bool Economy::restore(const std::vector<TownState>& towns, const std::vector<PlayerMoney>& money) {

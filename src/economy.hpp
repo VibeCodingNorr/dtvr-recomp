@@ -35,11 +35,20 @@ enum class BuyMode : uint8_t {
     Rent = 6, Take = 7, BuyFromPlayer = 8, Credit = 9,
 };
 
+// seg1:8A3B: the settlement writes worth entries for years 0..300 (+0x6A + 4 * year).
+constexpr int kWorthYears = 301;
+
 struct PlayerMoney {
     double cash = kStartingCash;   // player +0x42 (seg2:59E6 / 5A47 also update +0x4A)
     double creditDebt = 0;         // player +0x51A, card Kredit
     double monthlyIncome = 0;      // player +0x52, recomputed each month
     double propertyValue = 0;      // player +0x5A, recomputed each month
+    // +0x66: the year's rent, seg1:8A07 adds the truncated +0x52 each month, seg1:8BC6
+    // clears it after the year balance ("Mieteinnahmen" of the balance board).
+    int32_t yearRent = 0;
+    // +0x6A: cash + property value per year, seg1:8A93 writes the truncated
+    // ftol(+0x5A) + +0x42 into the entry of the running year (DS:A102) every month.
+    std::array<int32_t, kWorthYears> worth{};
 };
 
 class Economy {
@@ -59,8 +68,13 @@ public:
     // seg1:832A: sell an own, not rented entry; payout = value, x1.5 with the card
     // Verkaufen (DS:869E). The entry becomes free.
     bool sell(int player, int town, int entry, bool withCard);
-    // seg1:85F9: monthly income, burdens, rent expiry and property values.
+    // seg1:85F9: monthly income, burdens, rent expiry and property values of the
+    // players in play (slot order), their year's rent and the worth of `year` (DS:A102;
+    // not written for years above 300 or below 0). Without arguments: every slot, no worth.
+    void settleMonth(const std::vector<int>& activePlayers, int year);
     void settleMonth();
+    // seg1:8BC6 after the year balance: the year's rent (+0x66) is cleared for all slots.
+    void clearYearRent();
     // Year end (seg2:0784): seg1:8AA7 charges every positive credit debt before the
     // settlement; seg1:8B41 clears the debts afterwards.
     void chargeCredits(const std::vector<int>& activePlayers);

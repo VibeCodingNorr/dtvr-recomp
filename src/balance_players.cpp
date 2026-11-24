@@ -40,6 +40,7 @@ void BalancePlayers::start(const std::vector<Game::BalanceEntry>& entries) {
     click_ = false;    // seg8:88F2
     state_ = 0;        // seg8:8C9C
     counter_ = 0;      // seg8:8982
+    board_ = -1;       // seg8:88F8
     next_ = 0;         // seg8:8CA1: the first slot in play (the entries are those slots)
 }
 
@@ -83,8 +84,10 @@ bool BalancePlayers::pass(Io& io) {
         lever_ = false; // seg8:8F3D: record 2 cleared
     }
     // seg8:8F47: lever frame 9 with countdown 1: Hebel01 through the voice path.
-    if (phase() == 2 && master_.def == &kBilanzPull && master_.frame == 9 && master_.countdown == 1)
-        io.playHebel(); // DS:8D5E = slot and a repaint of the board follow (seg8:8FC4, not rebuilt)
+    if (phase() == 2 && master_.def == &kBilanzPull && master_.frame == 9 && master_.countdown == 1) {
+        io.playHebel();
+        board_ = entries_[next_].player; // seg8:8FC4: DS:8D5E = slot, InvalidateRect / UpdateWindow
+    }
     // seg8:8FE2: Hebel01 ended and lever frame > 13 (or its follow-up): pos_ / neg_.
     if (phase() == 2 && !io.voicePlaying() &&
         ((master_.def == &kBilanzPull && master_.frame > 13) || master_.def == &kBilanzPullFollow)) {

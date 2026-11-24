@@ -522,7 +522,8 @@ void Game::advanceTurn() {
 TurnHooks Game::turnHooks() {
     TurnHooks hooks;
     hooks.chargeCredits = [this] { economy_.chargeCredits(activePlayers()); };
-    hooks.settleMonth = [this] { economy_.settleMonth(); };
+    hooks.settleMonth = [this] { economy_.settleMonth(activePlayers(), calendar_.year); }; // DS:A102
+    hooks.clearYearRent = [this] { economy_.clearYearRent(); };
     hooks.clearCredits = [this] { economy_.clearCredits(); };
     // seg8:88C6 draws rand() % 7 at once and rand() % 5, rand() % 4 when its window
     // is up (seg8:8C49 / 8C57), then rand() % 4 for each player's announcement

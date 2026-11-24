@@ -93,6 +93,7 @@ int main() {
         io.talk = 30;
         b.start(entries(2));
         check(b.master().def == &kBilanzSpeaking && b.leverShown(), "starts with DS:4800 and the lever");
+        check(b.board() == -1, "DS:8D5E starts at 0xFFFF (seg8:88F8)");
         int closing = run(b, io, 400);
         check(closing < 0, "waits for a click after the last player");
         // The opening voice ends in pass 100: Next_ starts in that pass (seg8:8E55).
@@ -100,6 +101,7 @@ int main() {
         check(io.announced.size() == 1 && io.announced[0] == 0, "one draw for the first player");
         // Next_ ends in pass 160: the lever is pulled in that pass, record 2 goes.
         check(io.at("hebel") == 160 + 35, "Hebel01 at lever pass 35");
+        check(b.board() == 0, "DS:8D5E = the slot from Hebel01 on (seg8:8FC4)");
         // Hebel01 lasts 78 passes: pos_ in the first pass >= 53 after it ended.
         check(io.at("pos_d") == 195 + 78, "pos_ after Hebel01 and lever frame > 13");
         check(!b.leverShown(), "the lever record stays cleared");

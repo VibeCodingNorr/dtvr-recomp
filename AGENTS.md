@@ -132,7 +132,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
-  `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance with `src/balance_players.{hpp,cpp}` (no SDL) its players' part;
+  `src/victory_view.{hpp,cpp}`: the victory; `src/balance_view.{hpp,cpp}`: the year balance with `src/balance_players.{hpp,cpp}` (no SDL) its players' part and `src/balance_board.{hpp,cpp}` (no SDL) / `src/balance_board_view.cpp` its board;
   `src/stage_view.{hpp,cpp}`: the destination announcement; `src/card_shop_view.{hpp,cpp}`: the card shop;
   `src/select_player_view.{hpp,cpp}`: the target choice; `src/flight_view.{hpp,cpp}`: the Flugzeug booking;
   `src/nails_view.{hpp,cpp}`: the Nägel direction; `src/invest_view.{hpp,cpp}`: the investment offer;

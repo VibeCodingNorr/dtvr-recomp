@@ -53,7 +53,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMP-SAVE 5\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMP-SAVE 6\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -74,22 +74,28 @@ int main() {
     CHECK(SaveCodec::decode(n, moving, error) && n.stepsTaken() == 1 && n.phase() == Game::Phase::Move);
     CHECK(n.step(Direction::Left) && n.stepsTaken() == 0);
 
+    // Formats before 6 have no worth records (round 149).
+    auto stripWorth = [](std::string text) {
+        for (size_t w; (w = text.find("\nworth ")) != std::string::npos;) text.erase(w, text.find('\n', w + 1) - w);
+        return text;
+    };
+    CHECK(saved.find("\nworth 0 ") != std::string::npos);
     // Format 1 (round 18, no Risiko record) still loads.
     {
-        std::string v1 = saved;
+        std::string v1 = stripWorth(saved);
         v1.replace(0, 18, "DTVR-RECOMP-SAVE 1");
         const size_t r = v1.find("\nrisiko ");
         v1.erase(r, v1.find('\n', r + 1) - r);
         const size_t d = v1.find("\ndemo ");
         v1.erase(d, v1.find('\n', d + 1) - d);
         Game c(board, towns, 1, 0, 3, 1);
-        CHECK(SaveCodec::decode(c, v1, error) && SaveCodec::encode(c) == saved);
+        CHECK(SaveCodec::decode(c, v1, error) && stripWorth(SaveCodec::encode(c)) == stripWorth(saved));
     }
 
     // Format 3 (round 26, no stages record): the total is taken from the stages left.
     {
         Game staged(board, towns, 1, 5, 3, 1);
-        std::string v3 = SaveCodec::encode(staged);
+        std::string v3 = stripWorth(SaveCodec::encode(staged));
         CHECK(v3.find("\nstages 5\n") != std::string::npos);
         v3.replace(0, 18, "DTVR-RECOMP-SAVE 3");
         const size_t st = v3.find("\nstages ");
@@ -110,7 +116,7 @@ int main() {
         CHECK(v5.find("\nextensions 1\n") != std::string::npos);
         Game d(board, towns, 1, 0, 6, 1);
         CHECK(SaveCodec::decode(d, v5, error) && d.computerExtraCards());
-        std::string v4 = v5;
+        std::string v4 = stripWorth(v5);
         v4.replace(0, 18, "DTVR-RECOMP-SAVE 4");
         const size_t es = v4.find("\nextensions ");
         v4.erase(es, v4.find('\n', es + 1) - es);
@@ -125,6 +131,10 @@ int main() {
         const size_t ms = missing.find("\nextensions ");
         missing.erase(ms, missing.find('\n', ms + 1) - ms);
         CHECK(!SaveCodec::decode(d, missing, error)); // format 5 needs it
+        CHECK(!SaveCodec::decode(d, stripWorth(v5), error)); // format 6 needs the worth records
+        std::string v5only = stripWorth(v5);
+        v5only.replace(0, 18, "DTVR-RECOMP-SAVE 5");
+        CHECK(SaveCodec::decode(d, v5only, error) && d.economy().money(0).yearRent == 0);
     }
 
     // Rejected input leaves the game unchanged.

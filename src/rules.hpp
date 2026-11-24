@@ -149,6 +149,7 @@ struct TurnHooks {
     // Year end, after inflation: BILANZ (seg2:07C5 -> seg8:88C6). True suspends the
     // change until the show has ended (its draws follow the viewer's input).
     std::function<bool()> yearBalance;
+    std::function<void()> clearYearRent;    // year end, after the balance (seg1:8BC6)
     std::function<void()> clearCredits;     // year end, after the balance (seg1:8B41)
     std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
