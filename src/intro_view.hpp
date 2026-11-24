@@ -2,8 +2,9 @@
 // The window INTRO of rally.exe (seg7:0000, procedure seg7:20E8; round 89): club.bmp
 // with the people and the speakers of the SBS files under butt/sbs/intro, driven by
 // IntroScript once per 20 ms, then the lightning (clubfoto.bmp) and the newspaper.
-// The scene is composed in software as an 8-bit surface, so the palette fades of
-// seg5:3483 / 3623 apply to it exactly.
+// The DIB and the window image are kept in software as 8-bit images (RecordPainter:
+// only changed records reach the window, as in rally.exe), so the palette fades of
+// seg5:3483 / 3623 apply to them exactly.
 #pragma once
 
 #include "window_border.hpp"
@@ -47,8 +48,7 @@ private:
     SpriteLookup borderSprites_;
     enum class Effect { None, FadeOut, FadeIn, Wipe };
     void apply(const IntroEvent& e, Uint32 now);
-    void compose();                   // backdrop + the records of the last pass
-    void stamp(const std::string& frame, int x, int y);
+    void compose(); // the window image (and the wipe cells so far) to the texture
     bool loadBackdrop(const std::filesystem::path& file);
     void showPalette(const SDL_Palette* palette);
 
@@ -62,14 +62,16 @@ private:
     bool subtitlesOn_ = false;
     IntroScript script_{nullptr};
     std::vector<VoiceSyncRecord> sync_;
-    std::map<std::string, Surface> frames_;                 // upper-case name -> 8-bit frame
+    PaintFrames frames_;                                    // upper-case name -> 8-bit frame
     std::map<std::string, std::vector<std::string>> files_; // file -> frame names in file order
-    Surface backdrop_{nullptr, SDL_FreeSurface};            // DS:A0A8
-    Surface scene_{nullptr, SDL_FreeSurface};
-    Surface next_{nullptr, SDL_FreeSurface};                // the newspaper during the wipe
+    PaintImage backdrop_;                                   // DS:A0A8
+    PaintImage dib_;                                        // the WinG DIB DS:B1C0
+    PaintImage screen_;                                     // what the window shows
+    PaintImage next_;                                       // the newspaper during the wipe
+    RecordPainter painter_{IntroScript::kRecords};
+    Surface scene_{nullptr, SDL_FreeSurface};               // screen_ for the texture
     SDL_Palette* palette_ = nullptr;                        // the bitmaps' colours
     Texture texture_{nullptr, SDL_DestroyTexture};
-    std::vector<IntroFrame> shown_;
     std::vector<WipeCell> wipe_;
     MsRandom* rand_ = nullptr; // the session's generator (DS:838E)
     Effect effect_ = Effect::None;

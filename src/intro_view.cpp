@@ -2,7 +2,6 @@
 #include "intro_view.hpp"
 
 #include "sbs.hpp"
-#include "scene.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -27,6 +26,15 @@ std::vector<uint8_t> readBytes(const fs::path& file) {
     std::ifstream in(file, std::ios::binary);
     return {std::istreambuf_iterator<char>(in), {}};
 }
+
+PaintImage toImage(const SDL_Surface* s) {
+    PaintImage image(s->w, s->h);
+    for (int y = 0; y < s->h; ++y)
+        std::copy_n(static_cast<const uint8_t*>(s->pixels) + y * s->pitch, s->w, &image.pixels[size_t(y) * size_t(s->w)]);
+    return image;
+}
+
+const PaintRect kWhole{0, 0, kWidth, kHeight};
 
 // seg5:3483: every channel of entries 1..0xFE grows by 0x1E, from 0xE1 on it is 0xFF.
 bool towardsWhite(SDL_Color& c) {
@@ -67,9 +75,7 @@ bool IntroView::loadBackdrop(const fs::path& file) {
     if (file.empty()) return false;
     Surface s = loadBmp(file);
     if (!s || s->format->BitsPerPixel != 8 || s->w != kWidth || s->h != kHeight) return false;
-    SDL_SetColorKey(s.get(), SDL_FALSE, 0);
-    SDL_SetSurfacePalette(s.get(), palette_ ? palette_ : s->format->palette);
-    backdrop_ = std::move(s);
+    backdrop_ = toImage(s.get());
     return true;
 }
 
@@ -93,13 +99,10 @@ bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitle
         SbsFile sbs;
         try { sbs = parseSbs(readBytes(path)); } catch (const std::exception&) { continue; }
         for (const SbsFrame& f : sbs.frames) {
-            Surface s(SDL_CreateRGBSurfaceWithFormat(0, f.width, f.height, 8, SDL_PIXELFORMAT_INDEX8), SDL_FreeSurface);
-            if (!s) continue;
-            SDL_SetSurfacePalette(s.get(), palette_);
-            for (int y = 0; y < f.height; ++y)
-                std::copy_n(&f.pixels[size_t(y) * f.width], f.width, static_cast<uint8_t*>(s->pixels) + y * s->pitch);
+            PaintImage image(f.width, f.height);
+            image.pixels = f.pixels;
             files_[file].push_back(upperAscii(f.name));
-            frames_.insert_or_assign(upperAscii(f.name), std::move(s));
+            frames_.insert_or_assign(upperAscii(f.name), std::move(image));
         }
     }
     scene_.reset(SDL_CreateRGBSurfaceWithFormat(0, kWidth, kHeight, 8, SDL_PIXELFORMAT_INDEX8));
@@ -109,10 +112,14 @@ bool IntroView::start(SoundPlayer* sound, SubtitleView* subtitles, bool subtitle
     script_ = IntroScript(&sync_);
     rand_ = &random; // seg5:0029 seeds rand() with the time before the intro (seg5:0188)
     effect_ = Effect::None;
-    shown_.clear();
     active_ = true;
     firstPass_ = false;
     for (const IntroEvent& e : script_.start()) apply(e, now);
+    // The first WM_PAINT (seg7:2380) shows club.bmp with every record at its start frame.
+    painter_.reset();
+    dib_ = PaintImage(kWidth, kHeight);
+    screen_ = PaintImage(kWidth, kHeight);
+    painter_.paint(script_.records(), frames_, backdrop_, dib_, screen_, kWhole);
     compose();
     lastPass_ = now;
     return true;
@@ -139,10 +146,6 @@ bool IntroView::handle(const SDL_Event& event) {
     return false;
 }
 
-void IntroView::stamp(const std::string& frame, int x, int y) {
-    const auto it = frames_.find(upperAscii(frame));
-    if (it != frames_.end() && backdrop_) blitKeyed(it->second.get(), backdrop_.get(), x, y);
-}
 
 void IntroView::apply(const IntroEvent& e, Uint32 now) {
     switch (e.kind) {
@@ -152,10 +155,19 @@ void IntroView::apply(const IntroEvent& e, Uint32 now) {
         if (subtitles_ && effect_ == Effect::None) subtitles_->voice(e.name + ".wav", window(), now);
         break;
     }
-    case IntroEvent::StampFile:
-        for (const std::string& name : files_[e.name]) stamp(name, e.x, e.y);
+    case IntroEvent::FillFile: // seg7:1E3C: the frames become opaque, club.bmp stays
+        for (const std::string& name : files_[e.name]) {
+            const auto it = frames_.find(name);
+            if (it != frames_.end()) fillTransparent(it->second, backdrop_, e.x, e.y);
+        }
         break;
-    case IntroEvent::StampFrame: stamp(e.name, e.x, e.y); break;
+    case IntroEvent::CloseFile: // seg6:3F02: GlobalFree, the slot of DS:9224 cleared
+        for (const std::string& name : files_[e.name]) frames_.erase(name);
+        files_.erase(e.name);
+        break;
+    case IntroEvent::StampFrame: // seg7:1F52: keyed into the backdrop
+        if (const PaintImage* f = findPaintFrame(frames_, e.name)) blitImage(*f, backdrop_, e.x, e.y, true);
+        break;
     case IntroEvent::Flash:
         if (subtitles_) subtitles_->close(); // seg7:1A21: no subtitles from here on
         subtitles_ = nullptr;
@@ -163,34 +175,29 @@ void IntroView::apply(const IntroEvent& e, Uint32 now) {
         effectStep_ = 0;
         effectAt_ = now;
         break;
-    case IntroEvent::Wipe:
-        next_ = loadBmp(findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / (e.name + ".bmp"))); // DS:1376
-        if (!next_ || next_->format->BitsPerPixel != 8) { stop(); break; }                     // seg7:1BA4
-        SDL_SetSurfacePalette(next_.get(), palette_);
+    case IntroEvent::Wipe: {
+        const Surface next = loadBmp(findCaseInsensitive(root_, fs::path("butt") / languageDir(language_) / (e.name + ".bmp"))); // DS:1376
+        if (!next || next->format->BitsPerPixel != 8) { stop(); break; } // seg7:1BA4
+        next_ = toImage(next.get());
         wipe_ = wipeMode4(kWidth, kHeight, *rand_);
         effect_ = Effect::Wipe;
         effectStep_ = 0;
         effectAt_ = now;
         break;
+    }
     case IntroEvent::End: stop(); break;
     }
 }
 
 void IntroView::compose() {
-    if (!scene_ || !backdrop_) return;
-    SDL_BlitSurface(backdrop_.get(), nullptr, scene_.get(), nullptr);
-    for (const IntroFrame& f : shown_) {
-        const auto it = frames_.find(upperAscii(f.name));
-        if (it != frames_.end()) blitKeyed(it->second.get(), scene_.get(), f.x, f.y);
-    }
-    if (effect_ == Effect::Wipe && next_) { // the cells revealed so far (seg8:1357)
+    if (!scene_ || screen_.width != kWidth || screen_.height != kHeight) return;
+    if (effect_ == Effect::Wipe && !next_.pixels.empty()) { // the cells revealed so far (seg8:1357)
         const size_t shown = std::min(wipe_.size(), size_t(effectStep_) * 16);
-        for (size_t i = 0; i < shown; ++i) {
-            SDL_Rect r{wipe_[i].left, wipe_[i].top, wipe_[i].right - wipe_[i].left, wipe_[i].bottom - wipe_[i].top};
-            SDL_Rect to = r;
-            SDL_BlitSurface(next_.get(), &r, scene_.get(), &to);
-        }
+        for (size_t i = 0; i < shown; ++i)
+            copyRect(next_, screen_, PaintRect{wipe_[i].left, wipe_[i].top, wipe_[i].right, wipe_[i].bottom});
     }
+    for (int y = 0; y < kHeight; ++y)
+        std::copy_n(&screen_.pixels[size_t(y) * kWidth], kWidth, static_cast<uint8_t*>(scene_->pixels) + y * scene_->pitch);
     showPalette(palette_);
 }
 
@@ -225,7 +232,8 @@ void IntroView::update(Uint32 now) {
         if (changed) return;
         if (effect_ == Effect::FadeOut) { // seg7:1A8F: club photo behind the white palette
             if (!loadBackdrop(findCaseInsensitive(root_, fs::path("butt") / "clubfoto.bmp"))) { stop(); return; }
-            shown_.clear();
+            // seg7:1B18: InvalidateRect + UpdateWindow; the records are cleared already.
+            painter_.paint(script_.records(), frames_, backdrop_, dib_, screen_, kWhole);
             compose();
             effect_ = Effect::FadeIn;
             effectStep_ = 0;
@@ -247,8 +255,10 @@ void IntroView::update(Uint32 now) {
         effectStep_ = std::min(due, 25);
         compose();
         if (effectStep_ < 25) return;
-        backdrop_ = std::move(next_); // DS:A0A8 = the newspaper
         effect_ = Effect::None;
+        backdrop_ = std::move(next_); // DS:A0A8 = the newspaper
+        next_ = PaintImage{};
+        copyRect(backdrop_, screen_, kWhole);
         compose();
         lastPass_ = now;
         return;
@@ -258,7 +268,11 @@ void IntroView::update(Uint32 now) {
         lastPass_ += kPassMs;
         const IntroPass p = script_.pass(lastPass_);
         for (const IntroEvent& e : p.events) apply(e, now);
-        if (p.draw) shown_ = p.frames;
+        if (p.draw && active_) { // seg7:1C18 / 1C46 / 1C82
+            painter_.restore(backdrop_, dib_);
+            painter_.show(p.records, frames_, dib_);
+            painter_.present(dib_, screen_);
+        }
         if (effect_ == Effect::None) compose();
         firstPass_ = true; // DS:1198
     }

@@ -95,10 +95,11 @@ std::vector<std::string> introDefinitionFrames(uint16_t def) {
 
 IntroScript::IntroScript(const std::vector<VoiceSyncRecord>* sync) : sync_(sync) {}
 
-void IntroScript::set(int i, uint16_t def, int x, int y, int reps, int countdown) {
+void IntroScript::set(int i, uint16_t def, int x, int y, int reps, bool keyed, int countdown) {
     Record& r = records_[size_t(i)];
     r = Record{};
     r.def = def;
+    r.keyed = keyed;
     r.x = x;
     r.y = y;
     r.reps = reps;
@@ -106,17 +107,19 @@ void IntroScript::set(int i, uint16_t def, int x, int y, int reps, int countdown
 }
 
 std::vector<IntroEvent> IntroScript::start() {
-    // seg7:0078 .. 016F: the people and the picture are stamped into club.bmp.
-    std::vector<IntroEvent> events = {{IntroEvent::StampFile, "paar2", 0x165, 0x9E},
-                                      {IntroEvent::StampFile, "bild", 0x19D, 0x3A},
-                                      {IntroEvent::StampFile, "leute1", 0x81, 0xB0},
-                                      {IntroEvent::StampFile, "paar1", 0x165, 0x9E}};
-    // seg7:0177 .. 0447: records 3 to 7.
-    set(3, 0x06EE, 0x22, 0x70, 9999);
-    set(4, 0x08C8, 0x81, 0xB0, 0x2706, 1);
-    set(5, 0x0CDC, 0x165, 0x9E, 9999, 2);
-    set(6, 0x0746, 0x19D, 0x3A, 9999);
-    set(7, 0x0836, 0x172, 0, 9999);
+    // seg7:0078 .. 016F: the transparent pixels of every frame of these files take
+    // club.bmp's pixels at the given place (seg7:1E3C); club.bmp stays unchanged.
+    std::vector<IntroEvent> events = {{IntroEvent::FillFile, "paar2", 0x165, 0x9E},
+                                      {IntroEvent::FillFile, "bild", 0x19D, 0x3A},
+                                      {IntroEvent::FillFile, "leute1", 0x81, 0xB0},
+                                      {IntroEvent::FillFile, "paar1", 0x165, 0x9E}};
+    // seg7:0177 .. 0447: records 3 to 7; the filled ones are copied without a key
+    // (+0xD = 0: seg7:0260, 02F0, 0380).
+    set(3, 0x06EE, 0x22, 0x70, 9999, true);
+    set(4, 0x08C8, 0x81, 0xB0, 0x2706, false, 1);
+    set(5, 0x0CDC, 0x165, 0x9E, 9999, false, 2);
+    set(6, 0x0746, 0x19D, 0x3A, 9999, false);
+    set(7, 0x0836, 0x172, 0, 9999, true);
     return events;
 }
 
@@ -142,8 +145,8 @@ void IntroScript::moveHat() {
             if (hat.x < 0x11C) hat.y += 3;
             if (hat.x < 0x118) hat.y += 2;
             if (hat.x < 0x113) { // seg7:1493: the wall piece and the falling Fate
-                set(1, 0x114A, 0x110, 0, 9999);
-                set(0, 0x117E, 0x111, -4, 9999);
+                set(1, 0x114A, 0x110, 0, 9999, true);
+                set(0, 0x117E, 0x111, -4, 9999, true);
             }
         }
         if (records_[0].x == 0x158) records_[0].x = 0x157; // seg7:15A8: turn back
@@ -160,59 +163,63 @@ void IntroScript::logic(uint32_t nowMs, std::vector<IntroEvent>& events) {
     Record* r = records_.data();
     if (passes_ == 250 && state_ == 0) { // seg7:0561: the door opens
         next(1);
-        set(3, 0x0614, 0x22, 0x70, 0);
+        set(3, 0x0614, 0x22, 0x70, 0, true);
     }
     if (passes_ == 90 && state_ == 1) { // seg7:060C
         next(2);
-        set(3, 0x0666, 0x22, 0x70, 9999);
-        set(2, 0x075A, 0x6C, 0x84, 0);
+        set(3, 0x0666, 0x22, 0x70, 9999, true);
+        set(2, 0x075A, 0x6C, 0x84, 0, true);
     }
     if (passes_ == 10 && state_ == 2) { // seg7:0746: the head speaks
         next(3);
-        set(2, 0x07B4, 0x6C, 0x84, 999);
+        set(2, 0x07B4, 0x6C, 0x84, 999, true);
         play("rally01b", nowMs, events);
     }
     if (state_ == 3 && talking(nowMs)) { r[2].frame = 0; r[2].countdown = 2; } // seg7:0822
     if (!playing(nowMs) && state_ == 3) {                                         // seg7:084B
         next(4);
-        set(2, 0x07FE, 0x6C, 0x84, 0);
+        set(2, 0x07FE, 0x6C, 0x84, 0, true);
     }
     if (passes_ >= 15 && state_ == 4) { // seg7:08F9: the zoom starts, the door closes
         next(5);
-        set(2, 0x05B2, 0x41, 0x69, 999);
-        set(3, 0x068C, 0x22, 0x70, 0);
+        set(2, 0x05B2, 0x41, 0x69, 999, true);
+        set(3, 0x068C, 0x22, 0x70, 0, true);
         play("tuerauf1", nowMs, events);
     }
     if (passes_ == 12 && state_ == 5) { // seg7:0A65
         next(6);
-        set(3, 0x0560, 0x41, 0x69, 0);
-        set(2, 0x06AE, 0x22, 0x70, 999);
-        set(4, 0x09D6, 0x81, 0xB0, 999);
-        set(5, 0x0D4C, 0x165, 0x9E, 999, 2);
+        set(3, 0x0560, 0x41, 0x69, 0, true);
+        set(2, 0x06AE, 0x22, 0x70, 999, true);
+        set(4, 0x09D6, 0x81, 0xB0, 999, true);
+        events.push_back({IntroEvent::CloseFile, "leute1", 0, 0}); // seg7:0C2F (DS:9D64)
+        set(5, 0x0D4C, 0x165, 0x9E, 999, false, 2);
+        events.push_back({IntroEvent::CloseFile, "paar1", 0, 0}); // seg7:0CE2 (DS:9D68)
     }
     if (passes_ >= 0 && passes_ < 0x54 && state_ == 6) r[3].y = passes_ * 50 / 0x54 + 0x69; // seg7:0D05
     if (passes_ >= 0 && passes_ < 0x28 && state_ == 6) r[3].x = 0x41 - passes_;             // seg7:0D33
-    if (passes_ == 15 && state_ == 6) set(2, 0x06D0, 0x22, 0x70, 0);                         // seg7:0D5A
+    if (passes_ == 15 && state_ == 6) set(2, 0x06D0, 0x22, 0x70, 0, true);                         // seg7:0D5A
     if (state_ == 6 && !playing(nowMs) && !doorClosed_) {                                    // seg7:0DFA
         doorClosed_ = true;
         play("tuerzu", nowMs, events);
     }
     if (passes_ == 0x20 && state_ == 6) { // seg7:0E4E: the picture falls, the lamp swings
-        set(6, 0x0720, 0x19D, 0x3A, 0);
-        set(7, 0x0820, 0x172, 0, 0);
+        set(6, 0x0720, 0x19D, 0x3A, 0, false);
+        set(7, 0x0820, 0x172, 0, 0, true);
     }
-    if (passes_ == 0x23 && state_ == 6) set(2, 0x06EE, 0x22, 0x70, 999); // seg7:0F7E
+    if (passes_ == 0x23 && state_ == 6) set(2, 0x06EE, 0x22, 0x70, 999, true); // seg7:0F7E
     if (state_ == 6 && !playing(nowMs)) {                                 // seg7:101E: the speaker
         next(7);
         events.push_back({IntroEvent::StampFrame, "tu00", 0x22, 0x70});
-        set(2, 0x09D6, 0x81, 0xB0, 999);
-        set(4, 0x0EDE, 0x11, 0x9B, 999);
-        set(12, 0x112E, 0x0A, 0x112, 999);
+        events.push_back({IntroEvent::CloseFile, "tuer", 0, 0}); // seg7:1076 (DS:9D50)
+        set(2, 0x09D6, 0x81, 0xB0, 999, true);
+        set(4, 0x0EDE, 0x11, 0x9B, 999, true);
+        set(12, 0x112E, 0x0A, 0x112, 999, true);
+        events.push_back({IntroEvent::CloseFile, "zoom", 0, 0}); // seg7:1249 (DS:9D44)
         play("rally02", nowMs, events);
     }
     if (state_ == 10 && r[1].def != 0x113C && r[1].def != 0x114A) { // seg7:129E: wall and hat
-        set(1, 0x113C, 0xC9, 0x9D, 9999);
-        set(0, 0x1164, 0xD2, 0xB3, 9999);
+        set(1, 0x113C, 0xC9, 0x9D, 9999, true);
+        set(0, 0x1164, 0xD2, 0xB3, 9999, true);
     }
     moveHat();
     if (state_ == 7 && !playing(nowMs)) { // seg7:161B
@@ -254,8 +261,8 @@ void IntroScript::logic(uint32_t nowMs, std::vector<IntroEvent>& events) {
         r[4].def = 0x10E0;
         r[4].frame = 0;
         r[4].follow = 0x110A;
-        set(2, 0x0C18, 0x81, 0xB0, 0);
-        set(5, 0x0DBC, 0x165, 0x9E, 0, 2);
+        set(2, 0x0C18, 0x81, 0xB0, 0, true);
+        set(5, 0x0DBC, 0x165, 0x9E, 0, false, 2);
         r[0].def = 0x1190;
         r[0].frame = 0;
     }
@@ -284,19 +291,26 @@ void IntroScript::step() {
     }
 }
 
+std::vector<PaintRecord> IntroScript::records() const {
+    std::vector<PaintRecord> out(records_.size());
+    for (size_t i = 0; i < records_.size(); ++i) {
+        const Record& r = records_[i];
+        const Definition* d = r.def ? findDefinition(r.def) : nullptr;
+        if (!d || r.frame < 0 || r.frame >= int(d->frames.size())) continue;
+        out[i] = PaintRecord{true, d->frames[size_t(r.frame)], r.x, r.y, r.keyed};
+    }
+    return out;
+}
+
 IntroPass IntroScript::pass(uint32_t nowMs) {
     IntroPass out;
     if (finished_) return out;
     if (passes_ < 30000) ++passes_; // seg7:04D6
     logic(nowMs, out.events);
     out.draw = state_ < 11 || passes_ < 0x69; // seg7:1BCE
-    if (out.draw) {
-        for (const auto& r : records_) {
-            const Definition* d = r.def ? findDefinition(r.def) : nullptr;
-            if (d && r.frame >= 0 && r.frame < int(d->frames.size()))
-                out.frames.push_back({d->frames[size_t(r.frame)], r.x, r.y});
-        }
+    if (out.draw) { // seg7:1C18 restore (74E4), 1C28 step (6DCB), 1C46 show (6F69)
         step();
+        out.records = records();
     }
     if (passes_ == 0x22B && state_ == 11) { // seg7:1C8A
         finished_ = true;
