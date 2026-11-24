@@ -256,7 +256,10 @@ bool Game::answerObstacle(bool yes) {
     if (question_.card < 0) return false;
     const Direction d = question_.direction;
     question_ = ObstacleQuestion{};
-    if (!yes) return false;                     // seg2:24FF: only answer 6 uses the card
+    if (!yes) {                                 // seg2:24FF: only answer 6 uses the card
+        honk(players_[size_t(current_)].field); // the vehicle stops and turns back (see step)
+        return false;
+    }
     obstacleConfirmed_ = true;
     const bool moved = step(d);
     obstacleConfirmed_ = false;
@@ -269,8 +272,16 @@ bool Game::step(Direction d) {
     PlayerSlot& p = players_[size_t(current_)];
     const int16_t next = board_.fields[size_t(p.field)].next[size_t(d) - 1];
     if (next == Field::kNone) return false;
+    // seg2:1E5B: the vehicle leaves the field only when seg2:3620(d, 0) allows the
+    // step; barriers and obstacles (seg2:2404) are met on the road afterwards
+    // (seg2:21D0 ff.), so a refused step never reaches them.
+    if (!counter_.step(d, false)) return false;
+    // seg2:2246 stops the vehicle in front of the barrier cell; it can only turn back
+    // (seg2:2189 -> 22E1 undoes the step) and reaches its field again, where the
+    // stop or pass at seg2:2021 / 1E49 runs the horn check seg2:2676.
     if (!linkOpen(p.field, d)) {
         messages_.push_back("Schlagbaum: Osteuropa ist noch geschlossen"); // seg2:2404
+        honk(p.field);
         return false;
     }
     if (const int o = obstacles_.onLink(board_, p.field, d); o >= 0) { // seg2:2404 with an obstacle
@@ -278,6 +289,7 @@ bool Game::step(Direction d) {
         const int slot = card >= 0 ? findCard(current_, card) : -1;
         if (slot < 0) {
             messages_.push_back("Hindernis auf der Strasse - ohne passende Karte geht es nicht weiter");
+            honk(p.field); // back on the field as at the barrier above
             return false;
         }
         if (!computerControls() && !obstacleConfirmed_) { // seg2:24A6: humans are asked first
@@ -297,7 +309,11 @@ bool Game::step(Direction d) {
     p.field = next;
     lastDirection_[size_t(current_)] = int(d);
     // seg2:206B: Carb01 when the last field of the move is reached, Plopp01 otherwise (channel 1).
-    sound(1, counter_.taken() == counter_.allowance() ? 9 : 0);
+    const bool last = counter_.taken() == counter_.allowance();
+    sound(1, last ? 9 : 0);
+    // seg2:1F81 (driving on) and seg2:209F (stopping before the last field): the horn
+    // check follows Plopp01; the stop with Carb01 (seg2:2082) has none.
+    if (!last) honk(next);
     // seg2:B290 when the vehicle stops on a field: Dr. Drago changes hands.
     if (counter_.taken() == counter_.allowance()) {
         const int before = drago_.holder;
@@ -310,6 +326,20 @@ bool Game::step(Direction d) {
         && !(arrivalConfirm_ && !computerControls()))
         arrive();
     return true;
+}
+
+void Game::honk(int field) {
+    // seg2:2676: DS:9C74 (set at the turn start seg2:048F, cleared by the first pass of
+    // seg2:1CB0 that rests on the start field, seg2:215E) is always 0 by the first
+    // step. Slots 0..7 in order, the mover skipped, any status != 0 (humans and
+    // computers alike; Dr. Drago has no slot): the first one whose +0x3C equals the
+    // field (DS:9592) draws random(1) (seg6:1343); on 0 sound 10 + mover / 2 on
+    // channel 2 (seg1:2C9B). Only that first driver is checked.
+    for (int q = 0; q < kPlayerSlots && size_t(q) < players_.size(); ++q) {
+        if (q == current_ || !players_[size_t(q)].status || players_[size_t(q)].field != field) continue;
+        if (rng_.random(1) == 0) sound(2, 10 + current_ / 2);
+        return;
+    }
 }
 
 bool Game::arrivalDue() const {

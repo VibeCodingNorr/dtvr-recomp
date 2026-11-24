@@ -192,6 +192,15 @@ int main() {
         CHECK(g->endTurn() && g->currentPlayer() == 1 && g->playerField(0) != 0);
         CHECK(g->playCard(slot) && g->playerField(0) == g->playerField(1) && g->playerField(1) == 0);
     } else CHECK(false);
+    // seg3:307C-3096: Konferenz also copies the frame pointer +0x20, i.e. the facing
+    // a later Punch reads (player 0 drove left, player 1 still faces right).
+    if (auto g = gameWithCard(board, towns, 2, 1, 21, slot)) {
+        CHECK(g->roll());
+        while (g->phase() == Game::Phase::Move) g->step(Direction::Left);
+        CHECK(g->facing(0) == 4 && g->facing(1) == 2);
+        CHECK(g->endTurn() && g->currentPlayer() == 1);
+        CHECK(g->playCard(slot) && g->facing(0) == 2);
+    } else CHECK(false);
 
     // Flugzeug (27): fly to Rom, the destination of the last stage -> game over.
     if (auto g = gameWithCard(board, towns, 1, 0, 27, slot)) {
