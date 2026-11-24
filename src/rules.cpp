@@ -74,6 +74,13 @@ std::vector<int> fieldDistances(const Board& board, int start, uint16_t blockMas
     return dist;
 }
 
+std::vector<uint16_t> distanceTable(const Board& board, int to, uint16_t mask) {
+    std::vector<uint16_t> table;
+    table.reserve(board.fields.size());
+    for (int d : fieldDistances(board, to, mask)) table.push_back(d < 0 ? 0xFFFF : uint16_t(d));
+    return table;
+}
+
 std::vector<int> fieldRoute(const Board& board, int from, int to) {
     const auto dist = fieldDistances(board, to);
     if (from < 0 || from >= int(dist.size()) || dist[size_t(from)] < 0) return {};
@@ -197,6 +204,10 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
     auto call = [](const std::function<void()>& f) { if (f) f(); };
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
+    auto say = [&](int text, int who) {
+        if (hooks.announce) hooks.announce(text, who);
+        else change.texts.push_back({text, who});
+    };
     int player = resumePlayer >= 0 ? resumePlayer : current;
     bool resuming = resumePlayer >= 0;
     for (;;) {
@@ -248,8 +259,8 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         if (p.flags & 0x1) { // seg2:08C2: checked first; ends the flag checks either way
             p.flags &= 0xFFFE;
             if (hooks.dragoHolder == player) {
-                change.texts.push_back({3251 + rng.random(4), player}); // seg2:B74D
                 change.satOut.push_back(player);
+                say(3251 + rng.random(4), player); // seg2:B74D
                 continue;
             }
             change.player = player;
@@ -258,14 +269,27 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         const uint16_t sitOut = (p.flags & 0x2) ? 0x2 : (p.flags & 0x4) ? 0x4 : 0;
         if (sitOut) {
             p.flags &= uint16_t(~sitOut);
-            change.texts.push_back({(sitOut == 0x2 ? 1000 : 1010) + rng.random(2), player}); // seg2:0915 / 09B3
             change.satOut.push_back(player);
-            if (hooks.afterSitOut) hooks.afterSitOut(player);
+            say((sitOut == 0x2 ? 1000 : 1010) + rng.random(2), player); // seg2:0915 / 09B3, shown 096F / 0A0D
+            if (hooks.afterSitOut) hooks.afterSitOut(player);                  // seg2:0977 / 0A15
             continue;
         }
         change.player = player;
         return change;
     }
+}
+
+int stageDragoPlayer(const std::vector<PlayerSlot>& players, const std::vector<uint16_t>& table) {
+    int chosen = firstActivePlayer(players);
+    if (activePlayerCount(players) <= 1) return chosen;
+    uint16_t best = 0;
+    for (size_t p = 0; p < players.size() && p < size_t(kPlayerSlots); ++p) {
+        if (!players[p].status) continue;
+        const int field = players[p].field;
+        if (field < 0 || size_t(field) >= table.size()) continue; // assumption, see header
+        if (table[size_t(field)] > best) { best = table[size_t(field)]; chosen = int(p); }
+    }
+    return chosen;
 }
 
 int startField(const Board& board, const std::vector<Town>& towns, const std::string& name) {

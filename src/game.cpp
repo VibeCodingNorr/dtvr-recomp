@@ -433,6 +433,7 @@ void Game::arrive() {
             // field only afterwards, seg2:148E), then in mode 1 (not before the last stage)
             // draws rand() % 5 (seg7:3B4E). The light's jumps during the voices draw further
             // destinations whose number depends on the playback time; not modelled.
+            const int reached = destination_; // DS:A10D until seg7:372F stores the next one
             const int next = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
             announceMode_ = remaining_ != 0 ? 1 : 3;
             announceVariant_ = remaining_ != 0 ? rng_.rand() % 5 : 3; // seg7:3B4E / 3B5F
@@ -448,7 +449,7 @@ void Game::arrive() {
             }
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
                                 + ", Ziel " + townName(destination_));
-            if (remaining_ != 0) placeDragoForStage(); // seg2:1495-1535
+            if (remaining_ != 0) placeDragoForStage(reached); // seg2:1495-1535, DS:22 not yet rebuilt
             else startMasterRallye();                  // seg2:1462 / 1467 / 146D
         } else {
             messages_.push_back(who + " in " + townName(field) + ": Grundstuecke kaufen moeglich");
@@ -611,6 +612,7 @@ TurnHooks Game::turnHooks() {
         balanceClose();
         return false;
     };
+    hooks.announce = [this](int text, int player) { announceSitOut(text, player); };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };

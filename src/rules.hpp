@@ -77,6 +77,14 @@ private:
 // 80 levels; a field whose flagset & blockMask != 0 is not expanded. -1 = unreached.
 std::vector<int> fieldDistances(const Board& board, int start, uint16_t blockMask = 0);
 
+// The word array DS:22 as seg2:43A8(from, to) leaves it: the distances from `to` with
+// the mask DS:A10F of the call, 0xFFFF for a field not reached within 80 levels
+// (seg2:43F9-4428 fill, 4449 limit). Every call site passes DS:A10D as `to` except the
+// route seg2:9996, which restores the table at once (seg2:9B73 / 9B8F), so outside the
+// stage change (seg2:1486-154A) the array holds the distances from the destination
+// with the current mask (round R3b, docs/formats.md "Field distances").
+std::vector<uint16_t> distanceTable(const Board& board, int to, uint16_t mask);
+
 // Route of seg2:9996: distances from `to` with no mask, then from `from` always take
 // the first neighbour (up, right, down, left) with a smaller distance. Includes both
 // ends; empty if unreachable.
@@ -124,6 +132,11 @@ constexpr int kPlayerSlots = 8;
 int activePlayerCount(const std::vector<PlayerSlot>& players); // seg2:0368
 // First active slot (seg2:1A41); 0 when none is active.
 int firstActivePlayer(const std::vector<PlayerSlot>& players);
+// Dr. Drago at a normal stage change (seg2:1495-1535): one player in play -> the first
+// (seg2:1A41); otherwise the slot in play whose field (+0x3C) has the largest word of
+// `table` (DS:22), compared unsigned from 0 (seg2:1506 jbe): ties keep the earlier
+// slot, 0xFFFF wins, all 0 gives the first. A field outside the table is skipped.
+int stageDragoPlayer(const std::vector<PlayerSlot>& players, const std::vector<uint16_t>& table);
 
 struct Calendar {
     int month = 0;          // DS:A100, counts up without wrapping; month % 12 is used
@@ -158,7 +171,11 @@ struct TurnHooks {
     // the new player (DS:94E2). True suspends the change until the window has closed.
     std::function<bool(int)> monthStatement;
     std::function<void()> clearMonth;       // every month advance, last (seg1:8CBA at seg2:07E6)
-    std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
+    // A sit-out's modal message (seg2:096F / 0A0D, Dr. Drago's block seg2:B74D) where
+    // rally.exe shows it: before the sit-out hook and before later players' events.
+    // Without it the texts are collected in TurnChange::texts.
+    std::function<void(int text, int player)> announce;
+    std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977 / 0A15)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
     int dragoHolder = -1;                   // DS:9CFC for flag bit 0
 };

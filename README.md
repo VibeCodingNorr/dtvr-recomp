@@ -192,7 +192,8 @@ is claimed.
 112. Risiko: after every CHANCE press the light blinks six times (2.4 s) with the button held, as seg7:6A79; vehicle speed confirmed (4 pixels per 20 ms).
 113. Monthly statement STAT (round R1): after every month's settlement except December's and after the Master-Rallye reward the window `Monatsabschluß für <Monat>` ranks the drivers with the month's cash flow (player +0x4A, now modelled), rent, cash and wealth ([view](src/stat_view.cpp), [evidence](docs/formats.md#monthly-statement-round-r1)); it closes with Space / Enter / Escape / Backspace or a click, on a computer's turn after 5 s × pause factor, divided by Computerzüge (save format 7, rules revision 46).
 114. Start: the Blue Byte logo `butt/<n>/bb.bmp` centred on the wooden canvas while the game loads, as seg6:0A4D; rally.exe has no timer, the recomp keeps it at least 2.5 s (a key or click ends it). Recomp change: the second logo rally.exe shows after the intro (seg5:0193) is left out (user decision 2026-11-25). The intro runs over the wooden canvas.
-115. *Next:* remaining presentation details (compare windows with rally.exe).
+115. Dr. Drago at a stage change (round R3b): the distance array DS:22 is modelled as rally.exe keeps it; the placement still reads the distances from the destination just reached, compared unsigned so an unreached field wins ([rules](src/rules.cpp), [evidence](docs/formats.md)); a sit-out's message comes before Dr. Drago's action (rules revision 47). Not modelled (timing): a route of Dr. Drago's vehicle that starts during the announcement can rebuild the array from the new destination first.
+116. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

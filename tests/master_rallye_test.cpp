@@ -131,7 +131,7 @@ int main() {
     }
 
     // seg3:3302 -> seg2:04AD: Flugzeug moves the player as seg2:04AD; the holder of Dr.
-    // Drago gets him placed anew (seg2:0590 -> 9C97).
+    // Drago gets him placed anew (seg2:058C, call 9C97 at 0597).
     {
         bool done = false;
         for (uint16_t seed = 1; seed < 5000 && !done; ++seed) {

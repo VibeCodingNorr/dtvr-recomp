@@ -59,9 +59,9 @@ PlayerInfo playerInfo(const Game& game, const Board& board, const std::vector<To
     info.money = formatMoney(game.cash(p));
     info.destination = townName(game.destination());
     const int field = game.playerField(p);
-    const auto dist = fieldDistances(board, game.destination(), game.routeMaskForDisplay());
-    int d = field >= 0 && dist[size_t(field)] >= 0 ? dist[size_t(field)] : 99;
-    if (d > 99) d = 99;
+    const auto dist = game.distanceTable(); // DS:22 (seg5:6AB2)
+    int d = field >= 0 && size_t(field) < dist.size() ? dist[size_t(field)] : 99;
+    if (d > 99) d = 99; // 0xFFFF: 99
     info.distance = {d / 10, d % 10};
     info.stepsLabel = text(201);
     const int left = game.phase() == Game::Phase::Move ? game.allowance() - game.stepsTaken() : 0;
