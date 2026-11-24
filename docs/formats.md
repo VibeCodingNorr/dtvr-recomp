@@ -3285,7 +3285,11 @@ nothing at all.
   rebuild), not `PAL`; in rally.exe PICT never has the focus (focus 0, no SetFocus),
   so there a key would reach another window and only a click would remove the logo,
   and only when a message pump runs (seg6:0B05 and the loaders' own pumps, not
-  checked); the hourglass cursor (IDC_WAIT, seg5:001B … 0207) is not rebuilt.
+  checked); the hourglass cursor (IDC_WAIT, seg5:001B … 0207) is not imitated.
+  **Recomp change (user decision 2026-11-25):** the native busy cursor of the running OS
+  (`SDL_SYSTEM_CURSOR_WAIT`, src/busy_cursor.hpp) instead of the Windows 3.1 hourglass, from
+  the window's creation until the intro / title takes over (`GameWindow::start`); then the
+  previous cursor returns. A video driver without system cursors keeps the normal cursor.
 
 ### Intro (round 89)
 

@@ -8,6 +8,7 @@
 //   game_window_dialogs.cpp  input of the game's dialogs (cards, towns, flight, Risiko ...)
 #pragma once
 
+#include "busy_cursor.hpp"
 #include "controller.hpp"
 #include "display_control.hpp"
 #include "game_screen.hpp"
@@ -47,6 +48,7 @@ struct GameWindowResources {
     ScriptedInput& scripted;
     RecompMenuView& recompMenu;
     LogoView& logo; // the Blue Byte logo while loading (seg6:0A4D)
+    BusyCursor& busyCursor; // the loading cursor, released before the intro / title (seg5:0207)
 };
 
 class GameWindow {
@@ -111,6 +113,7 @@ private:
     ScriptedInput& scripted_;
     RecompMenuView& recompMenu_;
     LogoView& logo_;
+    BusyCursor& busyCursor_;
     MenuView& menu_;
     CardView& cards_;
 

@@ -45,6 +45,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     if (SDL_RenderSetLogicalSize(renderer.get(), layout.width, layout.height) != 0
         || SDL_RenderSetIntegerScale(renderer.get(), displaySettings.integerScale && layout.extra() == 0 ? SDL_TRUE : SDL_FALSE) != 0)
         throw std::runtime_error(SDL_GetError());
+    BusyCursor busyCursor; // seg5:001B: the busy cursor until seg5:0207 (GameWindow::start)
     // seg5:0151 -> seg6:0A4D("BB.bmp", 0): the Blue Byte logo over the canvas while the
     // rest loads (language file, art, sounds, the intro's files).
     LogoView logo(renderer.get(), root, layout);
@@ -85,7 +86,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     sound.setMusic(&music.stream());
     screen.setSound(&sound);
     GameWindow flow({play, towns, options, window.get(), renderer.get(), layout, baseLayout, wideLayout, language, screen,
-                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu, logo});
+                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu, logo, busyCursor});
     return flow.run();
 }
 
@@ -93,7 +94,7 @@ GameWindow::GameWindow(const GameWindowResources& r)
     : play_(r.play), towns_(r.towns), options_(r.options), window_(r.window), renderer_(r.renderer), layout_(r.layout),
       baseLayout_(r.baseLayout), wideLayout_(r.wideLayout), language_(r.language), screen_(r.screen), music_(r.music),
       musicIssues_(r.musicIssues), musicConfig_(r.musicConfig), sound_(r.sound), controller_(r.controller),
-      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), logo_(r.logo), menu_(r.screen.menu()),
+      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), logo_(r.logo), busyCursor_(r.busyCursor), menu_(r.screen.menu()),
       cards_(r.screen.cards()), musicEnabled_(r.screen.settings().value[Settings::Midi]),
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
       announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()),
@@ -106,6 +107,7 @@ GameWindow::GameWindow(const GameWindowResources& r)
 }
 
 void GameWindow::start() {
+    busyCursor_.release(); // seg5:0207: the cursor from before, then the logo goes (seg5:020C)
     introShown_ = options_.title && (options_.intro || (!options_.noIntro && screen_.settings().showIntro != 0))
                       && screen_.startIntro(play_.game().sessionRandom(), SDL_GetTicks());
     // The intro removes the logo once its files are loaded (seg7:044D), the set-up
