@@ -292,14 +292,18 @@ int main() {
             for (int guard = 0; guard < 20000 && g.balanceSerial() == 0; ++guard) g.runComputerTurn();
         };
         Game headless(board, towns, 2, 40, 7, 1, nullptr, nullptr, false), watched(board, towns, 2, 40, 7, 1, nullptr, nullptr, false),
-            skipped(board, towns, 2, 40, 7, 1, nullptr, nullptr, false);
+            skipped(board, towns, 2, 40, 7, 1, nullptr, nullptr, false),
+            interrupted(board, towns, 2, 40, 7, 1, nullptr, nullptr, false);
         toBalance(headless, false);
         toBalance(watched, true);
         toBalance(skipped, true);
+        toBalance(interrupted, true);
         CHECK(headless.phase() != Game::Phase::Balance && watched.phase() == Game::Phase::Balance);
         CHECK(watched.balanceEntries().size() == 2 && watched.balanceEntries()[0].variant == -1);
         CHECK(!watched.roll() && !watched.endTurn()); // nothing else runs while the show is on
-        while (watched.balanceAnnounce()) {}
+        CHECK(!watched.balanceSpeak()); // nothing announced yet
+        while (watched.balanceAnnounce()) CHECK(watched.balanceSpeak());
+        CHECK(!watched.balanceSpeak() && watched.balanceSpoken() == 2);
         CHECK(watched.balanceClose() && !watched.balanceClose());
         for (size_t i = 0; i < 2; ++i)
             CHECK(watched.balanceEntries()[i].variant == headless.balanceEntries()[i].variant);
@@ -312,6 +316,19 @@ int main() {
         const uint32_t afterOne = skipped.sessionRandom().state();
         CHECK(afterOne != afterShow && skipped.balanceEntries()[1].variant == -1);
         CHECK(skipped.balanceFinish() && skipped.phase() != Game::Phase::Balance);
+        // Round 151: Escape after player 2's Next_ but before his pos_ / neg_: the closing
+        // letter is the one after player 1 (seg8:913D), so the 4 / 5 rule of seg8:95E5..9613
+        // and the draw at seg8:9605 follow the spoken results, not the announcements.
+        CHECK(interrupted.balanceAnnounce() && interrupted.balanceSpeak() && interrupted.balanceAnnounce());
+        CHECK(interrupted.balanceAnnounced() == 2 && interrupted.balanceSpoken() == 1);
+        const uint32_t beforeClose = interrupted.sessionRandom().state();
+        CHECK(interrupted.balanceClose());
+        const int letter = (interrupted.balanceChoice() + 1) % 7;
+        const bool drew = interrupted.sessionRandom().state() != beforeClose;
+        if (letter == 4) CHECK(interrupted.balanceClosing() == 5 && !drew);
+        else if (letter == 5) CHECK(interrupted.balanceClosing() == 4 && !drew);
+        else CHECK(drew && (interrupted.balanceClosing() == 4 || interrupted.balanceClosing() == 5));
+        CHECK(interrupted.balanceFinish());
     }
     // Year balance closing (round 92, seg8:95E5): pos_e / pos_f; letter 4 gives 5,
     // letter 5 gives 4, otherwise one more draw rand() % 2 + 4.

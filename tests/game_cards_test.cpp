@@ -225,9 +225,51 @@ int main() {
         CHECK(g->phase() == Game::Phase::Arrived && g->townAt(g->playerField(0)) >= 2);
         const double before = g->cash(0);
         CHECK(g->playCard(slot) && g->propertyMode() == 3);
+        const int town = g->townAt(g->playerField(0));
+        auto rows = estateRows(*g, town, EstatesTab::Buy); // seg1:6A5F: free and cash >= 75 %
+        CHECK(!rows.empty() && !rows[0].disabled && rows[0].price == 7500);
         CHECK(g->buyProperty(0) && g->cash(0) == before - 7500);
+        rows = estateRows(*g, town, EstatesTab::Sell);     // seg1:68C6: a card mode greys the tab
+        CHECK(!rows.empty() && rows[0].disabled);
         CHECK(g->propertyMode() == 3);                // stays until the dialog closes
         CHECK(g->endTurn() && g->propertyMode() == 0xFF);
+    } else CHECK(false);
+
+    // Verkaufen (1, round 151): seg1:68C6 greys every Verkaufen row while DS:3FC6 != 0xFF
+    // and the Kaufen tab has no rule for mode 2 (seg1:6854..6BA6); the sale (seg1:55DB ->
+    // 832A) does not look at the colour and pays x 1.5.
+    if (auto g = gameWithCard(board, towns, 2, 0, 1, slot)) {
+        driveRight(*g);
+        const int town = g->townAt(g->playerField(0));
+        CHECK(g->phase() == Game::Phase::Arrived && town >= 2 && g->buyProperty(0));
+        CHECK(!estateRows(*g, town, EstatesTab::Sell)[0].disabled); // no card: own and not rented
+        const double before = g->cash(0);
+        CHECK(g->playCard(slot) && g->propertyMode() == 2);
+        auto rows = estateRows(*g, town, EstatesTab::Sell);
+        CHECK(rows.size() == 1 && rows[0].disabled && rows[0].price == 15000);
+        rows = estateRows(*g, town, EstatesTab::Buy);
+        CHECK(rows.size() == 1 && rows[0].disabled);
+        CHECK(!estateRows(*g, town, EstatesTab::None)[0].disabled);
+        CHECK(g->sellProperty(0) && g->cash(0) == before + 15000);
+    } else CHECK(false);
+
+    // Konto (10, round 151): with one active player seg3:15C9 returns at once: the card is
+    // used (seg3:0E94), no text 11011, no nextPlayer, the turn goes on.
+    if (auto g = gameWithCard(board, towns, 1, 0, 10, slot)) {
+        g->takeNotices();
+        const double before = g->cash(0);
+        CHECK(g->playCard(slot) && g->hand(0)[size_t(slot)] == Deck::kTaken);
+        bool text = false;
+        for (const Notice& n : g->takeNotices()) text |= n.text == 11011;
+        CHECK(!text && g->currentPlayer() == 0 && g->phase() == Game::Phase::Roll && g->cash(0) == before);
+    } else CHECK(false);
+    // With two players the accounts are averaged, text 11011, and the turn ends.
+    if (auto g = gameWithCard(board, towns, 2, 0, 10, slot)) {
+        g->takeNotices();
+        CHECK(g->playCard(slot) && g->currentPlayer() == 1);
+        bool text = false;
+        for (const Notice& n : g->takeNotices()) text |= n.text == 11011;
+        CHECK(text && g->cash(0) == g->cash(1));
     } else CHECK(false);
 
     // Nimm (6): takes another player's property, then the mode ends at once.

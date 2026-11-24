@@ -326,9 +326,14 @@ public:
     // Phase::Balance until balanceFinish; without a window it draws them all at once.
     void setBalanceWindow(bool on) { balanceWindow_ = on; }
     bool balanceAnnounce();   // the next entry's variant; false when all are announced
+    // The show master has spoken the next announced entry's pos_ / neg_ (seg8:9075..9153):
+    // only then the letter [bp-0x7E] advances (seg8:913D), which the closing lever's
+    // rule seg8:95E5..9613 reads. False when no announced entry is left to speak.
+    bool balanceSpeak();
     bool balanceClose();      // the closing letter; false when already drawn
     bool balanceFinish();     // the show has ended: the player change goes on
     size_t balanceAnnounced() const { return balanceAnnounced_; }
+    size_t balanceSpoken() const { return balanceSpoken_; }
     // The destination announcement seg7:372F(mode) (not saved): 2 at the game start,
     // 1 for a new stage, 3 before the last stage; variant 'a' + it of the voices
     // Part01-04 (mode 1: the rand() % 5 of seg7:3B4E, otherwise 3).
@@ -454,7 +459,7 @@ private:
     int totalStages_ = 0;
     int balanceSerial_ = 0, balanceChoice_ = 0, balanceIntro_ = 0, balanceClosing_ = 4;
     bool balanceWindow_ = false, balanceClosed_ = false;
-    size_t balanceAnnounced_ = 0;
+    size_t balanceAnnounced_ = 0, balanceSpoken_ = 0;
     TurnChange balanceTurn_;                // the suspended player change
     TurnHooks turnHooks();
     void completeTurn(const TurnChange& change);

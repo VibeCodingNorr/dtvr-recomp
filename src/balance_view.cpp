@@ -107,6 +107,9 @@ public:
         if (v_.sound_) v_.sound_->playVoice(kVoiceChannel, findCaseInsensitive(v_.root_, fs::path("snd") / "fx" / "hebel01.wav"));
     }
     int announce(size_t index) override { return v_.commands_.announce ? v_.commands_.announce(index) : -1; }
+    void spoken(size_t index) override {
+        if (v_.commands_.spoken) v_.commands_.spoken(index);
+    }
     int close() override { // seg8:9605 draws through Game::balanceClose
         if (v_.commands_.close) {
             const int c = v_.commands_.close();
