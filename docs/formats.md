@@ -3111,6 +3111,78 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
 
+### Start and Blue Byte logo
+
+- **Order in seg5:0000** (the start-up returning 1 on success): … seg5:1BBB creates
+  the popup `Rally` DS:42 and the canvas DS:40 (style 0x46000000, centred) and shows
+  both (seg5:1C76 / 1C81); the canvas WM_CREATE loads `butt\<n>\bk.bmp` (seg8:001A,
+  DS:17E2) and its WM_PAINT (seg8:01B7) copies it under every paint rectangle. Then
+  `%s\assorted.sbs` (DS:E8, seg6:3E38; failure → error message seg6:0639, return),
+  seg2:7F72, **seg6:0A4D("BB.bmp" DS:F8, 0)** at seg5:0151, seg1:31C0, the MIDI cue
+  `I` (DS:FF, seg1:2A30), `[Setup] ShowIntro` (DS:101 / 10B, default 1, seg5:22C0 →
+  DS:9562); with ShowIntro the intro seg7:0000 and **seg6:0A4D("BB.bmp" DS:111, 0)**
+  again at seg5:0193; then seg5:3A4D, the board loader seg5:14AB, seg8:7CFC, seg3:0000
+  (deck), seg5:1C95, seg1:2B9A, the cursor from before back (seg5:0207; IDC_WAIT 0x7F02 since
+  seg5:001B, so the hourglass shows over the logo), **seg6:0B37**
+  (seg5:020C) and the title seg8:03AB (seg5:0211).
+- **seg6:0A4D(name, focus)**: wsprintf `%s\%d\%s` (DS:165C) with the butt directory
+  DS:7A, the art directory of seg5:1827 (6 / 8 / 1) and the name: `butt/<n>/BB.bmp`
+  (the installation has `bb.bmp` 175 × 313 in 6, 219 × 391 in 8, 280 × 500 in 1,
+  8-bit). The DIB is read by seg5:3E04 into DS:163E; without it the function
+  returns. CreateWindow class `PICT` (DS:166A), title DS:1665, style 0x44000000
+  (WS_CHILD | WS_CLIPSIBLINGS, no border), x = y = 0, width / height = biWidth /
+  biHeight, parent the canvas DS:40 → DS:163C; BringWindowToTop, ShowWindow(5),
+  then seg6:03F7 dispatches the waiting messages until none is left (seg6:0B05; while
+  the application is inactive, DS:94E6 = 0, it first waits with WaitMessage). With
+  focus 0 nothing more happens: no SetFocus and no modal wait (seg6:0B11 → seg6:0FB4
+  only with focus ≠ 0, as for Credits). **The logo has no timer**: it stays while
+  seg5:0000 goes on loading.
+- **PICT window procedure** seg6:0B66: WM_CREATE (seg6:0B8E) centres it with
+  seg6:0000 on the canvas (half the size difference, C division, not below 0);
+  WM_ERASEBKGND returns 1; WM_PAINT (seg6:0BD3) selects and realises the game
+  palette DS:A130 and seg6:0938 copies the DIB with key 0 (seg5:4FC6) into a WinG
+  bitmap and WinGBitBlt's it to (0, 0); WM_KEYDOWN and WM_LBUTTONDOWN destroy the
+  window (seg6:0B80); WM_DESTROY frees the DIB and clears DS:163C; 0x30F / 0x311 go
+  to seg5:3941. seg6:0B37 destroys DS:163C when it is set.
+- **Removal**: the intro calls seg6:0B37 at seg7:044D, after its CreateWindow (whose
+  WM_CREATE loads club.bmp and the SBS files) and the record set-up, right before it
+  shows its own window; the set-up calls it at seg5:020C before the title.
+- **Colours**: the game palette is the resource `PAL` of type `PALETTE`
+  (DS:1418 / 1420) of `dat\<lang>\rally_<lang>.dat`, 256 RGB triples (seg5:2C33).
+  `bb.bmp` has no pixel of colour 0 (the blit is opaque); its colour table and the
+  game palette differ in 18 entries, of which the logo's pixels use 16, 17 and 254 in
+  all three sizes (pixel counts 6: 1 / 122 / 16, 8: 10 / 188 / 31, 1: 11 / 364 / 36;
+  the row padding bytes of the 175-wide `butt/6` file are 162, not pixels), by at
+  most 7, 4 and 2 per channel (e.g. 254: (0x61, 0x7A, 0xF2) in the bitmap, (0x63,
+  0x7B, 0xF3) in `PAL`); `bk.bmp` differs from `PAL` in the same 18 entries.
+- **Rebuilt** in `src/logo_view.cpp` (tested in `tests/logo_view_test.cpp`):
+  runGameWindow presents bk.bmp with the centred logo right after the renderer exists,
+  then loads the language file, the art, the audio and (in start) the intro's files;
+  start removes it (seg7:044D / seg5:020C). When the intro ends, the logo is shown
+  again before the title opens (seg5:0193 … 020C). `--logo` (tests) keeps the logo
+  until a key or left click. The intro is now drawn over bk.bmp as well (the canvas
+  is visible and painted while INTRO runs), not over black.
+- **Recomp addition: minimum display time** (user decision, 2026-11-24). rally.exe
+  has no timer; the logo stayed for its loading time, seconds on 1995 machines, while
+  the rebuild loads in about 0.2–0.3 s (measured with the dummy video driver). After
+  loading, GameWindow::waitLogo keeps the logo until `kLogoMinimumMs` = 2500 ms after
+  its show() (`src/logo_view.hpp`), running an event loop meanwhile: window, focus
+  and display keys (F11, Alt+Enter, F12) work, a closed window quits. A key press
+  (controller buttons arrive as Return / Escape; a key-down of Shift, Ctrl, Alt or GUI
+  alone does not count, so Alt+Enter switches fullscreen without ending the logo, and
+  in rally.exe Alt arrives as WM_SYSKEYDOWN, which PICT does not handle) or a left
+  click ends the wait, as
+  WM_KEYDOWN / WM_LBUTTONDOWN of PICT destroy it (seg6:0B80); the rest of that input
+  (key repeats and release, the button release) is dropped, so it does not reach the
+  intro or title. The second logo after the intro is the same call (seg6:0A4D with
+  DS:111, focus 0, same window procedure) and gets the same rule. Smoke tests without
+  `--logo` skip the wait to keep their frame counts.
+  **Differences:** the bitmap's own colour table is used (as for all bitmaps of the
+  rebuild), not `PAL`; in rally.exe PICT never has the focus (focus 0, no SetFocus),
+  so there a key would reach another window and only a click would remove the logo,
+  and only when a message pump runs (seg6:0B05 and the loaders' own pumps, not
+  checked); the hourglass cursor (IDC_WAIT, seg5:001B … 0207) is not rebuilt.
+
 ### Intro (round 89)
 
 - **Start:** seg5:0174 reads `[Setup] ShowIntro` (DS:101 / 10B, default 1) and

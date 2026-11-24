@@ -11,6 +11,7 @@
 #include "controller.hpp"
 #include "display_control.hpp"
 #include "game_screen.hpp"
+#include "logo_view.hpp"
 #include "music_player.hpp"
 #include "recomp_menu_view.hpp"
 #include "scripted_input.hpp"
@@ -45,6 +46,7 @@ struct GameWindowResources {
     DisplayControl& displayControl;
     ScriptedInput& scripted;
     RecompMenuView& recompMenu;
+    LogoView& logo; // the Blue Byte logo while loading (seg6:0A4D)
 };
 
 class GameWindow {
@@ -58,6 +60,10 @@ public:
 private:
     // game_window.cpp
     void start();
+    // The logo's minimum time (recomp, kLogoMinimumMs) or, with `hold` (--logo), until a
+    // key or left click; false when the window was closed.
+    bool waitLogo(bool hold);
+    bool swallowLogoSkip(const SDL_Event& event); // the rest of the key / click that ended the logo
     Settings menuSettings();                 // the layout in use (--[no-]widescreen may override the setting)
     void applySettings(const Settings& s);   // saved; the OPTION window shows the same smoothing
     void report();
@@ -102,6 +108,7 @@ private:
     DisplayControl& displayControl_;
     ScriptedInput& scripted_;
     RecompMenuView& recompMenu_;
+    LogoView& logo_;
     MenuView& menu_;
     CardView& cards_;
 
@@ -135,6 +142,8 @@ private:
     std::array<std::string, kPlayerSlots> pendingNames_;
     bool cardsFromEstates_ = false; // the card window was opened by the town dialog's Karte (mask 1)
     bool introShown_ = false;
+    SDL_Keycode logoSkipKey_ = SDLK_UNKNOWN; // ended the logo; its repeats and release are dropped
+    bool logoSkipButton_ = false;            // a left click ended the logo; its release is dropped
     SDL_Keycode heldArrow_ = SDLK_UNKNOWN; // seg4:01F2: DS:A77A held
     bool modal_ = false, moving_ = false;  // computed each frame, used by the input
 };

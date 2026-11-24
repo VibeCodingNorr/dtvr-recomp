@@ -191,7 +191,17 @@ void GameWindow::updateFrame(int frame) {
         }
     }
     screen_.intro().update(SDL_GetTicks());
-    if (introShown_ && !screen_.intro().active()) { introShown_ = false; openTitle(); }
+    if (introShown_ && !screen_.intro().active()) {
+        introShown_ = false;
+        // seg5:0193: the logo again while the board and map load (seg5:14AB ...), then
+        // seg5:020C removes it and seg8:03AB opens the title.
+        // The same call as at the start, so the same minimum time (recomp).
+        if (logo_.show()) logo_.present();
+        const bool open = waitLogo(false);
+        logo_.hide();
+        if (!open) return;
+        openTitle();
+    }
     // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
     if (screen_.finish().update(SDL_GetTicks())) sound_.stop(0); // seg7:3555 -> WM_DESTROY -> seg1:3C3B
     // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
