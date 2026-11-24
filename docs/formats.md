@@ -3102,14 +3102,51 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   set and the buttons changed → VK_RETURN, button 2 → VK_ESCAPE. The JOY window
   seg2:8D81 is the calibration dialog (pictures DS:32F2 / 32FD; Escape, Return,
   Space close it).
-- **Rebuilt** in `src/controller.cpp`: the first SDL game controller (Xbox and
-  other pads; also hot-plugged) is joystick 1 while [Setup] Joystick ≠ 0: d-pad or
+- **Rebuilt** in `src/controller.cpp`: the SDL game controllers (Xbox and
+  other pads; also hot-plugged; all of them merged, see the recomp pad layer) are joystick 1 while [Setup] Joystick ≠ 0: d-pad or
   left stick give the direction, A is button 1 (Return), B button 2 (Escape).
   The repetition is the tested `JoystickRepeater`; its keys are pushed into the
   SDL queue so menus, dialogs and driving receive them like the keyboard, and a
   released direction sends key-up (clears the held arrow, DS:A77A). **Not
   rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
+- **Evidence for the key details:** the PostMessage calls of seg2:8A30 (seg2:8B44,
+  8B84, 8BBC, 8BF4) send WM_KEYDOWN (0x100) with lParam 0 to the GetFocus window
+  (seg2:8A35, skipped when it is 0, seg2:8A49): no repeat bit, no WM_KEYUP; only
+  the centring clears DS:A77A (seg2:8B05). The Risiko window's WM_KEYDOWN
+  (seg7:718A → 6C0D) reads only wParam ([bp+0xA]) and the pending flags DS:A29E /
+  A0EE, so a held joystick direction presses CHANCE every 80 ms after the three
+  waiting ticks in the original too; the rebuild keeps that. A diagonal is
+  vertical (check order of seg2:8C2B), for the d-pad and the stick alike.
+
+#### Recomp pad layer (round 1 "pad core", `src/pad_input.cpp`)
+
+RECOMP ADDITION, no counterpart in rally.exe. `PadInput` runs the unchanged
+`JoystickRepeater` and adds, each on a new press (edge) in the same 80 ms tick:
+Start → the recomp menu (Pause page, toggle like F8, not F8 itself, which is a
+switch key in OPTION / PLAYER; in OPTION the page Grafik like its own link; not over
+film, intro, sights, the steering cross or the quit question); View/Back →
+Backspace only where it reaches RIGHTBTN (the map with no window, not in Risiko or
+the town dialog) or while RIGHTBTN is open (its checked Zurück), otherwise nothing;
+X → Backspace; LB / RB → Shift+Tab (KMOD_LSHIFT) / Tab; Y → WM_COMMAND 1031 "Karte
+einsetzen" while ONFIELD has the input (its item has flags 0 in rally_d.dat, never
+grayed), F9 in PLAYER, otherwise nothing; A → Space instead of Return while PLAYER
+or OPTION has the input (SBBUTTON: Return is Start / nothing there). The right stick
+posts arrow key-downs (the original repetition, no key-ups) only while Umfeld is
+open and no other pad key falls in the same tick (an Escape / Return of that tick
+closes Umfeld). These steps are no SDL key events: `PadOutput::scroll` goes straight to
+`GameScreen::handleSurroundings` in `updatePad` while Umfeld is open, so they can never
+reach the map's keys or become a driving direction.
+The held driving arrow is cleared by its key-up before any window takes the event
+(quit question, film, intro, sights, MCTRL, recomp menu), on focus loss and when
+Umfeld closes. The context comes from `GameWindow::updatePad` (src/game_window_pad.cpp).
+Hazard rules (recomp): every connected SDL game controller is merged into joystick 1
+(directions by the seg2:8C2B order over all pads, buttons ORed), so any pad may act;
+when the pad stops counting (last pad removed, [Setup] Joystick off, window not
+focused) the held direction gets its key-up at once; buttons held when the pad
+starts counting or when pads are added / removed are ignored until released. The
+[Setup] Joystick gate applies to both layers: with the option off the pad does
+nothing at all.
 
 ### Start and Blue Byte logo
 

@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// The key logic of game controllers, free of SDL calls (key codes only) so it can be
+// tested without a device:
+//   JoystickRepeater  the original joystick 1 of rally.exe (seg2:8A30, round 79):
+//                     direction and buttons 1 / 2 as keys with the 80 ms repetition.
+//   PadInput          that layer unchanged plus the RECOMP ADDITION of the other pad
+//                     buttons (Start, Back, X, Y, LB, RB, right stick), the release of a
+//                     held direction when the pad stops counting (unplugged, option off,
+//                     window unfocused) and the neutral start of held buttons.
+// Evidence and the mapping in docs/formats.md "Joystick" / "Recomp pad layer".
+#pragma once
+
+#include <SDL_keycode.h>
+
+#include <vector>
+
+namespace dtvr {
+
+// One synthesized key: pressed or released, with the modifier it carries (Shift+Tab).
+struct PadKey {
+    SDL_Keycode key = SDLK_UNKNOWN;
+    bool down = true;
+    Uint16 mod = KMOD_NONE;
+};
+
+// seg2:8A30 for one joystick.
+class JoystickRepeater {
+public:
+    // `direction` is SDLK_UP / DOWN / LEFT / RIGHT or SDLK_UNKNOWN; bit 0 of `buttons`
+    // is button 1, bit 1 button 2.
+    std::vector<PadKey> tick(SDL_Keycode direction, unsigned buttons);
+
+private:
+    SDL_Keycode previous_ = SDLK_UNKNOWN; // DS:94FC
+    int repeat_ = 0;                      // DS:A0E2
+    unsigned previousButtons_ = 0;        // DS:A0E6
+};
+
+// Buttons of the merged pad state (SDL GameController names, Xbox labels).
+enum PadButton : unsigned {
+    kPadA = 1u << 0,     // button 1 of the game port (original)
+    kPadB = 1u << 1,     // button 2 of the game port (original)
+    kPadX = 1u << 2,
+    kPadY = 1u << 3,
+    kPadBack = 1u << 4,  // View / Back / Select
+    kPadStart = 1u << 5, // Menu / Start
+    kPadLB = 1u << 6,
+    kPadRB = 1u << 7,
+};
+
+// What the pads report in one tick.
+struct PadState {
+    SDL_Keycode direction = SDLK_UNKNOWN;  // d-pad or left stick (seg2:8C2B order)
+    SDL_Keycode rightStick = SDLK_UNKNOWN; // right stick, same check order
+    unsigned buttons = 0;                  // PadButton bits
+};
+
+// Which window has the input, as far as the recomp buttons need to know. The game
+// window fills it every tick (game_window_pad.cpp).
+struct PadContext {
+    bool aIsSpace = false;      // PLAYER / OPTION: Return is Start / nothing there, Space toggles
+    bool backOpensMenu = false; // Backspace reaches RIGHTBTN (the map) or closes it (Zurück)
+    bool surroundings = false;  // Umfeld is open: the right stick scrolls with arrows
+    bool turnMenu = false;      // ONFIELD has the input: Y is "Karte einsetzen" (1031)
+    bool setup = false;         // PLAYER has the input: Y is F9 (computer extra cards)
+};
+
+// Result of one tick: keys for the SDL queue and the actions that are no key.
+struct PadOutput {
+    std::vector<PadKey> keys;
+    bool pauseMenu = false; // Start: open / close the recomp menu (its Pause page)
+    bool handCards = false; // Y in ONFIELD: WM_COMMAND 1031
+    // Right stick in Umfeld: one scroll step (an arrow) for GameScreen::handleSurroundings,
+    // called directly, never an SDL key event (it must not become a driving direction).
+    SDL_Keycode scroll = SDLK_UNKNOWN;
+};
+
+class PadInput {
+public:
+    // One 80 ms tick while the pad counts ([Setup] Joystick on, a pad connected,
+    // the window focused). The first tick after `release` (or ever) takes the
+    // buttons held at that moment as already pressed.
+    PadOutput tick(const PadState& state, const PadContext& context);
+    // The pad stops counting: key-up of a held direction (the original clears its
+    // steering direction DS:A77A only when the stick is centred; a vanished pad would
+    // otherwise keep the car driving), and the next tick starts neutral again.
+    PadOutput release();
+    // Pads were connected or removed: buttons held now are not fresh presses.
+    void devicesChanged(unsigned heldButtons) { suppressed_ |= heldButtons; }
+    bool active() const { return active_; }
+
+private:
+    JoystickRepeater original_;
+    JoystickRepeater rightStick_;
+    unsigned previous_ = 0;   // recomp buttons after suppression, last tick
+    unsigned suppressed_ = 0; // held since the start / a device change, ignored until released
+    bool active_ = false;
+};
+
+} // namespace dtvr

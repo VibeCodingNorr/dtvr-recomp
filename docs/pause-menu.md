@@ -13,7 +13,8 @@ time limit stops. The Audio page holds the master volume and the sound set (F8
 opens it; the former F8 overlay is gone); the options window opens the menu through
 its recomp entry "Weitere Einstellungen". Separate effect / speech / music levels are
 deliberately not offered: rally.exe only switches them on and off at full volume
-(round 132). Not yet: controller Menu button, help pages, multiplayer entries, a
+(round 132). The controller's Start (Menu) button opens and closes it on the Pause page
+(src/game_window_pad.cpp). Not yet: help pages, multiplayer entries, a
 native start screen.
 
 ## Before a game
@@ -33,7 +34,8 @@ details in the main player flow. A diagnostic view may offer technical details.
 Escape first dismisses the current modal dialog or cancels a pending UI selection
 where that is allowed. Otherwise it opens the pause overlay; pressing Escape
 again returns to the game. Do not let the held key immediately close and reopen it.
-Controller Back/Menu should reach the same interface once supported.
+The controller's Start (Menu) button reaches it; View/Back opens the original
+RIGHTBTN menu on the map instead (docs/formats.md "Recomp pad layer").
 
 | Entry | Purpose / behavior |
 | --- | --- |
