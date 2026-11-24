@@ -62,17 +62,29 @@ int main() {
     {
         IntroScript s(nullptr);
         const auto events = s.start();
-        check(events.size() == 4 && events[0].name == "paar2" && events[3].name == "paar1", "stamps");
+        check(events.size() == 4 && events[0].kind == IntroEvent::FillFile && events[0].name == "paar2" &&
+                  events[3].name == "paar1",
+              "seg7:1E3C fills the frames of four files");
         check(s.record(4).def == 0x08C8 && s.record(4).countdown == 1 && s.record(4).reps == 0x2706, "record 4");
-        // The first pass draws frame 0 of every record, then steps.
+        // +0xD: the filled people and the picture are copied without a key (seg7:0260 / 02F0 / 0380).
+        check(s.record(3).keyed && !s.record(4).keyed && !s.record(5).keyed && !s.record(6).keyed && s.record(7).keyed,
+              "keyed flags at start");
+        const auto initial = s.records();
+        check(initial.size() == 15 && initial[4].active && initial[4].frame == "lt100" && !initial[0].active,
+              "WM_PAINT sees the start frames");
+        // A pass steps (seg7:1C28) before it draws (seg7:1C46).
         IntroPass p = s.pass(20);
-        check(p.draw && p.frames.size() == 5 && p.frames[0].name == "tu00" && p.frames[1].name == "lt100", "first frames");
+        check(p.draw && p.records.size() == 15 && p.records[3].frame == "tu00" && p.records[4].frame == "lt100" &&
+                  p.records[4].x == 0x81 && p.records[4].y == 0xB0,
+              "first pass: countdown 1 keeps frame 0");
         check(s.record(3).frame == 0 && s.record(3).countdown == 999, "single frame record waits");
-        // Record 4 (countdown 1): frame 0 for two passes, then lt101 for delay + 1 = 5 passes.
+        // Record 4 then keeps every frame delay + 1 = 5 passes.
         p = s.pass(40);
-        check(p.frames[1].name == "lt100", "countdown 1: second pass still frame 0");
-        p = s.pass(60);
-        check(p.frames[1].name == "lt101", "then frame 1");
+        check(p.records[4].frame == "lt101", "second pass: frame 1");
+        for (int i = 3; i <= 6; ++i) p = s.pass(uint32_t(i) * 20);
+        check(p.records[4].frame == "lt101", "frame 1 for five passes");
+        p = s.pass(140);
+        check(p.records[4].frame == "lt102", "then frame 2");
     }
 
     // Voice timing: every voice 200 ms, rally07a long enough for the hat to fall.
@@ -95,6 +107,29 @@ int main() {
         }
         check(flash && wipe && stamp, "flash at 105, wipe at 305, door stamped on entering state 7");
         check(s.record(0).def == 0 && s.record(4).def == 0, "records cleared by the flash");
+    }
+
+    // seg6:3F02 closes leute1 / paar1 on entering state 6 (seg7:0C2F / 0CE2) and tuer /
+    // zoom on entering state 7 (seg7:1076 after the tu00 stamp, seg7:1249).
+    {
+        IntroScript s(&sync);
+        s.start();
+        std::vector<std::string> order;
+        std::vector<int> states;
+        for (int i = 1; i <= 20000 && !s.finished(); ++i) {
+            const IntroPass p = s.pass(uint32_t(i) * 20);
+            for (const auto& e : p.events) {
+                if (e.kind == IntroEvent::CloseFile || e.kind == IntroEvent::StampFrame) {
+                    order.push_back(e.name);
+                    states.push_back(s.state() * 1000 + s.passes());
+                }
+            }
+        }
+        const std::vector<std::string> expected = {"leute1", "paar1", "tu00", "tuer", "zoom"};
+        check(order == expected, "close order");
+        check(states.size() == 5 && states[0] == 6000 && states[1] == 6000 && states[2] == 7000 &&
+                  states[4] == 7000,
+              "closed on entering states 6 and 7");
     }
 
     // Hat and Fate in state 10 (rally07a playing for 6 s = 300 passes).
