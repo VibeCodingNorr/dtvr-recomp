@@ -259,6 +259,10 @@ void GameScreen::advanceVehicles(Uint32 now) {
         const SDL_Point target{f.x * WorldMap::kTile, f.y * WorldMap::kTile};
         SDL_Point& at = shown_[size_t(p)];
         int& from = shownField_[size_t(p)];
+        if (game_.positionJumps(p) != shownJumps_[size_t(p)]) { // seg2:04AD / 5CDE set the pixel position
+            shownJumps_[size_t(p)] = game_.positionJumps(p);
+            from = -1;
+        }
         if (from != field) {
             // Only a step along a link is driven; any other change (start, flight,
             // Konferenz, a computer turn done at once) puts the vehicle there directly.

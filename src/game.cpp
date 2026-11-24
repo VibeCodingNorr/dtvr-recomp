@@ -49,6 +49,8 @@ Game::Game(const Board& board, const std::vector<Town>& towns, const std::array<
     players_.resize(kPlayerSlots);
     origin_ = startField(board_, towns_);
     if (origin_ < 0) throw std::runtime_error("Startstadt LONDON nicht gefunden");
+    // seg2:0184: every slot starts with the facing of the start field (seg2:5067).
+    if (const int f = startFacing(board_.fields[size_t(origin_)])) lastDirection_.fill(f);
     // [Player] P0..P7 of rally.ini (seg1:02BA): 0 empty, 1 human, 2 computer.
     for (int i = 0; i < kPlayerSlots; ++i) {
         if (slots[size_t(i)] > 2) throw std::invalid_argument("Platzstatus 0, 1 oder 2");
@@ -276,15 +278,24 @@ bool Game::step(Direction d) {
     // step; barriers and obstacles (seg2:2404) are met on the road afterwards
     // (seg2:21D0 ff.), so a refused step never reaches them.
     if (!counter_.step(d, false)) return false;
+    // seg2:21D0-21EB: in front of a cell with tile flag 0x20 (a closed border barrier,
+    // or an obstacle tile, seg2:3305) Carb01 plays on channel 1 before seg2:2404
+    // checks it. Only a road cell runs this (a field cell goes to the field branch,
+    // seg2:1E00); every barrier cell lies at least two cells from both fields (data
+    // check, R3a), so a road cell always comes first. The confirmed second call after
+    // the card question is the same encounter.
+    const bool barrier = !linkOpen(p.field, d);
+    const int o = barrier ? -1 : obstacles_.onLink(board_, p.field, d);
+    if ((barrier || o >= 0) && !obstacleConfirmed_) sound(1, 9);
     // seg2:2246 stops the vehicle in front of the barrier cell; it can only turn back
     // (seg2:2189 -> 22E1 undoes the step) and reaches its field again, where the
     // stop or pass at seg2:2021 / 1E49 runs the horn check seg2:2676.
-    if (!linkOpen(p.field, d)) {
+    if (barrier) {
         messages_.push_back("Schlagbaum: Osteuropa ist noch geschlossen"); // seg2:2404
         honk(p.field);
         return false;
     }
-    if (const int o = obstacles_.onLink(board_, p.field, d); o >= 0) { // seg2:2404 with an obstacle
+    if (o >= 0) { // seg2:2404 with an obstacle
         const int card = clearingCard(obstacles_.slots()[size_t(o)].type);
         const int slot = card >= 0 ? findCard(current_, card) : -1;
         if (slot < 0) {
@@ -425,11 +436,19 @@ void Game::arrive() {
             announceMode_ = remaining_ != 0 ? 1 : 3;
             announceVariant_ = remaining_ != 0 ? rng_.rand() % 5 : 3; // seg7:3B4E / 3B5F
             ++announceSerial_;
-            origin_ = field;
-            destination_ = next;
+            if (remaining_ != 0) {
+                origin_ = field;                                   // seg2:1492
+                destination_ = next;                               // seg7:3D7D / 3F46 / 45E7
+            } else {
+                // Mode 3 keeps its draw in [bp-0x38] only; DS:A10D becomes Brussels
+                // (seg7:47AB / 4B89), then DS:A10B = the field (seg2:145F).
+                destination_ = lastStageDestination(board_, towns_, destination_);
+                origin_ = field;
+            }
             messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
                                 + ", Ziel " + townName(destination_));
-            placeDragoForStage();
+            if (remaining_ != 0) placeDragoForStage(); // seg2:1495-1535
+            else startMasterRallye();                  // seg2:1462 / 1467 / 146D
         } else {
             messages_.push_back(who + " in " + townName(field) + ": Grundstuecke kaufen moeglich");
             dragoAct(current_);

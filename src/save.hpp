@@ -12,7 +12,7 @@ namespace dtvr {
 
 constexpr int kSaveFormat = 6;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
                                    // 4: no extensions record, 5: no worth records)
-constexpr int kRulesRevision = 44; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 45; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
                                    // year balance's draws, seg8:88DF / 8C49 / 8C57; 29: one more
@@ -37,7 +37,11 @@ constexpr int kRulesRevision = 44; // rule reconstruction round the state belong
                                    // year balance's closing letter per spoken result,
                                    // seg8:913D; 44: the horn draw random(1) on a field
                                    // with another driver, seg2:2676; Konferenz copies
-                                   // the facing, seg3:3092)
+                                   // the facing, seg3:3092; 45: the Master-Rallye start
+                                   // cells random(12 - n) and Dr. Drago to the leader,
+                                   // seg2:5CDE / 5FCA; Brussels as the last destination,
+                                   // seg7:4B89; seg2:04AD re-places Dr. Drago after Punch,
+                                   // Flugzeug and Tschüss; start facing seg2:5067)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

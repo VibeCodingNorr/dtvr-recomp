@@ -204,6 +204,10 @@ public:
     bool hasNotices() const { return !notices_.empty() || !films_.empty(); }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
+    // Counts the jumps of a slot's vehicle (seg2:04AD and the Master-Rallye start
+    // seg2:5CDE set the pixel position directly): the map shows the vehicle there at
+    // once instead of driving it. Presentation only, not saved.
+    int positionJumps(int player) const { return jumps_[size_t(player & 7)]; }
     uint16_t routeMaskForDisplay() const { return routeMask(); } // DS:A10F for panels
     // Card Risiko (seg7:674D, game_risiko.cpp): after a one-reel spin the light
     // blinks at levels 2..4. Pressing while lit multiplies the steps by L/(L-1),
@@ -355,6 +359,11 @@ private:
     // game_drago.cpp
     void dragoAct(int player);   // seg2:B58C after field actions and sit-outs
     void placeDragoForStage();   // seg2:14B1: farthest player gets Dr. Drago
+    // seg2:04AD(player, field): the player is put on the field, the start facing is set
+    // (seg2:5067) and Dr. Drago is placed anew when the player carries him (seg2:0590).
+    void setPosition(int player, int field);
+    // seg2:5CDE + seg2:5FCA / 9C97 before the last stage (round R3a).
+    void startMasterRallye();
     bool playWeihnachten();      // seg3:1156
     void playHauAb();            // seg3:3EFB
     void playPunch();            // seg3:2D17 (game_cards.cpp)
@@ -448,6 +457,7 @@ private:
     int risikoPresses_ = 0, risikoPressLight_ = 0; // not saved: presentation only
     std::array<std::string, kPlayerSlots> names_; // presentation only, not saved
     std::array<int, 8> lastDirection_{2, 2, 2, 2, 2, 2, 2, 2}; // vehicle facing (frame byte +2)
+    std::array<int, 8> jumps_{};   // positionJumps (presentation only, not saved)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113
     int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)

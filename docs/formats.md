@@ -260,6 +260,8 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   or card question.
 - **Rebuilt** in `Game::step` / `Game::honk` (`src/game.cpp`): each step is one
   arrival; Plopp01 and the check unless the step reaches the last field (Carb01).
+  A step over a closed barrier or an obstacle first plays Carb01 (seg2:21E5, round
+  R3a; once, also when a human is asked for a clearing card).
   The counter is probed before barriers and obstacles; a barrier or obstacle
   without a clearing card, or a declined card question (`answerObstacle(false)`),
   checks the player's own field at once (the return; no rule draws while the
@@ -281,7 +283,12 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   seg2:0BC3, Backspace/Escape → a dialog via seg5:5214, `1`–`4` → seg6:0DA0,
   Insert/Delete → seg6:2E54(3).
 - **Cells with pit bit 0x20**: entering one calls seg2:2404(x, y); a zero result
-  stops the vehicle (seg2:21D0). Meaning open.
+  stops the vehicle (seg2:21D0). Meaning: border barriers and obstacle tiles
+  (seg2:3305 writes 0x20 as the obstacle tile's property). Only a road cell runs
+  the test (a field cell takes the field branch at seg2:1E00), and before it
+  Carb01 plays on channel 1 (seg2:21E5–21EB) whether or not the vehicle passes.
+  All 15 barrier cells lie at least two cells from both fields of their link
+  (data check, R3a), so the test always runs.
 - **Arrival** (seg2:0D38): the field action runs when the player is on a field
   (DS:9592 ≠ −1), steps taken = allowance or allowance = −1, the vehicle is
   aligned to the cell grid (seg2:2C0F: `(x | y) & 0xF == 0`) and DS:9EDE = 0. A
@@ -373,6 +380,34 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   tie or with one player). *Correction (round 10): this was first read as the
   player who starts the stage; seg2:9C97 places Dr. Drago (DS:9CFC).* With A104 = 0 the reward is 300,000 × inflation and WM_COMMAND
   0x424 ends the game (seg4:075B tears down the game windows).
+- **Last stage / Master-Rallye (round R3a).** When A104 becomes 0 (seg2:1441) the
+  game plays music A1 (DS:1A52) and calls seg7:372F(3). That announcement still
+  draws a destination at seg7:3755 (seg5:1E2C with the old A10B and the reached
+  A10D), but mode 3 (seg7:46EF ff.) never stores it: once the first voice
+  `Master1` is done (or skipped) it searches the list DS:1A in order for the town
+  name of seg2:271C equal to `BRÜSSEL`, `brüssel` or `brussels` (DS:4E11 / 4E19 /
+  4E21, lstrcmpi, seg7:47AB–4867) and at the end again for `BRÜSSEL` / `brüssel`
+  (DS:4E4B / 4E53, code page 850, seg7:4B89–4C22), writing the field to A10D. The
+  German towns match `brüssel` (europe_d.tow `Br\x81ssel`, field 239). No further
+  draw in mode 3 (only seg1 voice and seg2 drawing calls; seg1 has no rand call).
+  Then A10B = the reached field (seg2:145B) and **seg2:5CDE**: k = random(12 − n)
+  (n = players in play, seg2:5D51–5D66); the players in play, in slot order, get
+  the fields at cells k, k + 1, … of the table x = 05 14 37 44 51 70 94 A0 A0 BF D3
+  C7, y = 05 E2 F5 FD FD FD FA F5 EA DC D7 C0 ([bp−0xE] / [bp−0x1A]): every field
+  whose record +0 / +1 equals the cell (the loop does not stop at a match), +0x16 /
+  +0x18 = cell · 16, +0x3C = +0x3E = field, seg2:5067 (start facing) and +0x1E =
+  animation word 0 − slot (4 − slot, a per-slot frame phase); a cell without a
+  field leaves the player but uses the cell. Original data: one field per cell,
+  fields 0, 31, 109, 132, 178, 252, 376, 410, 408, 518, 573, 543 (31 and 376 are
+  sea fields, cell bit 8). Then seg2:5FCA: seg2:5FF7 recomputes +0x5A of all eight
+  slots, seg1:8EE1 sorts the players in play by +0x42 + +0x5A (adjacent swaps only
+  when the later value is greater, so ties keep slot order; one player: seg2:1A41)
+  and seg2:9C97 gives Dr. Drago to DS:957A, the first (countdown random(3) + 4,
+  seg2:B48D). The distance rule seg2:1495–1535 is skipped (seg2:1475 → 153D).
+  Rebuilt in `Game::arrive` / `Game::startMasterRallye` (`src/game.cpp`,
+  `src/game_drago.cpp`) with `lastStageDestination`, `masterStartFields` and
+  `startFacing` (`src/rules.cpp`); tested in `tests/master_rallye_test.cpp`. The
+  +0x1E frame phase is not modelled (the map's frame animation restarts per vehicle).
 - The opening capital was not found; money is only changed through seg2:59E6
   (add) and seg2:5A47 (subtract).
 - **Rule consequence**: as reversing only undoes steps, a player in a dead end
@@ -874,11 +909,18 @@ the types 0x400/0x800 follow in round 13).
 
 Rebuilt in `src/events.cpp` (`investmentPayout`), `src/game_cards.cpp` and
 `src/game_events.cpp`. Simplifications: Punch uses the direction of the
-player's last step as facing (right before the first move); Konferenz copies
-it to the others like the frame pointer (seg3:307C–3096, roadmap R2). Still
-open (R5): the initial facing seg2:5067 (first linked direction of the field,
-called at seg2:0184 / 0581, seg2:5E4D, seg5:6C47, seg8:B021) where the rebuild
-starts with 2; the viewer invests
+player's last step as facing; Konferenz copies
+it to the others like the frame pointer (seg3:307C–3096, roadmap R2). *Round R3a:*
+the start facing seg2:5067 is the first direction with a link (record +2 + 2k ≠
+0xFFFF), animation mode 0 with +0x2D = 2 / +0x2E = 0x18 on a cell with bit 8,
+otherwise mode 2 with 0 / 0 (seg2:5137–51BB); without a field at the cell the
+player leaves play (seg2:50B7). Callers: the new game for all eight slots
+(seg2:0184, London: right), seg2:04AD (seg2:0581), the Master-Rallye (seg2:5E4D),
+seg5:6C47 (a computer off the fields) and loading (seg8:B021). seg2:04AD, the
+position setter of Tschüss (seg3:2CBC), Punch (seg3:2F26) and Flugzeug
+(seg3:3302), also places Dr. Drago anew (seg2:9C97, a random(3) draw) when the
+moved player carries him (seg2:0590). Rebuilt as `Game::setPosition`; loading keeps
+the saved facing and Dr. Drago's countdown (not seg8:B021 / B06A); the viewer invests
 half the cash rounded to 1,000 with I and flies to the current destination with
 Flugzeug. Open: property cards 1–8 (town dialog modes), Steuerlos, Tschüss,
 Risiko, card fields, Nebel, computer players.
@@ -2172,7 +2214,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   destination seg5:1E2C(DS:A10B, DS:A10D) into [bp−0x38] (seg7:3755) — with the
   old stage start, because seg2:148E sets DS:A10B to the reached field only after
   the call — and in mode 1 then draws rand() % 5 for the voice variant
-  (seg7:3B4E; otherwise 3).
+  (seg7:3B4E; otherwise 3). Modes 1 / 2 store [bp−0x38] in DS:A10D (seg7:3F46 /
+  45E7); mode 3 never does and sets Brussels instead (see "Last stage /
+  Master-Rallye", round R3a).
 - **Scene:** butt/club_map.bmp with the show master records of the balance
   (DS:4800 speaking 79/155, DS:4798 foot, DS:4AE8 lever 150/184; DS:4A30 pull
   and DS:4938 / 4968 hold at 80/159) and the light DS:4782 (licht1 / licht2 of
