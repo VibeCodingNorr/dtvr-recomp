@@ -64,8 +64,13 @@ SbButtonGroup::Input SelectPlayerView::handle(const SDL_Event& event) {
         return buttons_.mouseDown(event.button.x, event.button.y);
     if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
         return buttons_.mouseUp(event.button.x, event.button.y);
-    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) in.cancel = true; // assumption
-    if (event.type == SDL_KEYDOWN) return buttons_.key(event.key.keysym.sym, event.key.keysym.mod, true);
+    if (event.type == SDL_KEYDOWN) {
+        // seg1:0F77: Escape / Backspace (and the right button, posted as VK_BACK by
+        // seg1:0F37) send WM_COMMAND 0xFFFF; SELPLAYER acts only on 0x1392..0x1399
+        // (seg2:56E6) and leaves it to DefWindowProc (seg2:56CC): no cancel.
+        in = buttons_.key(event.key.keysym.sym, event.key.keysym.mod, true);
+        in.cancel = false;
+    }
     return in;
 }
 

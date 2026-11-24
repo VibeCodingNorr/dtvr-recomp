@@ -28,8 +28,9 @@ public:
     void open(const std::vector<int>& candidates, const std::array<uint8_t, 8>& status);
     void close() { candidates_.clear(); }
     bool isOpen() const { return !candidates_.empty(); }
-    // SBBUTTON input (seg1:0E78): `id` is the chosen slot; `cancel` on Escape /
-    // Backspace / right button; `sound` for channel 2.
+    // SBBUTTON input (seg1:0E78): `id` is the chosen slot, `sound` for channel 2.
+    // There is no cancel: the window's procedure (dispatch seg2:598E) has no key or
+    // right-button case and passes the buttons' WM_COMMAND 0xFFFF to DefWindowProc.
     SbButtonGroup::Input handle(const SDL_Event& event);
     void draw();
 

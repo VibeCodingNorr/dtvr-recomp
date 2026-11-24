@@ -310,7 +310,8 @@ number of stages (1–300).
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
 | 1–4 | Pause length of the scenes |
-| Q | Quit question |
+| Q, Alt+F4 | Quit question (Alt+F4 as seg4:0048; the button windows swallow it) |
+| Closing the desktop window | Quit question; a second close while it is open ends at once (recomp: the original window has no close button and ignores WM_CLOSE) |
 | F1–F8, F10 | Buttons of the button windows (player setup, options, cards) |
 | F9 | Player setup: switch "Computer spielen alle Karten" (recomp) |
 | F8 | Audio page of the recomp menu (not in the options and player setup windows, which use F8 themselves) |
@@ -327,7 +328,8 @@ original options window; the others are recomp settings in `[Display]` /
 the original turn menu Escape did nothing; dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
 the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
-keep the original Escape (Weiter spielen, Zurück).
+keep the original Escape (Weiter spielen, Zurück). The target choice (SELPLAYER, also
+Mitspieler) has no cancel in rally.exe: Escape, Backspace and the right button do nothing there.
 The options window has a recomp entry "Weitere Einstellungen" that opens the menu.
 
 **Computerzüge** (Spiel page, `[Extensions] ComputerTempo` 1 / 2 / 4): while a computer

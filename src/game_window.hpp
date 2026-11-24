@@ -73,6 +73,8 @@ private:
     // game_window_input.cpp
     void handleEvent(const SDL_Event& event);
     void handleRecompMenu(const SDL_Event& event);
+    void desktopClose(); // SDL_QUIT: through the quit question (recomp)
+    void handleQuestion(const SDL_Event& event); // Yes / No message (texts 600, 700)
     void handleKey(const SDL_Event& event);
     // game_window_dialogs.cpp: true when a game dialog took the event
     bool handleGameDialog(const SDL_Event& event);
@@ -121,6 +123,7 @@ private:
     // seg4:0EDF: text 700 with Yes / No (buttons 4); Yes ends the program (DS:88 = 1,
     // WM_CLOSE). From MAIN1 (1064) a No opens MAIN1 again.
     bool quitReopensMain_ = false;
+    bool quitAsked_ = false; // text 700 was pushed and not answered yet
     int sceneSerial_ = -1; // message serial whose event scene has been started
     // A new game between PLAYER and TEMP (seg4:0DA9): the setup's slots and names.
     std::array<uint8_t, kPlayerSlots> pendingStatus_{};

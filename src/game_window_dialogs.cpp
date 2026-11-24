@@ -68,9 +68,7 @@ bool GameWindow::handleGameDialog(const SDL_Event& event) {
         } else if (input.id >= 0) {
             screen_.selectPlayer().close();
             if (play_.game().playCard(targetCardSlot_, input.id)) report();
-        } else if (input.cancel) {
-            screen_.selectPlayer().close();
-        }
+        } // no cancel: only a chosen player closes the window (seg2:56B9, F5)
         return true;
     }
     if (handleCardWindow(event)) return true;

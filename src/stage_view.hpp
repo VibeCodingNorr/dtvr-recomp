@@ -35,8 +35,8 @@ public:
     // seg7:3AC8: with subtitles on, seg6:160B(hwnd, 0, -22) lifts the centred window.
     int lift() const { return subtitles_ && subtitles_->enabled() ? 22 : 0; }
     void stop() { active_ = false; }
-    // ZIEL (seg7:50D6): Escape, Space, Enter or a left click stop the voices
-    // (seg5:607B(-1)) and clear DS:A29C, which ends the current loop only.
+    // ZIEL (seg7:4D0A / 4D35): Escape, Space, Enter or a left click clear DS:A29C,
+    // which ends the current loop only; the voice stops at once (see skip).
     void skip(Uint32 now);
     void update(Uint32 now);
     void draw(Uint32 now);
@@ -44,7 +44,7 @@ public:
 private:
     SpriteLookup borderSprites_;
     enum class Stage { Intro, Pull, Search, Final };
-    void enter(Stage stage, Uint32 now);
+    void enter(Stage stage, Uint32 now, bool skipPart03 = false);
     void voice(const std::string& name);
     bool voiceDone(Uint32 now, Uint32 minimum) const;
     void jump();
@@ -70,8 +70,6 @@ private:
     unsigned seed_ = 1;
     bool active_ = false;
     bool skipped_ = false; // the voice of this stage was stopped by a key
-    bool ending_ = false;  // mode 3 after a key: 60 more passes (seg7:4B89)
-    Uint32 endAt_ = 0;
     Stage stage_ = Stage::Intro;
     Uint32 stageStart_ = 0;
 };

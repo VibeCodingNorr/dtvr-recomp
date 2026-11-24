@@ -828,16 +828,23 @@ void GameScreen::draw() {
             const SDL_Rect stage = toSdl(layout_.stage());
             SDL_RenderCopy(renderer_, t, nullptr, &stage);
         }
+        messages_.draw(game_); // the recomp's quit question on a desktop close
         return;
     }
     if (options_.isOpen()) { // OPTION covers the canvas
-        const StageViewport guard(renderer_, layout_);
-        options_.draw();
+        {
+            const StageViewport guard(renderer_, layout_);
+            options_.draw();
+        }
+        messages_.draw(game_); // the recomp's quit question on a desktop close
         return;
     }
     if (title_ && setup_.isOpen()) { // PLAYER replaces the title (seg4:0DA9)
-        const StageViewport guard(renderer_, layout_);
-        setup_.draw();
+        {
+            const StageViewport guard(renderer_, layout_);
+            setup_.draw();
+        }
+        messages_.draw(game_); // the recomp's quit question on a desktop close
         return;
     }
     if (title_) {
@@ -847,6 +854,7 @@ void GameScreen::draw() {
         }
         if (stages_.isOpen()) { // TEMP after PLAYER (seg4:0E54), a child of the canvas
             stages_.draw();
+            messages_.draw(game_); // the recomp's quit question on a desktop close
             return;
         }
         save_.draw(slots_);

@@ -34,7 +34,7 @@ StageView::StageView(SDL_Renderer* renderer, const fs::path& root, char language
 
 bool StageView::start(int mode, int variant, int destination, SoundPlayer* sound, Uint32 now) {
     active_ = false;
-    ending_ = skipped_ = false;
+    skipped_ = false;
     const fs::path butt("butt");
     Surface scene = loadBmp(findCaseInsensitive(root_, butt / "club_map.bmp")); // DS:4D19
     if (!scene || !scene->format->palette) return false;
@@ -80,25 +80,33 @@ void StageView::jump() { // the light shows a random destination town (display o
     light_ = candidates_[(seed_ >> 16) % candidates_.size()];
 }
 
+// The key handler itself (seg7:4D22 / 4D37) only repaints PLINFO (seg5:607B(-1)) and
+// clears DS:A29C; the voice stops in the loop: seg1:38B7 (waveOutReset) where the loop
+// goes on (seg7:46BC, 4B59), else ZIEL's WM_DESTROY after the clean-up (seg7:4CC2 ->
+// 4E28 -> seg1:3C3B). Either way it stops at once.
 void StageView::skip(Uint32 now) {
-    if (!active_ || ending_) return;
-    if (sound_) sound_->stop(kVoiceChannel); // seg5:607B(-1)
-    if (mode_ == 3) {                        // loop seg7:4730..4B85
+    if (!active_) return;
+    if (sound_) sound_->stop(kVoiceChannel);
+    if (mode_ == 3) { // loop seg7:4730..4B85
         if (stage_ == Stage::Intro) { skipped_ = true; return; } // seg7:4B38: state 0 goes on without Master1
-        ending_ = true;                                          // the loop ends, 60 passes follow
-        endAt_ = now + 60 * kSceneStepMs;
+        active_ = false; // seg7:4B89 searches the destination list (60 slots), no passes; clean-up 4C28
         return;
     }
-    // Loop seg7:3BB5..46E8 (seg7:44B1): before the final part, or while Part03 plays,
-    // the final part starts (state 4, seg7:46A7); later the announcement ends.
+    // Loop seg7:3BB5..46E8 (seg7:44B1): in the states before 4 and in state 4 (Part03;
+    // the test at seg7:44CA is a far pointer to seg1:3E64, never 0) seg7:44D4..46BC puts
+    // the light on the destination (DS:A10D = [bp-0x38], seg7:45E7), sets state 4 and
+    // stops the voice (seg1:38B7, DS:3E44 = 1) without starting one. The next pass finds
+    // state 4 with seg1:3E64 = 0 (seg7:406C) and starts the town's name (state 5,
+    // seg7:4078..4176), then Part04: Part03 is skipped. In states 5 / 6 the
+    // announcement ends (seg7:46EC).
     if (stage_ != Stage::Final || queue_.size() == 2) {
-        enter(Stage::Final, now);
+        enter(Stage::Final, now, true);
         return;
     }
     active_ = false;
 }
 
-void StageView::enter(Stage stage, Uint32 now) {
+void StageView::enter(Stage stage, Uint32 now, bool skipPart03) {
     skipped_ = false;
     stage_ = stage;
     stageStart_ = now;
@@ -118,6 +126,7 @@ void StageView::enter(Stage stage, Uint32 now) {
         for (char& c : name) c = char(std::tolower(static_cast<unsigned char>(c)));
         if (mode_ == 3) queue_ = {"master2"};                             // DS:4E2A
         else queue_ = {"part03" + v, name, "part04" + v};                 // DS:4D90, 4DB2, 4DCE
+        if (skipPart03 && mode_ != 3) queue_.erase(queue_.begin());       // a key: seg7:44D4
         voice(queue_.front());
         queue_.erase(queue_.begin());
         break;
@@ -127,10 +136,6 @@ void StageView::enter(Stage stage, Uint32 now) {
 
 void StageView::update(Uint32 now) {
     if (!active_) return;
-    if (ending_) {
-        if (int(now - endAt_) >= 0) active_ = false;
-        return;
-    }
     const int pass = passes(now);
     if (stage_ == Stage::Pull || stage_ == Stage::Search) {
         // seg7:3D35: until the 20th jump every 4 passes, then slower (wait > jumps - 16).

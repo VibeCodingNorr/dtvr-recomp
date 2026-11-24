@@ -233,6 +233,7 @@ void GameWindow::askQuit(bool reopenMain) {
     q.buttons = 4;
     screen_.messages().push(q);
     quitReopensMain_ = reopenMain;
+    quitAsked_ = true;
     menu_.close();
 }
 
@@ -257,7 +258,7 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
         else { std::cerr << "Fortsetzen: " << error << "\n"; openTitle(); }
         break;
     }
-    case 1025: askQuit(false); break;                        // Rallye beenden: seg4:055E -> 0EDF
+    case 1025: askQuit(false); break;                        // Rallye beenden: seg4:0733 -> 073F (0EDF)
     case 1023: case 1063: screen_.options().open(screen_.settings()); break; // Optionen: seg1:ACE7
     case 1026: screen_.showPicture("Credits.bmp"); break;    // Credits: seg4:070C -> seg6:0A4D
     case 1024: {                                             // Demo: seg4:05A8 -> seg4:0DA9(1)
@@ -279,7 +280,7 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
         if (cards_.open(play_.game(), 2)) cardWindowState_ = turnState(); // seg3:0887(2)
         break;
     case 1033: openMenu("MAIN1"); break;                     // Hauptmenü
-    case 1064: askQuit(true); break;                         // Rallye beenden (seg4:073F -> 0EDF)
+    case 1064: askQuit(true); break;                         // Rallye beenden: seg4:082B -> 0837 (0EDF), No: MAIN1 (0851)
     case 1062: screen_.saveDialog().open(true); break;        // Spiel speichern: seg8:B157(1)
     case 1060: openTitle(); break;                           // Neues Spiel: seg4:075B, back to the title
     case 1065: break;                                        // Weiter spielen: seg4:0753, ONFIELD again

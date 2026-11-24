@@ -192,7 +192,7 @@ void GameWindow::updateFrame(int frame) {
     screen_.intro().update(SDL_GetTicks());
     if (introShown_ && !screen_.intro().active()) { introShown_ = false; openTitle(); }
     // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
-    screen_.finish().update(SDL_GetTicks());
+    if (screen_.finish().update(SDL_GetTicks())) sound_.stop(0); // seg7:3555 -> WM_DESTROY -> seg1:3C3B
     // The year balance (seg2:07C5 -> seg8:88C6) at the year change.
     screen_.balance().update(SDL_GetTicks());
     // The next destination (seg2:1486 / 1453 -> seg7:372F(1 / 3)) after the finish.

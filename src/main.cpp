@@ -191,7 +191,7 @@ static int run(int argc, char** argv) {
             return 0;
         } else if (arg == "--help") {
             std::cout << "dtvr-recomp --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
-                         "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--press Escape,Down,Return] [--event Erdbeben] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
+                         "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--press Escape,Down,Return] [--event Erdbeben] [--fullscreen] [--no-title] [--intro|--no-intro] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--select-player] [--setup] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
                          "            [--smoke-test] [--screenshot DATEI.bmp]\n"
                          "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
