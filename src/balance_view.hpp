@@ -40,6 +40,7 @@ public:
     // them the entries' and `closing`'s values are used (--balance).
     struct Commands {
         std::function<int(size_t)> announce;
+        std::function<void(size_t)> spoken; // pos_ / neg_ of entry i spoken (seg8:913D)
         std::function<int()> close;
     };
     bool start(int intro, const std::vector<Game::BalanceEntry>& entries, int closing, bool humans, SoundPlayer* sound,

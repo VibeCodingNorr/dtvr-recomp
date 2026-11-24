@@ -36,17 +36,21 @@ std::vector<EstateRow> estateRows(const Game& game, int town, EstatesTab tab) {
             row.price = economy.price(town, e, BuyMode(card));                          // DS:86A6/AE/B6
         row.income = value * 0.001 * entry.words[0] * (row.wholeTown ? 2.0 : 1.0);      // DS:86BE, DS:86C6
         row.yieldPercent = entry.words[0] * 1.2;                                        // DS:86CE, "%.1f%%"
-        // seg1:6854: without a tab every row is normal; with a tab only the rows the
-        // action applies to (the checks of Economy::buy / sell for the card mode).
+        // seg1:6854..6BA6: grey (0x43) unless a rule for the tab DS:3FC2 and the card
+        // mode DS:3FC6 applies. Only the drawing: the action (seg1:5545 / 55DB) does
+        // not look at it, so with Verkaufen every row is grey but sells for x 1.5.
         const bool mine = player >= 0 && p.owner == uint8_t(player);
         const bool free = p.owner == kNoOwner;
         bool enabled = true;
-        if (tab == EstatesTab::Sell) enabled = mine && p.landlord == kNoOwner;
+        if (tab == EstatesTab::Sell)
+            enabled = card == 0xFF && mine && p.landlord == kNoOwner;                   // seg1:68C6
         else if (tab == EstatesTab::Buy) {
-            if (card == 6 || card == 7) enabled = !free && !mine;                       // Mieten, Nimm
-            else if (card == 8) enabled = !free && !mine && cash >= value;              // Abkaufen
-            else if (card == 9) enabled = free;                                         // Kredit
-            else enabled = free && cash >= row.price;
+            if (card == 0xFF || card == 3 || card == 4 || card == 5)
+                enabled = free && cash >= row.price;                                    // seg1:686A / 6A5F..6B70
+            else if (card == 6 || card == 7) enabled = !free && !mine;                  // Mieten, Nimm: seg1:6924 / 6982
+            else if (card == 8) enabled = !free && !mine && cash >= value;              // Abkaufen: seg1:69E0
+            else if (card == 9) enabled = free;                                         // Kredit: seg1:6B73
+            else enabled = false;                                                       // mode 2 (Verkaufen): no rule
         }
         row.disabled = !enabled;
         rows.push_back(row);

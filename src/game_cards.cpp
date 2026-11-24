@@ -144,8 +144,17 @@ bool Game::playCard(int handSlot, int target) {
         notice(11010, {playerArg(victim), moneyArg(tax < 0 ? -tax : tax), playerArg(current_)});
         break;
     }
-    case CardKind::Konto: notice(11011, {moneyArg(economy_.balanceAccounts(activePlayers()))}); break;
-    case CardKind::Zero: economy_.zero(current_); notice(11013, {playerArg(current_)}); break;
+    case CardKind::Konto: // seg3:15B0
+        // seg3:15C4 / 15C9: with one active player (seg2:0368) the handler returns at once:
+        // the card is used (seg3:0E94), no text 11011, no nextPlayer; the turn goes on.
+        if (activePlayers().size() == 1) return true;
+        notice(11011, {moneyArg(economy_.balanceAccounts(activePlayers()))});
+        break;
+    case CardKind::Zero: // seg3:18EA: seg2:5A47 takes the cash (and the not modelled +0x4A);
+        // seg5:607B(0xFFFF) only repaints the PLINFO panel, which the rebuild draws every frame.
+        economy_.zero(current_);
+        notice(11013, {playerArg(current_)});
+        break;
     case CardKind::Schulden: // seg3:17B6 target, seg3:17CF cash < 0 -> seg2:5A47 twice
         if (cash(current_) < 0) {
             debt = -cash(current_);

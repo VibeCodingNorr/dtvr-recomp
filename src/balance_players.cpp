@@ -99,6 +99,7 @@ bool BalancePlayers::pass(Io& io) {
         // seg8:9075: pos_ (DS:7D49) or neg_ (DS:7D67) with the letter [bp-0x7E], which
         // then advances (seg8:913D); Game::balanceEntries holds both per entry.
         io.playVoice(std::string(e.positive ? "pos_" : "neg_") + char('a' + e.letter));
+        io.spoken(next_);
         ++state_;
         counter_ = 0;
         ++next_; // seg8:9168: the next slot in play

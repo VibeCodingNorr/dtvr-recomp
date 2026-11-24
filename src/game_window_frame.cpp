@@ -211,6 +211,7 @@ void GameWindow::updateFrame(int frame) {
             g.balanceAnnounce();
             return i < g.balanceEntries().size() ? g.balanceEntries()[i].variant : -1;
         };
+        commands.spoken = [this](size_t) { play_.game().balanceSpeak(); }; // seg8:913D
         commands.close = [this] {
             play_.game().balanceClose();
             return play_.game().balanceClosing();

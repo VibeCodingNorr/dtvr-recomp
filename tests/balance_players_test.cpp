@@ -22,7 +22,7 @@ struct FakeIo : BalancePlayers::Io {
     bool humans = true;
     struct Event { int pass; std::string what; };
     std::vector<Event> events;
-    std::vector<size_t> announced;
+    std::vector<size_t> announced, spokenEntries;
 
     void begin(int length, const std::string& what) {
         voiceStart = pass;
@@ -41,6 +41,7 @@ struct FakeIo : BalancePlayers::Io {
         announced.push_back(index);
         return int(index % 4);
     }
+    void spoken(size_t index) override { spokenEntries.push_back(index); }
     int at(const std::string& what) const {
         for (const auto& e : events)
             if (e.what == what) return e.pass;
@@ -104,14 +105,20 @@ int main() {
         check(b.board() == 0, "DS:8D5E = the slot from Hebel01 on (seg8:8FC4)");
         // Hebel01 lasts 78 passes: pos_ in the first pass >= 53 after it ended.
         check(io.at("pos_d") == 195 + 78, "pos_ after Hebel01 and lever frame > 13");
+        check(io.spokenEntries.size() == 1 && io.spokenEntries[0] == 0, "pos_ reported as spoken (seg8:913D)");
         check(!b.leverShown(), "the lever record stays cleared");
         check(b.master().def == &kBilanzHold && b.state() == 3, "DS:4938 waits in state 3");
         check(std::string(b.master().name()) == "HEBEL04", "waits on frame 4 after the voice");
         // The second player needs a click.
-        closing = run(b, io, 1200, 401);
+        closing = run(b, io, 460, 401);
         check(io.at("next_b_b") == 401, "the click lets the show master go on");
+        // Between Next_ and neg_ two draws but one spoken result: Escape here leaves the
+        // letter after the first player (seg8:913D advances it only with pos_ / neg_).
+        check(io.announced.size() == 2 && io.spokenEntries.size() == 1, "Next_ drawn, the result not yet spoken");
+        closing = run(b, io, 1200);
         check(io.announced.size() == 2, "the second draw at the click");
         check(io.at("neg_e") > 401, "neg_ for the second player");
+        check(io.spokenEntries.size() == 2 && io.spokenEntries[1] == 1, "neg_ reported as spoken");
         check(closing < 0 && b.next() == 2, "after the last player the show waits again");
         closing = run(b, io, 1300, 1250);
         check(closing == 1250, "a click after the last player starts the closing part");

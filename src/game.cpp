@@ -550,12 +550,13 @@ TurnHooks Game::turnHooks() {
             balance_.push_back(e);
         }
         balanceAnnounced_ = 0;
+        balanceSpoken_ = 0;
         balanceClosed_ = false;
         ++balanceSerial_;
         // With a window the show's input decides the remaining draws (seg8:8E38 per
         // announced player, seg8:9605 at the closing lever; round 144): the change waits.
         if (balanceWindow_) return true;
-        while (balanceAnnounce()) {} // headless: the show watched to the end
+        while (balanceAnnounce()) balanceSpeak(); // headless: the show watched to the end
         balanceClose();
         return false;
     };
@@ -571,11 +572,18 @@ bool Game::balanceAnnounce() { // seg8:8E38: the show master goes on to the next
     return true;
 }
 
+bool Game::balanceSpeak() { // seg8:9075..9153: pos_ / neg_, then the letter advances (913D)
+    if (balanceSpoken_ >= balanceAnnounced_) return false;
+    ++balanceSpoken_;
+    return true;
+}
+
 bool Game::balanceClose() { // seg8:95E5..9613 at the closing lever
     if (balanceClosed_) return false;
     balanceClosed_ = true;
-    // The letter after the last announced player (seg8:913D advances it per player).
-    const int letter = (balanceChoice_ + int(balanceAnnounced_)) % 7;
+    // The letter [bp-0x7E] advances per spoken pos_ / neg_ (seg8:913D), not per Next_
+    // (seg8:8E38): Escape between a player's Next_ and his result leaves it behind.
+    const int letter = (balanceChoice_ + int(balanceSpoken_)) % 7;
     balanceClosing_ = letter == 4 ? 5 : letter == 5 ? 4 : rng_.rand() % 2 + 4;
     return true;
 }

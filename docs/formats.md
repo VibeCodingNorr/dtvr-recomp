@@ -468,13 +468,27 @@ dialog.
   card replaces the turn):
   - Fiskus (seg3:14AD): target pays (cash + property value +0x5A) × 0.1 (DS:8636).
   - Konto (seg3:15B0): with more than one active player every cash balance is set
-    to the average of all active players.
+    to the average of all active players. *Round 151:* with one active player
+    (seg2:0368 returns 1, seg3:15C4) the handler returns at once (seg3:15C9 → 1787):
+    no text 11011 and no nextPlayer, so the turn goes on; the card is already used up
+    by the dispatcher (seg3:0E94 → seg2:3C62 before the call at seg3:0EDB). The
+    averaging goes through seg2:5A47 / 59E6 (seg3:16D1 / 1700), then stores the
+    average at +0x42 (seg3:1708). Rebuilt in `Game::playCard` (rules revision 43).
   - Schulden (seg3:1790): the target is chosen first (seg3:17B6); only if the
     player's cash is negative (seg3:17E0) the target takes the negative amount and
     the player's cash becomes 0. *Round 147:* the card can be played at any balance
     (the card window checks only the category, seg3:0701); otherwise it is used up,
     text 11012 shows the amount 0.0 (DS:863E) and the turn ends. The rebuild refused it.
-  - Zero (seg3:18EA): the player's own cash becomes 0.
+  - Zero (seg3:18EA): the player's own cash becomes 0 through seg2:5A47(player,
+    cash) (seg3:191F), which also subtracts from +0x4A (not modelled). *Round 151:*
+    the following seg5:607B(0xFFFF) (seg3:1929) is the PLINFO panel refresh: with no
+    panel window (DS:3C = 0) it creates PLINFO (seg5:6119, class DS:39F6), with
+    0xFFFF it sets DS:3930 = 0xFF and repaints the whole panel (seg5:614D..6173),
+    otherwise the item's rectangle (seg5:6176 ff., mask table DS:3920). No rule
+    effect; the rebuild draws the panel from the state every frame. Open: ZIEL's keys
+    (seg7:4D22 / 4D37) and the announcement call seg5:607B(−1) too, which
+    `src/game_window_input.cpp` and `src/stage_view.cpp` rebuild as a voice stop; this
+    function stops no voice, so where those voices stop is not traced yet.
 - **Status cards** set a bit in the target's +0x40 flags and then post
   WM_COMMAND 0x2710 (one-reel spin, seg4:0A27), so the player still moves:
   Zucker (seg3:19E5) bit 0x02 and Schlafen (seg3:1B0A) bit 0x04 → sit out once
@@ -1823,6 +1837,19 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   Platin. Colour 0x43 for rows the tab's action does not apply to (seg1:6854:
   Kaufen without a card: free and cash ≥ price; Verkaufen: own entry, not
   rented; Mieten / Nimm: another player's entry), 0xFF selected, 0x45 otherwise.
+  *Round 151, the complete rule seg1:6854..6BA6* ([bp−0x78] = 1 grey, cleared by
+  one rule; DS:3FC2 = tab, DS:3FC6 = card mode, price [bp−0x76] as above): no tab
+  → normal (685E); Kaufen with 0xFF (686A), 3 (6A5F), 4 (6ABB) or 5 (6B17): free
+  (+1 = 0xFF) and cash +0x42 ≥ price; Kaufen with 6 (6924) or 7 (6982): owner
+  neither the player nor free; Kaufen with 8 (69E0): the same and cash ≥ value;
+  Kaufen with 9 (6B73): free; Verkaufen only with 0xFF (68C6): owner = player and
+  landlord (+0xA of the record = entry +9) 0xFF. Every other pair stays grey: with
+  any card mode the whole Verkaufen tab, with Verkaufen (2) the whole Kaufen tab.
+  The colour is only drawn: the actions (seg1:5545 → 7DC5, seg1:55DB → 8327) do
+  not test it, so the Verkaufen card still sells own rows at × 1.5 while they are
+  grey. The grey test comes before the selection (seg1:6C2A). Rebuilt in
+  `estateRows` (`src/estates.cpp`); before round 151 the Verkaufen tab ignored the
+  card mode and Kaufen with mode 2 used the normal rule.
 - Rebuilt (`src/estates.cpp` contents, `src/estates_view.cpp` drawing; flow in
   `src/game_screen.cpp`): the dialog opens when a human player stops in a town.
   A click on a tab selects Kaufen / Verkaufen, Karte opens the card window, a
@@ -2179,15 +2206,20 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   9656) cannot come first with these WAV lengths, so a game of computers always
   draws. **Also input-bound:** Escape in the players' part (seg8:9253) skips the
   remaining players' rand() % 4 (seg8:8E38), and the closing letter is then the one
-  after the last *announced* player ([bp−0x7E] advances at seg8:913D), which also
+  after the last *spoken* `pos_` / `neg_` ([bp−0x7E] advances only at seg8:913D, after
+  the wsprintf of `pos_` 90EA or `neg_` 9115; Escape falls through the end test
+  seg8:9253 into the closing part seg8:925C, which reads it at 95E5), which also
   decides whether seg8:9605 draws. The rebuild draws all of them at the year change
   (deterministic; equal to the original whenever the show is watched to the lever).
   *Round 144, rebuilt as an authoritative phase:* the year balance hook suspends the
   player change after the inflation (`TurnChange::suspended`, `Game::Phase::Balance`)
   when a window shows it. The show sends commands at the original points:
   `Game::balanceAnnounce` as the show master goes on to the next player (seg8:8E38,
-  rand() % 4), `Game::balanceClose` at the closing lever (seg8:9605, the letter after
-  the last announced player, seg8:913D) and `Game::balanceFinish` when it ends; the
+  rand() % 4), `Game::balanceSpeak` when the player's `pos_` / `neg_` starts (seg8:913D;
+  *round 151*, before that the letter was counted per announcement, wrong when Escape
+  came between a player's `Next_` and his result), `Game::balanceClose` at the closing
+  lever (seg8:9605, the letter after the last spoken result) and `Game::balanceFinish`
+  when it ends; the
   finish resumes nextPlayer at seg1:8BC6 / 8B41 (credits cleared, month) with the
   event trigger, sit-outs and Dr. Drago following in the original order. Escape or
   a click before a draw skips it. Without a window (the terminal mode, tests) the
