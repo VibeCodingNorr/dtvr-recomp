@@ -192,6 +192,9 @@ bool Game::playCard(int handSlot, int target) {
         for (int p = 0; p < kPlayerSlots; ++p) {
             if (!players_[size_t(p)].status || p == current_) continue;
             players_[size_t(p)].field = here;
+            // seg3:307C-3096: the frame pointer +0x20 / +0x22 is copied too, so the
+            // facing (frame byte +2) that a later Punch reads is the player's.
+            lastDirection_[size_t(p)] = lastDirection_[size_t(current_)];
             if (p == drago_.holder) placeDrago(drago_, p, rng_), ++dragoPlacements_; // seg3:30A9
         }
         messages_.push_back("Alle Mitspieler kommen zur Konferenz");

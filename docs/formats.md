@@ -224,6 +224,53 @@ Confirmed from code unless marked otherwise.
   with a smaller distance, recording each field via seg2:4D3F into a 1,000-entry
   ring buffer at DS:2C. seg1:A4E4 draws such a route with GDI `MoveTo`/`LineTo`.
 
+### Horn while driving (roadmap R2)
+
+Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 2410`,
+`2 2676 271C`, `2 03C0 04AD`, `6 1343 137F`).
+
+- **Horn check** seg2:2676(mover): returns at once while DS:9C74 ≠ 0. Otherwise
+  slots 0–7 in order, the mover skipped and slots with status +0 = 0 skipped (no
+  test of human or computer; Dr. Drago has no slot): the first one whose field
+  +0x3C equals DS:9592 (the field at the vehicle's cell, −1 off fields) draws
+  `random(1)` (seg6:1343 → rand() % 2) and on 0 plays sound 10 + mover / 2
+  (Hupe01, Hupe02, Hupe03, Hupe05) on channel 2 (seg1:2C9B). Only that first
+  driver is checked; a second one on the field draws nothing.
+- **Call sites** in the drive seg2:1CB0, which runs in every idle pass seg2:1C37
+  and acts when the vehicle is aligned to a cell (seg2:2C0F) on a field cell
+  (bit 0x01) or a view point (bit 0x10 with Views): seg2:1F81 when a direction is
+  accepted while the vehicle was driving (DS:9AD0 ≠ 0, or at a view point), after
+  Plopp01 (seg2:1F75); seg2:209F when it stops on a field (DS:9AD0 ≠ 0, DS:9592 ≠ −1),
+  after Plopp01 (seg2:208D) — unless steps taken DS:9D40 = allowance DS:A778 and
+  DS:9C74 = 0: then Carb01 (seg2:207C) and no check. The departure from a stop
+  (DS:9AD0 = 0, seg2:1F25 – 1F6C) has no check. So every field the vehicle reaches
+  runs exactly one check, except the last field of the move when it stops there.
+- **DS:9C74**: set to 1 at the turn start (seg2:048F, with DS:9AD0 = 0xFF) and
+  cleared at seg2:215E by the first pass that rests on the start field (stop path
+  seg2:2021, also taken when the direction is refused because DS:A778 = 0 during
+  the slot window, seg2:6446 / 661C). The first counted step therefore always
+  finds it 0. *Not modelled:* a direction held through the player change that is
+  accepted in that very first pass.
+- **Obstacles**: the check of seg2:2404 runs on the road after the step was
+  counted (seg2:1EA3 at the departure, seg2:21D0 ff. in front of a 0x20 cell); a
+  refusal stops the vehicle there (seg2:2246) and only the reversing direction
+  drives on (seg2:2189 → 22E1 undoes the step), so the vehicle reaches its field
+  again and the stop / pass there runs the horn check. A step that seg2:3620(d, 0)
+  refuses never leaves the field (seg2:1E61 → 2015) and meets no barrier, obstacle
+  or card question.
+- **Rebuilt** in `Game::step` / `Game::honk` (`src/game.cpp`): each step is one
+  arrival; Plopp01 and the check unless the step reaches the last field (Carb01).
+  The counter is probed before barriers and obstacles; a barrier or obstacle
+  without a clearing card, or a declined card question (`answerObstacle(false)`),
+  checks the player's own field at once (the return; no rule draws while the
+  vehicle stands on the road — the timing-bound ambient draws are kept apart,
+  `src/ambient.hpp`). Computers (`computerAdvance`) drive through the same
+  step. Tested in `tests/honk_test.cpp`. *Known difference:* a human who reverses
+  exactly when reaching the last field passes it in rally.exe (Plopp01 and a check)
+  where the field-by-field model stops (Carb01); the horn of an obstacle return
+  sounds at the refusal instead of on arrival. View points (DS:9592 = −1) never
+  match because every rebuilt driver stands on a field.
+
 ### Turn and field actions (round 5)
 
 - **Direction input** (main window procedure, seg4:0001): key-down of VK_UP,
@@ -827,7 +874,11 @@ the types 0x400/0x800 follow in round 13).
 
 Rebuilt in `src/events.cpp` (`investmentPayout`), `src/game_cards.cpp` and
 `src/game_events.cpp`. Simplifications: Punch uses the direction of the
-player's last step as facing (right before the first move); the viewer invests
+player's last step as facing (right before the first move); Konferenz copies
+it to the others like the frame pointer (seg3:307C–3096, roadmap R2). Still
+open (R5): the initial facing seg2:5067 (first linked direction of the field,
+called at seg2:0184 / 0581, seg2:5E4D, seg5:6C47, seg8:B021) where the rebuild
+starts with 2; the viewer invests
 half the cash rounded to 1,000 with I and flies to the current destination with
 Flugzeug. Open: property cards 1–8 (town dialog modes), Steuerlos, Tschüss,
 Risiko, card fields, Nebel, computer players.

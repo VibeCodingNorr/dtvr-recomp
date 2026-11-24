@@ -365,6 +365,9 @@ private:
     void pushNotice(Notice n) { n.seq = nextNotice_++; notices_.push_back(std::move(n)); }
     void notice(int text, std::vector<NoticeArg> args = {}) { pushNotice({text, std::move(args)}); }
     void sound(int channel, int index, int loops = 0) { sounds_.push_back({channel, index, loops, nextNotice_}); }
+    // seg2:2676: the moving vehicle reaches `field`; the first other driver in play
+    // standing there draws random(1), on 0 the horn Hupe of the mover sounds.
+    void honk(int field);
     static NoticeArg playerArg(int p) { NoticeArg a; a.kind = NoticeArg::Kind::Player; a.player = p; return a; }
     static NoticeArg moneyArg(double m) { NoticeArg a; a.kind = NoticeArg::Kind::Money; a.money = m; return a; }
     NoticeArg townArg(int town) const;
