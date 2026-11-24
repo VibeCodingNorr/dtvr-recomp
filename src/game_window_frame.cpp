@@ -193,13 +193,9 @@ void GameWindow::updateFrame(int frame) {
     screen_.intro().update(SDL_GetTicks());
     if (introShown_ && !screen_.intro().active()) {
         introShown_ = false;
-        // seg5:0193: the logo again while the board and map load (seg5:14AB ...), then
-        // seg5:020C removes it and seg8:03AB opens the title.
-        // The same call as at the start, so the same minimum time (recomp).
-        if (logo_.show()) logo_.present();
-        const bool open = waitLogo(false);
-        logo_.hide();
-        if (!open) return;
+        // Recomp change (user decision 2026-11-25): rally.exe shows the logo again here
+        // (seg5:0193 ... seg5:020C, docs/formats.md "Start and Blue Byte logo"); the
+        // rebuild goes straight to the title (seg8:03AB) with the logo already removed.
         openTitle();
     }
     // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.

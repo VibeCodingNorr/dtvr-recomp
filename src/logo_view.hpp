@@ -3,7 +3,8 @@
 // and Blue Byte logo"). The start-up function seg5:0000 shows it twice through
 // seg6:0A4D(name, focus) with name DS:00F8 / DS:0111 = "BB.bmp" and focus 0: once
 // at seg5:0151, after the canvas exists and before the intro, and again at seg5:0193
-// after the intro (only with [Setup] ShowIntro). seg6:0A4D loads
+// after the intro (only with [Setup] ShowIntro); the recomp leaves out the second
+// one (user decision 2026-11-25). seg6:0A4D loads
 // `<DS:7A>\<seg5:1827>\BB.bmp` (format DS:165C "%s\%d\%s": butt/<n>/BB.bmp), creates
 // the window class PICT as a child of the canvas DS:40 at the bitmap's size, which
 // WM_CREATE centres (seg6:0000), shows it, pumps the queued messages once (seg6:0B05)

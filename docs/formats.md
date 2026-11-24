@@ -3158,8 +3158,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Rebuilt** in `src/logo_view.cpp` (tested in `tests/logo_view_test.cpp`):
   runGameWindow presents bk.bmp with the centred logo right after the renderer exists,
   then loads the language file, the art, the audio and (in start) the intro's files;
-  start removes it (seg7:044D / seg5:020C). When the intro ends, the logo is shown
-  again before the title opens (seg5:0193 … 020C). `--logo` (tests) keeps the logo
+  start removes it (seg7:044D / seg5:020C). **Recomp change (user decision
+  2026-11-25): the second logo after the intro (seg5:0193) is not shown**; when the
+  intro ends the title opens at once (the logo is already removed). `--logo` (tests) keeps the logo
   until a key or left click. The intro is now drawn over bk.bmp as well (the canvas
   is visible and painted while INTRO runs), not over black.
 - **Recomp addition: minimum display time** (user decision, 2026-11-24). rally.exe
@@ -3174,8 +3175,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   click ends the wait, as
   WM_KEYDOWN / WM_LBUTTONDOWN of PICT destroy it (seg6:0B80); the rest of that input
   (key repeats and release, the button release) is dropped, so it does not reach the
-  intro or title. The second logo after the intro is the same call (seg6:0A4D with
-  DS:111, focus 0, same window procedure) and gets the same rule. Smoke tests without
+  intro or title. rally.exe's second logo after the intro is the same call (seg6:0A4D with
+  DS:111, focus 0, same window procedure); the rebuild does not show it. Smoke tests without
   `--logo` skip the wait to keep their frame counts.
   **Differences:** the bitmap's own colour table is used (as for all bitmaps of the
   rebuild), not `PAL`; in rally.exe PICT never has the focus (focus 0, no SetFocus),
