@@ -2323,7 +2323,13 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   `%s\%c\ziel\%s.bmp` (DS:4CF0) whose name is the first eight characters of
   the town name with ö/ü/ä/Ä/Ö/Ü → o/u/a/A/O/U and space → `_` (seg7:28AD).
   seg7:1CE0 copies the photo only where the DIB holds 0xFF (seg7:1DDF), so the
-  trees of ziel.bmp stay in front; seg7:1E3C draws first frames of six files.
+  trees of ziel.bmp stay in front. Then seg7:1E3C fills every frame of six
+  files from that DIB DS:ABF8 (frame pixel 0xFF takes the DIB pixel under it,
+  seg7:1CE0 / 1DDF; the DIB is not changed): file slots 0, 1, 2, 4, 5, 6 at
+  (0xD1, 0xB6), (0x153, 0xDD), (0x82, 0xCE), (0x19, 0xD6), (0x4F, 0xB6),
+  (0x195, 0xAF) (seg7:2ADE–2C1C). Sieg does the same for slots 0–2 from DS:A0AE
+  at (0, 0x93), (0x137, 0x90), (0x16D, 0xC8) (seg7:748E–750E). See Intro
+  "Fills and stamps".
   `%s\snd\z.wav` (DS:4D02) is played (seg1:3579).
 - **Records** (seg7:2C55 ff., 0x40 bytes each at DS:30): position, start frame
   (+0xC), repetitions 999 and the definitions DS:4594 (pauke, 209/182), 419C
@@ -3342,14 +3348,60 @@ nothing at all.
   and DS:1198; other buttons go to DefWindowProc.
 - **Loop** seg7:04D6, one pass per 20 ms: pass counter + 1 (cap 30,000),
   subtitle poll (see Subtitles), the state logic, then — while state < 11 or
-  pass < 105 — draw the records (seg2:74E4), step them (seg2:6DCB), show the DIB.
-  Records with a follow-up definition take it and clear +4 (seg2:6F01).
+  pass < 105 — restore (seg2:74E4, seg7:1C18), step (seg2:6DCB, 1C28), draw
+  (seg2:6F69, 1C46), wait 20 ms, copy to the window (seg2:72DE, 1C82). A pass
+  therefore draws the frame *after* its step. Records with a follow-up
+  definition take it and clear +4 (seg2:6F01).
+- **Drawing (fix of the "shifting face"):** the records draw into the
+  WinG DIB DS:B1C0 over the backdrop DS:A0A8, and only changed rectangles reach
+  the window. seg2:74E4 copies the backdrop into the DIB under the last keyed
+  rectangle +0x2E..+0x34 of every slot (clamped and stored; the rectangle is
+  never cleared). seg2:6F69 marks a record 2 when the name of its frame differs
+  (lstrcmp) from the name +0x36 drawn last, then marks 1 every unmarked record
+  whose current frame intersects (IntersectRect) the new frame of a record
+  marked 2 with an existing frame, then draws the marked ones in slot order
+  (lstrcpy of the name to +0x36, seg6:41A2) and clears the window rectangles
+  +0x1E / +0x26 of all records not marked 2. seg6:41A2 looks the frame up
+  (seg6:406D; missing → returns 0, nothing drawn, no rectangle changes); with
+  +0xD bit 0 it blits with colour key 0xFF (seg2:9497) and sets +0x1E to the
+  union with +0x2E when they intersect, else +0x1E = new and +0x26 = old
+  +0x2E, then +0x2E = new; without it a plain copy (seg2:913A) sets +0x1E only.
+  seg2:72DE blits +0x1E and +0x26 from the DIB to the window and clears them.
+  WM_PAINT (seg7:2380) copies the paint rectangle of the backdrop into the DIB,
+  draws every record with seg6:41A2 (+0x36 unchanged) and blits the rectangle.
+  Consequences: a record whose frame name stays is not drawn again (the zoom
+  and the hat move only when their frame changes); a missing frame leaves the
+  window showing the previous one — DS:08C8 lists lt117–lt121, which leute1.sbs
+  does not contain, so lt116 stays for those 25 passes.
+- **Closed files:** seg6:3F02 frees an SBS file (GlobalFree) and clears its
+  entry in the table DS:9224 (18-byte entries, seg6:3F6D–3F7B) that seg6:406D
+  searches, so its frames are no longer found and records showing them draw
+  nothing. The intro closes leute1 (DS:9D64, seg7:0C2F) and paar1 (DS:9D68,
+  seg7:0CE2) on entering state 6, tuer (DS:9D50, seg7:1076, after the tu00
+  stamp) and zoom (DS:9D44, seg7:1249) on entering state 7; WM_DESTROY closes
+  the rest (seg7:231C). State 6 ends with TUERZU (≈ 50 passes) while the zoom
+  DS:0560 (90 passes) still runs; with zoom.sbs closed its remaining frames are
+  not drawn, and the speaker (rd) takes over at once.
+- **+0xD** (seg7 writes `mov byte [rec+0xD]`): 0 for records 4, 5, 6 at start
+  (seg7:0260, 02F0, 0380), record 5 with DS:0D4C / 0DBC (seg7:0CAB, 19C0) and
+  record 6 with DS:0720 (seg7:0EB7); 1 for all other records the intro sets.
+  seg7:0256 writes 0 to +0x8C (record 2's frame byte) where record 4's +0x10C
+  would be expected; the rebuild starts record 4 at frame 0.
 - **Voice helpers:** seg1:3E64 playing while elapsed ms × 11 ≤ length (TimerCount
   path); seg1:4071 the position lies in one of the ten talk intervals of sync.dat
   +0x18; seg1:414C the cue at +0xCC is non-zero and below the position.
-- **Stamps:** seg7:1E3C keyed-blits every frame of a file into the backdrop (at
+- **Fills and stamps:** seg7:1E3C calls seg7:1CE0 for every frame of a file
+  (directory entries of 14 bytes, count +6): where the *frame* pixel is 0xFF
+  (seg7:1DDF) it takes the backdrop pixel under the frame placed at (x, y) and
+  is written back into the frame (seg7:1E2A); the backdrop is not changed. At
   start paar2 (0x165, 0x9E), bild (0x19D, 0x3A), leute1 (0x81, 0xB0), paar1
-  (0x165, 0x9E)); seg7:1F52 one frame (tu00 at (0x22, 0x70) on entering state 7).
+  (0x165, 0x9E) (seg7:00B0–016F; DS:9D44 + 4·index). These frames become
+  opaque and are drawn without key. seg7:1F52 is the keyed blit of one frame
+  into the backdrop (frame pixel ≠ 0xFF, seg7:208B; tu00 at (0x22, 0x70) on
+  entering state 7, seg7:106E). *Corrects* round 89, which read 1E3C as a stamp
+  into the backdrop: club.bmp then held all 17 leute1 frames on top of each
+  other, and the keyed leute2 frames (state 6 on) showed the heads of the other
+  frames around the middle player's head — the face seemed to shift.
 - **States** (definitions in the data segment, e.g. DS:0614 = tu00 × 9, tu09–tu17,
   delay 4): 0 door closed, after 250 passes the door opens; 90 passes later the
   head kop appears, 10 passes later it speaks RALLY01b (frame reset while in a
@@ -3371,8 +3423,11 @@ nothing at all.
 - Record field +0x36 is cleared for records 2 and 5 when Fate falls; the drawing
   code (seg2:74E4) does not read it (+0x2E..+0x35 is the dirty rectangle).
 - Rebuilt in `src/intro_script.cpp` (no SDL, tested; the definitions compared
-  with the data segment) and `src/intro_view.cpp` (8-bit scene composed in
-  software, palette fades on it). The wipe draws from the session's generator,
+  with the data segment), `src/record_paint.cpp` (no SDL, tested: seg2:74E4 /
+  6F69 / 72DE, seg6:41A2, seg7:1CE0, WM_PAINT) and `src/intro_view.cpp` (DIB and
+  window image as 8-bit images, palette fades on them). Not modelled: WM_PAINT
+  for parts uncovered later (e.g. when the subtitle window closes), and the
+  paint rectangle's +1 at right / bottom (seg7:23A8). The wipe draws from the session's generator,
   seeded before the intro (round 143, see "Random numbers"). **Assumptions:** the fade back steps each channel by 0x1E towards the bitmap colour; a
   close stops the voice; the window is centred like the victory.
 

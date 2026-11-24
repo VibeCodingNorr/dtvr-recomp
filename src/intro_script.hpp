@@ -5,6 +5,7 @@
 // docs/formats.md "Intro".
 #pragma once
 
+#include "record_paint.hpp"
 #include "voice_sync.hpp"
 
 #include <array>
@@ -14,16 +15,14 @@
 
 namespace dtvr {
 
-struct IntroFrame {
-    std::string name; // SBS frame name as in the definitions (lower case)
-    int x = 0, y = 0;  // top-left in the 480 x 360 DIB
-};
-
 struct IntroEvent {
     enum Kind {
         Voice,      // play butt/<lang>/voice/intro/<name>.wav (seg1:3579)
-        StampFile,  // keyed blit of every frame of sbs/intro/<name>.sbs (seg7:1E3C)
-        StampFrame, // keyed blit of the frame <name> (seg7:1F52)
+        FillFile,   // every frame of sbs/intro/<name>.sbs takes the backdrop's pixels at
+                    // (x, y) where it is transparent (seg7:1E3C / 1CE0); the backdrop stays
+        StampFrame, // keyed blit of the frame <name> into the backdrop (seg7:1F52)
+        CloseFile,  // sbs/intro/<name>.sbs is freed (seg6:3F02): its frames are no longer
+                    // found (seg6:406D), so records showing them draw nothing
         Flash,      // palette to white, backdrop <name>.bmp, back (seg5:3483 / 3623); subtitles stay off
         Wipe,       // backdrop butt/<lang>/<name>.bmp revealed by seg8:0E20 mode 4
         End         // the window closes (seg7:1C9B)
@@ -35,8 +34,8 @@ struct IntroEvent {
 
 struct IntroPass {
     std::vector<IntroEvent> events; // in the order of the pass
-    bool draw = false;              // records drawn this pass (seg7:1BCE)
-    std::vector<IntroFrame> frames; // the records as drawn, before the step
+    bool draw = false;                   // records drawn this pass (seg7:1BCE)
+    std::vector<PaintRecord> records;    // all 15 records as seg2:6F69 draws them, after the step
 };
 
 class IntroScript {
@@ -59,11 +58,14 @@ public:
         int countdown = 0, reps = 0;     // +8, +0xA
         int frame = 0;                   // +0xC
         int x = 0, y = 0;                // +0x14, +0x16
+        bool keyed = false;              // +0xD: colour key 0xFF (seg6:4252)
     };
     const Record& record(int i) const { return records_[size_t(i)]; }
+    // The records with their current frames (what WM_PAINT seg7:2380 draws).
+    std::vector<PaintRecord> records() const;
 
 private:
-    void set(int i, uint16_t def, int x, int y, int reps, int countdown = 0);
+    void set(int i, uint16_t def, int x, int y, int reps, bool keyed, int countdown = 0);
     void play(const char* name, uint32_t nowMs, std::vector<IntroEvent>& events);
     bool playing(uint32_t nowMs) const;
     bool talking(uint32_t nowMs) const;
