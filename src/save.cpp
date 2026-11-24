@@ -126,6 +126,10 @@ std::string SaveCodec::encode(const Game& g) {
         for (size_t i = 0; i < count; ++i) o << ' ' << m.worth[i];
         o << '\n';
     }
+    for (size_t p = 0; p < g.economy_.playerCount(); ++p) { // format 7: +0x4A and +0x62
+        const PlayerMoney& m = g.economy_.money(int(p));
+        o << "flow " << p << ' ' << hexDouble(m.monthFlow) << ' ' << m.yearFlow << '\n';
+    }
     o << "drago " << g.drago_.holder << ' ' << g.drago_.form << ' ' << g.drago_.countdown << '\n';
     o << "events " << g.events_.turns << ' ' << g.events_.countdown << ' ' << g.events_.hold << '\n';
     o << "places " << g.places_.nessie << ' ' << g.places_.quake << ' ' << g.places_.volcano << ' '
@@ -256,6 +260,13 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
                 ok = r.get(m.yearRent, INT32_MIN, INT32_MAX) && r.integer(count, 0, kWorthYears);
                 for (long long i = 0; ok && i < count; ++i) ok = r.get(m.worth[size_t(i)], INT32_MIN, INT32_MAX);
             }
+        } else if (key == "flow") {
+            long long p = 0;
+            ok = r.integer(p, 0, (long long)money.size() - 1);
+            if (ok) {
+                PlayerMoney& m = money[size_t(p)];
+                ok = r.real(m.monthFlow) && r.get(m.yearFlow, INT32_MIN, INT32_MAX);
+            }
         } else if (key == "drago") ok = r.get(drago.holder, -1, kPlayerSlots - 1) && r.get(drago.form, 0, 2)
                                        && r.get(drago.countdown, -1000000, 1000000);
         else if (key == "events") ok = r.get(events.turns, 0, 1ll << 31) && r.get(events.countdown, -1000000, 1000000)
@@ -321,6 +332,8 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     if (version >= 5 && seen["extensions"] != 1) return fail("Eintrag 'extensions' fehlt oder ist doppelt");
     if (version >= 6 ? seen["worth"] != int(money.size()) : seen["worth"] != 0)
         return fail("Eintraege 'worth' unvollstaendig");
+    if (version >= 7 ? seen["flow"] != int(money.size()) : seen["flow"] != 0)
+        return fail("Eintraege 'flow' unvollstaendig");
     if ((Game::Phase(phase) == Game::Phase::Risiko) != (risiko.level != 0)) return fail("Risiko-Zustand passt nicht zur Phase");
     if (seen["player"] != kPlayerSlots || seen["hand"] != kPlayerSlots || seen["town"] != int(towns.size())
         || seen["money"] != int(money.size()))

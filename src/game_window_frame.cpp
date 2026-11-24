@@ -149,7 +149,8 @@ void GameWindow::updateFrame(int frame) {
             && !screen_.pictureShown() && !screen_.messages().open())
             openTitle();
     } else if (play_.game().humansLeft() && play_.game().turnSerial() != autosaved_
-               && !play_.game().computerTurnRunning() && play_.game().phase() != Game::Phase::Balance) { // seg2:0837 -> seg8:A870 at each turn start
+               && !play_.game().computerTurnRunning() && play_.game().phase() != Game::Phase::Balance
+               && play_.game().phase() != Game::Phase::Statement) { // seg2:0837 -> seg8:A870 at each turn start
         std::string error;
         if (!screen_.saveSlots().saveAuto(play_.game(), error)) std::cerr << "Autosave: " << error << "\n";
         autosaved_ = play_.game().turnSerial();
@@ -248,7 +249,8 @@ void GameWindow::updateFrame(int frame) {
         music_.interrupt(play_.game().finishMusic());
         screen_.startFinish(play_.game().finishField(), play_.game().finishPlayer(), SDL_GetTicks());
     }
-    modal_ = recompMenu_.isOpen() || screen_.messages().open() || menu_.isOpen() || cards_.isOpen() || saveDialog.isOpen()
+    updateStatement(); // STAT (seg2:07E1 / 12A3): game_window_statement.cpp
+    modal_ = recompMenu_.isOpen() || screen_.statement().isOpen() || screen_.messages().open() || menu_.isOpen() || cards_.isOpen() || saveDialog.isOpen()
                        || estates.statistics() || screen_.title() || screen_.overview().isOpen()
                        || screen_.surroundings() || screen_.options().isOpen() || screen_.finish().active()
                        || screen_.victory().active() || screen_.balance().active()

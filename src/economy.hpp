@@ -40,6 +40,10 @@ constexpr int kWorthYears = 301;
 
 struct PlayerMoney {
     double cash = kStartingCash;   // player +0x42 (seg2:59E6 / 5A47 also update +0x4A)
+    // +0x4A: the month's cash flow. Every change of +0x42 through seg2:59E6 (add) or
+    // seg2:5A47 (subtract) also changes it; seg1:8CBA clears it after each month
+    // (seg2:07E6) and at a game start (seg1:8C8E). Shown by the statement STAT (seg1:9F86).
+    double monthFlow = 0;
     double creditDebt = 0;         // player +0x51A, card Kredit
     double monthlyIncome = 0;      // player +0x52, recomputed each month
     double propertyValue = 0;      // player +0x5A, recomputed each month
@@ -49,6 +53,9 @@ struct PlayerMoney {
     // +0x6A: cash + property value per year, seg1:8A93 writes the truncated
     // ftol(+0x5A) + +0x42 into the entry of the running year (DS:A102) every month.
     std::array<int32_t, kWorthYears> worth{};
+    // +0x62: seg1:8A33 adds the truncated +0x4A every settlement, seg1:8BC6 clears it
+    // after the year balance. Nothing reads it (only as worth[A102 - 2], seg8:9D01).
+    int32_t yearFlow = 0;
 };
 
 class Economy {
@@ -58,7 +65,12 @@ public:
     bool entryExists(int town, int entry) const;
     const TownState& town(int index) const { return states_[size_t(index)]; }
     const PlayerMoney& money(int player) const { return money_[size_t(player)]; }
-    void addMoney(int player, double amount) { money_[size_t(player)].cash += amount; }
+    // seg2:59E6 (amount > 0) / seg2:5A47 (amount < 0): cash and the month's flow +0x4A.
+    void addMoney(int player, double amount) { pay(money_[size_t(player)], amount); }
+    // A direct write of +0x42 that leaves +0x4A alone (the name codes, seg2:6374 / 63B3).
+    void setCash(int player, double value) { money_[size_t(player)].cash = value; }
+    // seg1:8CBA after every month (seg2:07E6): +0x52 and +0x4A of all slots become 0.
+    void clearMonth();
 
     // Price before the purchase for `mode` (value of the entry, times 0.75/0.5/0.1 for
     // the discount modes); 0 for modes that do not charge the buyer this way.
@@ -73,7 +85,7 @@ public:
     // not written for years above 300 or below 0). Without arguments: every slot, no worth.
     void settleMonth(const std::vector<int>& activePlayers, int year);
     void settleMonth();
-    // seg1:8BC6 after the year balance: the year's rent (+0x66) is cleared for all slots.
+    // seg1:8BC6 after the year balance: the year's rent (+0x66) and +0x62 of all slots.
     void clearYearRent();
     // Year end (seg2:0784): seg1:8AA7 charges every positive credit debt before the
     // settlement; seg1:8B41 clears the debts afterwards.
@@ -111,6 +123,7 @@ public:
     size_t playerCount() const { return money_.size(); }
 
 private:
+    static void pay(PlayerMoney& m, double amount) { m.cash += amount; m.monthFlow += amount; }
     void updateWholeOwner(int town); // seg1:7CF6
     uint32_t value(int town, int entry) const;
     uint16_t incomeFactor(int town, int entry) const;

@@ -141,6 +141,9 @@ struct TurnChange {
     // inflation, before the credits are cleared; resume with nextPlayer(..., resumePlayer).
     bool suspended = false;
     int resumePlayer = -1;
+    // The monthly statement hook asked to wait (round R1): the change stopped after the
+    // settlement, before seg1:8CBA; resume with nextPlayer(..., resumePlayer, true).
+    bool statement = false;
 };
 // Callbacks so the economy runs at the original points of seg2:0784-07EB.
 struct TurnHooks {
@@ -151,6 +154,10 @@ struct TurnHooks {
     std::function<bool()> yearBalance;
     std::function<void()> clearYearRent;    // year end, after the balance (seg1:8BC6)
     std::function<void()> clearCredits;     // year end, after the balance (seg1:8B41)
+    // Months 0..10 after the settlement: the statement STAT (seg2:07E1 -> seg1:972F) with
+    // the new player (DS:94E2). True suspends the change until the window has closed.
+    std::function<bool(int)> monthStatement;
+    std::function<void()> clearMonth;       // every month advance, last (seg1:8CBA at seg2:07E6)
     std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
     int dragoHolder = -1;                   // DS:9CFC for flag bit 0
@@ -163,9 +170,10 @@ struct TurnHooks {
 // cleared and the player sits out only while holding Dr. Drago (seg2:C00C, text
 // random(4)); otherwise bit 1 or bit 2 make the player sit out once (text random(2),
 // then the sit-out hook). The search continues after a sit-out.
-// `resumePlayer` >= 0 continues a suspended change right after the year balance.
+// `resumePlayer` >= 0 continues a suspended change right after the year balance or,
+// with `afterStatement`, right after the monthly statement.
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
-                      const TurnHooks& hooks = {}, int resumePlayer = -1);
+                      const TurnHooks& hooks = {}, int resumePlayer = -1, bool afterStatement = false);
 
 // Target player of a card (seg2:51EA): with one active player the first active
 // slot, with two the other active player, otherwise the requested active

@@ -32,6 +32,7 @@
 #include "intro_view.hpp"
 #include "ambient.hpp"
 #include "save_view.hpp"
+#include "stat_view.hpp"
 #include "options_view.hpp"
 #include "overview_view.hpp"
 #include "setup_view.hpp"
@@ -87,6 +88,7 @@ public:
     RisikoView& risiko() { return risiko_; }
     EstatesView& estates() { return estates_; }
     SaveView& saveDialog() { return save_; }
+    StatView& statement() { return stat_; } // STAT (seg1:972F)
     SetupView& setup() { return setup_; }
     StagesView& stages() { return stages_; }
     OverviewView& overview() { return overview_; }
@@ -243,6 +245,7 @@ private:
     EstatesView estates_;
     SaveSlots slots_;
     SaveView save_;
+    StatView stat_;
     SetupView setup_;
     StagesView stages_;
     OverviewView overview_;
@@ -328,6 +331,7 @@ struct GameWindowOptions {
     bool finish = false;          // tests: show the finish sequence of the destination
     bool victory = false;         // tests: show the victory sequence of the current ranking
     bool balance = false;         // tests: show the year balance (without announcements)
+    bool statement = false;       // tests: show STAT with the values of the started game
     bool announce = false;        // tests: show the destination announcement of the game start
     bool cardShop = false;        // tests: open the card shop
     bool selectPlayer = false;    // tests: open the target choice for the other players

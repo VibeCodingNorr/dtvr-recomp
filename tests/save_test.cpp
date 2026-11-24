@@ -53,7 +53,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMP-SAVE 6\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMP-SAVE 7\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -74,11 +74,27 @@ int main() {
     CHECK(SaveCodec::decode(n, moving, error) && n.stepsTaken() == 1 && n.phase() == Game::Phase::Move);
     CHECK(n.step(Direction::Left) && n.stepsTaken() == 0);
 
-    // Formats before 6 have no worth records (round 149).
-    auto stripWorth = [](std::string text) {
-        for (size_t w; (w = text.find("\nworth ")) != std::string::npos;) text.erase(w, text.find('\n', w + 1) - w);
+    // Formats before 7 have no flow records (round R1), before 6 no worth records (round 149).
+    auto stripFlow = [](std::string text) {
+        for (size_t w; (w = text.find("\nflow ")) != std::string::npos;) text.erase(w, text.find('\n', w + 1) - w);
         return text;
     };
+    auto stripWorth = [&](std::string text) {
+        for (size_t w; (w = text.find("\nworth ")) != std::string::npos;) text.erase(w, text.find('\n', w + 1) - w);
+        return stripFlow(text);
+    };
+    CHECK(saved.find("\nflow 0 ") != std::string::npos);
+    { // format 6: +0x4A and +0x62 start at 0; format 7 needs the flow records
+        std::string v6 = stripFlow(saved);
+        Game c(board, towns, 1, 0, 3, 1);
+        CHECK(!SaveCodec::decode(c, v6, error));
+        v6.replace(0, 18, "DTVR-RECOMP-SAVE 6");
+        CHECK(SaveCodec::decode(c, v6, error) && c.economy().money(0).monthFlow == 0 && c.economy().money(0).yearFlow == 0);
+        CHECK(stripFlow(SaveCodec::encode(c)) == stripFlow(saved));
+        std::string bad = saved; // a flow line of a slot that does not exist
+        bad.insert(bad.find("\nflow 0 ") + 1, "flow 9 0x0p+0 0\n");
+        CHECK(!SaveCodec::decode(c, bad, error));
+    }
     CHECK(saved.find("\nworth 0 ") != std::string::npos);
     // Format 1 (round 18, no Risiko record) still loads.
     {

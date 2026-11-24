@@ -68,6 +68,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                }, language),
       slots_(defaultSaveDirectory()),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
+      stat_(renderer, root, layout, texts_, text_),
       setup_(renderer, root, layout, text_),
       stages_(renderer, root, layout, texts_, text_),
       overview_(renderer, root, layout, board, [this](const std::string& name) { return sprite(name); }),
@@ -85,6 +86,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
     intro_.setSprites([this](const std::string& name) { return sprite(name); });
     stages_.setSprites([this](const std::string& name) { return sprite(name); });
     invest_.setSprites([this](const std::string& name) { return sprite(name); });
+    stat_.setSprites([this](const std::string& name) { return sprite(name); });
     selectPlayer_.setSprites([this](const std::string& name) { return sprite(name); });
     nails_.setSprites([this](const std::string& name) { return sprite(name); });
     flight_.setSprites([this](const std::string& name) { return sprite(name); });
@@ -916,6 +918,7 @@ void GameScreen::draw() {
     flight_.draw();
     if (nails_.isOpen()) nails_.draw(compassTexture());
     invest_.draw();
+    stat_.draw();
     save_.draw(slots_);
     // M1 when DS:9D40 = DS:A778 (seg4:12FC): the move is complete, its Return accepts the field.
     mouseControl_.draw(game_.arrivalDue() || game_.phase() == Game::Phase::Arrived);

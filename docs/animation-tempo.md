@@ -15,7 +15,8 @@ Not yet: finish / victory / balance sequences (voiced).
 car can no longer be steered well; a stored 4 reads as 2). New **Computerzüge**
 (`[Extensions] ComputerTempo` 1 / 2 / 4): while a computer is the current player the
 clock runs at max(AnimationTempo, ComputerTempo), and the computer's message reading
-time (2500 ms × Pause factor, seg6:0FB4) is divided by it. The slot machine now
+time (2500 ms × Pause factor, seg6:0FB4) is divided by it; so is the monthly
+statement STAT's doubled wait (5000 ms × Pause factor, round R1). The slot machine now
 follows the presentation clock too (its key timing uses the same clock). A
 two-computer game reached six turns instead of one in the same 900 frames at 4×, with
 an identical game log.
