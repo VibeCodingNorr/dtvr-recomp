@@ -16,12 +16,13 @@ try:
 except ImportError:
     raise SystemExit("Der grafische Installer benötigt Python mit Tk-Unterstützung (python-tk / python3-tk).")
 
-from installer_checks import REPO, default_output
+from installer_checks import REPO
 from installer_process import InstallerProcess, installer_command, dependency_command
 from installer_diagnostics import DiagnosticLog
 from installer_dialogs import DependencyDialog
 from installer_folders import choose_directory, choose_file
 from project_version import read_version, version_tuple
+from installer_state import load_paths, save_paths
 from installer_progress import ProgressEstimate
 from installer_layout import InstallerLayout
 from soundfont_defaults import default_soundfont
@@ -43,15 +44,17 @@ class InstallerWindow:
         self.diagnostic = DiagnosticLog()
         self.detail = tk.StringVar()
         self.active_output = None
-        self.iso = tk.StringVar()
-        self.source_kind = tk.StringVar(value="iso")
-        self.output = tk.StringVar(value=str(default_output()))
-        self.update = tk.BooleanVar(value=(default_output() / "manifest.json").is_file())
-        self.audio = tk.StringVar(value="Vollständiges Ogg-Set aus Soundfont")
-        bank = default_soundfont()
+        remembered = load_paths()
+        self.iso = tk.StringVar(value=remembered.get("source", ""))
+        self.source_kind = tk.StringVar(value=remembered.get("source_kind", "iso"))
+        self.output = tk.StringVar(value=remembered["output"])
+        self.update = tk.BooleanVar(value=remembered["update"])
+        self.audio = tk.StringVar(value="Vollständiges Ogg-Set aus Soundfont" if remembered.get("music", True)
+                                  else "Musikvorbereitung überspringen")
+        bank = remembered.get("soundfont") or default_soundfont()
         self.bank = tk.StringVar(value=str(bank) if bank else "")
         self.music_hint = tk.StringVar()
-        self.style = tk.StringVar(value="Classic — Hall und Chorus")
+        self.style = tk.StringVar(value="Dry — ohne Effekte" if remembered.get("dry") else "Classic — Hall und Chorus")
         self.status = tk.StringVar(value="Original-ISO oder Spielverzeichnis auswählen, dann prüfen oder installieren.")
         self.controls = []
         self.operation = None
@@ -62,13 +65,16 @@ class InstallerWindow:
         self._soundfont_state()
         self.bank.trace_add("write", lambda *args: self._soundfont_state())
         self._mode_changed()
+        if self.iso.get():
+            self.iso_hint.set("Zuletzt verwendete Originalquelle übernommen. Sie wird vor der Installation erneut geprüft.")
         self.iso.trace_add("write", lambda *args: self.iso_hint.set("Quelle ausgewählt. Mit „Nur prüfen“ die Ausgabe verifizieren."))
         root.protocol("WM_DELETE_WINDOW", self._close)
         root.after(100, self._poll)
 
     def _choose_iso(self):
         if self.source_kind.get() == "directory":
-            path = choose_directory(self.root, "Original-Spielverzeichnis auswählen", Path.home())
+            path = choose_directory(self.root, "Original-Spielverzeichnis auswählen",
+                                    Path(self.iso.get()).expanduser() if self.iso.get() else Path.home())
         else:
             path = choose_file(self.root, "Eigene Original-ISO auswählen",
                                Path(self.iso.get()).expanduser() if self.iso.get() else Path.home(),
@@ -179,16 +185,21 @@ class InstallerWindow:
             self.operation = "check" if check else "install"
             self.progress.configure(value=0)
             self.estimate.reset()
-            self.subprogress.configure(value=0)
             self.activity_text.set(self.estimate.label)
             self.timing_text.set(self.estimate.elapsed() + " · " + self.estimate.remaining())
             self.system_state.set("Originaldaten und Voraussetzungen werden geprüft …")
             self.status.set("Voraussetzungen werden geprüft …" if check else "Installation wird vorbereitet …")
             self._append("\n--- Vorabprüfung ---\n" if check else "\n--- Installation ---\n")
+            if not check:
+                try:
+                    save_paths(self.iso.get().strip(), self.output.get().strip(), self.source_kind.get(), self.bank.get().strip(),
+                               self.audio.get().startswith("Vollständiges"), self.style.get().startswith("Dry"))
+                except OSError:
+                    self._append("Die Pfade konnten nicht für den nächsten Start gespeichert werden.\n")
             self.worker.start(command, check)
             self._set_busy(True)
             if not check:
-                self.activity_pulse.start(60)
+                self.activity_die.start()
                 self.layout.show("working")
         except (OSError, ValueError) as error:
             messagebox.showerror("Eingabe prüfen", str(error), parent=self.root)
@@ -212,18 +223,14 @@ class InstallerWindow:
                     self.status.set(f"Schritt {data}/7: {STAGES[data]}")
                     self.progress.configure(value=data-1)
                     self.estimate.stage(STAGES[data])
-                    self.subprogress.configure(value=0)
                     if self.operation == "install":
                         self.layout.step(0 if data == 1 else 1)
                 elif kind == "activity":
                     self.estimate.stage(data)
-                    self.subprogress.configure(value=0)
                 elif kind == "progress":
                     self.estimate.update(data)
-                    self.subprogress.configure(value=(100 * self.estimate.completed / self.estimate.total
-                                                       if self.estimate.total else 0))
                 elif kind == "done":
-                    self.activity_pulse.stop()
+                    self.activity_die.stop()
                     self.activity_text.set("Abgeschlossen." if data["ok"] else "Vorgang beendet.")
                     self.timing_text.set(self.estimate.elapsed())
                     self._set_busy(False)

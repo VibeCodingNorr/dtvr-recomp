@@ -72,10 +72,12 @@ not collected. No log is sent anywhere. Some path-bearing error lines are omitte
 to preserve privacy. The normal on-screen log remains available locally.
 
 The GUI uses a background process/event queue; only the main thread updates Tk.
-It shows seven stages, a bounded log and an animated activity indicator that stays
-active while a tool is silent. Stage 3 names the CD recording or current MIDI cue;
-a separate bar counts preceding MIDI cues, compiler percentages and completed
-tests from tool output. It never advances just because time passes. CD-set
+It shows seven stages, a bounded log and a code-drawn animated die that keeps
+rolling while a tool is silent. The die is our own artwork and stops when the
+operation ends or the window is destroyed. Stage 3 names the CD recording or
+current MIDI cue; text counts preceding MIDI cues, compiler percentages and
+completed tests from tool output. The extra subtask bar is replaced by the die;
+the seven-stage bar remains. Counts never advance just because time passes. CD-set
 validation has its own activity label. Elapsed time updates independently of tool
 output. After enough measured progress, a rough ETA estimates the **current
 subtask**, not the whole installation; different cue lengths, reused MIDI files
@@ -85,6 +87,18 @@ Cancel interrupts the dedicated installer
 process group; normal interruption cleans staging. Closing an active window
 offers to cancel and waits for cleanup. After success, start the native prototype
 or open its installation folder.
+
+The GUI remembers the last explicitly selected original ISO/directory, destination,
+SoundFont and music options in `$XDG_STATE_HOME/dtvr-recomp/installer.json`
+(default `~/.local/state/dtvr-recomp/installer.json`). This private, atomically
+written file is separate from game settings, saves and managed installation files.
+It is saved when starting an installation, including an attempt later cancelled,
+and read on the next GUI launch. Recognized manifests at the remembered target or
+the current/former default destination preselect update mode. This discovery only
+prefills the form: the normal complete input and installation checks still run.
+Missing or damaged history is ignored, and moved media can be selected again.
+Older installers did not retain source paths; their source must be selected once.
+CLI invocation and preflight alone do not write this GUI history.
 
 Prerequisites must already be installed. The GUI identifies missing tools/SDL2/SDL2_ttf,
 libvorbisfile and json-c >= 0.15 development files,

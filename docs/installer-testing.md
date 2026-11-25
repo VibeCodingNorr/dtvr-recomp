@@ -67,7 +67,10 @@ unit-test runs. Pure dependency, privacy and folder-listing tests run normally.
 The progress checks use a controlled clock and real subprocess output to verify
 cue counts, stage scoping, estimates, out-of-order compiler percentages and resets.
 A silent-audio GUI scenario checks that elapsed time updates without fabricated
-progress and that cancellation stops the activity indicator and ETA.
+progress and that cancellation stops the die and ETA. Die lifecycle checks cover repeated start
+and destruction with a pending frame. Path-history checks use isolated XDG data/state
+directories to cover custom and legacy targets, source kinds, private atomic writes,
+malformed history/manifests, and GUI restoration without bypassing preflight.
 The design checks additionally exercise expanded music controls, disabled input
 during installation, cancellation/return, the minimum window size, output
 retention while logs are collapsed, automatic log opening on failure and repeated

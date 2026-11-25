@@ -23,6 +23,10 @@ class InstallerUiTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="dtvr-installer-ui-check-")
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
+        environment = patch.dict(os.environ, {"XDG_STATE_HOME": str(self.directory / "state"),
+                                              "XDG_DATA_HOME": str(self.directory / "data")})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.root = tk.Tk()
         def close():
             for callback in self.root.tk.call("after", "info"):
@@ -247,7 +251,7 @@ class InstallerUiTests(unittest.TestCase):
         app.operation = "install"
         app._set_busy(True)
         app.layout.show("working")
-        app.activity_pulse.start(10)
+        app.activity_die.start()
         app.worker.events.put(("stage", 3))
         app.worker.events.put(("progress", progress_event("Soundtrack rendered-gm: rendering a1", 3)))
         app._poll()
@@ -257,21 +261,88 @@ class InstallerUiTests(unittest.TestCase):
         app.worker.events.put(("progress", progress_event("Soundtrack rendered-gm: rendering e2", 3)))
         app._poll()
         self.assertIn("ca.", app.timing_text.get())
-        value = app.subprogress.cget("value")
+        value = app.estimate.completed
         clock[0] = 90
         app._poll()
         self.assertIn("1:30", app.timing_text.get())
-        self.assertEqual(app.subprogress.cget("value"), value)
+        self.assertEqual(app.estimate.completed, value)
         self.assertTrue(self.root.tk.call("after", "info"))
         app.worker.events.put(("activity", "CD-Klangset prüfen"))
         app._poll()
         self.assertIn("CD-Klangset prüfen", app.activity_text.get())
-        self.assertEqual(app.subprogress.cget("value"), 0)
+        self.assertEqual(app.estimate.completed, 0)
         app.worker.events.put(("done", {"ok": False, "check": False, "cancelled": True, "error": ""}))
         app._poll()
         self.assertFalse(app.busy)
         self.assertNotIn("Restzeit", app.timing_text.get())
-        self.assertEqual(float(app.activity_pulse.cget("value")), 0)
+        self.assertFalse(app.activity_die.running)
+        self.assertIsNone(app.activity_die.timer)
+
+    def test_die_animates_once_and_cancels_its_timer_on_destruction(self):
+        from installer_dice import RollingDie
+        die = RollingDie(self.root)
+        die.pack()
+        die.start()
+        timer = die.timer
+        frame = die.frame
+        die.start()
+        self.assertEqual(die.timer, timer)
+        self.root.after(200, self.root.quit)
+        self.root.mainloop()
+        self.assertGreater(die.frame, frame)
+        die.stop()
+        self.assertFalse(die.running)
+        self.assertIsNone(die.timer)
+        die.start()
+        timer = die.timer
+        die.destroy()
+        self.assertFalse(die.running)
+        self.assertNotIn(timer, self.root.tk.call("after", "info"))
+
+    def test_upgrade_restores_source_destination_and_audio_settings(self):
+        from installer_gui import InstallerWindow
+        from installer_state import load_paths
+        app = InstallerWindow(self.root)
+        source = self.directory / "Original disc.iso"
+        target = self.directory / "Custom installation"
+        app.iso.set(str(source))
+        app.output.set(str(target))
+        app.audio.set("Musikvorbereitung überspringen")
+        app.style.set("Dry — ohne Effekte")
+        with patch.object(app.worker, "start"):
+            app._begin(False)
+        self.assertEqual(load_paths()["source"], str(source))
+        target.mkdir()
+        (target / "manifest.json").write_text(json.dumps({"schema_version": 2,
+            "format": "dtvr-recomp-installation", "project_version": "0.0.1"}))
+        app.activity_die.stop()
+        # Construct a second controller as on a fresh launch.
+        other = InstallerWindow(self.root)
+        self.assertEqual(other.iso.get(), str(source))
+        self.assertEqual(other.output.get(), str(target))
+        self.assertTrue(other.update.get())
+        self.assertEqual(other.audio.get(), "Musikvorbereitung überspringen")
+        self.assertTrue(other.style.get().startswith("Dry"))
+        self.assertIn("Update:", other.detail.get())
+        with patch.object(other.worker, "start") as start:
+            other._begin(False)
+        self.assertIn("--update", start.call_args.args[0])
+        self.assertIn(str(source), start.call_args.args[0])
+        other.activity_die.stop()
+
+    def test_history_write_failure_does_not_block_installation(self):
+        from installer_gui import InstallerWindow
+        app = InstallerWindow(self.root)
+        app.iso.set(str(self.directory / "disc.iso"))
+        app.output.set(str(self.directory / "game"))
+        app.audio.set("Musikvorbereitung überspringen")
+        with patch("installer_gui.save_paths", side_effect=OSError("read only")), patch.object(app.worker, "start") as start:
+            app._begin(False)
+        start.assert_called_once()
+        self.assertTrue(app.busy)
+        self.assertTrue(app.activity_die.running)
+        self.assertIn("nicht für den nächsten Start gespeichert", app.log.get("1.0", "end"))
+        app.activity_die.stop()
 
     def test_design_fits_minimum_size_and_expands_cards(self):
         from installer_gui import InstallerWindow

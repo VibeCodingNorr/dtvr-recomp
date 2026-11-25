@@ -4,6 +4,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+from installer_dice import RollingDie
 from installer_checks import REPO
 from installer_theme import BODY, NAVY, INK, MUTED, MINT, AMBER, WHITE, Card, branding_image, route_image, configure
 from installer_route import LEFT as ROUTE_LEFT, TOP as ROUTE_TOP
@@ -263,11 +264,9 @@ class InstallerLayout:
         app.progress.pack(fill="x", pady=(0, 18))
         activity_row = ttk.Frame(card, style="Card.TFrame")
         activity_row.pack(fill="x")
-        app.activity_pulse = ttk.Progressbar(activity_row, mode="indeterminate", maximum=100, length=80)
-        app.activity_pulse.pack(side="right", padx=(12, 0))
+        app.activity_die = RollingDie(activity_row)
+        app.activity_die.pack(side="right", padx=(12, 0))
         ttk.Label(activity_row, textvariable=app.activity_text, style="Card.TLabel", wraplength=600).pack(side="left", fill="x", expand=True)
-        app.subprogress = ttk.Progressbar(card, maximum=100)
-        app.subprogress.pack(fill="x", pady=(6, 8))
         ttk.Label(card, textvariable=app.timing_text, style="Card.TLabel", wraplength=730).pack(fill="x", pady=(0, 12))
         ttk.Label(card, text="Originaldaten übernehmen, das Spiel bauen und alles prüfen.\n"
                   "Du kannst den Fortschritt hier verfolgen.", style="Card.TLabel", wraplength=730).pack(fill="x")
