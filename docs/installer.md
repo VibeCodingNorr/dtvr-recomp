@@ -72,7 +72,16 @@ not collected. No log is sent anywhere. Some path-bearing error lines are omitte
 to preserve privacy. The normal on-screen log remains available locally.
 
 The GUI uses a background process/event queue; only the main thread updates Tk.
-It shows seven stages and a bounded log. Cancel interrupts the dedicated installer
+It shows seven stages, a bounded log and an animated activity indicator that stays
+active while a tool is silent. Stage 3 names the CD recording or current MIDI cue;
+a separate bar counts preceding MIDI cues, compiler percentages and completed
+tests from tool output. It never advances just because time passes. CD-set
+validation has its own activity label. Elapsed time updates independently of tool
+output. After enough measured progress, a rough ETA estimates the **current
+subtask**, not the whole installation; different cue lengths, reused MIDI files
+and parallel compilation can change the estimate. Unknown work remains labelled
+as being estimated. Timing is run-local and is not saved in user settings.
+Cancel interrupts the dedicated installer
 process group; normal interruption cleans staging. Closing an active window
 offers to cancel and waits for cleanup. After success, start the native prototype
 or open its installation folder.

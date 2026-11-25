@@ -64,6 +64,10 @@ xvfb-run -a env DTVR_TEST_GUI=1 python3 -m unittest discover -s tests -p 'test_i
 
 These checks are skipped by default to avoid opening windows during ordinary
 unit-test runs. Pure dependency, privacy and folder-listing tests run normally.
+The progress checks use a controlled clock and real subprocess output to verify
+cue counts, stage scoping, estimates, out-of-order compiler percentages and resets.
+A silent-audio GUI scenario checks that elapsed time updates without fabricated
+progress and that cancellation stops the activity indicator and ETA.
 The design checks additionally exercise expanded music controls, disabled input
 during installation, cancellation/return, the minimum window size, output
 retention while logs are collapsed, automatic log opening on failure and repeated

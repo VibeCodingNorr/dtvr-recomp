@@ -12,6 +12,8 @@ import subprocess
 import sys
 import threading
 
+from installer_progress import progress_event
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -77,6 +79,7 @@ class InstallerProcess:
         tail = deque(maxlen=30)
         checked_output = []
         details = {}
+        stage = 0
         try:
             with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                   text=True, encoding="utf-8", errors="replace", bufsize=1,
@@ -98,7 +101,13 @@ class InstallerProcess:
                     else:
                         match = re.match(r"DTVR_STAGE:([1-7]):", line)
                         if match:
-                            self.events.put(("stage", int(match.group(1))))
+                            stage = int(match.group(1))
+                            self.events.put(("stage", stage))
+                        if line.startswith("DTVR_ACTIVITY:"):
+                            self.events.put(("activity", line.partition(":")[2].strip()))
+                        progress = progress_event(line, stage)
+                        if progress:
+                            self.events.put(("progress", progress))
                         self.events.put(("log", line))
                 code = process.wait()
             result = {"ok": code == 0, "cancelled": self.cancel_requested.is_set() and code != 0,

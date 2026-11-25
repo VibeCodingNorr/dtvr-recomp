@@ -238,6 +238,41 @@ class InstallerUiTests(unittest.TestCase):
         self.assertEqual(app.layout.phase, "prepare")
         self.assertEqual(str(app.bank_entry.cget("state")), "normal")
 
+    def test_silent_audio_keeps_activity_and_timer_alive_then_stops_on_cancel(self):
+        from installer_gui import InstallerWindow
+        from installer_progress import ProgressEstimate, progress_event
+        app = InstallerWindow(self.root)
+        clock = [0]
+        app.estimate = ProgressEstimate(lambda: clock[0])
+        app.operation = "install"
+        app._set_busy(True)
+        app.layout.show("working")
+        app.activity_pulse.start(10)
+        app.worker.events.put(("stage", 3))
+        app.worker.events.put(("progress", progress_event("Soundtrack rendered-gm: rendering a1", 3)))
+        app._poll()
+        self.assertIn("Musikstück 1/", app.activity_text.get())
+        self.assertIn("wird geschätzt", app.timing_text.get())
+        clock[0] = 20
+        app.worker.events.put(("progress", progress_event("Soundtrack rendered-gm: rendering e2", 3)))
+        app._poll()
+        self.assertIn("ca.", app.timing_text.get())
+        value = app.subprogress.cget("value")
+        clock[0] = 90
+        app._poll()
+        self.assertIn("1:30", app.timing_text.get())
+        self.assertEqual(app.subprogress.cget("value"), value)
+        self.assertTrue(self.root.tk.call("after", "info"))
+        app.worker.events.put(("activity", "CD-Klangset prüfen"))
+        app._poll()
+        self.assertIn("CD-Klangset prüfen", app.activity_text.get())
+        self.assertEqual(app.subprogress.cget("value"), 0)
+        app.worker.events.put(("done", {"ok": False, "check": False, "cancelled": True, "error": ""}))
+        app._poll()
+        self.assertFalse(app.busy)
+        self.assertNotIn("Restzeit", app.timing_text.get())
+        self.assertEqual(float(app.activity_pulse.cget("value")), 0)
+
     def test_design_fits_minimum_size_and_expands_cards(self):
         from installer_gui import InstallerWindow
         app = InstallerWindow(self.root)

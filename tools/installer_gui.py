@@ -22,6 +22,7 @@ from installer_diagnostics import DiagnosticLog
 from installer_dialogs import DependencyDialog
 from installer_folders import choose_directory, choose_file
 from project_version import read_version, version_tuple
+from installer_progress import ProgressEstimate
 from installer_layout import InstallerLayout
 from soundfont_defaults import default_soundfont
 
@@ -54,6 +55,9 @@ class InstallerWindow:
         self.status = tk.StringVar(value="Original-ISO oder Spielverzeichnis auswählen, dann prüfen oder installieren.")
         self.controls = []
         self.operation = None
+        self.estimate = ProgressEstimate()
+        self.activity_text = tk.StringVar()
+        self.timing_text = tk.StringVar()
         self.layout = InstallerLayout(self)
         self._soundfont_state()
         self.bank.trace_add("write", lambda *args: self._soundfont_state())
@@ -174,12 +178,17 @@ class InstallerWindow:
             self.active_output = Path(self.output.get().strip()).expanduser().resolve()
             self.operation = "check" if check else "install"
             self.progress.configure(value=0)
+            self.estimate.reset()
+            self.subprogress.configure(value=0)
+            self.activity_text.set(self.estimate.label)
+            self.timing_text.set(self.estimate.elapsed() + " · " + self.estimate.remaining())
             self.system_state.set("Originaldaten und Voraussetzungen werden geprüft …")
             self.status.set("Voraussetzungen werden geprüft …" if check else "Installation wird vorbereitet …")
             self._append("\n--- Vorabprüfung ---\n" if check else "\n--- Installation ---\n")
             self.worker.start(command, check)
             self._set_busy(True)
             if not check:
+                self.activity_pulse.start(60)
                 self.layout.show("working")
         except (OSError, ValueError) as error:
             messagebox.showerror("Eingabe prüfen", str(error), parent=self.root)
@@ -202,9 +211,21 @@ class InstallerWindow:
                 elif kind == "stage":
                     self.status.set(f"Schritt {data}/7: {STAGES[data]}")
                     self.progress.configure(value=data-1)
+                    self.estimate.stage(STAGES[data])
+                    self.subprogress.configure(value=0)
                     if self.operation == "install":
                         self.layout.step(0 if data == 1 else 1)
+                elif kind == "activity":
+                    self.estimate.stage(data)
+                    self.subprogress.configure(value=0)
+                elif kind == "progress":
+                    self.estimate.update(data)
+                    self.subprogress.configure(value=(100 * self.estimate.completed / self.estimate.total
+                                                       if self.estimate.total else 0))
                 elif kind == "done":
+                    self.activity_pulse.stop()
+                    self.activity_text.set("Abgeschlossen." if data["ok"] else "Vorgang beendet.")
+                    self.timing_text.set(self.estimate.elapsed())
                     self._set_busy(False)
                     if data["ok"] and data["check"] and data["report"].get("kind") == "dependencies":
                         report = data["report"]
@@ -260,6 +281,9 @@ class InstallerWindow:
                         return
         except queue.Empty:
             pass
+        if self.busy and self.operation == "install":
+            self.activity_text.set(self.estimate.label)
+            self.timing_text.set(self.estimate.elapsed() + " · " + self.estimate.remaining())
         self.root.after(100, self._poll)
 
     def _cancel(self):
