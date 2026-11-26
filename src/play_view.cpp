@@ -20,6 +20,7 @@ bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
     // The set-up draws on from the session's generator; the save codec then copies the
     // fresh game with its generator state into the running Game object.
     Game fresh(board_, towns_, slots, rounds_, game_->sessionRandom(), 1, map_.get(), props_.get());
+    fresh.setEdition(game_->edition()); // the save codec checks it
     fresh.setPlayerNames(names);
     fresh.applyNameCodes(); // seg4:0E71 -> seg2:6332, after the deal
     if (!SaveCodec::decode(*game_, SaveCodec::encode(fresh), error)) return false;

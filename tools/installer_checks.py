@@ -12,8 +12,10 @@ from release_ogg import LABEL as RELEASE_LABEL, check_release_audio, release_pro
 from iso9660 import IsoImage
 from soundtrack import soundfont_info, validate_identity
 from installer_dependencies import DependencyError, dependency_report
+import editions
 
-KNOWN_EXE = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83"
+# The German reference executable; every supported edition is in tools/editions.py.
+KNOWN_EXE = editions.GERMAN_RETAIL["executable_sha256"]
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -89,7 +91,8 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     source = {}
     if directory is not None:
         from installer_directory import inspect_directory
-        source = inspect_directory(directory, KNOWN_EXE)
+        source = inspect_directory(directory)
+        profile = editions.profile_by_id(source["edition"])
         program = Path(source["directory"])
         if program == output or output in program.parents or program in output.parents:
             raise ValueError("Original directory and installation destination must not overlap")
@@ -99,24 +102,33 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     else:
         with IsoImage(iso) as image:
             files = [entry for entry in image.files() if entry[0].parts[0] == "program"]
-            entry = next((entry for entry in files if str(entry[0]) == "program/rally.exe"), None)
-            if entry is None or hashlib.sha256(image.read(entry[1], entry[2])).hexdigest() != KNOWN_EXE:
-                raise ValueError("Unsupported original executable; this disc version is not supported")
-            required = {"program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"}
-            if not required.issubset({str(entry[0]) for entry in files}):
-                raise ValueError("Original disc is missing required game data")
+            entries = {str(entry[0]): entry for entry in files}
+            entry = entries.get("program/rally.exe")
+            profile = editions.require_profile(
+                hashlib.sha256(image.read(entry[1], entry[2])).hexdigest() if entry is not None else None)
+            missing = editions.missing_files(profile, entries.keys())
+            if missing:
+                raise ValueError("Original disc is missing required game data: " + ", ".join(missing))
+            language = entries["program/dat/lan.inf"]
+            editions.require_language(profile, editions.language_from_bytes(
+                image.read(language[1], min(language[2], 1))))
             sector_size = image.sector_size
         file_count, source_bytes = len(files), sum(entry[2] for entry in files)
         iso_hash = digest(iso)
         has_cd = audio_layout(iso_hash, iso.stat().st_size) is not None
+    if previous is not None:
+        editions.require_same_edition(previous, profile)
     cd_audio_source = "original-cd-da" if has_cd else None
     if cd_audio_dir is not None:
         # Release Ogg tracks: only for the pinned image of their edition (tools/release_ogg.py).
-        profile = release_profile(iso_hash)
-        if profile is None:
+        release = release_profile(iso_hash)
+        if release is None:
             raise ValueError(f"{RELEASE_LABEL}: only accepted with the pinned English retail data image; "
                              "this image belongs to another edition or release")
-        cd_audio_dir = check_release_audio(cd_audio_dir, profile)
+        if release["edition"] != profile["id"]:
+            raise ValueError(f"{RELEASE_LABEL}: only accepted for edition {release['edition']}; "
+                             "this image holds another edition")
+        cd_audio_dir = check_release_audio(cd_audio_dir, release)
         if cd_audio_dir == output or output in cd_audio_dir.parents or cd_audio_dir in output.parents:
             raise ValueError("Release audio directory and installation destination must not overlap")
         cd_audio_source = RELEASE_LABEL  # copied, not converted: no encoder needed
@@ -141,7 +153,8 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
         raise ValueError(f"Not enough free disk space: reserve {reserve // 2**20} MiB for import/build")
     return {**source, "source_kind": "directory" if directory is not None else "iso",
             "iso": str(iso) if iso is not None else None, "output": str(output), "iso_sha256": iso_hash,
-            "iso_sector_size": sector_size, "original_executable_sha256": KNOWN_EXE,
+            "iso_sector_size": sector_size, "original_executable_sha256": profile["executable_sha256"],
+            "edition": profile["id"],
             "program_files": file_count, "cd_audio_supported": cd_audio_source is not None,
             "cd_audio_source": cd_audio_source,
             "cd_audio_dir": str(cd_audio_dir) if cd_audio_dir is not None else None,

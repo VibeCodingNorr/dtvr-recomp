@@ -42,8 +42,14 @@ ScriptedInput::ScriptedInput(const std::string& keys) {
             e.button = right ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT;
             e.x = std::stoi(at.substr(0, colon));
             e.y = std::stoi(at.substr(colon + 1));
+        } else if (name == "Wait") { // nothing in this interval
+            e.phase = Entry::Phase::None;
         } else {
-            e.key = SDL_GetKeyFromName(name.c_str());
+            // Hold:<key> only presses (a held arrow drives, seg4:01F2), Release:<key> lets go.
+            std::string key = name;
+            if (name.rfind("Hold:", 0) == 0) e.phase = Entry::Phase::Down, key = name.substr(5);
+            else if (name.rfind("Release:", 0) == 0) e.phase = Entry::Phase::Up, key = name.substr(8);
+            e.key = SDL_GetKeyFromName(key.c_str());
             if (e.key == SDLK_UNKNOWN) throw std::invalid_argument("--press: unbekannte Taste " + name);
         }
         entries_.push_back(e);
@@ -79,14 +85,19 @@ void ScriptedInput::pump(int frame, int interval) {
         SDL_PushEvent(&event);
         return;
     }
-    event.type = SDL_KEYDOWN;
-    event.key.state = SDL_PRESSED;
+    if (entry.phase == Entry::Phase::None) return;
     event.key.keysym.sym = entry.key;
     event.key.keysym.scancode = SDL_GetScancodeFromKey(event.key.keysym.sym);
-    SDL_PushEvent(&event);
-    event.type = SDL_KEYUP;
-    event.key.state = SDL_RELEASED;
-    SDL_PushEvent(&event);
+    if (entry.phase != Entry::Phase::Up) {
+        event.type = SDL_KEYDOWN;
+        event.key.state = SDL_PRESSED;
+        SDL_PushEvent(&event);
+    }
+    if (entry.phase != Entry::Phase::Down) {
+        event.type = SDL_KEYUP;
+        event.key.state = SDL_RELEASED;
+        SDL_PushEvent(&event);
+    }
 }
 
 } // namespace dtvr

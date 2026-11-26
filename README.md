@@ -24,7 +24,7 @@ is claimed.
 | --- | --- | --- | --- |
 | Source-only distribution | ✅ Implemented | User supplies an ISO or complete original game directory; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
 | Original-data installer and Linux build | ✅ Implemented | GUI selection of ISO or directory, preflight, directory input SHA-256 inventory, automatic compilation/tests, Ogg preparation, progress/cancel and game-window launch. Explicit local updates preserve user files and a complete backup. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
-| US English edition | 🟡 Recognized, not playable | Edition profiles ([edition](src/edition.cpp)) identify the German and the US English retail CD (`RALLY.EXE` `a8374ca9…`) by the SHA-256 of `rally.exe` or of the installation manifest; the runtime selects required files, overview and canvases per profile, loads upper-case disc paths and shows the retail empty-slot label (string 11), credits path and 640 setup name fields. `--game` / `--play` refuse the English profile (developer option `--dev-unfinished-edition` for tests) until a complete human turn is verified with its data (the audit found the German rules); the installer still accepts only the German EXE. A limited US build (`c8b7dab6…`) is known and unsupported. | [Edition profiles](docs/media-variants.md#edition-profiles), [architecture](docs/architecture.md#editions-and-languages) |
+| US English edition | ✅ Implemented | The US English retail CD ("Dr. Drago's Madcap Chase", `RALLY.EXE` `a8374ca9…`) is installable and playable with its own data: edition profiles in the runtime ([edition](src/edition.cpp)) and the installer ([editions](tools/editions.py)) identify it by the SHA-256 of `rally.exe` or of the installation manifest, check its files and the `dat/lan.inf` letter, and select overview, canvases, the retail empty-slot label, credits path and 640 setup name fields. Its rules are the German ones (retail audit); one complete human turn gave the same simulation log as the German data. Saves record the edition and refuse the other one; both editions read `europe.map` afresh for every new or loaded game (retail behaviour). Music: the pinned release Ogg tracks (not original) or MIDI. A limited US build (`c8b7dab6…`) is known and unsupported. | [Edition profiles](docs/media-variants.md#edition-profiles), [installer](docs/installer.md), [saves](docs/save-format.md#editions) |
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
@@ -258,12 +258,13 @@ Alternatively, import a complete original game directory:
 python3 tools/install.py --directory /path/to/original-game
 ```
 
-The known EXE hash identifies the supported German version. Directory imports
+The EXE hash identifies the edition: the German retail CD or the US English retail CD
+(`tools/editions.py`). Directory imports
 record every input file's size and SHA-256 and verify the copied data. The source
 stays unchanged. These hashes record supplied content; they do not authenticate
-every asset against a reference disc. The US English retail edition is recognized
-by the runtime but not yet playable or installable
-([edition profiles](docs/media-variants.md#edition-profiles)).
+every asset against a reference disc. Both retail editions are installable and
+playable ([edition profiles](docs/media-variants.md#edition-profiles)); an installed
+hard-disk folder without `butt/` is incomplete, use the disc image then.
 Directories do not provide CD audio regions; original MIDI music can still be
 prepared with a local SoundFont.
 
@@ -519,7 +520,8 @@ python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analy
 
 The smoke test renders one frame (`--frames N`: N frames) and exits, including without a
 desktop session. `--press` posts SDL key names, one every 10 frames, so interactive
-flows can be checked with the dummy driver; `--window-size WxH` and `--aspect W:H`
+flows can be checked with the dummy driver (`Hold:Right` / `Release:Right` keep an arrow
+held for driving, `Wait` skips an interval); `--window-size WxH` and `--aspect W:H`
 reproduce display sizes.
 Screenshots use BMP format. The analysis reports file counts, the executable hash,
 NE segments, imported modules and the entry point. It never executes Windows code.

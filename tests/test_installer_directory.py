@@ -18,6 +18,7 @@ from installation_manifest import verify_installation
 from installer_checks import preflight
 from installer_directory import inspect_directory, import_directory, inventory
 from installer_process import installer_command
+from installer_scenario import synthetic_profiles
 
 SCENARIO = Path(__file__).with_name("installer_scenario.py")
 EXE_HASH = hashlib.sha256(b"synthetic executable").hexdigest()
@@ -30,7 +31,11 @@ class DirectoryTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.source = self.root / "original files ü $(literal)"
         self.program = self.source / "PROGRAM"
+        profiles = patch("editions.PROFILES", synthetic_profiles(EXE_HASH))
+        profiles.start()
+        self.addCleanup(profiles.stop)
         for name, data in {"RALLY.EXE": b"synthetic executable",
+                           "DAT/LAN.INF": b"D\r\n",
                            "BUTT/1/MAP.BMP": b"synthetic bitmap",
                            "MAP/0/PART0000.SBB": b"synthetic tiles",
                            "SBS/D.SBS": b"synthetic sprites"}.items():
@@ -40,25 +45,27 @@ class DirectoryTests(unittest.TestCase):
         self.output = self.root / "installed game"
 
     def report(self):
-        return inspect_directory(self.source, EXE_HASH)
+        return inspect_directory(self.source)
 
     def test_case_normalization_hashes_and_read_only_source(self):
         before = inventory(self.program)
         report = self.report()
-        self.assertEqual(report, inspect_directory(self.program, EXE_HASH))
+        self.assertEqual(report, inspect_directory(self.program))
         relocated = self.root / "another copy"
         shutil.copytree(self.source, relocated)
         self.assertEqual(report["source_sha256"],
-                         inspect_directory(relocated, EXE_HASH)["source_sha256"])
+                         inspect_directory(relocated)["source_sha256"])
         data = self.root / "staging/data"
-        self.assertEqual(import_directory(report, data), 4)
+        self.assertEqual(import_directory(report, data), 5)
+        self.assertEqual(report["edition"], "de-retail")
         self.assertEqual(inventory(self.program), before)
         self.assertEqual(inventory(data / "program"), before)
         self.assertFalse(self.output.exists())
 
     def test_rejects_unknown_version_missing_assets_and_case_collisions(self):
-        with self.assertRaisesRegex(ValueError, "Unsupported original"):
-            inspect_directory(self.source, "0" * 64)
+        with self.assertRaisesRegex(ValueError, "Unsupported original"), \
+                patch("editions.PROFILES", synthetic_profiles("0" * 64)):
+            inspect_directory(self.source)
         bitmap = self.program / "BUTT/1/MAP.BMP"
         bitmap.unlink()
         with self.assertRaisesRegex(ValueError, "missing required") as missing:
@@ -88,7 +95,7 @@ class DirectoryTests(unittest.TestCase):
         link = self.root / "linked source"
         link.symlink_to(self.source, target_is_directory=True)
         with self.assertRaisesRegex(ValueError, "symbolic link"):
-            inspect_directory(link, EXE_HASH)
+            inspect_directory(link)
 
     def test_rejects_excessive_depth_and_unsafe_names(self):
         deep = self.program.joinpath(*[str(i) for i in range(17)])
@@ -119,8 +126,7 @@ class DirectoryTests(unittest.TestCase):
 
     def test_preflight_is_read_only_and_requires_disjoint_destination(self):
         dependencies = {"ready": True, "requirements": []}
-        with patch("installer_checks.KNOWN_EXE", EXE_HASH), \
-                patch("installer_checks.dependency_report", return_value=dependencies) as probe:
+        with patch("installer_checks.dependency_report", return_value=dependencies) as probe:
             report = preflight(None, self.output, directory=self.source)
             self.assertEqual(report["source_kind"], "directory")
             self.assertIsNone(report["iso_sha256"])
@@ -159,8 +165,9 @@ class DirectoryTests(unittest.TestCase):
                 (self.output / "saves").mkdir()
                 (self.output / "saves/slot0.sav").write_bytes(b"saved progress")
             script = (
-                "import sys; from pathlib import Path; import install, installer_checks; "
-                f"install.KNOWN_EXE = installer_checks.KNOWN_EXE = {EXE_HASH!r}; "
+                "import sys; from pathlib import Path; import install, installer_checks, editions; "
+                "from installer_scenario import synthetic_profiles; "
+                f"editions.PROFILES = synthetic_profiles({EXE_HASH!r}); "
                 f"install.inspect_game = lambda data: {{'executable': {{'sha256': {EXE_HASH!r}}}}}; "
                 "installer_checks.dependency_report = lambda *a, **k: {'ready': True, 'requirements': []}; "
                 "install.main()")

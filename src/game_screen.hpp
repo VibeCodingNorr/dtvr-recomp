@@ -69,6 +69,12 @@ public:
     bool title() const { return title_; }
     // The vehicle sets of the drivers in play (after loading a game).
     void loadDriverSprites();
+    // A new or loaded game starts from a freshly read map/europe.map (user decision
+    // 2026-11-26, both editions): the US retail rally.exe reloads it there (R seg5:182F
+    // from seg5:186A(.., 1) and the loader R seg8:AF67), the German one reads it once per
+    // run (D seg5:1559), so tiles changed by the previous game would stay. The next
+    // drawMap rebuilds the world bitmap and the ambient animations' map from the file.
+    void reloadMap() { worldSeason_ = -1; }
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
     MouseControlView& mouseControl() { return mouseControl_; }

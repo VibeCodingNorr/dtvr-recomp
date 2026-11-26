@@ -16,10 +16,19 @@ from test_iso9660 import both16, both32, record
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
+import editions
+
+
+def synthetic_profiles(exe_hash, base=None):
+    """An edition profile (German by default) with a synthetic executable hash and the
+    fixture's files only."""
+    return ({**(base or editions.GERMAN_RETAIL), "executable_sha256": exe_hash,
+             "required": ("dat/lan.inf", "butt/1/map.bmp", "map/0/part0000.sbb", "sbs/d.sbs")},)
 
 
 def disc_fixture():
     files = {"program/rally.exe": b"synthetic executable",
+             "program/dat/lan.inf": b"D\r\n",
              "program/butt/1/map.bmp": b"synthetic bitmap",
              "program/map/0/part0000.sbb": b"synthetic tiles",
              "program/sbs/d.sbs": b"synthetic sprites"}
@@ -73,6 +82,9 @@ def fake_build_tool():
                           "import json, os, sys\n"
                           "print('TEST_RUNTIME:' + json.dumps(sys.argv[1:]), flush=True)\n"
                           "assert os.environ.get('XDG_CONFIG_HOME') != os.environ.get('DTVR_TEST_CONFIG') or '--smoke-test' not in sys.argv\n"
+                          # Without rally.exe the runtime needs the edition from manifest.json beside data/.
+                          "data = sys.argv[sys.argv.index('--data') + 1] if '--data' in sys.argv else None\n"
+                          "assert data is None or json.load(open(os.path.join(data, '..', 'manifest.json')))['edition']\n"
                           "raise SystemExit(9 if os.environ.get('DTVR_TEST_MODE') == 'smoke-fail' else 0)\n")
         binary.chmod(0o755)
     raise SystemExit(0)
@@ -85,7 +97,7 @@ def run_scenario(iso, output, mode, update):
     synthetic_hash = hashlib.sha256(b"synthetic executable").hexdigest()
     # Only the original-executable analysis and host tool preflight are replaced.
     # ISO reading/extraction, staging, subprocesses, verification and publication are real.
-    install.KNOWN_EXE = synthetic_hash
+    editions.PROFILES = synthetic_profiles(synthetic_hash)
     install.inspect_game = lambda data: {"executable": {"sha256": synthetic_hash}}
     install.preflight = lambda *args: {"iso": str(iso), "output": str(output), "iso_sha256": digest(iso)}
     extract = install.IsoImage.extract_program

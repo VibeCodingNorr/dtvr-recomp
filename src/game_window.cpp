@@ -33,7 +33,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     ScreenLayout layout = widescreen ? wideLayout : baseLayout;
     const bool startFullscreen = options.fullscreen || (displaySettings.fullscreen && !options.smokeTest);
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
-        SDL_CreateWindow("Die total verrueckte Rallye", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, layout.width,
+        SDL_CreateWindow("DTVR Recomp", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, layout.width,
                          layout.height, SDL_WINDOW_RESIZABLE | (startFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0)),
         SDL_DestroyWindow);
     if (!window) throw std::runtime_error(SDL_GetError());
@@ -57,6 +57,9 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     if (const fs::path file = findCaseInsensitive(root, languageLibraryPath(languageLetter)); !file.empty()) language = readFile(file);
     if (!language.empty())
         for (const auto& [id, raw] : readNeStrings(language)) texts.emplace(id, ansiToUtf8(raw));
+    // seg5:1BCF: LoadString(language library, 10) is the main window's title in CreateWindow
+    // (seg5:1C06): "D.T.V.R." in rally_d.dat, "Dr. Drago's Madcap Chase" in rally_e.dat.
+    if (const auto title = texts.find(10); title != texts.end()) SDL_SetWindowTitle(window.get(), title->second.c_str());
     if (options.loadSlot >= 0) { // before the screen: the drivers' sprites depend on the players
         std::string error;
         const SaveSlots slots(defaultSaveDirectory());
@@ -263,8 +266,7 @@ void GameWindow::applySettings(const Settings& s) { // saved; the OPTION window 
 }
 
 void GameWindow::report() {
-    play_.printLog(std::cout);
-    SDL_SetWindowTitle(window_, play_.title().c_str());
+    play_.printLog(std::cout); // the window keeps the original title (text 10)
 }
 
 void GameWindow::openMenu(const std::string& name) {
@@ -307,6 +309,7 @@ void GameWindow::openTitle() { // seg8:03AB / 0DB0: TITEL and the menu MAIN
 // Otherwise a game was loaded (SaveSlots::load / loadAuto, Game::resumeLoaded).
 void GameWindow::startGame(bool fresh) {
     screen_.setTitle(false);
+    screen_.reloadMap(); // europe.map afresh for every new or loaded game (R seg5:182F)
     if (fresh) {
         screen_.startAnnouncement(2, 3, SDL_GetTicks());
         autosaved_ = -1;        // the first turn of a started game is saved too

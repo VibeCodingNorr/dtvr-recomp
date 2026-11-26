@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import re
 
 from installer_checks import digest
+import editions
 
 FORMAT = "dtvr-recomp-installation"
 # Manifest format -> runtime binary; installations of the former name DTVR Recomb
@@ -41,7 +42,9 @@ def verify_installation(root):
     if not isinstance(files, dict) or not 1 <= len(files) <= 20000:
         raise ValueError("Invalid installation file table")
     runtime = RUNTIMES[manifest["format"]]
-    if not {"play", runtime, "data/program/butt/1/map.bmp"}.issubset(files):
+    # The overview bitmap the runtime needs for this edition (src/edition.cpp overviewBitmap).
+    overview = "data/program/" + editions.installed_profile(manifest)["overview"]
+    if not {"play", runtime, overview}.issubset(files):
         raise ValueError("Installation is missing required runtime entries")
     for name, expected in files.items():
         relative = PurePosixPath(name)
@@ -57,7 +60,8 @@ def verify_installation(root):
             raise ValueError(f"Installation file hash mismatch: {name}")
         if name in ("play", runtime) and not os.access(path, os.X_OK):
             raise ValueError(f"Runtime file is not executable: {name}")
-    return {"files_verified": len(files), "soundtrack_packs": manifest.get("soundtrack_packs", [])}
+    return {"files_verified": len(files), "edition": editions.installed_profile(manifest)["id"],
+            "soundtrack_packs": manifest.get("soundtrack_packs", [])}
 
 
 def main():

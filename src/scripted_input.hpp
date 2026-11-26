@@ -16,7 +16,8 @@ class ScriptedInput {
 public:
     // Comma-separated SDL key names ("Escape,Down,Return"); "Pad:<button>" presses a
     // physical game controller button through the pad mapping and layer (A, B, X, Y,
-    // Back, Start, LB, RB, LT, RT, LeftStick, RightStick, Up, Down, Left, Right = d-pad); "ClickLeft:x:y" / "ClickRight:x:y" click at canvas pixels.
+    // Back, Start, LB, RB, LT, RT, LeftStick, RightStick, Up, Down, Left, Right = d-pad); "ClickLeft:x:y" / "ClickRight:x:y" click at canvas pixels;
+    // "Hold:<key>" only presses a key, "Release:<key>" only lets it go, "Wait" skips an interval.
     // Throws on an unknown name.
     explicit ScriptedInput(const std::string& keys = {});
     // Posts the next key (down and up) every `interval` frames, the first at `interval`;
@@ -28,6 +29,7 @@ public:
 
 private:
     struct Entry {
+        enum class Phase { Press, Down, Up, None } phase = Phase::Press; // key down and up / Hold / Release / Wait
         SDL_Keycode key = SDLK_UNKNOWN;
         bool pad = false;
         PadRaw state;

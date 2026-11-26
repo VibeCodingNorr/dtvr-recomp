@@ -76,8 +76,8 @@ void profiles() {
     std::string upper = kRetail;
     for (char& c : upper) c = char(std::toupper(static_cast<unsigned char>(c)));
     const EditionProfile* retail = profileForExecutableHash(upper);
-    check(retail && retail->edition == Edition::EnglishRetail && !retail->playable && retail->languageLetter == 'E',
-          "US retail hash (upper case) -> recognised, not playable");
+    check(retail && retail->edition == Edition::EnglishRetail && retail->playable && retail->languageLetter == 'E',
+          "US retail hash (upper case) -> recognised, playable (round E2)");
     check(!profileForExecutableHash(kLimited), "the limited US build is not a profile");
     check(!profileForExecutableHash(""), "empty hash unknown");
     check(!profileForExecutableHash(kGerman.substr(1)), "truncated hash unknown");

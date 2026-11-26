@@ -53,7 +53,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMP-SAVE 7\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMP-SAVE 8\nedition de-retail\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -74,6 +74,12 @@ int main() {
     CHECK(SaveCodec::decode(n, moving, error) && n.stepsTaken() == 1 && n.phase() == Game::Phase::Move);
     CHECK(n.step(Direction::Left) && n.stepsTaken() == 0);
 
+    // An older format: the header and no edition record (format 8, round E2).
+    auto older = [](std::string text, int format) {
+        const size_t e = text.find("\nedition ");
+        if (e != std::string::npos) text.erase(e, text.find('\n', e + 1) - e);
+        return text.replace(0, 18, "DTVR-RECOMP-SAVE " + std::to_string(format));
+    };
     // Formats before 7 have no flow records (round R1), before 6 no worth records (round 149).
     auto stripFlow = [](std::string text) {
         for (size_t w; (w = text.find("\nflow ")) != std::string::npos;) text.erase(w, text.find('\n', w + 1) - w);
@@ -88,7 +94,7 @@ int main() {
         std::string v6 = stripFlow(saved);
         Game c(board, towns, 1, 0, 3, 1);
         CHECK(!SaveCodec::decode(c, v6, error));
-        v6.replace(0, 18, "DTVR-RECOMP-SAVE 6");
+        v6 = older(v6, 6);
         CHECK(SaveCodec::decode(c, v6, error) && c.economy().money(0).monthFlow == 0 && c.economy().money(0).yearFlow == 0);
         CHECK(stripFlow(SaveCodec::encode(c)) == stripFlow(saved));
         std::string bad = saved; // a flow line of a slot that does not exist
@@ -99,7 +105,7 @@ int main() {
     // Format 1 (round 18, no Risiko record) still loads.
     {
         std::string v1 = stripWorth(saved);
-        v1.replace(0, 18, "DTVR-RECOMP-SAVE 1");
+        v1 = older(v1, 1);
         const size_t r = v1.find("\nrisiko ");
         v1.erase(r, v1.find('\n', r + 1) - r);
         const size_t d = v1.find("\ndemo ");
@@ -113,7 +119,7 @@ int main() {
         Game staged(board, towns, 1, 5, 3, 1);
         std::string v3 = stripWorth(SaveCodec::encode(staged));
         CHECK(v3.find("\nstages 5\n") != std::string::npos);
-        v3.replace(0, 18, "DTVR-RECOMP-SAVE 3");
+        v3 = older(v3, 3);
         const size_t st = v3.find("\nstages ");
         v3.erase(st, v3.find('\n', st + 1) - st);
         Game c(board, towns, 1, 9, 4, 1);
@@ -133,7 +139,7 @@ int main() {
         Game d(board, towns, 1, 0, 6, 1);
         CHECK(SaveCodec::decode(d, v5, error) && d.computerExtraCards());
         std::string v4 = stripWorth(v5);
-        v4.replace(0, 18, "DTVR-RECOMP-SAVE 4");
+        v4 = older(v4, 4);
         const size_t es = v4.find("\nextensions ");
         v4.erase(es, v4.find('\n', es + 1) - es);
         CHECK(SaveCodec::decode(d, v4, error) && !d.computerExtraCards());
@@ -149,8 +155,55 @@ int main() {
         CHECK(!SaveCodec::decode(d, missing, error)); // format 5 needs it
         CHECK(!SaveCodec::decode(d, stripWorth(v5), error)); // format 6 needs the worth records
         std::string v5only = stripWorth(v5);
-        v5only.replace(0, 18, "DTVR-RECOMP-SAVE 5");
+        v5only = older(v5only, 5);
         CHECK(SaveCodec::decode(d, v5only, error) && d.economy().money(0).yearRent == 0);
+    }
+
+    // Format 8 (round E2): the edition of the data. A save of another edition is refused
+    // with a German message, before its data fingerprint; formats before 8 are German.
+    {
+        Game english(board, towns, 1, 0, 7, 1);
+        english.setEdition(Edition::EnglishRetail);
+        const std::string en = SaveCodec::encode(english);
+        CHECK(en.rfind("DTVR-RECOMP-SAVE 8\nedition en-us-retail\n", 0) == 0);
+        Game german(board, towns, 1, 0, 8, 1);
+        const std::string de = SaveCodec::encode(german);
+        CHECK(!SaveCodec::decode(german, en, error) && error.find("anderen Ausgabe") != std::string::npos
+              && error.find("Madcap") != std::string::npos);
+        CHECK(SaveCodec::encode(german) == de); // unchanged
+        CHECK(!SaveCodec::decode(english, de, error) && error.find("anderen Ausgabe") != std::string::npos);
+        CHECK(!SaveCodec::decode(english, older(de, 7), error) && error.find("verrückte") != std::string::npos);
+        CHECK(SaveCodec::decode(german, older(de, 7), error));
+        Game other(board, towns, 1, 0, 9, 1);
+        other.setEdition(Edition::EnglishRetail);
+        CHECK(SaveCodec::decode(other, en, error) && other.edition() == Edition::EnglishRetail);
+        CHECK(SaveCodec::decode(german, de, error) && german.edition() == Edition::GermanRetail);
+        std::string unknown = de;
+        unknown.replace(unknown.find("de-retail"), 9, "fr-retail");
+        CHECK(!SaveCodec::decode(german, unknown, error) && error.find("unbekannt: fr-retail") != std::string::npos);
+        std::string twice = de;
+        twice.insert(twice.find("\nrules ") + 1, "edition de-retail\n");
+        CHECK(!SaveCodec::decode(german, twice, error));
+        std::string none = de;
+        none.erase(none.find("\nedition "), 18);
+        CHECK(!SaveCodec::decode(german, none, error)); // format 8 needs it
+        CHECK(!SaveCodec::decode(german, older(de, 7).insert(19, "edition de-retail\n"), error));
+    }
+
+    // A new game is handed over by the codec (PlayView::newGame), so nothing of the map
+    // state carries over: the East opened in one game is closed in the next (user
+    // decision round E2: europe.map afresh for every new or loaded game, R seg5:182F).
+    {
+        Game played(board, towns, 1, 0, 12, 1);
+        std::string text = SaveCodec::encode(played);
+        const size_t st = text.find("\nstate ") + 7;
+        size_t field = st;
+        for (int i = 0; i < 5; ++i) field = text.find(' ', field) + 1;
+        CHECK(text[field] == '0');
+        text[field] = '1';
+        CHECK(SaveCodec::decode(played, text, error) && played.eastOpen());
+        Game fresh(board, towns, 1, 0, 13, 1);
+        CHECK(SaveCodec::decode(played, SaveCodec::encode(fresh), error) && !played.eastOpen());
     }
 
     // Rejected input leaves the game unchanged.

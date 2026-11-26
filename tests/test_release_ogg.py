@@ -15,10 +15,12 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import release_ogg
+import editions
 from release_ogg import (ENGLISH_RETAIL, LABEL, check_release_audio, import_release_audio, language_letter,
                          parse_cue, release_profile, require_edition)
 from cd_audio import KNOWN_ISO as GERMAN_ISO
 from installer_checks import KNOWN_EXE as GERMAN_EXE, preflight
+from installer_scenario import synthetic_profiles
 
 FFMPEG = bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
 CUE = "".join(['FILE "track01.iso" BINARY\n  TRACK 01 MODE1/2048\n    INDEX 01 00:00:00\n',
@@ -177,13 +179,15 @@ class PreflightTests(unittest.TestCase):
         image = MagicMock()
         image.__enter__.return_value = image
         image.sector_size = 2048
-        image.read.return_value = b"test"
+        # Entry 4 is dat/lan.inf ("D"), every other read is the synthetic executable.
+        image.read.side_effect = lambda block, size: b"D\r\n"[:size] if block == 4 else b"test"
         image.files.return_value = [(PurePosixPath(name), i, 4) for i, name in enumerate(
-            ["program/rally.exe", "program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"])]
+            ["program/rally.exe", "program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs",
+             "program/dat/lan.inf"])]
         self.checked = MagicMock(side_effect=lambda directory, profile: directory.resolve())
         for target, replacement in [
                 ("installer_checks.IsoImage", MagicMock(return_value=image)),
-                ("installer_checks.KNOWN_EXE", hashlib.sha256(b"test").hexdigest()),
+                ("editions.PROFILES", synthetic_profiles(hashlib.sha256(b"test").hexdigest())),
                 ("installer_checks.interface_font", MagicMock(return_value="Liberation Sans")),
                 ("installer_checks.shutil.which", MagicMock(return_value="tool")),
                 ("installer_checks.subprocess.run", MagicMock(return_value=subprocess.CompletedProcess([], 0))),
@@ -204,13 +208,20 @@ class PreflightTests(unittest.TestCase):
 
     def test_pinned_image_reports_the_non_original_source(self):
         profile = {**ENGLISH_RETAIL, "iso_sha256": sha256(self.iso)}
-        with patch.object(release_ogg, "PROFILES", (profile,)):
+        with patch.object(release_ogg, "PROFILES", (profile,)), patch(
+                "editions.PROFILES", synthetic_profiles(hashlib.sha256(b"test").hexdigest(),
+                                                        {**editions.ENGLISH_RETAIL, "language": "d"})):
+            # (the mocked image's lan.inf says D; only the edition id matters here)
             report = preflight(self.iso, self.output, cd_audio_dir=self.audio)
             self.assertEqual((report["cd_audio_source"], report["cd_audio_supported"]), (LABEL, True))
             self.assertEqual(report["cd_audio_dir"], str(self.audio.resolve()))
             self.checked.assert_called_once()
             with self.assertRaisesRegex(ValueError, "overlap"):
                 preflight(self.iso, self.audio / "install", cd_audio_dir=self.audio)
+        # The pinned image with a German executable: refused before reading the audio.
+        with patch.object(release_ogg, "PROFILES", (profile,)):
+            with self.assertRaisesRegex(ValueError, "another edition"):
+                preflight(self.iso, self.output, cd_audio_dir=self.audio)
         self.assertFalse(self.output.parent.exists())
 
 

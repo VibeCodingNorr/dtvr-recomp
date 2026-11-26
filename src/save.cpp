@@ -97,6 +97,7 @@ uint64_t dataFingerprint(const Board& board, const std::vector<Town>& towns) {
 std::string SaveCodec::encode(const Game& g) {
     std::ostringstream o;
     o << kMagic << ' ' << kSaveFormat << '\n';
+    o << "edition " << editionProfile(g.edition_).id << '\n'; // format 8, before the data check
     o << "rules " << kRulesRevision << '\n';
     char fp[32];
     std::snprintf(fp, sizeof fp, "%016llx", static_cast<unsigned long long>(dataFingerprint(g.board_, g.towns_)));
@@ -186,6 +187,17 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
             return fail("Spielstandformat " + std::to_string(format) + " wird nicht unterstuetzt");
         version = format;
     }
+    // Formats before 8 have no edition record: only the German edition wrote them.
+    const EditionProfile& own = editionProfile(g.edition_);
+    auto otherEdition = [&](const std::string& id) {
+        const EditionProfile* theirs = nullptr;
+        for (const auto& profile : editionProfiles())
+            if (id == profile.id) theirs = &profile;
+        return fail("Dieser Spielstand gehört zu einer anderen Ausgabe ("
+                    + (theirs ? std::string(theirs->name) : "unbekannt: " + id)
+                    + ") und lässt sich mit diesen Originaldaten (" + own.name + ") nicht laden");
+    };
+    if (version < 8 && g.edition_ != Edition::GermanRetail) return otherEdition("de-retail");
     // Everything is parsed into copies first and applied only when complete.
     uint32_t rng = 0;
     std::vector<PlayerSlot> players(kPlayerSlots);
@@ -220,7 +232,13 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
         ++seen[key];
         bool ok = true;
         if (key == "end") { ended = true; break; }
-        else if (key == "rules") {
+        else if (key == "edition") {
+            const std::string id = space == std::string::npos ? "" : line.substr(space + 1);
+            if (version < 8) return fail("Eintrag 'edition' erst ab Format 8");
+            if (seen[key] != 1) return fail("Eintrag 'edition' ist doppelt");
+            if (id != own.id) return otherEdition(id);
+            continue;
+        } else if (key == "rules") {
             int rules = 0;
             ok = r.get(rules, 0, 1 << 30);
             if (ok && rules > kRulesRevision) return fail("Spielstand aus neuerer Regelversion " + std::to_string(rules));
@@ -323,6 +341,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
         if (!ok || !r.done()) return fail("fehlerhafter Eintrag '" + key + "'");
     }
     if (!ended) return fail("Spielstand unvollstaendig");
+    if (version >= 8 && seen["edition"] != 1) return fail("Eintrag 'edition' fehlt");
     for (const char* k : {"rules", "data", "rng", "drago", "events", "places", "state", "facing", "deck", "calendar",
                           "counter", "turn"})
         if (seen[k] != 1) return fail(std::string("Eintrag '") + k + "' fehlt oder ist doppelt");

@@ -125,8 +125,8 @@ direction. Symbolic links, special files, control characters, backslashes and
 case-colliding names are rejected. Bounds are 20,000 entries, 16 directory levels,
 64 MiB per file and 2 GiB total file bytes. Names are normalized to lowercase.
 
-The known SHA-256 of `rally.exe` identifies the supported version, and the same
-required runtime assets as for ISO import must exist. Every input file gets a
+The SHA-256 of `rally.exe` identifies the edition (see "Editions" below), and the
+same required files as for ISO import must exist. Every input file gets a
 size and SHA-256 entry. The importer checks the inventory again before and after
 copying and verifies each copied file against it. The installation manifest
 stores `source_kind: directory`, `source_files` and `source_sha256`, a SHA-256 of
@@ -137,10 +137,34 @@ Input hashes include validation-only Windows files subsequently removed from the
 installation; `files` separately hashes the installed, managed runtime files.
 These input hashes document the supplied content. They do not authenticate all
 assets against a known original-disc file list.
-The inspected US English directory is a different, currently unsupported variant.
-Future support is an agreed user goal; edition selection, rule/data comparison
-and native validation remain pending. See
-[media variants and Claude integration handoff](media-variants.md#us-english-integration-handoff).
+Installed hard-disk folders of the original setup hold only part of the data (for
+example no `butt/`); they are rejected even when their `rally.exe` matches, so use
+the disc image (`--iso`) or a complete program tree.
+
+**Editions** (round E2, `tools/editions.py`, mirroring `src/edition.cpp`):
+
+| Edition id | `rally.exe` SHA-256 | `dat/lan.inf` | Required below `program/` (lower case) | Overview |
+| --- | --- | --- | --- | --- |
+| `de-retail` | `aa3dde36…6b83` | `D` | `dat/lan.inf`, `dat/d/rally_d.dat`, `dat/d/sync.dat`, `map/europe.{inf,str,map,pit}`, `map/europe_d.tow`, `map/0/part0000.sbb`, `sbs/d.sbs`, `butt/1/map.bmp` | `butt/1/map.bmp` |
+| `en-us-retail` | `a8374ca9…225a` | `E` | `dat/lan.inf`, `dat/e/rally_e.dat`, `dat/e/sync.dat`, `map/europe.{inf,str,map,pit}`, `map/europe_e.tow`, `map/0/part0000.sbb`, `sbs/d.sbs`, `butt/{6,8,1}/map.bmp` | `butt/6/map.bmp` |
+
+Preflight (ISO and directory) and the import itself look the executable hash up in
+this table, require that edition's files and check that the first byte of
+`dat/lan.inf` names the edition's language, so an EXE is never mixed with another
+edition's language data. Unknown hashes, among them the limited US build
+`c8b7dab6…`, are rejected. The manifest records the detected `executable_sha256`
+and `edition`; the runtime refuses an `edition` that contradicts the hash.
+Verification requires the edition's overview bitmap (manifests without `edition`
+are identified by their hash; without either they count as German, the only
+edition earlier installers accepted). `--update` keeps the edition: preflight and
+the import refuse to update an installation with another edition's data (install
+it into a new directory instead). The data image of the US retail release with
+separate Ogg music (ISO SHA-256 `26260860…1fc7`) is pinned as known: it holds no
+CD-DA, so without `--cd-audio-dir` its manifest records
+`cd_audio.status: no-cd-da-in-image`. German behaviour is unchanged apart from the
+added `dat/lan.inf`, `dat/d/rally_d.dat`, `dat/d/sync.dat` and `map/` checks, which
+every complete German copy passes. See
+[media variants](media-variants.md#edition-profiles).
 
 Directory sources provide no CD audio regions; the manifest records
 `cd_audio.status: unavailable-from-directory` with null ISO hash/sector size.
@@ -152,7 +176,8 @@ MIDI/SoundFont preparation works as usual. Updates preserve existing music packs
    encoder and an estimated free-space reserve before creating installation data.
 2. Read the ISO9660 primary directory tree with bounded extents and validated names.
    Extract only `program/` into a temporary directory beside the target.
-3. Validate the original `rally.exe` by SHA-256 and check required viewer assets.
+3. Validate the original `rally.exe` by SHA-256 against the edition table, check that
+   edition's required files and the `dat/lan.inf` letter.
    Remove `rally.exe`, the Windows runtime DLLs and their configuration from the
    staged data; the native runtime discovers its data without the Windows EXE.
    For the known mixed-mode image, convert recovered CD audio regions to local
@@ -195,9 +220,8 @@ executable hash and the `dat/lan.inf` letter must match the same edition
 (no transcoding, no encoder needed) to `data/music/segment-01.ogg`..`segment-06.ogg`
 and the hybrid set becomes `data/music/packs/release-ogg-hybrid`. Profile,
 hashes and measured silence: [CD audio](cd-audio.md#release-ogg-nicht-original-us-english-retail).
-The US English executable is still rejected by the installer's version gate, so
-this path becomes usable only once that edition is supported; German imports are
-unaffected.
+Preflight also refuses it when the image's executable is not the English retail
+edition; German imports are unaffected.
 
 ```sh
 python3 tools/install.py --iso /path/to/release/track01.iso \
