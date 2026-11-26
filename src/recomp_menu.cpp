@@ -60,7 +60,7 @@ Item binding(std::string label, std::string keyboard, PadAction action) {
     Item i = info(std::move(label), std::move(keyboard));
     i.kind = Kind::Binding;
     i.padAction = action;
-    i.hint = "Enter / A: neue Taste am Gamepad drücken. Belegt eine andere Aktion die Taste, tauschen beide.";
+    // The hint names the Confirm button in use (controlsPage).
     return i;
 }
 
@@ -106,10 +106,14 @@ RecompMenu::Page controlsPage(const PadMap& map) {
         // Inside Umfeld (opened from the right-button menu): seg6:1991 keys, PR #24.
         sticks,
         control("Spielernamen eingeben", "Feld wählen, tippen", button(PadAction::Confirm) + ": Bildschirmtastatur"),
-        control("Etappen ±1 / ±10", "←→ / ↑↓", "Richtungen"),
+        control("Etappen ±1 (links/rechts) / ±10", "Pfeiltasten", "Richtungen"),
         control("Vollbild / Schriftglättung", "F11, Alt+Enter / F12", "Seite Grafik"),
         reset,
     };
+    const std::string confirm = "Enter / " + button(PadAction::Confirm); // the button in use
+    for (Item& i : p.items)
+        if (i.kind == Kind::Binding)
+            i.hint = confirm + ": neue Taste am Gamepad drücken. Belegt eine andere Aktion die Taste, tauschen beide.";
     return p;
 }
 
@@ -413,7 +417,7 @@ std::string RecompMenu::padText(const Item& item) const {
 
 std::string RecompMenu::keyLine() const {
     const PadMap& m = settings_.pad;
-    return std::string("↑↓ Auswählen    ←→ Ändern    Tab/") + padPhysicalLabel(m.of(PadAction::NextPage))
+    return std::string("Hoch/Runter Auswählen    Links/Rechts Ändern    Tab/") + padPhysicalLabel(m.of(PadAction::NextPage))
            + " Seite    Enter/" + padPhysicalLabel(m.of(PadAction::Confirm)) + " Bestätigen    Esc/"
            + padPhysicalLabel(m.of(PadAction::Cancel)) + " Zurück";
 }

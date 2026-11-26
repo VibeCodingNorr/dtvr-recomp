@@ -167,6 +167,7 @@ int main() {
     CHECK(m.settings().pad.valid());
     // The info rows and the key line follow the map.
     CHECK(padRow("B: Bildschirmtastatur") != nullptr);
+    CHECK(m.pages()[size_t(controls)].items[0].hint.find("Enter / B:") == 0); // the Confirm button in use
     CHECK(m.keyLine().find("Enter/B") != std::string::npos && m.keyLine().find("Esc/A") != std::string::npos);
     CHECK(keyboardHelp(m.settings().pad).find("B tippen") == 0);
     // The same button again: unchanged.
