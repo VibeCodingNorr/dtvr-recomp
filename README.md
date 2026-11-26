@@ -520,7 +520,8 @@ python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analy
 
 The smoke test renders one frame (`--frames N`: N frames) and exits, including without a
 desktop session. `--press` posts SDL key names, one every 10 frames, so interactive
-flows can be checked with the dummy driver; `--window-size WxH` and `--aspect W:H`
+flows can be checked with the dummy driver (`Hold:Right` / `Release:Right` keep an arrow
+held for driving, `Wait` skips an interval); `--window-size WxH` and `--aspect W:H`
 reproduce display sizes.
 Screenshots use BMP format. The analysis reports file counts, the executable hash,
 NE segments, imported modules and the entry point. It never executes Windows code.
