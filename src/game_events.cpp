@@ -35,6 +35,7 @@ void Game::applyEvent(EventKind kind) {
     switch (kind) {
     case EventKind::OpenEast: // seg8:69F0: barriers replaced, DS:A10F = 0
         eastOpen_ = true;
+        westValue_ = westPropertyValue(board_, towns_, 0); // seg8:6C4C: DS:A113 = seg1:A15B(), mask 0
         notice(5001 + rng_.random(2)); // seg8:6C13 (round 25: this draw was missing before)
         messages_.push_back("Ereignis: Osteuropa oeffnet seine Grenzen!");
         return;

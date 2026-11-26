@@ -3817,6 +3817,39 @@ the original windows is unchanged):
   WM_LBUTTONDBLCLK posts Enter (seg8:B335), WM_RBUTTONDOWN Backspace. The
   default word `leer` is a literal of rally.exe, not a language text.
 
+### Loading a saved game (rules revision 49)
+
+- **Loader** seg8:AC9A (from seg8:A8DF for `as.dat`, seg8:B3E1 for a slot). After
+  the reads and the checksum test (seg8:AF54-AF60):
+  - seg8:AF67: if DS:A10F = 0 (East open) seg8:69F0(1): barrier tiles replaced
+    without the message and its draw (argument 1), DS:A10F = 0 and DS:A113 =
+    seg1:A15B() (seg8:6C46-6C5D, the western property value with mask 0).
+  - seg8:AF82: seg2:43A8(DS:A10B, DS:A10D) refills the distance table DS:22;
+    AF8A-AF9B: current player DS:94E2 = DS:A10A, deck pointers DS:94FA / DS:9C94.
+  - seg8:AFA7-B029: for each slot 0-7 with status (+0x00) != 0: +0x16 / +0x18 =
+    cell of field +0x3E (europe.map via DS:52) times 16, then seg2:5067(slot)
+    (call at seg8:B021): the start facing, the first linked direction.
+  - seg8:B02C-B05A: driver sprites seg2:2C64, Dr. Drago's sprites freed,
+    DS:9D32 / 9D34 = 0 (presentation).
+  - seg8:B05D-B06A: if the holder DS:9CFC != 0xFF, seg2:9C97(holder): seg2:9BAE,
+    seg2:4CEB, seg2:B477 (DS:3DB4 = random(3) + 4 through seg6:1343, the only draw)
+    and seg2:9CF9 (his place beside the holder). DS:3DB4 is not in the file.
+- **Start** seg4:061D (Spiel fortsetzen) / seg4:069B (Spiel laden), after DS:16 /
+  DS:14 / DS:10 are cleared (seg4:05EA / 066F): seg5:186A(month, 1) (season),
+  seg8:6709 (obstacle tiles), seg2:0407 (turn start of DS:94E2: seg5:6CE8, the hand
+  order seg2:3CF1 at seg2:0473, Dr. Drago's turn start seg2:B3A4 at seg2:049F),
+  seg1:275E (next background cue), DS:94C4 = 1, seg5:6BF2, seg2:068F. No autosave
+  (seg8:A870 is only called by seg2:0837).
+- **Rebuilt** (`src/game_load.cpp`, `Game::resumeLoaded`, called by
+  `SaveSlots::load` / `loadAuto` after a Session decode): the same steps in the
+  same order on the game's running MS C generator; the turn start runs only for
+  saves in the spin phase (rally.exe saves only there; the recomp menu can save
+  other phases, which then continue where they were).
+- **Hand order** seg2:3CF1(player): for k = 0..6 an empty slot k pulls slots
+  k + 1..7 down once and slot 7 becomes empty; k is not revisited. Called at every
+  turn start (seg2:0473) and after a card shop purchase / sale (seg3:48B1 / 49CC);
+  rebuilt as `compactHand` (src/cards.cpp).
+
 ### SBS: remaining hypotheses
 
 - Palette: the four SBB palettes differ from `butt/1/map.bmp` in only 2 of 256

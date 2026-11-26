@@ -249,8 +249,19 @@ public:
     // it ends at the next player change.
     bool humansLeft() const;
     // Counts turn changes since construction or loading (not saved; for the window's
-    // autosave at each turn start, seg2:0837).
+    // autosave at each turn start, seg2:0837). resumeLoaded counts as one.
     int turnSerial() const { return turnSerial_; }
+    // What rally.exe does after it has read a saved game (game_load.cpp; user decision
+    // 2026-11-25: loading behaves like the original loader instead of restoring every
+    // value). Call after SaveCodec::decode with Random::Session. The loader seg8:AC9A
+    // (seg8:AF67-B06A): the East again (seg8:69F0(1), DS:A113 anew), every slot in play
+    // on its field with the start facing seg2:5067, Dr. Drago placed anew at his holder
+    // (seg2:9C97: random(3) for the countdown). Then the title's start of a loaded game
+    // (seg4:069B / 061D): the season seg5:186A(month, 1) and, at a turn start (phase
+    // Roll; rally.exe saves only there), the turn start seg2:0407 of the current player
+    // (computer state reset, hand order seg2:3CF1, Dr. Drago's countdown seg2:B3A4).
+    // DS:16 (demo end) is cleared before loading (seg4:066F), so a loaded game has none.
+    void resumeLoaded();
     // Driver names of the slots (texts 120-127 of the language file, UTF-8); without
     // them messages say "Spieler N".
     void setPlayerNames(const std::array<std::string, kPlayerSlots>& names) { names_ = names; }
@@ -501,6 +512,9 @@ private:
     TurnChange balanceTurn_;                // the suspended player change
     TurnHooks turnHooks();
     void completeTurn(const TurnChange& change);
+    // seg2:0407, the turn start of the current player: the rule parts (seg5:6CE8, the
+    // hand order seg2:3CF1 at seg2:0473, Dr. Drago's turn start seg2:B3A4 at seg2:049F).
+    void beginTurn();
     // game_statement.cpp: a change waiting for the balance or the statement; the texts and
     // sit-outs found so far are announced before the window (their messages are modal).
     void suspendTurn(TurnChange change);

@@ -303,11 +303,22 @@ void GameWindow::openTitle() { // seg8:03AB / 0DB0: TITEL and the menu MAIN
 }
 
 // `fresh`: a new game announces its first destination (seg4:0E92 -> seg7:372F(2)).
+// Otherwise a game was loaded (SaveSlots::load / loadAuto, Game::resumeLoaded).
 void GameWindow::startGame(bool fresh) {
-    if (fresh) screen_.startAnnouncement(2, 3, SDL_GetTicks());
-    autosaved_ = -1; // the first turn of a started or loaded game is saved too
     screen_.setTitle(false);
-    music_.interrupt("a1"); // seg4:0E8A, starting/loading a game
+    if (fresh) {
+        screen_.startAnnouncement(2, 3, SDL_GetTicks());
+        autosaved_ = -1;        // the first turn of a started game is saved too
+        music_.interrupt("a1"); // seg4:0E8A, starting a game
+    } else {
+        // seg4:069B / 061D: no autosave (seg8:A870 is called only by the player change,
+        // seg2:0837) and no cue a1, only seg1:275E: the next background cue g0-g5 from
+        // zero. Its DS:A111 = 6 holds the turn-based change for six player changes, as
+        // the player's hold from the turn the cue starts at.
+        autosaved_ = play_.game().turnSerial();
+        music_.turn(play_.game().eventClock().turns);
+        music_.nextBackground();
+    }
     screen_.loadDriverSprites();
     report();
 }

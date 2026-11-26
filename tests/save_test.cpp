@@ -199,22 +199,23 @@ int main() {
     CHECK(slots.save(3, a, description, error) && slots.description(3) == description);
     CHECK(slots.save(5, b, "zweiter\nStand", error) && slots.description(5) == "zweiter Stand");
     CHECK(slots.description(3) == description && slots.description(4).empty());
-    // Loading keeps the running random generator (rally.exe saves no seed, round 130):
-    // everything but the "rng" record is the saved state.
+    // Loading keeps the running random generator (rally.exe saves no seed, round 130) and
+    // then does what rally.exe's loader does (Game::resumeLoaded, rules revision 49;
+    // tests/load_test.cpp checks its steps): the same as a Session decode plus resumeLoaded.
     auto rngLine = [](const std::string& s) {
         const size_t at = s.find("\nrng ");
         return s.substr(at, s.find('\n', at + 1) - at);
     };
-    auto withoutRng = [&](std::string s) { const std::string r = rngLine(s); s.erase(s.find(r), r.size()); return s; };
-    Game c(board, towns, 1, 0, 7, 1);
-    const std::string session = rngLine(SaveCodec::encode(c));
-    CHECK(session != rngLine(SaveCodec::encode(a)));
-    CHECK(slots.load(3, c, error) && withoutRng(SaveCodec::encode(c)) == withoutRng(SaveCodec::encode(a)));
-    CHECK(rngLine(SaveCodec::encode(c)) == session);
+    Game c(board, towns, 1, 0, 7, 1), expect(board, towns, 1, 0, 7, 1);
+    CHECK(rngLine(SaveCodec::encode(c)) != rngLine(SaveCodec::encode(a)));
+    CHECK(SaveCodec::decode(expect, SaveCodec::encode(a), error, SaveCodec::Random::Session));
+    expect.resumeLoaded();
+    CHECK(slots.load(3, c, error) && SaveCodec::encode(c) == SaveCodec::encode(expect));
     CHECK(!slots.load(4, c, error) && !slots.save(9, a, "x", error));
     CHECK(!slots.hasAuto() && slots.saveAuto(b, error) && slots.hasAuto());
-    CHECK(slots.loadAuto(c, error) && withoutRng(SaveCodec::encode(c)) == withoutRng(SaveCodec::encode(b)));
-    CHECK(rngLine(SaveCodec::encode(c)) == session);
+    CHECK(SaveCodec::decode(expect, SaveCodec::encode(b), error, SaveCodec::Random::Session));
+    expect.resumeLoaded();
+    CHECK(slots.loadAuto(c, error) && SaveCodec::encode(c) == SaveCodec::encode(expect));
     // An exact copy (the default) restores the generator as well.
     CHECK(SaveCodec::decode(c, SaveCodec::encode(a), error) && SaveCodec::encode(c) == SaveCodec::encode(a));
 

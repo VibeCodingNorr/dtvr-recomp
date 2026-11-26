@@ -293,6 +293,7 @@ bool Game::buyCard(int type) {
         deck_.swapWithPointer(o.position);
         addToHand(hands_[size_t(current_)], deck_.take());
         economy_.addMoney(current_, -cardBuyPrice(type)); // seg2:5A47
+        compactHand(hands_[size_t(current_)]);             // seg3:48B1 -> seg2:3CF1
         messages_.push_back(playerName(current_) + " kauft die Karte " + cardTypes()[size_t(type)].name);
         return true;
     }
@@ -307,6 +308,7 @@ bool Game::sellCard(int handSlot) {
     if (type < 0) return false;
     discard(current_, handSlot);
     economy_.addMoney(current_, cardSellPrice(type)); // seg2:59E6
+    compactHand(hands_[size_t(current_)]);            // seg3:49CC -> seg2:3CF1
     messages_.push_back(playerName(current_) + " verkauft die Karte " + cardTypes()[size_t(type)].name);
     return true;
 }

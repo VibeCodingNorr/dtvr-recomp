@@ -177,6 +177,14 @@ bool addToHand(Hand& hand, int slot) {
     return false;
 }
 
+void compactHand(Hand& hand) {
+    for (size_t k = 0; k + 1 < hand.size(); ++k) { // seg2:3D10: k < 7
+        if (hand[k] != Deck::kTaken) continue;      // seg2:3D2F
+        for (size_t j = k; j + 1 < hand.size(); ++j) hand[j] = hand[j + 1]; // seg2:3D43-3D7B
+        hand.back() = Deck::kTaken;                 // seg2:3D8B
+    }
+}
+
 int startingCards(int iniValue) {
     if (iniValue <= 0) return 3;
     return iniValue > 8 ? 8 : iniValue;

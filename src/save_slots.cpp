@@ -113,8 +113,10 @@ bool SaveSlots::saveAuto(const Game& game, std::string& error) const {
 
 bool SaveSlots::loadAuto(Game& game, std::string& error) const {
     std::string text;
-    return readSaveFile(autoFile().string(), text, error)
-           && SaveCodec::decode(game, text, error, SaveCodec::Random::Session);
+    if (!readSaveFile(autoFile().string(), text, error) || !SaveCodec::decode(game, text, error, SaveCodec::Random::Session))
+        return false;
+    game.resumeLoaded(); // seg8:A8DF -> seg8:AC9A, then seg4:061D ff.
+    return true;
 }
 
 bool SaveSlots::hasAuto() const { return fs::exists(autoFile()); }
@@ -125,7 +127,9 @@ bool SaveSlots::load(int slot, Game& game, std::string& error) const {
         if (error.empty()) error = "ungueltiger Spielstand";
         return false;
     }
-    return SaveCodec::decode(game, text, error, SaveCodec::Random::Session);
+    if (!SaveCodec::decode(game, text, error, SaveCodec::Random::Session)) return false;
+    game.resumeLoaded(); // seg8:B3E1 -> seg8:AC9A, then seg4:069B ff.
+    return true;
 }
 
 } // namespace dtvr
