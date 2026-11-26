@@ -33,7 +33,7 @@ is claimed.
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom; the water cycles its palette as the original. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
 | Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns with their property entries decoded (graph overlay in the viewer); the field actions are rebuilt (see turn logic). Open: the town entry fields +0x1E (category, value 3 tested separately) and +0x20, `flagset` bits 0–4 and `europe.car`. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, monthly statement, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Blue Byte logo while loading, intro (skipping it opens the title at once), sights, subtitles, ambient map animations, the stage count window (with a slider as a recomp addition) and the forced sale. On the map only the main window's keys of seg4:0259 (plus the recomp keys) act, no viewer shortcuts; Return there is seg2:0BC3. Open: remaining presentation and timing details, joystick calibration (key C, seg2:7F72). | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, monthly statement, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Blue Byte logo while loading, intro (skipping it opens the title at once), sights, subtitles, ambient map animations, the stage count window (with a slider as a recomp addition) and the forced sale. On the map only the main window's keys of seg4:0259 (plus the recomp keys) act, no viewer shortcuts; Return there is seg2:0BC3. Open: remaining presentation and timing details. Not rebuilt by decision (user, 2026-11-26): the joystick calibration dialog (key C, seg2:7F72); modern controllers need none. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. Sound set and master volume on the Audio page of the recomp menu (F8); mixing as rally.exe (voices silence the effects); remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
 | Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and selection in the recomp menu (F8). | [Soundtrack builder](docs/soundtracks.md) |
@@ -46,7 +46,7 @@ is claimed.
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
 <details>
-<summary>Reconstruction rounds so far (evidence with addresses in <a href="docs/formats.md">docs/formats.md</a>)</summary>
+<summary>Reconstruction steps so far (evidence with addresses in <a href="docs/formats.md">docs/formats.md</a>; list numbers are not the "round N" numbers used there; later steps name their pull requests)</summary>
 
 1. SBS sprite container decoded (all 94 files, 1,559 frames).
 2. World map composed with the original loader and draw rules; transparency confirmed.
@@ -195,19 +195,19 @@ is claimed.
 114. Start: the Blue Byte logo `butt/<n>/bb.bmp` centred on the wooden canvas while the game loads, as seg6:0A4D; rally.exe has no timer, the recomp keeps it at least 2.5 s (a key or click ends it). Recomp change: the second logo rally.exe shows after the intro (seg5:0193) is left out (user decision 2026-11-25). The intro runs over the wooden canvas.
 115. Dr. Drago at a stage change (round R3b): the distance array DS:22 is modelled as rally.exe keeps it; the placement still reads the distances from the destination just reached, compared unsigned so an unreached field wins ([rules](src/rules.cpp), [evidence](docs/formats.md)); a sit-out's message comes before Dr. Drago's action (rules revision 47). Not modelled (timing): a route of Dr. Drago's vehicle that starts during the announcement can rebuild the array from the new destination first.
 116. Tschüss and Flugzeug from the real view (rounds R6 / R7): the carried player lands outside the zoomed map view of the original canvas centred on him (13 / 17 / 21 cells at 640 / 800 / 1024, touching counts as visible), then the carrier's corner is drawn; Flugzeug first carries the player away the same way before landing. Mitspieler works only at the turn start as in rally.exe; a computer then plays the whole turn from its card choice ([cards](src/game_cards.cpp), [evidence](docs/formats.md)) (rules revision 48).
-117. Finish ZIEL and victory SIEG paint their animation records and fill their frames as rally.exe (seg7:1E3C; seg7:2C55 ff. / seg7:7548 ff.).
-118. Pad rounds 2–4: on-screen keyboard for the player names (SBINPUT rules: 19 characters in the field, 18 handed to the game, IsCharAlphaNumeric filter), pad handling of the setup, options and stage count windows, the Steuerung page and remapping of every pad button (`[Gamepad]`); the keyboard reacts on the press with an accelerating repeat.
-119. Loading as rally.exe's loader (seg8:AC9A): start facing, Dr. Drago re-placed with random(3) + 4, western property value, turn start seg2:0407 (rules revision 49).
-120. Ambient map animations shown in the visible view again (tile origin converted to pixels, seg8:81E2).
-121. Umfeld as seg6:1681: the right button ends it, a left click in a 60-pixel edge strip scrolls, digits 2 / 4 / 6 / 8, the numeric pad only without NumLock.
-122. The card window opened from the town dialog plays its cards through seg3:0E11; viewer shortcuts no longer act on the map, only the main window's keys (seg4:0259-02C3).
-123. Skipping the intro opens the title at once, without a map frame.
-124. Return on the map as seg2:0BC3: ends Verdoppeln and the TimeOut timer, then runs a due arrival or the sights; it never ends a turn or rolls (rules revision 50).
-125. Editions E1–E3: profiles by the EXE SHA-256, the US English retail edition installable and playable, saves record their edition (format 8) and live in a directory per edition, `europe.map` read afresh for every game, Blue Byte's English demo refused.
-126. The US retail release's Ogg tracks as a marked, non-original CD music source (`--cd-audio-dir`).
-127. The computer plans its route after the slot window closes (seg2:66F9 → seg5:71B3(5)).
-128. The recomp menu keeps no save or load entries: saving and loading stay with MAIN1 and the title menu.
-129. A computer's investment offer is declined by the window's timeout (seg6:0FB4, 2.5 s × pause factor).
+117. (PR #20) Finish ZIEL and victory SIEG paint their animation records and fill their frames as rally.exe (seg7:1E3C; seg7:2C55 ff. / seg7:7548 ff.).
+118. (PR #21, #25, #28, #31) Pad rounds 2–4: on-screen keyboard for the player names (SBINPUT rules: 19 characters in the field, 18 handed to the game, IsCharAlphaNumeric filter), pad handling of the setup, options and stage count windows, the Steuerung page and remapping of every pad button (`[Gamepad]`); the keyboard reacts on the press with an accelerating repeat.
+119. (PR #22) Loading as rally.exe's loader (seg8:AC9A): start facing, Dr. Drago re-placed with random(3) + 4, western property value, turn start seg2:0407 (rules revision 49).
+120. (PR #23) Ambient map animations shown in the visible view again (tile origin converted to pixels, seg8:81E2).
+121. (PR #24) Umfeld as seg6:1681: the right button ends it, a left click in a 60-pixel edge strip scrolls, digits 2 / 4 / 6 / 8, the numeric pad only without NumLock.
+122. (PR #26) The card window opened from the town dialog plays its cards through seg3:0E11; viewer shortcuts no longer act on the map, only the main window's keys (seg4:0259-02C3).
+123. (PR #27) Skipping the intro opens the title at once, without a map frame.
+124. (PR #29) Return on the map as seg2:0BC3: ends Verdoppeln and the TimeOut timer, then runs a due arrival or the sights; it never ends a turn or rolls (rules revision 50).
+125. (PR #30, #34, #37) Editions E1–E3: profiles by the EXE SHA-256, the US English retail edition installable and playable, saves record their edition (format 8) and live in a directory per edition, `europe.map` read afresh for every game, Blue Byte's English demo refused.
+126. (PR #32) The US retail release's Ogg tracks as a marked, non-original CD music source (`--cd-audio-dir`).
+127. (PR #33) The computer plans its route after the slot window closes (seg2:66F9 → seg5:71B3(5)).
+128. (PR #35, #36) The recomp menu keeps no save or load entries: saving and loading stay with MAIN1 and the title menu.
+129. (PR #38) A computer's investment offer is declined by the window's timeout (seg6:0FB4, 2.5 s × pause factor).
 130. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
@@ -337,7 +337,7 @@ number of stages (1–300).
 | Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
-| Escape | Recomp menu (pause, graphics, audio, game, controls; recomp) where rally.exe has no Escape action; in windows: back |
+| Escape | On the map: recomp menu (pause, graphics, audio, game, controls; recomp; rally.exe opens RIGHTBTN, seg4:01D1, which Backspace still does); in a turn menu without a checked item (ONFIELD) and in the title menu: recomp menu; in a game of computers with no menu open: end it and return to the title (seg1:021D); in windows: back |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
@@ -351,15 +351,19 @@ number of stages (1–300).
 | F12 | Text smoothing: Original / canvas size / screen resolution (recomp) |
 | Mouse wheel | Scroll lists that have page arrows in the original (recomp) |
 
-**Escape** opens the recomp menu over the paused game (computers, the time limit and
+**Escape** on the map opens the recomp menu over the paused game (computers, the time limit and
 the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
 original RIGHTBTN menu, quit with the original question; saving and loading stay
 in the original MAIN1 and title menus),
 Grafik, Audio, Spiel and Steuerung (a table of the keyboard and pad controls).
 Switches marked ORIGINAL are those of the
 original options window; the others are recomp settings in `[Display]` /
-`[Extensions]`. Changes apply at once and persist. In
-the original turn menu Escape did nothing; dialogs keep their Escape. In the title
+`[Extensions]`. Changes apply at once and persist. On the map rally.exe's Escape
+opens RIGHTBTN like Backspace (seg4:01D1); the recomp takes Escape for its menu
+there (deliberate deviation), Backspace and the menu's "Originales Spielmenü" keep
+RIGHTBTN. In the original turn menu ONFIELD Escape did nothing; the recomp opens its
+menu there too. In a game without humans Escape or a right click end it and return
+to the title (seg1:021D) when no menu is open. Dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
 the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
 keep the original Escape (Weiter spielen, Zurück). The target choice (SELPLAYER, also

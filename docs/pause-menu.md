@@ -2,10 +2,12 @@
 
 Status: the in-game menu is implemented (`src/recomp_menu.{hpp,cpp}` model,
 no SDL; `src/recomp_menu_view.{hpp,cpp}` drawing and input; tests in
-`tests/recomp_menu_test.cpp`). Escape opens it where rally.exe has no Escape action
-(no menu, or a menu without a checked item such as ONFIELD and the title menu);
-Backspace and the entry "Originales Spielmenü" keep RIGHTBTN. Deliberate deviation:
-in the title menu MAIN, rally.exe's Escape posts the checked item (seg5:543D:
+`tests/recomp_menu_test.cpp`). Escape opens it on the map, where rally.exe's Escape
+opens RIGHTBTN like Backspace (seg4:01D1; deliberate deviation), and in a menu without
+a checked item such as ONFIELD, where rally.exe's Escape does nothing. Backspace and
+the entry "Originales Spielmenü" keep RIGHTBTN. In a game without humans and with no menu open, Escape (and
+a right click) still end the game and return to the title first, as seg1:021D does.
+Deliberate deviation: in the title menu MAIN, rally.exe's Escape posts the checked item (seg5:543D:
 GETMENUSTATE & MF_CHECKED → WM_COMMAND), which is "Neues Spiel"; the recomp opens its
 menu there instead. MAIN1 (Weiter spielen) and RIGHTBTN (Zurück) keep seg5:543D. Pages: Pause, Grafik,
 Audio, Spiel, Steuerung. While it is open the game loop treats it as modal and the
