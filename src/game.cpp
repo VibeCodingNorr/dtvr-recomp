@@ -670,7 +670,17 @@ void Game::completeTurn(const TurnChange& change) {
     phase_ = Phase::Roll;
     messages_.push_back(playerName(current_) + " ist dran (Monat "
                         + std::to_string(calendar_.month % 12 + 1) + ")");
-    if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) { // seg2:049F
+    beginTurn(); // seg2:07F4 / 0801 -> seg2:0407
+}
+
+void Game::beginTurn() {
+    // seg2:041B: seg5:6CE8 clears the computer's state machine (seg5:6BF2 starts it again
+    // from the card choice, computerAdvance with aiTurn_ false).
+    aiTurn_ = false;
+    aiSteerless_ = false;
+    aiRoute_.clear();
+    compactHand(hands_[size_t(current_)]); // seg2:0473 -> seg2:3CF1
+    if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) { // seg2:049F -> seg2:B3A4
         music_.push_back("f" + std::to_string(drago_.form + 1)); // seg2:B3F6/B429/B442
         // seg2:9804 -> 454E: the search for his start field draws random(3) (seg2:459C);
         // the form always differs, so it is always drawn.

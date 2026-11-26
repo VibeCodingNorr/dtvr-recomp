@@ -48,7 +48,15 @@ data recomputed from the original files.
 `SaveCodec::decode` parses everything into temporary values and checks ranges,
 counts, duplicate records, the deck (every slot at most once) and the data
 fingerprint before anything is applied; a rejected save leaves the running game
-unchanged and reports the reason. `writeSaveFile` writes a temporary file next to
+unchanged and reports the reason. Loading a slot or the autosave then runs
+`Game::resumeLoaded` (rules revision 49), which repeats what rally.exe's loader
+recomputes (docs/formats.md, "Loading a saved game"): the start facing of every
+slot in play (seg2:5067), Dr. Drago placed anew at his holder with a fresh
+countdown random(3) + 4 (seg2:9C97), the western property value when the East is
+open, the month's season, and for a save in the spin phase the turn start
+seg2:0407 of the current player. The stored facings, countdown and season are
+therefore overwritten on such a load; exact copies (new game, a roll taken back)
+keep them. `writeSaveFile` writes a temporary file next to
 the target and renames it, so an interrupted write never replaces a good save.
 
 ## Compatibility
@@ -60,7 +68,8 @@ as long as the layout matches; a save from a newer revision is refused.
 Rule revisions with a changed sequence of random draws: 25 (East opening text),
 26 (texts of the blocked card window and of the investment offer), 27 (draws at
 the stage end), 28 (the year balance's draws), 29 (one more draw per player
-in the year balance), 30 (order and exclusion of the next destination). A save of an
+in the year balance), 30 (order and exclusion of the next destination), 49 (the
+loader's draw for Dr. Drago, seg8:B06A, and the turn start after loading). A save of an
 older revision loads, but continues with the current rules.
 
 ## Save slots

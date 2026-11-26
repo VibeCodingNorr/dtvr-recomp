@@ -12,7 +12,7 @@ namespace dtvr {
 
 constexpr int kSaveFormat = 7;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
                                    // 4: no extensions record, 5: no worth records, 6: no flow records)
-constexpr int kRulesRevision = 48; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 49; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
                                    // year balance's draws, seg8:88DF / 8C49 / 8C57; 29: one more
@@ -51,7 +51,11 @@ constexpr int kRulesRevision = 48; // rule reconstruction round the state belong
                                    // zoomed canvas view, inclusive, then random(3),
                                    // seg3:28ED / seg2:46C8; Flugzeug sets the player down
                                    // there first, seg3:3272; Mitspieler only at the turn
-                                   // start, the computer from its card choice, seg5:6BF2)
+                                   // start, the computer from its card choice, seg5:6BF2;
+                                   // 49: loading as rally.exe's loader, seg8:AF67-B06A and
+                                   // the turn start seg2:0407 (Game::resumeLoaded); the
+                                   // hand order seg2:3CF1 at every turn start and after
+                                   // the card shop, seg2:0473 / seg3:48B1 / 49CC)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

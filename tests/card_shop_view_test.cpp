@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Card-shop input from rally.exe seg3:4674, 46A2, 4A41, 4B42 and 5028.
 #include "card_shop_view.hpp"
+#include "save.hpp"
 
 #include <chrono>
 #include <cstdio>
+#include <sstream>
 #include <stdexcept>
 
 using namespace dtvr;
@@ -67,6 +69,24 @@ static Board boardForShop(std::vector<Town>& towns) {
     return board;
 }
 
+// Empties hand slot `slot` of `player` through the save codec: a sale in the shop closes
+// its gap (seg3:49CC -> seg2:3CF1), cards played elsewhere leave one.
+static void openGap(Game& game, int player, int slot) {
+    std::istringstream in(SaveCodec::encode(game));
+    std::string line, out, error;
+    const std::string key = "hand " + std::to_string(player) + ' ';
+    while (std::getline(in, line)) {
+        if (line.rfind(key, 0) == 0) {
+            std::istringstream words(line.substr(key.size()));
+            std::string word, rebuilt = key;
+            for (int k = 0; words >> word; ++k) rebuilt += (k ? " " : "") + (k == slot ? std::string("255") : word);
+            line = rebuilt;
+        }
+        out += line + '\n';
+    }
+    CHECK(SaveCodec::decode(game, out, error));
+}
+
 static void arrive(Game& game) {
     game.setRandomEvents(false);
     CHECK(game.roll());
@@ -86,7 +106,9 @@ int main() {
     const Board board = boardForShop(towns);
     Game game(board, towns, 2, 2, 1, 8);
     arrive(game);
-    CHECK(game.sellCard(2)); // a gap tests sell-list indexing versus hand-slot numbers
+    CHECK(game.handCount(0) > 4);
+    openGap(game, 0, 2); // a gap tests sell-list indexing versus hand-slot numbers
+    CHECK(game.hand(0)[2] == Deck::kTaken && game.hand(0)[3] != Deck::kTaken);
     Game empty(board, towns, 2, 2, 3, 1);
     arrive(empty);
     CHECK(empty.sellCard(0) && empty.handCount(0) == 0);

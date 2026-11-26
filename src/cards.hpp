@@ -99,6 +99,12 @@ double cardSellPrice(int type);
 using Hand = std::array<uint8_t, 8>;
 Hand emptyHand();
 bool addToHand(Hand& hand, int slot); // false if all 8 slots are used (text 403)
+// seg2:3CF1(player): for k = 0..6 an empty slot k takes the slots k + 1..7 one down
+// (+0x24 + j = +0x25 + j) and slot 7 becomes empty (+0x2B = 0xFF). k is not looked at
+// again after a shift, so two adjacent gaps leave one of them (not a full compaction).
+// Called at every turn start (seg2:0473) and after a card shop purchase / sale
+// (seg3:48B1 / 49CC).
+void compactHand(Hand& hand);
 
 // [Setup] defaultCards: default 1, 0 becomes 3, more than 8 becomes 8 (seg2:02C8).
 int startingCards(int iniValue);
