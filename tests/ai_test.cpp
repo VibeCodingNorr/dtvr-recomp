@@ -296,6 +296,38 @@ int main() {
         CHECK(game.currentPlayer() == 0 || game.phase() == Game::Phase::GameOver);
     }
 
+    // With the slot window (game window) the computer's move starts only when the window
+    // has closed (finishSpin, seg2:66B9); seg2:66F9 then sets state 5 and the computer
+    // plans and drives its route, exactly as without a window (regression: it spun and
+    // then stood still).
+    {
+        Board gb = row(13);
+        gb.fields[0].kind = 6;
+        gb.fields[12].kind = 6;
+        gb.fields[12].next[1] = 0;
+        gb.fields[0].next[3] = 12;
+        std::vector<Town> gt(2);
+        gt[0].x = 0; gt[0].name = "London";
+        gt[1].x = 48; gt[1].name = "Rom";
+        const std::array<uint8_t, 8> slots{2, 2, 0, 0, 0, 0, 0, 0};
+        Game plain(gb, gt, slots, 50, 7);
+        Game shown(gb, gt, slots, 50, 7);
+        plain.setRandomEvents(false);
+        shown.setRandomEvents(false);
+        shown.setSpinPresentation(true);
+        const int start = shown.playerField(0);
+        CHECK(shown.computerAdvance() && shown.spinPending() && shown.phase() == Game::Phase::Roll);
+        CHECK(!shown.computerAdvance());                  // the window finishes the spin
+        CHECK(shown.finishSpin() && shown.phase() == Game::Phase::Move && shown.computerTurnRunning());
+        int stages = 0;
+        while (shown.currentPlayer() == 0 && stages < 100 && shown.computerAdvance()) ++stages;
+        CHECK(shown.playerField(0) != start);             // it drove
+        CHECK(shown.currentPlayer() == 1 || shown.phase() == Game::Phase::GameOver);
+        while (plain.currentPlayer() == 0 && plain.computerAdvance()) {}
+        CHECK(plain.playerField(0) == shown.playerField(0) && plain.currentPlayer() == shown.currentPlayer());
+        CHECK(plain.cash(0) == shown.cash(0));
+    }
+
     // Slot setup ([Player] P0..P7) and the demo game of computers.
     {
         Board gb = row(13);

@@ -693,6 +693,7 @@ void Game::beginTurn() {
     aiTurn_ = false;
     aiSteerless_ = false;
     aiRoute_.clear();
+    aiRoutePlanned_ = false;
     compactHand(hands_[size_t(current_)]); // seg2:0473 -> seg2:3CF1
     if (dragoTurnStart(drago_, current_, calendar_.year, rng_)) { // seg2:049F -> seg2:B3A4
         music_.push_back("f" + std::to_string(drago_.form + 1)); // seg2:B3F6/B429/B442

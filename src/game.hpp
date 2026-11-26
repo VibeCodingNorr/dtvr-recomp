@@ -446,6 +446,7 @@ private:
     int findCard(int player, int type) const;               // seg3:0D26, slot or -1
     uint16_t routeMask() const { return eastOpen_ ? 0 : 0x4000; }
     AiState aiState(bool steerless) const;
+    void planComputerRoute(); // state 5 for the move just started (game_ai.cpp)
 
     const Board& board_;
     const std::vector<Town>& towns_;
@@ -470,6 +471,7 @@ private:
     int aiPlayer_ = -1;
     bool aiSteerless_ = false;
     std::vector<int> aiRoute_;              // fields still to drive
+    bool aiRoutePlanned_ = false;           // state 5 (seg5:72C2) has run for this move
     bool yellowPending_ = false;            // yellow field waits for a discard
     ObstacleQuestion question_;             // transient: not saved, asked again after loading
     bool obstacleConfirmed_ = false;
