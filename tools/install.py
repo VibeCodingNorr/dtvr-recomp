@@ -63,12 +63,14 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         iso_hash = report["iso_sha256"]
         layout = audio_layout(iso_hash, iso.stat().st_size) if iso is not None else None
         if layout is not None:
+            print("DTVR_ACTIVITY:CD-Aufnahmen vorbereiten", flush=True)
             audio = convert_audio(iso, data / "music", layout)
         else:
             audio = {"status": "unavailable-from-directory" if directory is not None else "no-known-layout", "regions": []}
             print("No CD audio available from this source; no CD audio converted.", flush=True)
         packs = []
         if soundfonts:
+            print("DTVR_ACTIVITY:MIDI-Klangset vorbereiten", flush=True)
             pack = render_pack(data / "program/snd/midi", soundfonts,
                                data / "music/packs" / music_pack_id,
                                music_pack_id, music_pack_name, music_style)
@@ -77,6 +79,7 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
             # The recognised CD recordings with this rendering for the cues they lack
             # (tools/cd_soundtrack.py); only when the image provides the CD audio.
             if audio.get("regions") and music_pack_id != CD_PACK_ID:
+                print("DTVR_ACTIVITY:CD-Klangset prüfen und zusammenstellen", flush=True)
                 hybrid = build_cd_hybrid(data / "music", data / "music/packs" / music_pack_id,
                                          data / "music/packs" / CD_PACK_ID)
                 packs.append({"id": hybrid["id"], "name": hybrid["name"],

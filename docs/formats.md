@@ -2343,9 +2343,33 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   until x < −160 (0xFF60), then the window closes; each pass draws the records
   over the DIB (seg2:74E4), advances them (seg2:6DCB), shows the DIB (seg2:6F69)
   and waits 20 ms (seg6:0CDF). No random numbers.
-- **Rebuilt** (`src/finish_view.cpp`, name mapping `finishPhotoName` in
-  `src/board.cpp`): the scene and its animation when a destination is reached
-  and the car has arrived. The window is centred on the canvas (seg6:0000, round
+- **Painting** (ziel-sieg round): the records draw as in the intro (see Intro,
+  RecordPainter). +0xD (seg7:2CA4 … 34FF, no other writes in seg7:2628–3720):
+  1 (key 0xFF, seg2:9497) for records 0, 1, 3, 7–15, 0 (plain seg2:913A) for 2
+  floete, 4 genie, 5 happy, 6 paar — the plain ones are among the filled files.
+  +0x8 = 0 and +0xA = 999 for all sixteen; 6D1B allocates 20 zeroed records
+  (GMEM_ZEROINIT 0x42, sentinel FFFF:FFFF, seg2:6D2F–6D69), 16–19 stay empty. Pass
+  order (seg7:3536–3677): pass counter, car check (seg7:3546, before anything is
+  drawn), car x − 2 and its +0x36 = "" (seg7:356E: the car is drawn as changed
+  every pass, records under it are redrawn), restore seg2:74E4 (DIB DS:94AE from the
+  backdrop DS:ABF8), step 6DCB, draw changed 6F69, wait; in pass 1 DS:A29C = 1,
+  ShowWindow, InvalidateRect, UpdateWindow (seg7:35F0–3614) instead of seg2:72DE
+  (seg7:363C). ZIEL is created without WS_VISIBLE (style 0x44000000, seg7:264F), so
+  nothing shows before pass 1. WM_PAINT (seg7:4E36): with DS:A29C set the paint
+  rectangle from the backdrop into the DIB (seg2:913A), every record (seg6:41A2),
+  WinGBitBlt; otherwise the DIB is cleared to 0 (seg7:4FB2–4FF8) and blitted. The
+  blit takes its source at (0, 0) (seg7:4F92 / 5016) whatever the rectangle; the
+  rebuild only paints the whole client area, where that is the same. Seg7:3654:
+  seg2:1C37 runs only with DS:94C4, which ZIEL's WM_CREATE clears (seg7:4DD7). The
+  SBS files close only in the clean-up (seg7:36C3) and the photo after its fill
+  (seg7:2AA1). Every frame named by the definitions exists in the files (floete,
+  genie, jazz and frau leave out numbers the definitions do not use).
+- **Rebuilt** (`src/finish_view.cpp`, records and passes in
+  `src/finale_scenes.cpp`, images in `src/record_canvas.cpp`, name mapping
+  `finishPhotoName` in `src/board.cpp`): the scene and its animation when a
+  destination is reached and the car has arrived; frames filled, drawn with the
+  +0xD flags and dirty rectangles, hidden until pass 1 (tests
+  `tests/finale_scenes_test.cpp`). The window is centred on the canvas (seg6:0000, round
   111) with the wooden border of seg6:1A68 (round 112). **Assumptions:** records draw with their top-left corner at the position.
   **Input** (round 94): the window ZIEL (seg7:50D6) takes Escape, Space, Enter
   and the left button: seg5:607B(−1) (only the PLINFO repaint) and DS:A29C = 0 end
@@ -2777,9 +2801,29 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Loop** seg7:7BCD: 20 ms per pass like the finish; after 5000 passes the
   window gets VK_RETURN (seg7:7D57) and closes; then WM_COMMAND 0x424 ends the
   game. No random numbers.
-- **Rebuilt** (`src/victory_view.cpp`, shared records in `src/scene.cpp`,
-  `Game::ranking`): the scene after the finish of the Master-Rallye, then the
-  title. **Input** (round 90, seg7:83EE): after the first pass (DS:9CDE,
+- **Records** (ziel-sieg round, seg7:7516–7B86): +0x8 countdown / +0xA
+  repetitions / +0xD per slot: 0 many-l 0 / 999 / 0, 1 many-r 1 / 999 / 0, 2
+  konfetti 2 / 999 / 0, 3 hutman 2 / 9999 / 1, 4 car 2 / 9999 / 1, 5 kapelle 0 /
+  999 / 1, 6 zoepfe 1 / 999 / 1, 9 winner 1 / 999 / 1, 10 redet 0 / 9999 / 1; every
+  start frame +0xC is 0 (also redet's, seg7:7B5C); slots 7 and 8 stay empty and
+  the records draw in slot order (the winner after zöpfe, before the speaker). The
+  plain records 0–2 are the filled files. With countdown 1 the winner shows its
+  first frame in pass 1. **Speaker** (seg7:7BFF–7C46, before the step): seg1:4071
+  (SIEG.WAV in a talk interval of sync.dat) → +0xC = 0, +0x8 = 2; then seg1:414C
+  (past the cue) or seg1:3E64 = 0 (voice over) → +0xC = 1, +0x8 = 2. So the
+  speaker holds rd014 in talk intervals, animates elsewhere while the voice plays
+  and holds rd012 when it is over. seg1:41EF → seg6:6596 is the subtitle.
+- **Painting:** the window is shown at once (seg7:73E4); WM_PAINT (seg7:811B)
+  clears the DIB to 0 until DS:9CDE is set (seg7:82C0–8302), so it is black until
+  pass 1. The fills (seg7:748E–750E) come before the place stamps (seg7:7A64 /
+  7B05, seg7:1F52 keyed into DS:A0AE). Pass order: restore seg2:74E4 (DIB DS:B1BA),
+  step, draw changed, wait; pass 1 sets DS:9CDE and repaints everything
+  (seg7:7CE9–7D02), later passes seg2:72DE (seg7:7D2A). SBS files close only in
+  WM_DESTROY (seg7:80F0). No referenced frame is missing.
+- **Rebuilt** (`src/victory_view.cpp`, records and passes in
+  `src/finale_scenes.cpp`, `Game::ranking`): the scene after the finish of the
+  Master-Rallye with the painting above and the speaker following sync.dat (its
+  TimerCount timing, as the intro), then the title. **Input** (round 90, seg7:83EE): after the first pass (DS:9CDE,
   seg7:7CE9) WM_KEYDOWN with Escape, Space or Enter and WM_LBUTTONDOWN destroy the
   window; other keys and buttons do nothing. Centred by seg6:0000 (round 111), with the wooden border of seg6:1A68 (round 112).
 

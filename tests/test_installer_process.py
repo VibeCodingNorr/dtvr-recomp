@@ -45,6 +45,18 @@ class ProcessTests(unittest.TestCase):
         self.assertFalse(events[-1][1]["ok"])
         self.assertIn("build", events[-1][1]["error"])
 
+    def test_audio_progress_and_activity_reach_the_ui_queue(self):
+        worker = InstallerProcess()
+        lines = ["DTVR_STAGE:3:audio", "Converting CD audio: segment-01.ogg",
+                 "Soundtrack rendered-gm: rendering a1", "Soundtrack rendered-gm: rendering e2",
+                 "DTVR_ACTIVITY:CD-Klangset prüfen und zusammenstellen"]
+        worker.start([sys.executable, "-c", "print(" + repr("\n".join(lines)) + ")"])
+        events = self.wait_done(worker)
+        progress = [value for kind, value in events if kind == "progress"]
+        self.assertEqual([entry["completed"] for entry in progress], [0, 0, 2])
+        self.assertIn(("activity", "CD-Klangset prüfen und zusammenstellen"), events)
+        self.assertTrue(events[-1][1]["ok"])
+
     def test_preflight_json(self):
         worker = InstallerProcess()
         worker.start([sys.executable, "-c", "print('{\"program_files\": 4}')"], check=True)

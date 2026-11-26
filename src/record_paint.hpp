@@ -75,6 +75,9 @@ public:
     // (seg6:41A2, the names +0x36 stay), the area to the window.
     void paint(const std::vector<PaintRecord>& records, const PaintFrames& frames, const PaintImage& backdrop,
                PaintImage& dib, PaintImage& screen, PaintRect area);
+    // Clears the name last drawn (+0x36) of slot `i`, so the next show() draws it as
+    // changed (ZIEL clears the car's every pass, seg7:356E). Out-of-range slots are ignored.
+    void forget(size_t i) { if (i < states_.size()) states_[i].last.clear(); }
     // The last keyed rectangle (+0x2E) of slot `i` (tests).
     PaintRect drawn(size_t i) const { return states_[i].drawn; }
 

@@ -1,75 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "finish_view.hpp"
 
+#include "data_paths.hpp"
 #include "scene.hpp"
-
-#include <cctype>
-#include <vector>
 
 namespace fs = std::filesystem;
 
 namespace dtvr {
 namespace {
 
-constexpr int kWidth = 480, kHeight = 360;    // ziel.bmp and the scene DIB
+constexpr int kWidth = 0x1E0, kHeight = 0x168;    // ziel.bmp and the scene DIB
 constexpr int kWindowW = 0x1F0, kWindowH = 0x178; // CreateWindow seg7:2658
-
-// Animation records set up at seg7:2C55 ff. (DS:30 + 0x40 · i): position, start
-// frame (+0xC), delay in steps and the frames of the definition.
-const std::vector<SceneRecord>& records() {
-    static const std::vector<SceneRecord> kRecords = {
-        {209, 182, 0, 4, {"pauke00", "pauke01", "pauke02", "pauke03", "pauke00", "pauke01", "pauke02", "pauke03",
-                          "pauke00", "pauke01", "pauke02", "pauke03"}}, // DS:4594
-        {339, 221, 1, 4, {"duo00", "duo01", "duo02", "duo03", "duo04", "duo05", "duo06", "duo07", "duo08", "duo09",
-                          "duo10", "duo11"}}, // DS:419C
-        {130, 206, 0, 4, {"fl00", "fl01", "fl02", "fl02", "fl02", "fl05", "fl06", "fl07", "fl08", "fl09", "fl10",
-                          "fl02"}}, // DS:427C
-        {267, 209, 0, 4, {"tuba00", "tuba01", "tuba02", "tuba03", "tuba00", "tuba01", "tuba02", "tuba03", "tuba00",
-                          "tuba01", "tuba02", "tuba02"}}, // DS:461C
-        {25, 214, 2, 4, {"ge00", "ge01", "ge02", "ge03", "ge04", "ge05", "ge06", "ge07", "ge08", "ge08", "ge10",
-                         "ge11", "ge12", "ge13", "ge14", "ge15", "ge11", "ge11", "ge11", "ge11"}}, // DS:4314
-        {79, 182, 3, 4, {"ha00", "ha01", "ha02", "ha03", "ha04", "ha05", "ha06", "ha07", "ha08", "ha09", "ha10",
-                         "ha11"}}, // DS:4420
-        {405, 175, 4, 4, {"pa00", "pa01", "pa02", "pa03", "pa04", "pa05", "pa06", "pa07", "pa08", "pa09", "pa10",
-                          "pa11"}}, // DS:4500
-        {180, 189, 0, 4, {"jz00", "jz01", "jz02", "jz03", "jz04", "jz05", "jz06", "jz07", "jz08", "jz09", "jz00",
-                          "jz11"}}, // DS:4490
-        {460, 244, 3, 1, {"CAR1", "CAR2", "CAR3", "CAR2"}}, // DS:4760, the car (record 8)
-        {269, 304, 3, 4, {"hut00", "hut01", "hut02", "hut03", "hut04", "hut05", "hut06", "hut07", "hut08", "hut09",
-                          "hut10", "hut11"}}, // DS:43B0
-        {175, 280, 0, 3, {"bal00", "bal01", "bal02", "bal03", "bal04", "bal05", "bal06", "bal07", "bal08", "bal09",
-                          "bal10", "bal11"}}, // DS:4120
-        {78, 296, 2, 4, {"fr00", "fr01", "fr02", "fr02", "fr04", "fr05", "fr06", "fr02", "fr08", "fr09", "fr10",
-                         "fr11"}}, // DS:420C
-        {29, 294, 4, 4, {"wi00", "wi01", "wi02", "wi03", "wi04", "wi05", "wi06", "wi07", "wi08", "wi09", "wi10",
-                         "wi11"}}, // DS:468C
-        {347, 300, 3, 4, {"zp00", "zp01", "zp02", "zp03", "zp04", "zp05", "zp06", "zp07", "zp08", "zp09", "zp10",
-                          "zp11"}}, // DS:46FC
-        {0, 82, 2, 4, {"pfahl"}},   // DS:4736
-        {117, 129, 0, 4, {"lampe"}}, // DS:4744
-    };
-    return kRecords;
-}
-constexpr size_t kCar = 8;
-// DS:4BE8: the files of butt/sbs/ziel loaded by seg7:2831.
-const char* const kFiles[] = {"pauke.sbs", "duo.sbs", "floete.sbs", "tuba.sbs", "genie.sbs", "happy.sbs",
-                              "paar.sbs", "jazz.sbs", "hut.sbs", "ballon.sbs", "frau.sbs", "winken.sbs",
-                              "zoepfe.sbs", "pfahl.sbs", "lampe.sbs"};
-
-// seg7:1CE0: copies `src` into `dst` at (x, y) only where `dst` holds index 0xFF
-// (the white sky of ziel.bmp; the trees in front stay).
-void fillKeyed(SDL_Surface* src, SDL_Surface* dst, int x, int y) {
-    if (!src || !dst || src->format->BitsPerPixel != 8 || dst->format->BitsPerPixel != 8) return;
-    SDL_LockSurface(src);
-    SDL_LockSurface(dst);
-    for (int row = 0; row < src->h && y + row < dst->h; ++row)
-        for (int col = 0; col < src->w && x + col < dst->w; ++col) {
-            uint8_t& to = static_cast<uint8_t*>(dst->pixels)[(y + row) * dst->pitch + x + col];
-            if (to == 0xFF) to = static_cast<const uint8_t*>(src->pixels)[row * src->pitch + col];
-        }
-    SDL_UnlockSurface(dst);
-    SDL_UnlockSurface(src);
-}
 
 } // namespace
 
@@ -82,52 +23,67 @@ bool FinishView::start(char driverLetter, const std::string& oemTownName, Uint32
     const fs::path zielFile = findCaseInsensitive(root_, butt / "ziel.bmp");
     const fs::path bannerFile = findCaseInsensitive(root_, butt / languageDir(language_) / "banner.bmp");
     const fs::path photoFile = findCaseInsensitive(root_, butt / languageDir(language_) / "ziel" / (finishPhotoName(oemTownName) + ".bmp"));
-    if (zielFile.empty() || bannerFile.empty() || photoFile.empty()) return false; // seg7:26E8 / 298C
-    Surface scene = loadBmp(zielFile);
-    if (!scene || !scene->format->palette) return false;
-    Surface banner = loadBmp(bannerFile);
-    Surface photo = loadBmp(photoFile);
-    blitKeyed(banner.get(), scene.get(), 6, 117); // seg7:27E5
-    fillKeyed(photo.get(), scene.get(), 0, 0);    // seg7:2A82
-    background_.reset(SDL_CreateTextureFromSurface(renderer_, scene.get()));
-    frames_.clear();
-    const SDL_Palette* palette = scene->format->palette;
-    for (const char* file : kFiles)
-        loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / "ziel" / file), palette, frames_, 0xFF);
-    const std::string car = std::string(1, char(std::tolower(static_cast<unsigned char>(driverLetter)))) + "zielcar.sbs";
-    loadSbsTextures(renderer_, findCaseInsensitive(root_, butt / "sbs" / "ziel" / car), palette, frames_, 0xFF);
-    started_ = now;
-    active_ = background_ != nullptr;
-    return active_;
-}
-
-int FinishView::steps(Uint32 now) const { return int((now - started_) / kSceneStepMs); }
-
-bool FinishView::update(Uint32 now) {
-    if (!active_ || records()[kCar].x - 2 * steps(now) >= -160) return false; // 0xFF60
-    active_ = false;
+    if (zielFile.empty() || bannerFile.empty() || photoFile.empty()) return false; // seg7:26E8 / 2740 / 298C
+    const Surface ziel = loadBmp(zielFile); // DS:ABF8
+    if (!canvas_.setBackdrop(ziel.get())) return false;
+    const Surface banner = loadBmp(bannerFile);
+    const Surface photo = loadBmp(photoFile);
+    if (!banner || banner->format->BitsPerPixel != 8 || !photo || photo->format->BitsPerPixel != 8) return false;
+    blitImage(toPaintImage(banner.get()), canvas_.backdrop(), 6, 0x75, true); // seg7:27E5 (seg2:9497, key 0xFF)
+    // The files of DS:4BE8 (seg7:2831 ff., the car in slot 8) are loaded before the photo.
+    const std::vector<std::string> files = FinishScene::files(driverLetter);
+    for (size_t slot = 0; slot < files.size(); ++slot)
+        canvas_.loadFile(slot, findCaseInsensitive(root_, butt / "sbs" / "ziel" / files[slot]));
+    // seg7:2A82: seg7:1CE0 with the DIB as the target: its 0xFF pixels take the photo's.
+    fillTransparent(canvas_.backdrop(), toPaintImage(photo.get()), 0, 0);
+    for (const SceneFill& f : FinishScene::fills()) canvas_.fillFile(f.slot, f.x, f.y); // seg7:2ADE..2C1C
+    scene_ = FinishScene();
+    lastPass_ = now;
+    shown_ = false;
+    active_ = true;
     return true;
 }
 
-void FinishView::draw(Uint32 now) {
-    if (!active_) return;
-    // Window centred on the canvas (assumption: x = y = 0 is centred as for other
-    // child windows); the scene is drawn inside an 8-pixel frame.
+void FinishView::runPass() {
+    scene_.pass();                              // seg7:3564 car x - 2, seg7:35B6 seg2:6DCB
+    canvas_.painter().forget(FinishScene::kCar); // seg7:356E: the car's +0x36 = ""
+    const std::vector<PaintRecord> records = scene_.records();
+    // seg7:35A6 restore, seg7:35D4 draw changed records, seg7:35E0 wait, then on the
+    // first pass ShowWindow + InvalidateRect + UpdateWindow (seg7:35F0..3614: WM_PAINT
+    // seg7:4E36 draws everything), otherwise seg2:72DE (seg7:363C).
+    canvas_.pass(records, scene_.passes() != 1);
+    if (scene_.passes() == 1) {
+        canvas_.paint(records);
+        shown_ = true;
+    }
+}
+
+bool FinishView::update(Uint32 now) {
+    if (!active_) return false;
+    if (now - lastPass_ > 10 * kSceneStepMs) lastPass_ = now - kSceneStepMs; // no long catch-up after a stall
+    while (now - lastPass_ >= kSceneStepMs) {
+        lastPass_ += kSceneStepMs;
+        if (scene_.carGone()) { // seg7:3546 -> DestroyWindow (seg7:3555)
+            active_ = false;
+            return true;
+        }
+        runPass();
+    }
+    return false;
+}
+
+void FinishView::draw(Uint32) {
+    if (!active_ || !shown_) return; // created without WS_VISIBLE (style 0x44000000, seg7:264F)
+    SDL_Texture* texture = canvas_.texture(renderer_);
+    if (!texture) return;
+    // Window centred on the canvas (seg6:0000, round 111); the scene inside the
+    // 8-pixel frame.
     const SDL_Rect window{(canvasWidth_ - kWindowW) / 2, (canvasHeight_ - kWindowH) / 2, kWindowW, kWindowH};
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &window);
-    drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thin); // seg6:1A68 (ZIEL seg7:5084, SIEG 839C, BILANZ seg8:A7D7)
-    const int ox = window.x + (kWindowW - kWidth) / 2, oy = window.y + (kWindowH - kHeight) / 2;
-    const SDL_Rect area{ox, oy, kWidth, kHeight};
-    SDL_RenderCopy(renderer_, background_.get(), nullptr, &area);
-    SDL_RenderSetClipRect(renderer_, &area);
-    const int t = steps(now);
-    for (size_t i = 0; i < records().size(); ++i) { // seg2:74E4 draws the records in order
-        const SceneRecord& r = records()[i];
-        const int x = i == kCar ? r.x - 2 * t : r.x; // seg7:3564
-        drawSceneFrame(renderer_, frames_, sceneFrame(r, t), ox + x, oy + r.y);
-    }
-    SDL_RenderSetClipRect(renderer_, nullptr);
+    drawWindowBorder(renderer_, borderSprites_, window, BorderSize::Thin); // seg6:1A68 (ZIEL seg7:5084)
+    const SDL_Rect area{window.x + (kWindowW - kWidth) / 2, window.y + (kWindowH - kHeight) / 2, kWidth, kHeight};
+    SDL_RenderCopy(renderer_, texture, nullptr, &area);
 }
 
 } // namespace dtvr
