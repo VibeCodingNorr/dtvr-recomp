@@ -1762,7 +1762,10 @@ the roll through the save codec, `tests/game_test.cpp`) and the slot block of
 is 0, i.e. until the window has slid out or was cancelled. Only then: seg7:672A;
 a human with sum DS:A778 = 0 (cancelled; the sum is set at the count) returns
 without a move (seg2:66A6); otherwise seg2:66B9 → seg2:61B7 starts the move
-(reach, shut-in notices 6003 / 6005 / 6009, turn end) and seg2:0A2F follows. The
+(reach, shut-in notices 6003 / 6005 / 6009, turn end) and seg2:0A2F follows; when
+that returns 0 and the player is a computer (seg2:5C02), seg2:66F9 sets the state
+machine to 5 (seg5:71B3(5)), so the route is planned only now (`Game::computerAdvance`
+plans it at the first stage after `finishSpin`). The
 reel cards (seg4:0A2D ff.) and the status cards' spin go the same way. Rebuilt:
 with a window (`Game::setSpinPresentation`, set by the game window) `roll()` and the
 reel / status card spins leave the move pending (`spinPending`, not saved) until

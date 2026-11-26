@@ -30,6 +30,7 @@ bool Game::switchDriver(int player) {
         aiTurn_ = false;
         aiSteerless_ = false;
         aiRoute_.clear();
+        aiRoutePlanned_ = false;
     }
     return true;
 }
@@ -101,6 +102,16 @@ bool Game::runComputerTurn() {
     return changed;
 }
 
+void Game::planComputerRoute() {
+    // State 5 (seg5:72C2): the route over exactly the spun number of fields (DS:A778);
+    // state 6 drives it.
+    const AiGraph graph = buildAiGraph(board_, routeMask(), obstacles_);
+    const auto dist = aiDistances(graph, destination_);
+    aiRoute_ = aiChooseRoute(aiState(aiSteerless_), aiPlayer_, counter_.allowance(), graph, dist, rng_);
+    std::reverse(aiRoute_.begin(), aiRoute_.end()); // taken from the back
+    aiRoutePlanned_ = true;
+}
+
 bool Game::computerAdvance() {
     struct Acting { bool& flag; explicit Acting(bool& f) : flag(f) { flag = true; } ~Acting() { flag = false; } } acting(aiActing_);
     std::vector<std::string> log;
@@ -123,13 +134,15 @@ bool Game::computerAdvance() {
         if (phase_ == Phase::Roll && current_ != aiPlayer_) return finish(true); // the card ended the turn
         aiTurn_ = true;
         aiRoute_.clear();
-        if (phase_ == Phase::Move) {
-            // States 5 and 6: plan the route over exactly the spun number of fields.
-            const AiGraph graph = buildAiGraph(board_, routeMask(), obstacles_);
-            const auto dist = aiDistances(graph, destination_);
-            aiRoute_ = aiChooseRoute(aiState(aiSteerless_), aiPlayer_, counter_.allowance(), graph, dist, rng_);
-            std::reverse(aiRoute_.begin(), aiRoute_.end()); // taken from the back
-        }
+        aiRoutePlanned_ = false;
+        if (phase_ == Phase::Move) planComputerRoute(); // the move started at once (no slot window)
+        return finish(true);
+    }
+    if (phase_ == Phase::Move && !aiRoutePlanned_) {
+        // With the slot window the move starts only once that window has closed
+        // (finishSpin: seg2:6426 -> seg2:66B9 -> 61B7); seg2:66F9 then sets the
+        // computer's state 5 (seg5:71B3(5)), so the route is planned from here.
+        planComputerRoute();
         return finish(true);
     }
     if (phase_ == Phase::Move) { // state 6: one field per stage
