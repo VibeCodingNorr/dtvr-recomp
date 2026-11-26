@@ -39,11 +39,10 @@ public:
     size_t listed() const { return listed_.size(); }
     // seg8:7F7D (from the redraw seg2:05A8 after every change of the view): the listed
     // objects show their last frame, then the list DS:A05E is rebuilt with the objects
-    // whose rectangle (pixels, seg8:7EED) touches (originX, originY, originX + viewWidth,
-    // originY + viewHeight) — rally.exe takes the origin DS:956A / 9568 in *tiles* here
-    // and the view size DS:94DE / 94E0 in pixels (seg8:81E2), so the list holds objects
-    // near the world's top left rather than the visible ones — at most 150 (seg8:828B),
-    // each started as seg8:8277 does: pause random(range), delay 0, the definition's
+    // whose rectangle (pixels, seg8:7EED) touches the visible area: the origin
+    // DS:956A / 9568 is given in tiles and converted to pixels (seg8:81E2 `shl 4`), the
+    // view size DS:94DE / 94E0 is in pixels — at most 150 objects (seg8:828B), each
+    // started as seg8:8277 does: pause random(range), delay 0, the definition's
     // repeats, frame 0xFF, restart 1.
     void setView(int originX, int originY, int viewWidth, int viewHeight, WorldMap& map, MsRandom& rng,
                  std::vector<AmbientCell>& changed);
