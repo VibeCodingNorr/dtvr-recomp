@@ -10,6 +10,8 @@
 // Evidence and the mapping in docs/formats.md "Joystick" / "Recomp pad layer".
 #pragma once
 
+#include "pad_map.hpp"
+
 #include <SDL_keycode.h>
 
 #include <vector>
@@ -36,7 +38,9 @@ private:
     unsigned previousButtons_ = 0;        // DS:A0E6
 };
 
-// Buttons of the merged pad state (SDL GameController names, Xbox labels).
+// Button actions of the merged pad state, named after their default buttons (SDL
+// GameController names, Xbox labels); which physical button triggers each is the
+// PadMap's choice (translate below).
 enum PadButton : unsigned {
     kPadA = 1u << 0,     // button 1 of the game port (original)
     kPadB = 1u << 1,     // button 2 of the game port (original)
@@ -53,6 +57,37 @@ struct PadState {
     SDL_Keycode direction = SDLK_UNKNOWN;  // d-pad or left stick (seg2:8C2B order)
     SDL_Keycode rightStick = SDLK_UNKNOWN; // right stick, same check order
     unsigned buttons = 0;                  // PadButton bits
+};
+
+// What the pads report physically in one tick, all pads merged.
+struct PadRaw {
+    unsigned buttons = 0;                  // padBit(PadPhysical) bits, triggers included
+    SDL_Keycode leftStick = SDLK_UNKNOWN;  // seg2:8C2B order (up, down, left, right)
+    SDL_Keycode rightStick = SDLK_UNKNOWN;
+};
+
+// The physical state through the mapping: the bound buttons of the four directions
+// and the driving stick give `direction` (seg2:8C2B order over their union), the
+// other stick `rightStick`, the other bound buttons their PadButton bits. With the
+// default map this is the fixed assignment of pad rounds 1-3.
+PadState translate(const PadMap& map, const PadRaw& raw);
+
+// Waiting for the button a remapped action shall get (Steuerung page): buttons held
+// when the wait starts are no choice; after the wait (chosen or cancelled) the pad
+// stays silent until everything is released, so the chosen button is not at once
+// also its new action.
+class PadCapture {
+public:
+    struct Result {
+        bool translate = true; // false: the pad layer gets nothing this tick
+        int captured = -1;     // a PadPhysical newly pressed while capturing
+    };
+    Result tick(const PadRaw& raw, bool capturing);
+
+private:
+    unsigned previous_ = 0;
+    bool capturing_ = false;
+    bool waitRelease_ = false;
 };
 
 // Which window has the input, as far as the recomp buttons need to know. The game
@@ -80,6 +115,7 @@ struct PadOutput {
     // Right stick in Umfeld: one scroll step (an arrow) for GameScreen::handleSurroundings,
     // called directly, never an SDL key event (it must not become a driving direction).
     SDL_Keycode scroll = SDLK_UNKNOWN;
+    int captured = -1; // a PadPhysical pressed while the Steuerung page waits for one (PadCapture)
 };
 
 class PadInput {

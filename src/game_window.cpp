@@ -51,6 +51,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     LogoView logo(renderer.get(), root, layout);
     if (logo.show()) logo.present();
     ControllerInput controller; // joystick 1 of the original (seg2:8A30), any SDL game controller
+    controller.setMap(displaySettings.pad); // the Steuerung page's remapping (updatePad keeps it current)
     std::map<int, std::string> texts; // language file (texts in UTF-8)
     std::vector<uint8_t> language;    // also holds the menu resources
     if (const fs::path file = findCaseInsensitive(root, languageLibraryPath(languageLetter)); !file.empty()) language = readFile(file);

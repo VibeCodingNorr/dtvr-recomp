@@ -43,14 +43,28 @@ PadContext GameWindow::padContext() {
 void GameWindow::updatePad() {
     if (keyboard_.isOpen() && !screen_.setup().isOpen()) keyboard_.close(); // PLAYER went away
     const PadContext c = padContext();
+    RecompMenu& menu = recompMenu_.menu();
+    // The Steuerung page waits for a button: none can arrive without a pad (keyboard
+    // Escape, a click and the timeout end the wait too).
+    const bool capturing = recompMenu_.isOpen() && menu.capturing();
+    if (capturing && !options_.smokeTest && !controller_.connected())
+        menu.cancelCapture("Kein Gamepad angeschlossen.");
+    else if (capturing && !options_.smokeTest) menu.expireCapture(SDL_GetTicks());
+    controller_.setMap(screen_.settings().pad); // the remapping, for every merged pad
     PadOutput a;
-    if (PadState scripted; scripted_.takePad(scripted)) { // --press Pad:… (smoke tests)
-        a = controller_.scripted(scripted, c);
+    if (PadRaw scripted; scripted_.takePad(scripted)) { // --press Pad:… (smoke tests)
+        a = controller_.scripted(scripted, c, menu.capturing());
     } else if (!options_.smokeTest) {
         const bool focused = (SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS) != 0; // seg2:8A35 GetFocus
-        a = controller_.update(SDL_GetTicks(), screen_.settings().value[Settings::Joystick] != 0, focused, c);
+        a = controller_.update(SDL_GetTicks(), screen_.settings().value[Settings::Joystick] != 0, focused, c,
+                               recompMenu_.isOpen() && menu.capturing());
     } else {
         return;
+    }
+    if (a.captured >= 0 && recompMenu_.isOpen() && menu.capturing()
+        && menu.capture(a.captured) == RecompMenu::Action::Changed) {
+        applySettings(menu.settings()); // saved like every recomp menu change
+        controller_.setMap(screen_.settings().pad);
     }
     if (a.pauseMenu) { // Start: the recomp menu as Escape opens it on the map (toggle like F8)
         const bool blocked = (quitAsked_ && screen_.messages().question()) || screen_.film().active()
@@ -89,6 +103,7 @@ void GameWindow::openKeyboard() {
     const int slot = screen_.setup().editingField();
     if (slot < 0) return;
     keyboard_.open(slot, screen_.setup().fieldText(slot), kNameFieldLimit); // the field's 19 (seg1:1D28)
+    keyboard_.setHelp(keyboardHelp(screen_.settings().pad)); // the buttons in use
     sound_.play(2, 2); // Plopp02 like an activated SBBUTTON
 }
 

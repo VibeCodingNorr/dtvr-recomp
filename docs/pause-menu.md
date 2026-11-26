@@ -16,13 +16,28 @@ deliberately not offered: rally.exe only switches them on and off at full volume
 (round 132). The controller's Start (Menu) button opens and closes it on the Pause page
 (src/game_window_pad.cpp); Tab / Shift+Tab (the pad's RB / LB) go to the next /
 previous page, staying in the entries when the page has any. The page Steuerung
-(`controlsPage()`, pad round 3) is a table page: twelve info rows with the columns
+(`controlsPage(PadMap)`, pad rounds 3 and 4) is a table page with the columns
 Aktion / Tastatur / Gamepad, drawn compactly in one font size that fits every cell,
-with its own footer hint (the [Setup] Joystick gate, merged pads); no row takes the
-focus. Its texts are recomp texts and must follow `src/pad_input.cpp` and the game
-window's keys; `tests/recomp_menu_test.cpp` checks that every pad button appears.
-The footer's key line names the pad button after the key (Tab/RB, Enter/A, Esc/B).
-Not yet: rebinding, help pages, multiplayer entries, a native start screen.
+with its own footer hint (the [Setup] Joystick gate, merged pads). It shows twelve
+rows at once and scrolls with the focus (▲ / ▼ in the heading row; the mouse wheel
+moves the focus). Rows: one **Binding** row per pad action (four directions,
+Bestätigen, Abbrechen, Recomp-Menü, Originales Spielmenü, Schließen/Löschen,
+Karte/F9, Seite zurück / vor), the stick choice "Fahren / Umfeld (Sticks)" (Links /
+rechts or Rechts / links), three info rows (names, stage count, display keys) and
+the command **Standard wiederherstellen**. Enter / A on a Binding row waits for a
+pad button ("Taste drücken …", the footer counts down 8 s); the pressed button is
+bound, and when another action had it the two swap and the footer says so
+("Bestätigen jetzt auf B. Getauscht: Abbrechen jetzt auf A."). Escape / Backspace
+or any click cancel the wait; without a pad it ends at once. Every action always
+keeps a button of its own, so the menu stays reachable with the pad; keyboard and
+mouse always work on the page. Changes are saved at once in `[Gamepad]` of the
+recomp settings (docs/formats.md "Recomp pad layer", round 4). The texts are recomp
+texts and must follow `src/pad_input.cpp`, `src/pad_map.cpp` and the game window's
+keys; `tests/recomp_menu_test.cpp` checks every action's row, capture, swap,
+timeout and reset. The footer's key line and the on-screen keyboard's help line name
+the buttons in use (Tab/RB, Enter/A, Esc/B by default).
+Not yet: help pages, multiplayer entries, a native start screen. Keyboard keys are
+not remappable (user decision).
 
 ## Before a game
 

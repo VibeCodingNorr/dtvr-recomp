@@ -55,32 +55,65 @@ Item control(std::string label, std::string keyboard, std::string pad) {
     return i;
 }
 
+// One pad action of the controls table: remappable (Kind::Binding).
+Item binding(std::string label, std::string keyboard, PadAction action) {
+    Item i = info(std::move(label), std::move(keyboard));
+    i.kind = Kind::Binding;
+    i.padAction = action;
+    // The hint names the Confirm button in use (controlsPage).
+    return i;
+}
+
 } // namespace
 
-// The keys of the game window and the pad mapping of src/pad_input.cpp (docs/formats.md
-// "Joystick" / "Recomp pad layer"); the pad column holds while [Setup] Joystick is on.
-RecompMenu::Page controlsPage() {
+const char* padActionLabel(PadAction a) {
+    static const char* const kLabels[kPadActionCount] = {
+        "Hoch", "Runter", "Links", "Rechts", "Bestätigen", "Abbrechen", "Recomp-Menü",
+        "Originales Spielmenü", "Schließen/Löschen", "Karte/F9", "Seite zurück", "Seite vor"};
+    const int i = int(a);
+    return i >= 0 && i < kPadActionCount ? kLabels[i] : "";
+}
+
+// The keys of the game window and the pad layer of src/pad_input.cpp through the pad
+// map (docs/formats.md "Joystick" / "Recomp pad layer"); the pad column holds while
+// [Setup] Joystick is on. Every pad action is a Binding row (remappable).
+RecompMenu::Page controlsPage(const PadMap& map) {
+    const auto button = [&](PadAction a) { return std::string(padPhysicalLabel(map.of(a))); };
     RecompMenu::Page p;
     p.title = "Steuerung";
     p.columns = {"Aktion", "Tastatur", "Gamepad"};
     p.hint = "Das Gamepad wirkt wie der Joystick des Originals, solange die Option Joystick an ist; "
-             "alle angeschlossenen Pads zählen gemeinsam.";
+             "alle angeschlossenen Pads zählen gemeinsam. Enter wählt eine Zeile zum Umbelegen.";
+    Item sticks = choice("Fahren / Umfeld (Sticks)", Field::PadSticks, {"Links / rechts", "Rechts / links"},
+                         "Welcher Stick fährt und die Auswahl bewegt und welcher im Umfeld verschiebt.");
+    sticks.value = "Pfeiltasten, 2/4/6/8";
+    Item reset = command("Standard wiederherstellen", Action::Changed, "Alle Gamepad-Tasten wie ab Werk belegen.");
+    reset.field = Field::PadReset;
     p.items = {
-        control("Fahren, Auswahl bewegen", "Pfeiltasten", "Kreuz, linker Stick"),
-        control("Bestätigen, Schalter umlegen", "Enter, Leertaste", "A"),
-        control("Abbrechen, zurück", "Esc", "B"),
-        control("Recomp-Menü (Pause)", "Esc, F8 (Audio)", "Start"),
-        control("Originales Spielmenü", "Rücktaste, rechte Maustaste", "Ansicht"),
-        control("Schließen, Zeichen löschen", "Rücktaste", "X"),
-        // Y: ONFIELD's 1031 or the town dialog's Karte; F9 in PLAYER (extras) / OPTION (Grafik).
-        control("Karte einsetzen / F9-Funktion", "Zugmenü / F9", "Y"),
-        control("Seite wechseln (dieses Menü)", "Umschalt+Tab / Tab", "LB / RB"),
+        binding("Hoch (Fahren, Auswahl)", "Pfeil hoch", PadAction::Up),
+        binding("Runter", "Pfeil runter", PadAction::Down),
+        binding("Links", "Pfeil links", PadAction::Left),
+        binding("Rechts", "Pfeil rechts", PadAction::Right),
+        binding("Bestätigen, Schalter umlegen", "Enter, Leertaste", PadAction::Confirm),
+        binding("Abbrechen, zurück", "Esc", PadAction::Cancel),
+        binding("Recomp-Menü (Pause)", "Esc, F8 (Audio)", PadAction::Pause),
+        binding("Originales Spielmenü", "Rücktaste, rechte Maustaste", PadAction::OriginalMenu),
+        binding("Schließen, Zeichen löschen", "Rücktaste", PadAction::Erase),
+        // ONFIELD's 1031 or the town dialog's Karte; F9 in PLAYER (extras) / OPTION (Grafik).
+        binding("Karte einsetzen / F9-Funktion", "Zugmenü / F9", PadAction::Cards),
+        binding("Seite zurück, Etappen \u221250", "Umschalt+Tab", PadAction::PrevPage),
+        binding("Seite vor, Etappen +50", "Tab", PadAction::NextPage),
         // Inside Umfeld (opened from the right-button menu): seg6:1991 keys, PR #24.
-        control("Im Umfeld verschieben", "Pfeiltasten, 2/4/6/8", "Kreuz, rechter Stick"),
-        control("Spielernamen eingeben", "Feld wählen, tippen", "A: Bildschirmtastatur"),
-        control("Etappen ±1 / ±10 / ±50", "←→ / ↑↓ / Tab", "Kreuz / LB, RB"),
+        sticks,
+        control("Spielernamen eingeben", "Feld wählen, tippen", button(PadAction::Confirm) + ": Bildschirmtastatur"),
+        control("Etappen ±1 (links/rechts) / ±10", "Pfeiltasten", "Richtungen"),
         control("Vollbild / Schriftglättung", "F11, Alt+Enter / F12", "Seite Grafik"),
+        reset,
     };
+    const std::string confirm = "Enter / " + button(PadAction::Confirm); // the button in use
+    for (Item& i : p.items)
+        if (i.kind == Kind::Binding)
+            i.hint = confirm + ": neue Taste am Gamepad drücken. Belegt eine andere Aktion die Taste, tauschen beide.";
     return p;
 }
 
@@ -148,13 +181,20 @@ void RecompMenu::build(bool inGame) {
         toggle("Computer spielen alle Karten", Field::ExtraCards,
                "Erweiterung: auch Karten, die rally.exe nie wählt. Gilt für neue Spiele."),
     }});
-    pages_.push_back(controlsPage());
+    pages_.push_back(controlsPage(settings_.pad));
+}
+
+void RecompMenu::refreshControls() {
+    for (Page& p : pages_)
+        if (p.title == "Steuerung") p = controlsPage(settings_.pad);
 }
 
 void RecompMenu::open(const Settings& settings, bool inGame) {
     inGame_ = inGame;
-    build(inGame);
     settings_ = settings;
+    build(inGame);
+    capture_ = PadAction::kCount;
+    padNote_.clear();
     page_ = 0;
     row_ = 0;
     inItems_ = true; // the first entry, Weiterspielen, has the focus
@@ -200,7 +240,8 @@ int RecompMenu::fieldValue(Field f) const {
     case Field::ExtraCards: return settings_.computerExtraCards;
     case Field::AnimationTempo: return settings_.animationTempo == 2 ? 1 : 0;
     case Field::ComputerTempo: return settings_.computerTempo == 4 ? 2 : settings_.computerTempo == 2 ? 1 : 0;
-    case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;
+    case Field::PadSticks: return settings_.pad.swapSticks;
+    case Field::MusicPlaying: case Field::MusicNote: case Field::PadReset: case Field::None: break;
     }
     return 0;
 }
@@ -226,7 +267,8 @@ void RecompMenu::setFieldValue(Field f, int v) {
     case Field::ComputerTempo: settings_.computerTempo = v == 2 ? 4 : v == 1 ? 2 : 1; break;
     case Field::MusicPack: music_.pack = v; break;
     case Field::MasterVolume: settings_.masterVolume = std::clamp(v, 0, 100); break;
-    case Field::MusicPlaying: case Field::MusicNote: case Field::None: break;
+    case Field::PadSticks: settings_.pad.swapSticks = v != 0; break;
+    case Field::MusicPlaying: case Field::MusicNote: case Field::PadReset: case Field::None: break;
     }
 }
 
@@ -234,7 +276,7 @@ int RecompMenu::fieldStates(const Item& item) const { return std::max<int>(1, in
 
 std::string RecompMenu::valueText(const Item& item) const {
     if (item.field == Field::MusicPlaying) return music_.playing.empty() ? "nichts" : "Stück " + music_.playing;
-    if (item.kind == Kind::Info) return item.value;
+    if (item.kind == Kind::Info || item.kind == Kind::Binding) return item.value;
     if (item.kind == Kind::Command) return {};
     if (item.kind == Kind::Slider) return std::to_string(fieldValue(item.field)) + " %";
     const int v = fieldValue(item.field);
@@ -302,6 +344,19 @@ RecompMenu::Action RecompMenu::activate() {
         return Action::None;
     }
     const Item& item = pages_[size_t(page_)].items[size_t(row_)];
+    if (item.kind == Kind::Binding) { // wait for the new button (GameWindow::updatePad)
+        capture_ = item.padAction;
+        captureStamped_ = false;
+        padNote_.clear();
+        return Action::None;
+    }
+    if (item.field == Field::PadReset) {
+        const bool changed = settings_.pad != PadMap{};
+        settings_.pad = PadMap{};
+        refreshControls();
+        padNote_ = "Standardbelegung wiederhergestellt.";
+        return changed ? Action::Changed : Action::None;
+    }
     if (item.kind == Kind::Command) {
         if (item.command == Action::Resume) open_ = false;
         return item.command;
@@ -311,6 +366,10 @@ RecompMenu::Action RecompMenu::activate() {
 
 RecompMenu::Action RecompMenu::input(Input in) {
     if (!open_) return Action::None;
+    if (capturing()) { // only Escape / Backspace (Back) ends the wait; the pad is silent meanwhile
+        if (in == Input::Back) cancelCapture("Abgebrochen, die Belegung bleibt.");
+        return Action::None;
+    }
     switch (in) {
     case Input::Up:
         if (inItems_) moveRow(-1);
@@ -347,9 +406,70 @@ RecompMenu::Action RecompMenu::input(Input in) {
     return Action::None;
 }
 
+std::string RecompMenu::padText(const Item& item) const {
+    if (item.kind == Kind::Binding) {
+        if (capture_ == item.padAction) return "Taste drücken …";
+        return padPhysicalLabel(settings_.pad.of(item.padAction));
+    }
+    if (item.kind == Kind::Choice) return valueText(item);
+    return item.pad;
+}
+
+std::string RecompMenu::keyLine() const {
+    const PadMap& m = settings_.pad;
+    return std::string("Hoch/Runter Auswählen    Links/Rechts Ändern    Tab/") + padPhysicalLabel(m.of(PadAction::NextPage))
+           + " Seite    Enter/" + padPhysicalLabel(m.of(PadAction::Confirm)) + " Bestätigen    Esc/"
+           + padPhysicalLabel(m.of(PadAction::Cancel)) + " Zurück";
+}
+
+RecompMenu::Action RecompMenu::capture(int physical) {
+    if (!capturing() || physical < 0 || physical >= kPadPhysicalCount) return Action::None;
+    const PadAction action = capture_;
+    const PadPhysical p = PadPhysical(physical);
+    capture_ = PadAction::kCount;
+    const PadPhysical before = settings_.pad.of(action);
+    const PadAction other = settings_.pad.assign(action, p);
+    refreshControls();
+    if (before == p) {
+        padNote_ = std::string(padActionLabel(action)) + " bleibt auf " + padPhysicalLabel(p) + ".";
+        return Action::None;
+    }
+    padNote_ = std::string(padActionLabel(action)) + " jetzt auf " + padPhysicalLabel(p) + ".";
+    if (other != PadAction::kCount) // the conflict: both actions swapped their buttons
+        padNote_ += std::string(" Getauscht: ") + padActionLabel(other) + " jetzt auf "
+                    + padPhysicalLabel(settings_.pad.of(other)) + ".";
+    return Action::Changed;
+}
+
+void RecompMenu::cancelCapture(std::string note) {
+    if (!capturing()) return;
+    capture_ = PadAction::kCount;
+    padNote_ = std::move(note);
+}
+
+bool RecompMenu::expireCapture(std::uint32_t nowMs) {
+    if (!capturing()) return false;
+    if (!captureStamped_) { captureStamped_ = true; captureSince_ = nowMs; return false; }
+    if (nowMs - captureSince_ < kCaptureMs) return false;
+    cancelCapture("Keine Taste gedrückt, die Belegung bleibt.");
+    return true;
+}
+
+int RecompMenu::captureSecondsLeft(std::uint32_t nowMs) const {
+    if (!capturing()) return 0;
+    const std::uint32_t used = captureStamped_ ? nowMs - captureSince_ : 0;
+    return used >= kCaptureMs ? 0 : int((kCaptureMs - used + 999) / 1000);
+}
+
+std::string keyboardHelp(const PadMap& map) {
+    const auto b = [&](PadAction a) { return std::string(padPhysicalLabel(map.of(a))); };
+    return b(PadAction::Confirm) + " tippen  " + b(PadAction::Erase) + " l\u00f6schen  " + b(PadAction::Cards)
+           + " gro\u00df/klein  " + b(PadAction::Pause) + " fertig  " + b(PadAction::Cancel) + " abbrechen";
+}
+
 const KeyboardTexts& keyboardTexts() {
     static const KeyboardTexts texts{"Gro\u00df", "L\u00f6schen", "Leerzeichen", "Abbrechen", "Fertig",
-                                     "A tippen  X l\u00f6schen  Y gro\u00df/klein  Start fertig  B abbrechen"};
+                                     keyboardHelp(PadMap{})};
     return texts;
 }
 

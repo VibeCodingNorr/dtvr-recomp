@@ -6,6 +6,7 @@
 
 #include "settings.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -16,12 +17,13 @@ public:
     // Changed: settings(); MusicChanged: music() (sound set or volume).
     enum class Action { None, Resume, Changed, MusicChanged, SaveGame, LoadGame, OriginalMenu, Quit };
     enum class Input { Up, Down, Left, Right, Accept, Back, PrevPage, NextPage };
-    enum class Kind { Command, Toggle, Choice, Slider, Info };
+    // Binding: a pad action of the Steuerung page; Accept waits for its new button.
+    enum class Kind { Command, Toggle, Choice, Slider, Info, Binding };
     // Settings the entries edit (Settings fields; Original = a switch of the OPTION window)
     // and the local music preferences (music.ini).
     enum class Field { None, Fullscreen, IntegerScale, Widescreen, TextSmoothing, Views, Animations, Colorcycle,
                        Wave, Midi, Voice, Subtitle, TimeOut, Pause, ShowIntro, ExtraCards, AnimationTempo, ComputerTempo,
-                       MusicPack, MasterVolume, MusicPlaying, MusicNote };
+                       MusicPack, MasterVolume, MusicPlaying, MusicNote, PadSticks, PadReset };
 
     // The installed Ogg sound sets (renderings of the original MIDI music or CD audio)
     // and what plays; the caller keeps it current while the menu is open.
@@ -41,7 +43,8 @@ public:
         std::vector<std::string> choices; // Kind::Choice (Toggle: Aus / An)
         bool original = false;            // a switch of the original OPTION window
         std::string value;                // Kind::Info: right column (a table page: the keyboard)
-        std::string pad;                  // a table page: the game controller column
+        std::string pad;                  // a table page: the game controller column (Info rows)
+        PadAction padAction = PadAction::kCount; // Kind::Binding
     };
     // A table page (Steuerung) shows its info rows compactly under the headings
     // `columns` (action, keyboard, pad) with `hint` in the footer, since no row takes
@@ -53,7 +56,8 @@ public:
         std::string hint{};
         bool table() const { return !columns.empty(); }
     };
-    static constexpr int kTableRows = 12; // rows a table page fits into the panel
+    static constexpr int kTableRows = 12; // rows a table page shows at once (it scrolls with the focus)
+    static constexpr std::uint32_t kCaptureMs = 8000; // waiting for a pad button ends by itself
 
     explicit RecompMenu(bool inGame = true);
     void open(const Settings& settings, bool inGame);
@@ -61,7 +65,7 @@ public:
     void openAt(const Settings& settings, bool inGame, const std::string& page);
     void setMusic(Music music); // rebuilds the Audio page when the sets change
     const Music& music() const { return music_; }
-    void close() { open_ = false; }
+    void close() { open_ = false; capture_ = PadAction::kCount; }
     bool isOpen() const { return open_; }
 
     Action input(Input in);
@@ -79,6 +83,23 @@ public:
     bool inItems() const { return inItems_; }
     // Value shown for an entry ("An", "Bildgröße", ...); empty for commands.
     std::string valueText(const Item& item) const;
+    // A table page's pad column: the bound button, the stick choice or the info text.
+    std::string padText(const Item& item) const;
+    // The footer's key line with the pad buttons in use.
+    std::string keyLine() const;
+
+    // Remapping (Steuerung page): Accept on a Binding row waits for a pad button.
+    bool capturing() const { return capture_ != PadAction::kCount; }
+    PadAction captureAction() const { return capture_; }
+    // The pressed physical button: bound to the waiting action (a taken button is
+    // swapped, padNote() says with which action). Changed when the map changed.
+    Action capture(int physical);
+    void cancelCapture(std::string note);
+    // Starts the wait's clock on the first call; ends the wait after kCaptureMs.
+    bool expireCapture(std::uint32_t nowMs);
+    int captureSecondsLeft(std::uint32_t nowMs) const;
+    // The result of the last remapping (shown in the footer of the Steuerung page).
+    const std::string& padNote() const { return padNote_; }
 
 private:
     int fieldValue(Field f) const;
@@ -88,20 +109,30 @@ private:
     static bool musicField(Field f) { return f == Field::MusicPack; }
     void build(bool inGame);
     void moveRow(int delta);
+    void refreshControls(); // the Steuerung page shows the current map
 
     std::vector<Page> pages_;
     Settings settings_;
     Music music_;
     int page_ = 0, row_ = 0;
     bool inItems_ = false, open_ = false, inGame_ = true;
+    PadAction capture_ = PadAction::kCount;
+    bool captureStamped_ = false;
+    std::uint32_t captureSince_ = 0;
+    std::string padNote_;
 };
 
-// The Steuerung page: keyboard and pad side by side (recomp texts, not in the language file).
-RecompMenu::Page controlsPage();
+// The Steuerung page: keyboard and pad side by side with the pad map's buttons
+// (recomp texts, not in the language file); its Binding rows remap the pad.
+RecompMenu::Page controlsPage(const PadMap& map = PadMap{});
+// Short German name of a pad action (remapping notes).
+const char* padActionLabel(PadAction a);
 
 // Recomp-only labels of the on-screen keyboard (src/osk_view.cpp) and its help line;
 // like the menu's texts they are not in the language file.
 struct KeyboardTexts { std::string shift, erase, space, cancel, done, help; };
 const KeyboardTexts& keyboardTexts();
+// The on-screen keyboard's help line with the pad buttons in use.
+std::string keyboardHelp(const PadMap& map);
 
 } // namespace dtvr

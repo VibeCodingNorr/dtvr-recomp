@@ -71,48 +71,66 @@ void ControllerInput::handleEvent(const SDL_Event& event) {
     }
 }
 
-PadState ControllerInput::state() const {
+PadRaw ControllerInput::raw() const {
     bool up = false, down = false, left = false, right = false;
     bool rUp = false, rDown = false, rLeft = false, rRight = false;
-    PadState s;
+    PadRaw r;
     for (SDL_GameController* pad : pads_) {
         const Sint16 x = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTX);
         const Sint16 y = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTY);
-        up |= held(pad, SDL_CONTROLLER_BUTTON_DPAD_UP) || y < -kStickThreshold;
-        down |= held(pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || y > kStickThreshold;
-        left |= held(pad, SDL_CONTROLLER_BUTTON_DPAD_LEFT) || x < -kStickThreshold;
-        right |= held(pad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) || x > kStickThreshold;
+        up |= y < -kStickThreshold;
+        down |= y > kStickThreshold;
+        left |= x < -kStickThreshold;
+        right |= x > kStickThreshold;
         const Sint16 rx = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTX);
         const Sint16 ry = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_RIGHTY);
         rUp |= ry < -kStickThreshold;
         rDown |= ry > kStickThreshold;
         rLeft |= rx < -kStickThreshold;
         rRight |= rx > kStickThreshold;
-        // Button 1 / 2 of the game port: A / B (south / east on other pads); the rest recomp.
-        static constexpr std::pair<SDL_GameControllerButton, unsigned> kButtons[] = {
-            {SDL_CONTROLLER_BUTTON_A, kPadA}, {SDL_CONTROLLER_BUTTON_B, kPadB},
-            {SDL_CONTROLLER_BUTTON_X, kPadX}, {SDL_CONTROLLER_BUTTON_Y, kPadY},
-            {SDL_CONTROLLER_BUTTON_BACK, kPadBack}, {SDL_CONTROLLER_BUTTON_START, kPadStart},
-            {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, kPadLB}, {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, kPadRB}};
-        for (const auto& [button, bit] : kButtons)
-            if (held(pad, button)) s.buttons |= bit;
+        // The physical buttons (pad_map.hpp); which action each triggers is the map's.
+        static constexpr std::pair<SDL_GameControllerButton, PadPhysical> kButtons[] = {
+            {SDL_CONTROLLER_BUTTON_A, PadPhysical::A}, {SDL_CONTROLLER_BUTTON_B, PadPhysical::B},
+            {SDL_CONTROLLER_BUTTON_X, PadPhysical::X}, {SDL_CONTROLLER_BUTTON_Y, PadPhysical::Y},
+            {SDL_CONTROLLER_BUTTON_BACK, PadPhysical::Back}, {SDL_CONTROLLER_BUTTON_START, PadPhysical::Start},
+            {SDL_CONTROLLER_BUTTON_LEFTSTICK, PadPhysical::LeftStick},
+            {SDL_CONTROLLER_BUTTON_RIGHTSTICK, PadPhysical::RightStick},
+            {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, PadPhysical::LB}, {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, PadPhysical::RB},
+            {SDL_CONTROLLER_BUTTON_DPAD_UP, PadPhysical::DPadUp}, {SDL_CONTROLLER_BUTTON_DPAD_DOWN, PadPhysical::DPadDown},
+            {SDL_CONTROLLER_BUTTON_DPAD_LEFT, PadPhysical::DPadLeft},
+            {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, PadPhysical::DPadRight}};
+        for (const auto& [button, physical] : kButtons)
+            if (held(pad, button)) r.buttons |= padBit(physical);
+        // The triggers count as buttons past half way (assumption, like the sticks).
+        if (SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > kStickThreshold)
+            r.buttons |= padBit(PadPhysical::LT);
+        if (SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > kStickThreshold)
+            r.buttons |= padBit(PadPhysical::RT);
     }
-    s.direction = direction(up, down, left, right);
-    s.rightStick = direction(rUp, rDown, rLeft, rRight);
-    return s;
+    r.leftStick = direction(up, down, left, right);
+    r.rightStick = direction(rUp, rDown, rLeft, rRight);
+    return r;
 }
 
-PadOutput ControllerInput::update(Uint32 now, bool enabled, bool focused, const PadContext& context) {
+PadOutput ControllerInput::update(Uint32 now, bool enabled, bool focused, const PadContext& context, bool capturing) {
     PadOutput out;
-    if (pads_.empty() || !enabled || !focused) {
+    if (pads_.empty() || !(enabled || capturing) || !focused) {
         out = input_.release(); // at once, not on the next timer tick
+        capture_.tick(PadRaw{}, false);
         nextTick_ = 0;
     } else {
         if (nextTick_ != 0 && !SDL_TICKS_PASSED(now, nextTick_)) return out;
         nextTick_ = now + kTickMs;
-        const PadState s = state();
-        if (devicesChanged_) input_.devicesChanged(s.buttons);
-        out = input_.tick(s, context);
+        const PadRaw r = raw();
+        const PadCapture::Result c = capture_.tick(r, capturing);
+        if (!c.translate) { // waiting for a button, or for everything released after it
+            out = input_.release();
+            out.captured = c.captured;
+        } else {
+            const PadState s = translate(map_, r);
+            if (devicesChanged_) input_.devicesChanged(s.buttons);
+            out = input_.tick(s, context);
+        }
     }
     devicesChanged_ = false;
     for (const PadKey& k : out.keys) push(k);
@@ -120,9 +138,16 @@ PadOutput ControllerInput::update(Uint32 now, bool enabled, bool focused, const 
     return out;
 }
 
-PadOutput ControllerInput::scripted(const PadState& state, const PadContext& context) {
+PadOutput ControllerInput::scripted(const PadRaw& raw, const PadContext& context, bool capturing) {
+    PadOutput out;
+    if (capturing) { // the lowest pressed button is the choice
+        for (int i = 0; i < kPadPhysicalCount; ++i)
+            if (raw.buttons & (1u << unsigned(i))) { out.captured = i; break; }
+        return out;
+    }
+    const PadState state = translate(map_, raw);
     if (!input_.active()) input_.tick(PadState{}, context); // the neutral start
-    PadOutput out = input_.tick(state, context);
+    out = input_.tick(state, context);
     for (const PadKey& k : input_.tick(PadState{}, context).keys) out.keys.push_back(k); // released
     for (const PadKey& k : out.keys) push(k);
     out.keys.clear();

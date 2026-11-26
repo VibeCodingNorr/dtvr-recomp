@@ -3429,6 +3429,39 @@ Round 3 "polish" (RECOMP ADDITIONS; no original behaviour changed):
 - **Steuerung page.** A table (Aktion / Tastatur / Gamepad) in the recomp menu,
   `controlsPage()` in src/recomp_menu.cpp (docs/pause-menu.md).
 
+Round 4 "remapping" (RECOMP ADDITION, user decision 2026-11-26; no original
+behaviour changed): which **physical** button triggers each pad action is a table,
+`PadMap` in src/pad_map.cpp (no SDL). The actions are the four directions, Confirm
+(button 1 → Return), Cancel (button 2 → Escape), Pause (Start), OriginalMenu
+(View/Back), Erase (X), Cards (Y), PrevPage / NextPage (LB / RB); the physical inputs
+are A, B, X, Y, View/Back, Start, both stick clicks, LB, RB, the four d-pad buttons
+and LT / RT (past half way, like the sticks' threshold — an assumption). The Guide
+button is left to the system. `ControllerInput` reads the merged physical state of
+all pads (`PadRaw`), `translate()` turns it into the action state `PadState` that
+`PadInput` has always taken, so the seg2:8A30 repetition, the edge rules and every
+context rule (aIsSpace, nameField, on-screen keyboard, turnMenu, townCards, the
+Umfeld scroll) apply per action, whichever button carries it. Directions: the bound
+direction buttons and the driving stick in the seg2:8C2B order over their union.
+The sticks are not buttons: one drives (default left), the other scrolls Umfeld;
+they can only swap roles as a pair (`Sticks=Swapped`). With the default map the
+action state equals the fixed assignment of rounds 1–3 for every button combination
+(`tests/controller_test.cpp` checks all 2^16 combinations and a key sequence).
+Lockout rules: every action has exactly one button and no button two actions; an
+assignment to a taken button swaps the two actions' buttons; there is no unbinding.
+So Start, confirm, back and the directions that open and walk the recomp menu always
+stay reachable, and keyboard and mouse always operate the page (Standard
+wiederherstellen). Remapping (`PadCapture`): while the page waits, the pad posts no
+keys (also with [Setup] Joystick off, so a dead pad can still be bound), buttons held
+when the wait starts are no choice, the first newly pressed button is taken, and the
+pad then stays silent until everything is released. The wait ends after 8 s, with
+Escape / Backspace or a click, or at once without a pad. Persistence: section
+`[Gamepad]` of the recomp's settings.ini (not rally.ini's [Setup]), one line per
+action (`Confirm=A`, ..., `NextPage=RB`) and `Sticks=Normal|Swapped`. On load,
+unknown keys or values are ignored, an action given twice keeps its default, and
+buttons then shared by two actions go back to their defaults until every action has
+its own (`tests/pad_map_test.cpp`). `--press Pad:<name>` presses a physical button
+(also `LT`, `RT`, `LeftStick`, `RightStick`; `Up` … are the d-pad) through the map.
+
 ### Start and Blue Byte logo
 
 - **Order in seg5:0000** (the start-up returning 1 on success): … seg5:1BBB creates

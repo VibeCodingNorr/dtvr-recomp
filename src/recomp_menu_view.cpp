@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -60,10 +61,16 @@ RecompMenuView::Geometry RecompMenuView::geometry() const {
     for (size_t i = 0; i < menu_.pages().size(); ++i)
         g.pages.push_back({g.sidebar.x + px(14), g.sidebar.y + px(18) + int(i) * px(52), g.sidebar.w - px(28), px(44)});
     const RecompMenu::Page& page = menu_.pages()[size_t(menu_.page())];
-    if (page.table()) { // compact rows under a heading row (RecompMenu::kTableRows fit)
+    if (page.table()) { // compact rows under a heading row; RecompMenu::kTableRows at once
         g.tableHead = {g.content.x, g.content.y + px(44), g.content.w, px(26)};
-        for (size_t i = 0; i < page.items.size(); ++i)
-            g.rows.push_back({g.content.x, g.content.y + px(76) + int(i) * px(31), g.content.w, px(29)});
+        const int n = int(page.items.size()), shown = RecompMenu::kTableRows;
+        if (menu_.inItems()) tableTop_ = std::clamp(tableTop_, menu_.row() - shown + 1, menu_.row());
+        tableTop_ = std::clamp(tableTop_, 0, std::max(0, n - shown));
+        for (int i = 0; i < n; ++i) {
+            const int k = i - tableTop_;
+            g.rows.push_back(k >= 0 && k < shown ? SDL_Rect{g.content.x, g.content.y + px(76) + k * px(31), g.content.w, px(29)}
+                                                 : SDL_Rect{0, 0, 0, 0});
+        }
         return g;
     }
     for (size_t i = 0; i < page.items.size(); ++i)
@@ -74,6 +81,18 @@ RecompMenuView::Geometry RecompMenuView::geometry() const {
 RecompMenu::Action RecompMenuView::handle(const SDL_Event& event) {
     using Input = RecompMenu::Input;
     if (!menu_.isOpen()) return RecompMenu::Action::None;
+    if (menu_.capturing()) { // waiting for a pad button: Escape / Backspace or a click cancel
+        if (event.type == SDL_KEYDOWN && !event.key.repeat
+            && (event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_BACKSPACE))
+            return menu_.input(Input::Back);
+        if (event.type == SDL_MOUSEBUTTONDOWN) menu_.cancelCapture("Abgebrochen, die Belegung bleibt.");
+        return RecompMenu::Action::None;
+    }
+    if (event.type == SDL_MOUSEWHEEL && menu_.pages()[size_t(menu_.page())].table() && menu_.inItems()) {
+        if (event.wheel.y > 0) return menu_.input(Input::Up); // the table scrolls with the focus
+        if (event.wheel.y < 0) return menu_.input(Input::Down);
+        return RecompMenu::Action::None;
+    }
     if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
         case SDLK_UP: case SDLK_KP_8: return menu_.input(Input::Up);
@@ -130,6 +149,7 @@ void RecompMenuView::drawToggle(const SDL_Rect& row, bool on, bool focused, doub
 // Columns: the action (38 %), the keyboard (34 %) and the pad (the rest), gold headings.
 // One font size for all cells: the largest down to two thirds at which every cell fits
 // its column (the canvas of 640 is narrower than the panel's 768-line proportions).
+// Binding rows, the stick choice and the reset take the focus like other entries.
 void RecompMenuView::drawTable(const Geometry& g, const RecompMenu::Page& page) {
     const SDL_Rect& head = g.tableHead;
     const int pad = px(14);
@@ -138,9 +158,9 @@ void RecompMenuView::drawTable(const Geometry& g, const RecompMenu::Page& page) 
     TextStyle style{px(17), true, false, false, false, 0, kText};
     const auto fits = [&] {
         for (const RecompMenu::Item& item : page.items) {
-            const std::string* cells[] = {&item.label, &item.value, &item.pad};
+            const std::string cells[] = {item.label, item.value, menu_.padText(item)};
             for (int c = 0; c < 3; ++c)
-                if (text_.measure(*cells[c], style).x > ws[c]) return false;
+                if (text_.measure(cells[c], style).x > ws[c]) return false;
         }
         return true;
     };
@@ -151,17 +171,37 @@ void RecompMenuView::drawTable(const Geometry& g, const RecompMenu::Page& page) 
     for (size_t c = 0; c < page.columns.size() && c < 3; ++c)
         text_.draw(renderer_, page.columns[c], ScreenRect{xs[c], head.y + (head.h - lineH) / 2, ws[c], lineH}, heading);
     fill(renderer_, SDL_Rect{head.x, head.y + head.h, head.w, std::max(1, px(2))}, kGold, 140);
+    int first = -1, last = -1;
     for (size_t i = 0; i < g.rows.size() && i < page.items.size(); ++i) {
         const SDL_Rect& row = g.rows[i];
-        if (i % 2 == 0) fill(renderer_, row, SDL_Color{0, 0, 0, 255}, 40);
+        if (row.w == 0) continue; // outside the table's window
+        if (first < 0) first = int(i);
+        last = int(i);
         const RecompMenu::Item& item = page.items[i];
-        const std::string* cells[] = {&item.label, &item.value, &item.pad};
+        const bool focused = menu_.inItems() && int(i) == menu_.row();
+        if (focused) {
+            fill(renderer_, row, SDL_Color{255, 236, 190, 255}, 34);
+            fill(renderer_, SDL_Rect{row.x, row.y, std::max(3, px(5)), row.h}, kGold, 255);
+        } else if (i % 2 == 0) {
+            fill(renderer_, row, SDL_Color{0, 0, 0, 255}, 40);
+        }
+        const bool waiting = item.kind == RecompMenu::Kind::Binding && menu_.captureAction() == item.padAction;
+        const std::string cells[] = {item.label, item.value, menu_.padText(item)}; // value: the keyboard
         for (int c = 0; c < 3; ++c) {
             TextStyle cell = style;
-            if (c == 0) cell.color = kMuted;
-            text_.draw(renderer_, *cells[c], ScreenRect{xs[c], row.y + (row.h - lineH) / 2, ws[c], lineH}, cell);
+            if (c == 0) cell.color = item.kind == RecompMenu::Kind::Info ? kMuted : kText;
+            if (c == 2 && (waiting || item.kind == RecompMenu::Kind::Choice)) cell.color = kGold;
+            text_.draw(renderer_, cells[c], ScreenRect{xs[c], row.y + (row.h - lineH) / 2, ws[c], lineH}, cell);
         }
+        if (item.kind == RecompMenu::Kind::Command)
+            text_.draw(renderer_, "›", ScreenRect{row.x, row.y + (row.h - lineH) / 2, row.w - pad, lineH},
+                       TextStyle{style.pixelHeight, true, false, false, true, 0, focused ? kGold : kMuted});
     }
+    // More rows above / below the window: marks at the right of the heading row.
+    const std::string more = std::string(first > 0 ? "▲" : "") + (last >= 0 && last + 1 < int(page.items.size()) ? "▼" : "");
+    if (!more.empty())
+        text_.draw(renderer_, more, ScreenRect{head.x, head.y + (head.h - lineH) / 2, head.w - px(4), lineH},
+                   TextStyle{style.pixelHeight, true, false, false, true, 0, kGold});
 }
 
 void RecompMenuView::draw() {
@@ -252,7 +292,7 @@ void RecompMenuView::draw() {
             tagRight = bar.x - px(12);
             break;
         }
-        case RecompMenu::Kind::Info:
+        case RecompMenu::Kind::Info: case RecompMenu::Kind::Binding:
             text_.draw(renderer_, value, ScreenRect{row.x, textY, row.w - px(14), px(22)},
                        TextStyle{px(18), true, false, false, true, 0, kText});
             break;
@@ -277,10 +317,15 @@ void RecompMenuView::draw() {
     }
     if (page.title == "Audio" && menu_.music().ids.empty() && !menu_.music().note.empty() && !menu_.inItems())
         hint = menu_.music().note;
+    if (page.table() && menu_.inItems() && !menu_.padNote().empty()) hint = menu_.padNote(); // the last remapping
+    if (menu_.capturing())
+        hint = std::string("Neue Taste am Gamepad f\u00fcr \u201e") + padActionLabel(menu_.captureAction())
+               + "\u201c dr\u00fccken \u2026 Esc oder Mausklick bricht ab ("
+               + std::to_string(menu_.captureSecondsLeft(SDL_GetTicks())) + " s).";
     text_.drawWrapped(renderer_, hint, ScreenRect{g.footer.x + px(28), g.footer.y + px(8), g.footer.w - px(56), px(40)},
                       TextStyle{px(16), true, false, false, false, 0, kText});
     // Keyboard first, the pad's button after the slash (the Steuerung page has the rest).
-    text_.draw(renderer_, "↑↓ Auswählen    ←→ Ändern    Tab/RB Seite    Enter/A Bestätigen    Esc/B Zurück",
+    text_.draw(renderer_, menu_.keyLine(),
                ScreenRect{g.footer.x + px(28), g.footer.y + px(52), g.footer.w - px(56), px(18)},
                TextStyle{px(14), true, false, false, false, 0, kMuted});
     SDL_SetRenderDrawBlendMode(renderer_, blend);
