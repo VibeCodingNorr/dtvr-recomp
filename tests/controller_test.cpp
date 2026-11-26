@@ -3,6 +3,7 @@
 #include "pad_input.hpp"
 
 #include <cstdio>
+#include <utility>
 
 using namespace dtvr;
 
@@ -236,6 +237,104 @@ void hazards() {
     }
 }
 
+// The fixed assignment of pad rounds 1-3 (ControllerInput::state before the remapping):
+// d-pad OR left stick per direction in seg2:8C2B order, the right stick alone, A..RB.
+PadState previousState(const PadRaw& raw) {
+    const auto has = [&](PadPhysical p) { return (raw.buttons & padBit(p)) != 0; };
+    PadState s;
+    const bool up = has(PadPhysical::DPadUp) || raw.leftStick == SDLK_UP;
+    const bool down = has(PadPhysical::DPadDown) || raw.leftStick == SDLK_DOWN;
+    const bool left = has(PadPhysical::DPadLeft) || raw.leftStick == SDLK_LEFT;
+    const bool right = has(PadPhysical::DPadRight) || raw.leftStick == SDLK_RIGHT;
+    s.direction = up ? SDLK_UP : down ? SDLK_DOWN : left ? SDLK_LEFT : right ? SDLK_RIGHT : SDLK_UNKNOWN;
+    s.rightStick = raw.rightStick;
+    const std::pair<PadPhysical, unsigned> bits[] = {
+        {PadPhysical::A, kPadA}, {PadPhysical::B, kPadB}, {PadPhysical::X, kPadX}, {PadPhysical::Y, kPadY},
+        {PadPhysical::Back, kPadBack}, {PadPhysical::Start, kPadStart}, {PadPhysical::LB, kPadLB},
+        {PadPhysical::RB, kPadRB}};
+    for (const auto& [p, bit] : bits)
+        if (has(p)) s.buttons |= bit;
+    return s;
+}
+
+bool same(const PadState& a, const PadState& b) {
+    return a.direction == b.direction && a.rightStick == b.rightStick && a.buttons == b.buttons;
+}
+
+void defaultMapIsPreviousBehaviour() {
+    const PadMap m;
+    const SDL_Keycode sticks[] = {SDLK_UNKNOWN, SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT};
+    bool all = true;
+    for (unsigned b = 0; b < (1u << kPadPhysicalCount); ++b)
+        for (SDL_Keycode l : sticks)
+            for (SDL_Keycode r : {SDLK_UNKNOWN, SDLK_LEFT}) {
+                const PadRaw raw{b, l, r};
+                all = all && same(translate(m, raw), previousState(raw));
+            }
+    CHECK(all); // every button combination and stick: the same pad state as before
+    // So the key stream of a whole sequence is identical too.
+    PadInput before, after;
+    PadContext c;
+    const PadRaw seq[] = {{}, {padBit(PadPhysical::DPadDown)}, {padBit(PadPhysical::DPadDown)},
+                          {padBit(PadPhysical::A)}, {padBit(PadPhysical::A) | padBit(PadPhysical::B)},
+                          {padBit(PadPhysical::LB)}, {0, SDLK_LEFT}, {padBit(PadPhysical::Start)}, {}};
+    for (const PadRaw& r : seq) {
+        const PadOutput x = before.tick(previousState(r), c), y = after.tick(translate(m, r), c);
+        CHECK(x.keys.size() == y.keys.size() && x.pauseMenu == y.pauseMenu);
+        for (size_t i = 0; i < x.keys.size() && i < y.keys.size(); ++i)
+            CHECK(x.keys[i].key == y.keys[i].key && x.keys[i].down == y.keys[i].down && x.keys[i].mod == y.keys[i].mod);
+    }
+    // The physical triggers and stick clicks do nothing by default.
+    CHECK(translate(m, {padBit(PadPhysical::LT) | padBit(PadPhysical::RightStick)}).buttons == 0);
+}
+
+void remappedTranslation() {
+    PadMap m;
+    CHECK(m.assign(PadAction::Confirm, PadPhysical::RT) == PadAction::kCount); // a free button
+    CHECK(translate(m, {padBit(PadPhysical::RT)}).buttons == kPadA);
+    CHECK(translate(m, {padBit(PadPhysical::A)}).buttons == 0);
+    // A taken button swaps: Cancel gets the d-pad's up, Up gets B.
+    CHECK(m.assign(PadAction::Cancel, PadPhysical::DPadUp) == PadAction::Up);
+    CHECK(translate(m, {padBit(PadPhysical::DPadUp)}).buttons == kPadB);
+    CHECK(translate(m, {padBit(PadPhysical::DPadUp)}).direction == SDLK_UNKNOWN);
+    CHECK(translate(m, {padBit(PadPhysical::B)}).direction == SDLK_UP);
+    // The action's rules follow the action: the remapped Confirm is Space in PLAYER.
+    PadInput p;
+    PadContext c;
+    c.aIsSpace = true;
+    p.tick({}, c);
+    auto o = p.tick(translate(m, {padBit(PadPhysical::RT)}), c);
+    CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_SPACE));
+    // Its direction keeps the 80 ms repetition (three ticks of waiting, then every tick).
+    o = p.tick(translate(m, {padBit(PadPhysical::B)}), c);
+    CHECK(o.keys.size() == 1 && o.keys[0].key == SDLK_UP && o.keys[0].down);
+    for (int i = 0; i < 3; ++i) CHECK(p.tick(translate(m, {padBit(PadPhysical::B)}), c).keys.empty());
+    CHECK(p.tick(translate(m, {padBit(PadPhysical::B)}), c).keys.size() == 1);
+    // Swapped sticks: the right one drives, the left one scrolls Umfeld.
+    m.swapSticks = true;
+    const PadState s = translate(m, {0, SDLK_LEFT, SDLK_DOWN});
+    CHECK(s.direction == SDLK_DOWN && s.rightStick == SDLK_LEFT);
+}
+
+void capture() {
+    PadCapture cap;
+    const PadRaw a{padBit(PadPhysical::A)}, x{padBit(PadPhysical::X)}, none{};
+    CHECK(cap.tick(none, false).translate);
+    // A held when the wait starts is no choice; X pressed meanwhile is.
+    auto r = cap.tick(a, true);
+    CHECK(!r.translate && r.captured < 0);
+    r = cap.tick({a.buttons | x.buttons}, true);
+    CHECK(!r.translate && r.captured == int(PadPhysical::X));
+    // After the wait the pad stays silent until everything is released.
+    CHECK(!cap.tick({a.buttons | x.buttons}, false).translate);
+    CHECK(!cap.tick({0, SDLK_UP}, false).translate); // a stick still pushed
+    CHECK(cap.tick(none, false).translate);
+    CHECK(cap.tick(a, false).translate);
+    // The triggers can be chosen.
+    cap.tick(none, true);
+    CHECK(cap.tick({padBit(PadPhysical::LT)}, true).captured == int(PadPhysical::LT));
+}
+
 } // namespace
 
 int main() {
@@ -246,6 +345,9 @@ int main() {
     dialogContexts();
     rightStick();
     hazards();
+    defaultMapIsPreviousBehaviour();
+    remappedTranslation();
+    capture();
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("controller_test: OK");
     return failures != 0;

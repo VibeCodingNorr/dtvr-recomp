@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <system_error>
+#include <utility>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -45,17 +47,22 @@ std::string Settings::encode() const {
     o << "ComputerExtraCards=" << int(computerExtraCards) << '\n';
     o << "AnimationTempo=" << animationTempo << '\n';
     o << "ComputerTempo=" << computerTempo << '\n';
+    o << "[Gamepad]\n" << pad.encode();
     return o.str();
 }
 
 Settings Settings::decode(const std::string& text) {
     Settings s;
     std::istringstream in(text);
-    std::string line;
+    std::string line, section;
+    std::vector<std::pair<std::string, std::string>> gamepad;
     while (std::getline(in, line)) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t')) line.pop_back();
+        if (!line.empty() && line.front() == '[') { section = line; continue; }
         const size_t eq = line.find('=');
         if (eq == std::string::npos) continue;
         const std::string name = line.substr(0, eq);
+        if (section == "[Gamepad]") { gamepad.emplace_back(name, line.substr(eq + 1)); continue; }
         int v = 0;
         try { v = std::stoi(line.substr(eq + 1)); } catch (const std::exception&) { continue; }
         if (name == "Subtitle") { s.subtitle = v != 0; continue; }
@@ -77,6 +84,7 @@ Settings Settings::decode(const std::string& text) {
         for (int i = 0; i < kCount; ++i)
             if (name == key(i) && v >= 0 && v < states(i)) s.value[size_t(i)] = v;
     }
+    s.pad = PadMap::decode(gamepad);
     return s;
 }
 

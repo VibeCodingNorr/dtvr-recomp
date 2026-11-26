@@ -32,7 +32,7 @@ private:
     struct Geometry {
         SDL_Rect panel, header, sidebar, content, footer;
         SDL_Rect tableHead{}; // a table page's column headings
-        std::vector<SDL_Rect> pages, rows;
+        std::vector<SDL_Rect> pages, rows; // a table page: rows outside its window are empty
         double scale = 1;
     };
     Geometry geometry() const;
@@ -49,6 +49,7 @@ private:
     RecompMenu menu_;
     Texture wood_{nullptr, SDL_DestroyTexture};
     bool woodTried_ = false;
+    mutable int tableTop_ = 0; // first shown row of a table page (follows the focus)
 };
 
 } // namespace dtvr

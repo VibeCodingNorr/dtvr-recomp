@@ -42,6 +42,7 @@ public:
     Result handle(const SDL_Event& event);
     Result accept();     // the pad's Start: done
     void toggleShift();  // the pad's Y
+    void setHelp(std::string help) { help_ = std::move(help); } // the help line (default: the default map's)
     int takeSound() { const int s = sound_; sound_ = -1; return s; } // channel 2, -1 none
     void draw();
 
@@ -68,6 +69,7 @@ private:
     bool open_ = false;
     int slot_ = -1;
     int sound_ = -1;
+    std::string help_; // empty: keyboardTexts().help
 };
 
 } // namespace dtvr

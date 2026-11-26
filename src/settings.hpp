@@ -5,6 +5,8 @@
 // No SDL.
 #pragma once
 
+#include "pad_map.hpp"
+
 #include <array>
 #include <filesystem>
 #include <string>
@@ -53,6 +55,9 @@ struct Settings {
     // Text smoothing (recomp only): 0 Original (no anti-aliasing, as GDI on 256 colours),
     // 1 smoothed at canvas size (scaled like the art), 2 smoothed at screen resolution.
     int textSmoothing = 1;
+    // [Gamepad] (recomp only): which pad button triggers which pad action, chosen on the
+    // recomp menu's Steuerung page (src/pad_map.hpp). Not in rally.exe's [Setup].
+    PadMap pad;
 
     static const char* key(int index);       // profile key ("Wave", "Midi", ...)
     static const char* switchName(int index); // picture name ("fx", "midi", ...)

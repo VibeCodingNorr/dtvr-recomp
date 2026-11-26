@@ -9,17 +9,17 @@ namespace dtvr {
 
 namespace {
 
-bool padState(const std::string& name, PadState& state) {
-    static const std::pair<const char*, unsigned> kButtons[] = {
-        {"A", kPadA}, {"B", kPadB}, {"X", kPadX}, {"Y", kPadY}, {"Back", kPadBack}, {"Start", kPadStart},
-        {"LB", kPadLB}, {"RB", kPadRB}};
-    for (const auto& [n, bit] : kButtons)
-        if (name == n) { state.buttons = bit; return true; }
-    static const std::pair<const char*, SDL_Keycode> kDirections[] = {
-        {"Up", SDLK_UP}, {"Down", SDLK_DOWN}, {"Left", SDLK_LEFT}, {"Right", SDLK_RIGHT}};
-    for (const auto& [n, key] : kDirections)
-        if (name == n) { state.direction = key; return true; }
-    return false;
+// A physical button (PadMap names); Up / Down / Left / Right are the d-pad.
+bool padState(const std::string& name, PadRaw& state) {
+    static const std::pair<const char*, PadPhysical> kDirections[] = {
+        {"Up", PadPhysical::DPadUp}, {"Down", PadPhysical::DPadDown},
+        {"Left", PadPhysical::DPadLeft}, {"Right", PadPhysical::DPadRight}};
+    for (const auto& [n, p] : kDirections)
+        if (name == n) { state.buttons = padBit(p); return true; }
+    PadPhysical p;
+    if (!padPhysicalFromName(name, p)) return false;
+    state.buttons = padBit(p);
+    return true;
 }
 
 } // namespace
@@ -50,7 +50,7 @@ ScriptedInput::ScriptedInput(const std::string& keys) {
     }
 }
 
-bool ScriptedInput::takePad(PadState& state) {
+bool ScriptedInput::takePad(PadRaw& state) {
     if (!padPending_) return false;
     padPending_ = false;
     state = pad_;

@@ -3,6 +3,7 @@
 #include "recomp_menu.hpp"
 
 #include <cstdio>
+#include <string>
 
 using namespace dtvr;
 using Action = RecompMenu::Action;
@@ -110,36 +111,104 @@ int main() {
     CHECK(m.step(-1) == Action::Changed && m.settings().pause == 3 && m.step(1) == Action::Changed && m.settings().pause == 0);
     CHECK(m.settings().computerTempo == 4 && m.settings().animationTempo == 1);
 
-    // The controls page has only info rows: no entry takes the focus.
+    // The controls page: a table (action, keyboard, pad) whose pad actions are Binding
+    // rows; it scrolls (more rows than RecompMenu::kTableRows).
     const int controls = pageIndex(m, "Steuerung");
     m.focusPage(controls);
-    m.focusItem(0);
-    CHECK(!m.inItems() && m.step(1) == Action::None && m.activate() == Action::None && !m.inItems());
-    // It is a table (action, keyboard, pad) that fits the panel; every row names both
-    // the keys and the pad, and the pad column covers every button of the pad layer.
+    CHECK(m.activate() == Action::None && m.inItems() && m.row() == 0);
     const RecompMenu::Page& table = m.pages()[size_t(controls)];
     CHECK(table.table() && table.columns.size() == 3 && !table.hint.empty());
-    CHECK(!table.items.empty() && int(table.items.size()) <= RecompMenu::kTableRows);
-    CHECK(m.valueText(table.items[0]) == "Pfeiltasten");
+    CHECK(m.valueText(table.items[0]) == "Pfeil hoch" && m.padText(table.items[0]) == "Kreuz hoch");
     const auto padRow = [&](const std::string& pad) {
         for (const RecompMenu::Item& i : table.items)
-            if (i.pad == pad) return &i;
+            if (m.padText(i) == pad) return &i;
         return static_cast<const RecompMenu::Item*>(nullptr);
     };
+    // Every pad action has exactly one Binding row, and every row names both columns.
+    int bindings = 0;
     bool complete = true;
-    for (const RecompMenu::Item& i : table.items)
-        complete = complete && i.kind == RecompMenu::Kind::Info && !i.label.empty() && !i.value.empty() && !i.pad.empty();
-    CHECK(complete);
-    for (const char* button : {"A", "B", "X", "Y", "Start", "Ansicht", "LB / RB", "Kreuz, rechter Stick"})
+    for (const RecompMenu::Item& i : table.items) {
+        bindings += i.kind == RecompMenu::Kind::Binding;
+        if (i.kind != RecompMenu::Kind::Command)
+            complete = complete && !i.label.empty() && !i.value.empty() && !m.padText(i).empty();
+    }
+    CHECK(complete && bindings == kPadActionCount);
+    for (const char* button : {"A", "B", "X", "Y", "Start", "Ansicht", "LB", "RB", "Links / rechts"})
         CHECK(padRow(button) != nullptr);
-    // Umfeld: the arrows and the main-row digits (seg6:1991); the d-pad posts arrows too.
-    CHECK(padRow("Kreuz, rechter Stick") && padRow("Kreuz, rechter Stick")->value == "Pfeiltasten, 2/4/6/8");
+    CHECK(padRow("Links / rechts") && padRow("Links / rechts")->value == "Pfeiltasten, 2/4/6/8");
     CHECK(padRow("B") && padRow("B")->value == "Esc");
     CHECK(padRow("X") && padRow("X")->value == "Rücktaste");
-    CHECK(padRow("LB / RB") && padRow("LB / RB")->value == "Umschalt+Tab / Tab");
+    CHECK(padRow("LB") && padRow("LB")->value == "Umschalt+Tab" && padRow("RB")->value == "Tab");
     CHECK(padRow("Ansicht") && padRow("Ansicht")->value.find("Rücktaste") == 0);
-    // The other pages are no tables.
-    CHECK(!m.pages()[0].table() && controlsPage().title == "Steuerung");
+    CHECK(padRow("A: Bildschirmtastatur") != nullptr);
+    const auto rowOf = [&](PadAction a) {
+        for (size_t i = 0; i < table.items.size(); ++i)
+            if (table.items[i].kind == RecompMenu::Kind::Binding && table.items[i].padAction == a) return int(i);
+        return -1;
+    };
+
+    // Remapping: Accept waits for a button; the pad's button is bound.
+    m.focusItem(rowOf(PadAction::Erase));
+    CHECK(m.activate() == Action::None && m.capturing() && m.captureAction() == PadAction::Erase);
+    CHECK(m.padText(table.items[size_t(rowOf(PadAction::Erase))]) == "Taste drücken …");
+    // Meanwhile the keys do nothing but Escape / Backspace (Back), which cancel.
+    CHECK(m.input(Input::Down) == Action::None && m.row() == rowOf(PadAction::Erase) && m.capturing());
+    CHECK(m.input(Input::Back) == Action::None && !m.capturing() && m.isOpen() && m.settings().pad.isDefault());
+    CHECK(!m.padNote().empty());
+    // A free button (LT): bound, Changed.
+    CHECK(m.activate() == Action::None && m.capture(int(PadPhysical::LT)) == Action::Changed && !m.capturing());
+    CHECK(m.settings().pad.of(PadAction::Erase) == PadPhysical::LT && m.padText(m.pages()[size_t(controls)].items[size_t(rowOf(PadAction::Erase))]) == "LT");
+    // A taken button: the two actions swap, and the note names the other one.
+    m.focusItem(rowOf(PadAction::Confirm));
+    m.activate();
+    CHECK(m.capture(int(PadPhysical::B)) == Action::Changed);
+    CHECK(m.settings().pad.of(PadAction::Confirm) == PadPhysical::B && m.settings().pad.of(PadAction::Cancel) == PadPhysical::A);
+    CHECK(m.padNote().find("Getauscht") != std::string::npos && m.padNote().find("Abbrechen") != std::string::npos);
+    CHECK(m.settings().pad.valid());
+    // The info rows and the key line follow the map.
+    CHECK(padRow("B: Bildschirmtastatur") != nullptr);
+    CHECK(m.keyLine().find("Enter/B") != std::string::npos && m.keyLine().find("Esc/A") != std::string::npos);
+    CHECK(keyboardHelp(m.settings().pad).find("B tippen") == 0);
+    // The same button again: unchanged.
+    m.activate();
+    CHECK(m.capture(int(PadPhysical::B)) == Action::None && m.settings().pad.of(PadAction::Confirm) == PadPhysical::B);
+    // Invalid physical: ignored, still waiting; capture without waiting does nothing.
+    m.activate();
+    CHECK(m.capture(99) == Action::None && m.capturing());
+    // Timeout: the clock starts on the first call.
+    CHECK(!m.expireCapture(1000) && m.captureSecondsLeft(1000) == 8);
+    CHECK(!m.expireCapture(1000 + RecompMenu::kCaptureMs - 1) && m.capturing());
+    CHECK(m.expireCapture(1000 + RecompMenu::kCaptureMs) && !m.capturing());
+    CHECK(m.capture(int(PadPhysical::X)) == Action::None);
+    // Closing ends a wait.
+    m.activate();
+    m.close();
+    CHECK(!m.capturing());
+    m.open(m.settings(), true);
+    m.focusPage(controls);
+    m.activate();
+    // The sticks choice and the reset.
+    const RecompMenu::Page& table2 = m.pages()[size_t(controls)];
+    int sticksRow = -1, resetRow = -1;
+    for (size_t i = 0; i < table2.items.size(); ++i) {
+        if (table2.items[i].field == RecompMenu::Field::PadSticks) sticksRow = int(i);
+        if (table2.items[i].field == RecompMenu::Field::PadReset) resetRow = int(i);
+    }
+    CHECK(sticksRow >= 0 && resetRow > sticksRow && resetRow == int(table2.items.size()) - 1);
+    CHECK(int(table2.items.size()) > RecompMenu::kTableRows); // the view scrolls
+    m.focusItem(sticksRow);
+    CHECK(m.step(1) == Action::Changed && m.settings().pad.swapSticks && m.padText(table2.items[size_t(sticksRow)]) == "Rechts / links");
+    m.focusItem(resetRow);
+    CHECK(m.activate() == Action::Changed && m.settings().pad.isDefault() && !m.padNote().empty());
+    CHECK(m.activate() == Action::None); // already the defaults
+    // Keyboard navigation reaches every selectable row (the reset too) and wraps.
+    m.focusItem(0);
+    int selectable = 0;
+    for (const RecompMenu::Item& i : table2.items) selectable += i.kind != RecompMenu::Kind::Info;
+    for (int i = 0; i + 1 < selectable; ++i) m.input(Input::Down);
+    CHECK(m.row() == resetRow);
+    CHECK(m.input(Input::Down) == Action::None && m.row() == 0);
+    CHECK(controlsPage().title == "Steuerung");
     // Page list wraps.
     m.focusPage(0);
     CHECK(m.input(Input::Up) == Action::None && m.page() == int(m.pages().size()) - 1);
@@ -152,7 +221,8 @@ int main() {
     CHECK(m.inItems() && m.page() == 0);
     CHECK(m.input(Input::NextPage) == Action::None && m.page() == pageIndex(m, "Grafik") && m.inItems() && m.row() == 0);
     CHECK(m.input(Input::PrevPage) == Action::None && m.page() == 0 && m.inItems());
-    CHECK(m.input(Input::PrevPage) == Action::None && m.page() == controls && !m.inItems()); // info rows only
+    CHECK(m.input(Input::PrevPage) == Action::None && m.page() == controls && m.inItems() && m.row() == 0);
+    m.input(Input::Back); // to the page list
     CHECK(m.input(Input::NextPage) == Action::None && m.page() == 0 && !m.inItems());       // from the list: list
     CHECK(m.input(Input::NextPage) == Action::None && m.page() == 1 && !m.inItems());
     CHECK(m.settings().fullscreen == base.fullscreen); // switching pages changes nothing

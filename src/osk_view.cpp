@@ -202,7 +202,7 @@ void ScreenKeyboardView::draw() {
         }
     }
     TextStyle help{std::max(11, kLabel[res] - 3), true, false, true, false, 0, kText};
-    text_.draw(renderer_, keyboardTexts().help, ScreenRect{g.help.x, g.help.y, g.help.w, g.help.h}, help);
+    text_.draw(renderer_, help_.empty() ? keyboardTexts().help : help_, ScreenRect{g.help.x, g.help.y, g.help.w, g.help.h}, help);
 }
 
 } // namespace dtvr

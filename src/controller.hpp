@@ -31,21 +31,26 @@ public:
     void handleEvent(const SDL_Event& event);
     // `enabled`: [Setup] Joystick != 0 (DS:A126 bit 0); `focused`: the window has the
     // input focus (seg2:8A35). Without either, or without a pad, a held direction is
-    // released at once and nothing else happens.
-    PadOutput update(Uint32 now, bool enabled, bool focused, const PadContext& context);
-    // Smoke tests (--press Pad:A ...): one press and release of `state` through the same
-    // layer, without a device.
-    PadOutput scripted(const PadState& state, const PadContext& context);
+    // released at once and nothing else happens. `capturing`: the Steuerung page waits
+    // for a button (also with the option off): no keys, PadOutput::captured instead.
+    PadOutput update(Uint32 now, bool enabled, bool focused, const PadContext& context, bool capturing = false);
+    // Smoke tests (--press Pad:A ...): one press and release of the physical `raw` through
+    // the same mapping and layer, without a device.
+    PadOutput scripted(const PadRaw& raw, const PadContext& context, bool capturing);
+    // The remapping of the Steuerung page; applies to every merged pad.
+    void setMap(const PadMap& map) { map_ = map; }
     bool connected() const { return !pads_.empty(); }
 
 private:
     void open(int deviceIndex);
-    PadState state() const;
+    PadRaw raw() const;
 
     bool initialized_ = false;
     std::vector<SDL_GameController*> pads_;
     bool devicesChanged_ = false;
     PadInput input_;
+    PadMap map_;
+    PadCapture capture_;
     Uint32 nextTick_ = 0;
 };
 

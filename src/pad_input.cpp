@@ -2,6 +2,7 @@
 #include "pad_input.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace dtvr {
 
@@ -91,6 +92,45 @@ PadOutput PadInput::tick(const PadState& state, const PadContext& context) {
     for (const PadKey& k : rightStick_.tick(scroll ? state.rightStick : SDLK_UNKNOWN, 0))
         if (k.down) out.scroll = k.key;
     return out;
+}
+
+PadState translate(const PadMap& map, const PadRaw& raw) {
+    const auto on = [&](PadAction a) { return (raw.buttons & padBit(map.of(a))) != 0; };
+    const SDL_Keycode stick = map.swapSticks ? raw.rightStick : raw.leftStick;
+    PadState s;
+    // seg2:8C2B checks up, down, left, right in this order; a diagonal is vertical.
+    if (on(PadAction::Up) || stick == SDLK_UP) s.direction = SDLK_UP;
+    else if (on(PadAction::Down) || stick == SDLK_DOWN) s.direction = SDLK_DOWN;
+    else if (on(PadAction::Left) || stick == SDLK_LEFT) s.direction = SDLK_LEFT;
+    else if (on(PadAction::Right) || stick == SDLK_RIGHT) s.direction = SDLK_RIGHT;
+    s.rightStick = map.swapSticks ? raw.leftStick : raw.rightStick;
+    static constexpr std::pair<PadAction, unsigned> kBits[] = {
+        {PadAction::Confirm, kPadA}, {PadAction::Cancel, kPadB}, {PadAction::Erase, kPadX},
+        {PadAction::Cards, kPadY}, {PadAction::OriginalMenu, kPadBack}, {PadAction::Pause, kPadStart},
+        {PadAction::PrevPage, kPadLB}, {PadAction::NextPage, kPadRB}};
+    for (const auto& [action, bit] : kBits)
+        if (on(action)) s.buttons |= bit;
+    return s;
+}
+
+PadCapture::Result PadCapture::tick(const PadRaw& raw, bool capturing) {
+    Result r;
+    const bool idle = raw.buttons == 0 && raw.leftStick == SDLK_UNKNOWN && raw.rightStick == SDLK_UNKNOWN;
+    if (capturing) {
+        if (!capturing_) previous_ = raw.buttons; // held at the start: no choice
+        capturing_ = true;
+        r.translate = false;
+        const unsigned fresh = raw.buttons & ~previous_;
+        previous_ = raw.buttons;
+        for (int i = 0; i < kPadPhysicalCount && fresh; ++i)
+            if (fresh & (1u << unsigned(i))) { r.captured = i; break; }
+        return r;
+    }
+    if (capturing_) { capturing_ = false; waitRelease_ = true; }
+    if (waitRelease_ && idle) waitRelease_ = false;
+    r.translate = !waitRelease_;
+    previous_ = raw.buttons;
+    return r;
 }
 
 PadOutput PadInput::release() {
