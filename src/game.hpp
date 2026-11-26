@@ -262,8 +262,10 @@ public:
     // requestDemoEnd (Escape / right click, seg1:0211 -> seg2:5CAD sets DS:16 = 1);
     // it ends at the next player change.
     bool humansLeft() const;
-    // Counts turn changes since construction or loading (not saved; for the window's
-    // autosave at each turn start, seg2:0837). resumeLoaded counts as one.
+    // Counts turn starts (seg2:0407) since construction or loading (not saved; for the
+    // window's autosave, seg2:0837, and its centring on the new player, seg2:3216). It
+    // changes when the new player is current, after STAT or BILANZ held the change;
+    // resumeLoaded counts as one.
     int turnSerial() const { return turnSerial_; }
     // What rally.exe does after it has read a saved game (game_load.cpp; user decision
     // 2026-11-25: loading behaves like the original loader instead of restoring every
@@ -333,6 +335,9 @@ public:
     // Counts seg2:9C97 placements (stage start, Konferenz): the map puts Dr. Drago's
     // own vehicle beside the holder anew (presentation only, not saved).
     int dragoPlacements() const { return dragoPlacements_; }
+    // Counts the season changes of the event trigger (seg8:1624 -> seg5:186A, not saved):
+    // the window runs the map wipe seg8:0E20 there (src/season_wipe.hpp).
+    int seasonChanges() const { return seasonChanges_; }
     // A form change (seg2:B3A4 -> 9804): its count and the start side random(3) that
     // seg2:454E draws for the search of the start field outside the view.
     int dragoFormChanges() const { return dragoFormChanges_; }
@@ -532,6 +537,7 @@ private:
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113
     int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)
+    int seasonChanges_ = 0;        // season reloads of the event trigger (not saved)
     Deck deck_;
     std::vector<Hand> hands_;
     Calendar calendar_;

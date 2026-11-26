@@ -317,6 +317,7 @@ bool GameWindow::gameWindowOpen() {
            || screen_.nails().isOpen() || screen_.invest().isOpen() || screen_.film().active()
            || screen_.sight().isOpen() || screen_.intro().active()
            || screen_.dragoTravelling() // seg2:B454 / B55E wait for Dr. Drago
+           || screen_.seasonWipeActive() // seg8:1682 / 169F inside the player change
            // the slot machine and event animations run synchronously in rally.exe
            || screen_.slotActive(screen_.presentationNow()) || screen_.eventSceneActive(screen_.sceneNow())
            || screen_.risiko().blinking(SDL_GetTicks());

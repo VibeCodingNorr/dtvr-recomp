@@ -876,14 +876,45 @@ window; *round 141* adds the form change's drive and Hau ab.
   current player to a town chosen by name, seg5:5D06) re-places him too; how that
   dialog is reached is not traced. Unread: the sprite list argument +0x18 (1, or 0 for the blimp).
 
+### Season change
+
+- **Trigger** seg8:1624: `seg5:186A(DS:A100, 0)` (seg8:1652–1658) returns non-zero
+  when it loaded a new tile directory, i.e. table[month % 12] differs from DS:2CA
+  (seg5:1956–1986). With [Setup] Colorcycle off (DS:B5DC = 0) the directory is fixed
+  to 1 and it returns 0 once DS:2CA = 1 (seg5:1929–194A): no wipe then (the
+  rebuild's event trigger still counts that change as a season change; known).
+- **Sequence** (seg8:1667–16AA): FillRect(DS:A7B2 = the map's WinG DC, DS:94DA,
+  GetStockObject(BLACK_BRUSH = 4)); seg8:0E20(DS:A6F0 = map window, mode 0) — the
+  old map is blacked out; seg2:05A8(0) redraws the map with the new tiles (no
+  UpdateWindow); seg5:3C79 sets the season palette when Colorcycle is on
+  (seg5:3CB6 with DS:A100 % 12); seg8:0E20(DS:A6F0, 0) again — the new map comes in;
+  return 1. The turn start seg2:0407 (centring on the new player) follows.
+- **Wipe mode 0** (seg8:0E61–0EF6): GetClientRect of the window (seg8:0E3C);
+  for pass i = 0..39 and blind j = 0..19 with 0 ≤ i − j ≤ 19 the rectangle
+  (0, (19j + i) · h / 400, width, that + 2) is invalidated (erase 0) and
+  UpdateWindow is called: 20 horizontal blinds of h / 20 rows, each filled top
+  to bottom in 20 lines of 2 pixels, blind j starting one pass after blind j − 1
+  (a venetian blind). The map's WM_PAINT (seg6:2543 → seg6:25BA) copies the WinG
+  bitmap, so each strip shows its new content. No delay and no sound in mode 0
+  (modes 1–5 wait seg6:0CDF(20) every 16 cells): its duration was the repaint
+  speed of the machine.
+- **Rebuilt** in `src/season_wipe.cpp` (SDL-free, tests/season_wipe_test.cpp) with
+  `Game::seasonChanges` (seg8:1624's reload) and `GameScreen::updateSeasonWipe`:
+  black strips over the map client, the old tiles kept until the first pass ends,
+  the turn centring and the game (computer turns, ONFIELD) held while it runs.
+  Recomp timing: 10 ms per pass, 0.4 s per wipe (unverified against the original).
+  Not modelled: the panel and portrait already show the new player during the
+  wipe; rally.exe calls seg2:2D8D / 3708 only in seg2:0407 after it (their exact
+  repaint not traced in this round).
+
 ### Events and Eastern Europe (round 11)
 
 - **Trigger** seg8:1624, called inside nextPlayer after the month bookkeeping
   and before the new player's flag checks (seg2:07EF/07FC): DS:A0FE + 1 (player
   changes), DS:A111 counts down; seg5:186A reloads the season's tiles and, if the
-  season changed, runs the screen wipe seg8:0E20 and **no event happens**
-  (the wipe draws `rand()` % 20 pairs until a free cell of a 20 × 20 grid is hit,
-  so its number of random calls is not fixed; not modelled). Otherwise DS:A108
+  season changed, runs the blind wipe of the map (see "Season change") and **no
+  event happens**. The wipe is mode 0 of seg8:0E20, which draws no random number
+  (modes 1 and 5 do; the default case seg8:15E3 picks rand() % 5). Otherwise DS:A108
   counts down; at 0 seg8:1B91 restarts it with `n · (10 − year / 32) + random(n)`
   (n = active players).
 - **Eastern Europe**: the 176 fields with flagset 0x4000 are Eastern Europe. A new
@@ -2274,6 +2305,17 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   a spin, Space, zoom and when a vehicle is placed without driving (Tschüss,
   Flugzeug); the edge check every movement tick of the current vehicle.
   The vehicle rectangle is taken as its 16 × 16 field cell.
+- **Turn start** (bug round, 2026-11-26): nextPlayer seg2:06FC runs the month
+  bookkeeping (STAT seg1:972F at seg2:07E1, BILANZ seg8:88C6 at 07C5), the event
+  trigger seg8:1624 and only then the turn start seg2:0407 (seg2:07F4 / 0801),
+  which centres on DS:94E2 for every player, human or computer (seg2:044E →
+  seg2:3216 → seg6:3064, redraw seg2:05A8(1) at 0497). ONFIELD follows for a human
+  (seg2:0864 → 068F → seg5:5214 with DS:1A1B "ONFIELD"), its focus on item 0
+  (SetProp FOCUS 0 on WM_CREATE, seg5:5715): Würfeln. The rebuild counted the turn
+  (`Game::turnSerial`, the window's centring trigger) before STAT / BILANZ held the
+  change, so after a month change it centred on the previous player and the new one
+  only at his spin (seg2:64E5). Fixed: the serial changes in `Game::completeTurn`
+  with the new current player (tests/statement_test.cpp).
 - **Event places** (round 68): every event handler saves DS:956A / 9568, raises
   the zoom with seg6:2E54(2) (remembering whether it changed), centres on the
   place with seg6:3064(x << 4, y << 4) and plays its animation on the map (e.g.
