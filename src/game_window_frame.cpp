@@ -53,8 +53,9 @@ void GameWindow::updateFrame(int frame) {
         screen_.risiko().blink(play_.game().risikoPressLight(), SDL_GetTicks());
         play_.holdRisiko(SDL_GetTicks() + RisikoView::kBlinkMs);
     }
+    // A notice that follows the finish or the stage announcement waits for it (stop_order.hpp).
     if (!screen_.title() && !moving_ && !screen_.risiko().blinking(SDL_GetTicks()))
-        for (Notice& n : play_.game().takeNotices()) {
+        for (Notice& n : play_.game().takeNoticesBefore(noticeLimit(stopSequences()))) {
             noticesTaken_ = std::max(noticesTaken_, n.seq + 1);
             if (const auto cue = musicForNotice(n.text); !cue.empty()) music_.interrupt(cue);
             if (noticeEndsEvent(n.text)) eventMusicNotice_ = n.seq; // its message ends with seg1:275E
@@ -143,21 +144,29 @@ void GameWindow::updateFrame(int frame) {
     if (!screen_.title() && !moving_ && play_.game().yellowCardPending() && !screen_.messages().open() && !cards_.isOpen()
         && !play_.game().isComputer(play_.game().currentPlayer()) && cards_.open(play_.game(), -1))
         cardWindowState_ = turnState();
-    // The town dialog belongs to a human player's stop in a town (seg2:141A -> seg1:4BDD).
+    // The town dialog belongs to a human player's stop in a town (seg2:1588 / 141A ->
+    // seg1:4BDD): once per stop, at a destination after the finish and the reward's message.
     EstatesView& estates = screen_.estates();
+    bool townDialogDue = false; // the stop's town dialog has not been opened yet
     {
         const Game& g = play_.game();
         const int p = g.currentPlayer();
         const int town = p >= 0 && g.phase() == Game::Phase::Arrived && !g.isComputer(p)
             ? g.townAt(g.playerField(p)) : -1;
+        const bool shown = estatesStopSerial_ == g.turnSerial() && estatesStopTown_ == town;
+        townDialogDue = town >= 0 && !shown && !estates.statistics() && options_.openEstates < 0;
         if (estates.statistics()) {
             // Statistik stays until it is closed.
         } else if (options_.openEstates >= 0) {
             if (!estates.isOpen()) estates.open(options_.openEstates);
         } else if (town < 0) estates.close();
-        else if (moving_) {} // the dialog opens when the car has arrived
-        else if (!estates.isOpen() || estates.town() != town)
-            estates.open(town, play_.game().handCount(play_.game().currentPlayer()) == 0);
+        else if (estates.isOpen() && estates.town() == town) {}
+        else if (estates.isOpen() || townDialogMayOpen(shown, stopSequences(), modalState())) {
+            estates.open(town, g.handCount(p) == 0);
+            estatesStopSerial_ = g.turnSerial();
+            estatesStopTown_ = town;
+            townDialogDue = false;
+        }
     }
     SaveView& saveDialog = screen_.saveDialog();
     if (screen_.title()) { // nothing of the game runs behind the title
@@ -194,7 +203,7 @@ void GameWindow::updateFrame(int frame) {
     }
     // seg1:4E39: the forced sale of a human whose cash is negative after the stop.
     if (play_.game().forcedSale() && !estates.isOpen() && !moving_ && !screen_.messages().open()
-        && !play_.game().isComputer(play_.game().currentPlayer()))
+        && stopSequencesDone(stopSequences()) && !play_.game().isComputer(play_.game().currentPlayer()))
         estates.openForcedSale(play_.game().currentPlayer());
     // The card shop of a human player's stop on a card field (seg2:15AE -> seg3:4437).
     {
@@ -215,13 +224,16 @@ void GameWindow::updateFrame(int frame) {
     screen_.balance().update(SDL_GetTicks());
     // The next destination (seg2:1486 / 1453 -> seg7:372F(1 / 3)) after the finish.
     screen_.announcement().update(SDL_GetTicks());
-    if (!screen_.title() && play_.game().announceSerial() != announceSeen_ && !moving_
-        && !screen_.messages().open() && !screen_.finish().active()) {
+    if (announceHeld_ && !screen_.announcement().active()) announceHeld_ = false;
+    if (!screen_.title()
+        && announcementMayStart(play_.game().announceSerial() != announceSeen_, stopSequences(), modalState(),
+                                estates.isOpen(), play_.game().hasNoticesBefore(play_.game().announceNotice()))) {
         announceSeen_ = play_.game().announceSerial();
+        announceHeld_ = true;
         screen_.startAnnouncement(play_.game().announceMode(), play_.game().announceVariant(), SDL_GetTicks());
     }
     if (!screen_.title() && play_.game().balanceSerial() != balanceSeen_ && !moving_ && !screen_.messages().open()
-        && !screen_.finish().active()) {
+        && stopSequencesDone(stopSequences())) {
         balanceSeen_ = play_.game().balanceSerial();
         BalanceView::Commands commands; // the show's draws go through the game (round 144)
         commands.announce = [this](size_t i) {
@@ -256,19 +268,24 @@ void GameWindow::updateFrame(int frame) {
     }
     // After the Master-Rallye: the victory (seg7:71C4), then the title (WM_COMMAND 0x424).
     screen_.victory().update(SDL_GetTicks());
-    if (!screen_.title() && play_.game().phase() == Game::Phase::GameOver && !screen_.finish().active()
+    if (!screen_.title() && play_.game().phase() == Game::Phase::GameOver && stopSequencesDone(stopSequences())
         && !screen_.messages().open()) {
         if (!victoryShown_) { music_.interrupt("s"); victoryShown_ = screen_.startVictory(SDL_GetTicks()) || true; }
         else if (!screen_.victory().active()) { victoryShown_ = false; openTitle(); }
     }
-    if (!screen_.title() && play_.game().finishSerial() != finishSeen_ && !moving_) {
+    if (!screen_.title()
+        && finishMayStart(play_.game().finishSerial() != finishSeen_, modalState(),
+                          play_.game().hasNoticesBefore(play_.game().finishNotice()))) {
         finishSeen_ = play_.game().finishSerial();
         music_.interrupt(play_.game().finishMusic());
         screen_.startFinish(play_.game().finishField(), play_.game().finishPlayer(), SDL_GetTicks());
     }
     updateStatement(); // STAT (seg2:07E1 / 12A3): game_window_statement.cpp
     updateInvest();    // the investment offer (seg8:6FBF): game_window_dialogs.cpp
-    modal_ = recompMenu_.isOpen() || menu_.isOpen() || screen_.title() || gameWindowOpen();
+    // A finish or stage announcement still to be shown holds the game too (rally.exe runs
+    // them inside the field action, seg2:11A6 ff.): no computer turn runs ahead of them.
+    modal_ = recompMenu_.isOpen() || menu_.isOpen() || screen_.title() || gameWindowOpen()
+             || !stopSequencesDone(stopSequences());
     if (!modal_ && !moving_ && play_.update(SDL_GetTicks(), true)) report();
     // seg2:1618: after the field action (its message, town dialog, card dialog or card
     // shop run modally) the original checks the forced sale (seg1:4E39) and calls
@@ -276,9 +293,11 @@ void GameWindow::updateFrame(int frame) {
     {
         Game& g = play_.game();
         const int p = g.currentPlayer();
+        // A follow-up of the stop (Game::endTurn false) runs first: its message, the
+        // announcement and Dr. Drago's placement are shown before the next call.
         if (!modal_ && !moving_ && !screen_.title() && p >= 0 && !g.isComputer(p) && g.phase() == Game::Phase::Arrived
-            && !estates.isOpen() && !g.yellowCardPending() && options_.openEstates < 0 && !options_.cardShop
-            && g.endTurn())
+            && !estates.isOpen() && !townDialogDue && !g.hasNotices() && stopSequencesDone(stopSequences())
+            && !g.yellowCardPending() && options_.openEstates < 0 && !options_.cardShop && g.endTurn())
             report();
     }
     // [Setup] TimeOut: the 1000 ms timer of seg2:3ABD runs while the window is active.
@@ -305,6 +324,25 @@ void GameWindow::updateFrame(int frame) {
     // seg2:8A30 every 80 ms while [Setup] Joystick is on: keys for the focused window.
     updatePad(); // without a device in smoke tests: only scripted pad presses (--press Pad:…)
     scripted_.pump(frame);
+}
+
+StopSequences GameWindow::stopSequences() {
+    const Game& g = play_.game();
+    StopSequences s;
+    s.finishDue = g.finishSerial() != finishSeen_ || screen_.finish().active();
+    s.announcementDue = g.announceSerial() != announceSeen_ || (announceHeld_ && screen_.announcement().active());
+    s.finishNotice = g.finishNotice();
+    s.announceNotice = g.announceNotice();
+    return s;
+}
+
+ModalState GameWindow::modalState() {
+    ModalState m;
+    m.moving = moving_;
+    m.messageOpen = screen_.messages().open();
+    m.noticesQueued = play_.game().hasNotices();
+    m.filmDue = !pendingFilms_.empty() || screen_.film().active();
+    return m;
 }
 
 // The windows of rally.exe other than its menus that keep the game waiting (modal_).

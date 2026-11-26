@@ -411,16 +411,17 @@ void Game::arrive() {
         giveYellowCard();
         break;
     }
-    case 5: // seg2:15AE -> seg3:4437: card shop until the turn ends
+    case 5: // seg2:15AE -> seg3:4437: card shop until the turn ends, then seg2:15B8 Dr. Drago
         messages_.push_back(who + ": Kartenfeld - Karten kaufen (Wert) oder verkaufen (halber Wert)");
-        dragoAct(current_);
+        followUp_ = FollowUp::Drago;
         break;
     case 4:
     case 6:
         if (field == destination_) {
             const auto r = reachDestination(remaining_, calendar_.inflation);
             finishMusic_ = r.gameOver || rng_.random(1) == 0 ? "z1" : "z2"; // seg2:11C5/12D8
-            ++finishSerial_;
+            ++finishSerial_; // seg2:131D / 11DF: the finish seg7:2628 runs before the reward
+            finishNotice_ = nextNotice_;
             finishField_ = field;
             finishPlayer_ = current_;
             economy_.addMoney(current_, r.reward);
@@ -439,39 +440,69 @@ void Game::arrive() {
                 openStatement(current_, true); // seg2:12A3: STAT before the victory (seg7:71C4)
                 return;
             }
-            remaining_ = r.remaining;
-            // seg2:1486: the stage announcement seg7:372F(1) draws rand() % 5 (seg7:3B4E);
-            // before the last stage seg7:372F(3) draws nothing.
-            // seg7:372F first chooses the final destination with the old stage start DS:A10B
-            // and the reached field DS:A10D (seg7:3755 -> seg5:1E2C; DS:A10B becomes the
-            // field only afterwards, seg2:148E), then in mode 1 (not before the last stage)
-            // draws rand() % 5 (seg7:3B4E). The light's jumps during the voices draw further
-            // destinations whose number depends on the playback time; not modelled.
-            const int reached = destination_; // DS:A10D until seg7:372F stores the next one
-            const int next = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
-            announceMode_ = remaining_ != 0 ? 1 : 3;
-            announceVariant_ = remaining_ != 0 ? rng_.rand() % 5 : 3; // seg7:3B4E / 3B5F
-            ++announceSerial_;
-            if (remaining_ != 0) {
-                origin_ = field;                                   // seg2:1492
-                destination_ = next;                               // seg7:3D7D / 3F46 / 45E7
-            } else {
-                // Mode 3 keeps its draw in [bp-0x38] only; DS:A10D becomes Brussels
-                // (seg7:47AB / 4B89), then DS:A10B = the field (seg2:145F).
-                destination_ = lastStageDestination(board_, towns_, destination_);
-                origin_ = field;
-            }
-            messages_.push_back(std::string(r.lastStageNext ? "Letzte Etappe" : "Neue Etappe")
-                                + ", Ziel " + townName(destination_));
-            if (remaining_ != 0) placeDragoForStage(reached); // seg2:1495-1535, DS:22 not yet rebuilt
-            else startMasterRallye();                  // seg2:1462 / 1467 / 146D
-        } else {
+            // seg2:141A: the town dialog seg1:4BDD of the reached town runs (modally) before
+            // A104 is decremented (seg2:1438) and the next stage is announced: its buys, the
+            // computer's plan (seg5:71B3) and played cards see the old stage.
+            stageReached_ = field;
+            followUp_ = FollowUp::StageAnnounce;
+        } else { // seg2:1588 -> seg1:4BDD, then seg2:15A6 Dr. Drago
             messages_.push_back(who + " in " + townName(field) + ": Grundstuecke kaufen moeglich");
-            dragoAct(current_);
+            followUp_ = FollowUp::Drago;
         }
         break;
     default: break;
     }
+}
+
+void Game::announceNextStage() {
+    remaining_ -= 1; // seg2:1438
+    const bool last = remaining_ == 0;
+    // seg2:1486: the stage announcement seg7:372F(1) draws rand() % 5 (seg7:3B4E);
+    // before the last stage seg7:372F(3) draws nothing.
+    // seg7:372F first chooses the final destination with the old stage start DS:A10B
+    // and the reached field DS:A10D (seg7:3755 -> seg5:1E2C; DS:A10B becomes the
+    // field only afterwards, seg2:148E), then in mode 1 (not before the last stage)
+    // draws rand() % 5 (seg7:3B4E). The light's jumps during the voices draw further
+    // destinations whose number depends on the playback time; not modelled.
+    const int next = chooseDestination(board_, players_, origin_, destination_, routeMask(), rng_);
+    announceMode_ = last ? 3 : 1;
+    announceVariant_ = last ? 3 : rng_.rand() % 5; // seg7:3B4E / 3B5F
+    ++announceSerial_;
+    announceNotice_ = nextNotice_;
+    origin_ = stageReached_; // seg2:1492 / 145F
+    if (!last) destination_ = next; // seg7:3D7D / 3F46 / 45E7
+    // Mode 3 keeps its draw in [bp-0x38] only; DS:A10D becomes Brussels (seg7:47AB / 4B89).
+    else destination_ = lastStageDestination(board_, towns_, destination_);
+    messages_.push_back(std::string(last ? "Letzte Etappe" : "Neue Etappe") + ", Ziel " + townName(destination_));
+}
+
+bool Game::followUpStep() {
+    switch (followUp_) {
+    case FollowUp::None: return false;
+    case FollowUp::Drago: {
+        followUp_ = FollowUp::None;
+        const int before = nextNotice_;
+        dragoAct(current_); // seg2:B58C: its message is modal (seg6:51EA)
+        return nextNotice_ != before;
+    }
+    case FollowUp::StageAnnounce:
+        followUp_ = FollowUp::StagePlace;
+        announceNextStage();
+        return true; // the announcement window runs before Dr. Drago is placed
+    case FollowUp::StagePlace:
+        followUp_ = FollowUp::None;
+        if (remaining_ != 0) placeDragoForStage(stageReached_); // seg2:1495-1535, DS:22 not yet rebuilt
+        else startMasterRallye();                               // seg2:1462 / 1467 / 146D
+        return true; // seg2:9C97 waits for Dr. Drago's vehicle (seg2:B454 / B55E)
+    }
+    return false;
+}
+
+std::vector<Notice> Game::takeNoticesBefore(int seq) {
+    std::vector<Notice> taken, kept;
+    for (Notice& n : notices_) (n.seq < seq ? taken : kept).push_back(std::move(n));
+    notices_.swap(kept);
+    return taken;
 }
 
 NoticeArg Game::townArg(int town) const {
@@ -517,6 +548,8 @@ bool Game::discardForCard(int handSlot) {
 bool Game::endTurn() {
     messages_.clear();
     if (phase_ != Phase::Arrived || yellowPending_) return false;
+    while (followUp_ != FollowUp::None)
+        if (followUpStep()) return false;
     if (!forcedSale_ && cash(current_) < 0 && sellableValue(current_) > 0) { // seg1:4E39
         forcedSale_ = true;
         messages_.push_back(playerName(current_) + " muss Besitz verkaufen");
@@ -556,6 +589,9 @@ bool Game::forcedSell(int town, int entry) {
 }
 
 void Game::advanceTurn() {
+    // Guard: only endTurn ends a stop with a follow-up (the town dialog's cards do not end
+    // the turn); should another path get here, the stop's rest still runs first.
+    settleFieldFollowUp();
     // DS:2EB0 (Verdoppeln) is not cleared at the player change: only Return (seg2:0CE8)
     // and the card handler (seg3:0E9F) write it.
     propertyMode_ = 0xFF; // the town dialog closes (seg1:5399 / 5508 / 5767)

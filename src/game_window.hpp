@@ -18,6 +18,7 @@
 #include "recomp_menu_view.hpp"
 #include "scripted_input.hpp"
 #include "settings.hpp"
+#include "stop_order.hpp"
 
 #include <array>
 #include <filesystem>
@@ -153,6 +154,11 @@ private:
     bool statementShown_ = false; // STAT was opened for Game::Phase::Statement
     Uint32 forcedCloseAt_ = 0;  // seg1:589C: when the settled forced sale posts its two VK_BACK
     int shopSerial_ = -1;
+    // The town dialog of a stop opens once (turn serial and town; stop_order.hpp).
+    int estatesStopSerial_ = -1, estatesStopTown_ = -1;
+    bool announceHeld_ = false; // a stage announcement runs: later notices wait for it
+    StopSequences stopSequences(); // game_window_frame.cpp
+    ModalState modalState();
     int targetCardSlot_ = -1; // hand slot waiting for the target choice (-2: Mitspieler)
     int flightCardSlot_ = -1; // hand slot of the Flugzeug card being booked
     int nailsCardSlot_ = -1;  // hand slot of the Nägel card waiting for a direction

@@ -1041,8 +1041,11 @@ the types 0x400/0x800 follow in round 13).
   follows, only the draw (round 147; the rebuild showed the text without a town).
 - **Nägel** (card 18, seg3:1C96 / 2096): the player chooses a direction with a
   road; the obstacle (type 0x900, duration 4n) lies two cells away. No nextPlayer;
-  every path (the splash seg3:1CD8 → 1D13, the film seg3:1DFF, no direction
-  seg3:1E02) joins at seg3:1E3D and posts WM_COMMAND 0x2710 (seg3:1E42–1E50): the
+  every path (the splash seg3:1CD8 → 1D13, the film seg3:1DFF, and the failed
+  CreateWindow of the direction window, seg3:1D40 / 1D48 with DS:A784 = 0 → seg3:1E02:
+  sound 0x12 on channel 5 and text 5500 = 0x157C, LoadString with a 0x8C-byte buffer,
+  as a message; the window fails when no direction is available, seg3:241C) joins at
+  seg3:1E3D and posts WM_COMMAND 0x2710 (seg3:1E42–1E50): the
   player spins one reel like after a status card. Only a failed RegisterClass
   (seg6:1484 = 0, seg3:1CBF) skips it. *Corrects* the earlier "the turn continues"
   rebuild, which returned to the turn menu (round "sleep reels").
@@ -2517,6 +2520,61 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Pictures:** butt/ziel.bmp, zielausl.bmp, zielclub.bmp, sieg.bmp, bilanz.bmp
   (480 × 360), butt/<lang>/banner.bmp, the town photos butt/<lang>/ziel/<town>.bmp
   (480 × 240) and the animations in butt/sbs/ziel and butt/sbs/sieg.
+
+### Order of the windows at a stop (round "stage win order")
+
+- **Every window of a field action is modal** and runs inside the field handler of
+  seg2:11A6 ff.: the finish ZIEL has its own loop (seg7:3536..3677) and is destroyed
+  before seg7:2628 returns; the message window seg6:51EA runs seg6:0FB4; the town dialog
+  seg1:4BDD creates ESTATES, shows it (seg1:4D58) and loops in seg6:0FB4 (seg1:4DBC) for
+  a human or in seg5:71B3 plus the pump until seg2:1C37 (seg1:4D93..4DB5) for a
+  computer, so it returns only when the dialog is gone; the card shop seg3:4437 does the
+  same (seg3:45D3 / 460D); the announcement seg7:372F has its own loop.
+- **Destination, stages left** (DS:A104 ≠ 0): seg2:12D8 music → seg2:131D finish →
+  seg2:133D reward (seg2:59E6) → seg2:13D0 text 350 + random(2) (modal) → seg2:13DA
+  seg5:607B(1) → seg2:13E2 seg1:275E → seg2:141A **town dialog** of the reached town
+  (seg2:4C7D on the player's cell) → seg5:607B(−1) and the pump → seg2:1438 A104 − 1 →
+  seg2:1453 / 1486 **announcement** seg7:372F(3 / 1) → DS:A10B = the reached field →
+  seg2:1462..146D (Master-Rallye start) or seg2:14B1..1535 Dr. Drago to the farthest
+  player (seg2:9C97) → seg2:153D seg1:275E → seg2:154A seg2:43A8 → seg2:1618 forced
+  sale seg1:4E39 → seg2:161D nextPlayer seg2:06FC (where the year balance seg8:88C6 and
+  STAT seg1:972F run). So the town dialog does open after reaching a destination, but
+  only after the finish and the reward's message, and the announcement only after the
+  town dialog has been closed.
+- **Master-Rallye won** (A104 = 0): finish, reward, text 354 + random(2) (seg2:1285),
+  seg5:607B(1), the pump (seg2:1297), STAT seg1:972F (seg2:12A3), the pump, the victory
+  seg7:71C4 (seg2:12B4), WM_COMMAND 0x424; no town dialog.
+- **Other towns** (seg2:1555..15A6): town dialog seg1:4BDD (seg2:1588), then Dr. Drago's
+  action seg2:B58C (seg2:15A6); **card field** (seg2:15AE..15B8): card shop seg3:4437,
+  then seg2:B58C. Both before seg2:1618.
+- **Deviations of the rebuild before this round:** the town dialog opened as soon as the
+  car stood on the destination, so it waited behind the finish, the reward's message
+  and the announcement; the next destination, the announcement's rand() % 5, A104 − 1
+  and Dr. Drago's placement were drawn at the arrival, before the town dialog's buys and
+  the computer's town plan (its `AiState` reads the stages left and the destination;
+  which of them seg5:71B3 reads is not traced); Dr. Drago acted at
+  the arrival in towns and on card fields, before the dialog. The year balance, STAT and
+  the forced sale waited only for the finish, not for the announcement.
+- **Rebuilt** (rules revision 54): `Game::arrive` keeps the finish, the reward and its
+  text and leaves a follow-up (`Game::fieldFollowUpPending`) that `Game::endTurn` runs
+  before the forced sale check: Dr. Drago's action, or the stage change
+  (`announceNextStage`: A104 − 1, next destination, the variant draw) and then Dr.
+  Drago's placement; each step that produces something to show returns false, and the
+  window calls endTurn again once it has gone. The computer runs all steps after its
+  town plan or card shop plan (`settleFieldFollowUp`, before its forced sale). The game
+  window (src/stop_order.{hpp,cpp}, no SDL) holds notices numbered from
+  `Game::finishNotice` / `announceNotice` until the finish / the stage announcement has
+  run, starts the finish only after the earlier messages, opens the town dialog once per
+  stop and only after the finish and the messages, starts the announcement only after
+  the town dialog, and lets the year balance, STAT, the forced sale and the victory wait
+  for both sequences; while one is due no computer turn runs. No save is written while a
+  follow-up is due. Tests: `tests/stop_order_test.cpp`, `tests/stage_drago_test.cpp`,
+  `tests/master_rallye_test.cpp`.
+- **Not rebuilt / open:** seg5:607B(1) after the reward's message; for a computer the
+  steps run at once, so Dr. Drago's vehicle may start its hand-over while the
+  announcement is shown (rally.exe: after it). The start announcement seg7:372F(2)
+  (seg4:0E94) follows the first turn start seg2:0407 (seg4:0E76); its notices are not
+  held back (unchanged).
 
 ### Finish sequence (round 45)
 

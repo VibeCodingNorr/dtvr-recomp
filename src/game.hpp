@@ -136,7 +136,19 @@ public:
     bool spinPending() const { return pendingAllowance_ >= 0; }
     bool finishSpin();
     bool step(Direction d);      // one field; reversing undoes the last step
-    bool endTurn();              // after arrival: next player, month bookkeeping
+    // After the arrival: the field's follow-up (below), the forced sale check seg1:4E39 and
+    // nextPlayer seg2:06FC (seg2:1618). False while a follow-up step has just produced
+    // something the window shows first (a message, the announcement, Dr. Drago's hand-over):
+    // the window calls it again once that has gone.
+    bool endTurn();
+    // The part of a field action that rally.exe runs only after the field's modal dialog
+    // (town dialog seg1:4BDD, card shop seg3:4437) has been closed: Dr. Drago's action
+    // seg2:B58C (seg2:15A6 / 15B8), and at a reached destination the announcement
+    // seg7:372F with the next destination (seg2:1451 / 1484) and Dr. Drago's placement
+    // seg2:9C97 (seg2:1535 / 146D). Not saved: SaveSlots refuses to save while one is due.
+    bool fieldFollowUpPending() const { return followUp_ != FollowUp::None; }
+    // Runs every pending follow-up step at once (the computer: seg5:71B3 inside seg1:4BDD).
+    void settleFieldFollowUp() { while (followUp_ != FollowUp::None) followUpStep(); }
     // Yellow field with a full hand (seg3:1057): discard a card, then the card follows.
     bool yellowCardPending() const { return yellowPending_; }
     // Obstacle with a clearing card in a human hand (seg2:2404): the message window
@@ -216,6 +228,12 @@ public:
     std::vector<FilmCue> takeFilms() { std::vector<FilmCue> f; f.swap(films_); return f; }
     std::vector<std::string> takeMusic() { std::vector<std::string> cues; cues.swap(music_); return cues; }
     std::vector<Notice> takeNotices() { std::vector<Notice> n; n.swap(notices_); return n; }
+    // The notices numbered below `seq`; later ones stay queued (they follow a sequence window).
+    std::vector<Notice> takeNoticesBefore(int seq);
+    bool hasNoticesBefore(int seq) const {
+        for (const Notice& n : notices_) if (n.seq < seq) return true;
+        return false;
+    }
     bool hasNotices() const { return !notices_.empty() || !films_.empty(); }
     // Vehicle facing of a slot (1 up, 2 right, 3 down, 4 left; frame byte +2).
     int facing(int player) const { return lastDirection_[size_t(player & 7)]; }
@@ -424,6 +442,10 @@ public:
     int announceSerial() const { return announceSerial_; }
     int announceMode() const { return announceMode_; }
     int announceVariant() const { return announceVariant_; }
+    // The number the next notice had when the finish (seg7:2628) / the stage announcement
+    // (seg7:372F) was due: notices from that number on follow the sequence window.
+    int finishNotice() const { return finishNotice_; }
+    int announceNotice() const { return announceNotice_; }
     const std::vector<BalanceEntry>& balanceEntries() const { return balance_; }
     int allowance() const { return counter_.allowance(); }
     int stepsTaken() const { return counter_.taken(); }
@@ -435,6 +457,9 @@ public:
 private:
     void returnEffects();        // seg2:0CE2-0D35, before the arrival test
     void arrive();
+    enum class FollowUp : uint8_t { None, Drago, StageAnnounce, StagePlace };
+    bool followUpStep(); // true when it produced something the window shows first
+    void announceNextStage(); // seg2:1438-1492: A104 - 1, seg7:372F(1 / 3), DS:A10B
     void advanceTurn();          // nextPlayer plus month/year bookkeeping
     std::vector<int> activePlayers() const;
     // game_drago.cpp
@@ -581,6 +606,9 @@ private:
     int announceSerial_ = 0, announceMode_ = 2, announceVariant_ = 3;
     std::vector<BalanceEntry> balance_;
     int finishSerial_ = 0, finishField_ = -1, finishPlayer_ = -1;
+    int finishNotice_ = 0, announceNotice_ = 0;
+    FollowUp followUp_ = FollowUp::None; // presentation order inside one stop, not saved
+    int stageReached_ = -1;              // [bp-0x38A] = DS:A10D of the reached destination
     std::string finishMusic_ = "z1"; // cosmetic; reuses the existing draw, no new RNG call
     std::vector<std::string> music_; // transient presentation commands, never saved
     std::vector<std::string> messages_;

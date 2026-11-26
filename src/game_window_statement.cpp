@@ -15,7 +15,7 @@ void GameWindow::updateStatement() {
     // change (sit-outs) or of the Master-Rallye reward (seg2:1297 waits for it), the finish.
     if (!screen_.title() && g.phase() == Game::Phase::Statement && g.statementSerial() != statementSeen_ && !moving_
         && !screen_.messages().open() && !g.hasNotices() && pendingFilms_.empty() && !screen_.film().active()
-        && !screen_.finish().active() && g.finishSerial() == finishSeen_ && !screen_.eventSceneActive(screen_.sceneNow())) {
+        && stopSequencesDone(stopSequences()) && !screen_.eventSceneActive(screen_.sceneNow())) {
         statementSeen_ = g.statementSerial();
         stat.open(statSheet(g), SDL_GetTicks());
         statementShown_ = true;

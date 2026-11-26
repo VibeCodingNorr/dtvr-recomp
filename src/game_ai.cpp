@@ -228,6 +228,10 @@ bool Game::computerAdvance() {
                 collect();
             }
         }
+        // seg2:15A6 / 15B8 / 1438 ff.: Dr. Drago's action, or the announcement and his
+        // placement at a reached destination, follow the dialog and precede seg2:1618.
+        settleFieldFollowUp();
+        collect();
         // seg1:4E39 -> seg1:4EA8: state 14 (seg5:70B5) sells by the plan of seg5:962A,
         // executed through the statistics window (seg1:50D1).
         if (cash(aiPlayer_) < 0 && sellableValue(aiPlayer_) > 0) {
