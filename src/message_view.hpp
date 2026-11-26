@@ -19,6 +19,10 @@
 
 namespace dtvr {
 
+// Recomp (round E3): a notice with this text id shows its first argument's text instead of
+// a language text (the foreign-save message); the simulation never emits it.
+constexpr int kRecompNoticeText = -1;
+
 class MessageView {
 public:
     void setSprites(SpriteLookup sprites) { sprites_ = std::move(sprites); } // B1-B8 of assorted.sbs

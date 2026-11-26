@@ -75,6 +75,11 @@ public:
     // Restore (the default) is for exact copies: a new game, taking a roll back.
     enum class Random { Restore, Session };
     static bool decode(Game& game, const std::string& text, std::string& error, Random random = Random::Restore);
+    // The edition id a save (or the beginning of one) belongs to, without decoding it:
+    // "de-retail" for formats 1-7 (no edition record, only the German edition wrote
+    // them), the `edition` record from format 8 on; empty when `text` is no save of a
+    // supported format or the record is missing (decode then says why).
+    static std::string editionOf(const std::string& text);
 };
 
 // Writes atomically (temporary file in the same directory, then rename).

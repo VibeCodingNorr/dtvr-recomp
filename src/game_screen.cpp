@@ -68,7 +68,7 @@ GameScreen::GameScreen(SDL_Renderer* renderer, const fs::path& root, const Scree
                    SDL_Texture* t = name.rfind("PFEIL", 0) == 0 ? find(buyKeyed_, name) : find(buySprites_, name);
                    return t ? t : sprite(name);
                }, language),
-      slots_(defaultSaveDirectory()),
+      slots_(saveDirectory(layout.edition), layout.edition),
       save_(renderer, layout, texts_, text_, [this](const std::string& name) { return find(lsSprites_, name); }),
       stat_(renderer, root, layout, texts_, text_),
       setup_(renderer, root, layout, text_),

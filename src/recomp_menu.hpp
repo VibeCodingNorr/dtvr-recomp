@@ -7,7 +7,6 @@
 #include "settings.hpp"
 
 #include <cstdint>
-#include <utility>
 #include <string>
 #include <vector>
 

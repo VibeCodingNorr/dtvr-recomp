@@ -37,6 +37,10 @@ struct EditionProfile {
     // unless the developer option --dev-unfinished-edition allows it (no such profile at
     // present: both retail editions are playable).
     bool playable;
+    // Recomp: the short mark of this edition's saves in the other edition's save dialog
+    // and the name of its own save directory (src/save_slots.hpp, docs/save-format.md).
+    const char* tag;
+    const char* saveDirectory; // below $XDG_DATA_HOME/dtvr-recomp
 };
 
 const EditionProfile& editionProfile(Edition edition);
@@ -44,6 +48,12 @@ const EditionProfile& editionProfile(Edition edition);
 const std::vector<EditionProfile>& editionProfiles();
 // The profile of an executable hash (case-insensitive hex), nullptr when unknown.
 const EditionProfile* profileForExecutableHash(const std::string& sha256);
+// The name of a known demo build of that hash (no profile, never playable), else nullptr;
+// detectEdition refuses it with "Demoversion … – nicht unterstützt". Mirrors KNOWN_DEMOS
+// of tools/editions.py.
+const char* knownDemoForExecutableHash(const std::string& sha256);
+// The German refusal of a known demo hash, empty for any other hash.
+std::string demoRefusal(const std::string& sha256);
 
 // seg5:1227 with the profile's canvases: the largest that fits the screen, or the
 // requested width (0 = none). Throws std::invalid_argument when the profile does not

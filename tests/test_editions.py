@@ -45,12 +45,16 @@ class ProfileTableTests(unittest.TestCase):
     def test_lookup_and_unsupported_builds(self):
         self.assertIs(editions.profile_for_executable(GERMAN_RETAIL["executable_sha256"].upper()), GERMAN_RETAIL)
         self.assertIs(editions.profile_for_executable(ENGLISH_RETAIL["executable_sha256"]), ENGLISH_RETAIL)
-        # The limited US build stays unknown (user decision 2026-11-26).
-        limited = "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9"
-        for sha in (limited, None, ""):
+        # The official English demo (27-MAY-95) is no profile; it is refused as a demo.
+        demo = "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9"
+        for sha in (demo, None, ""):
             self.assertIsNone(editions.profile_for_executable(sha))
+        with self.assertRaisesRegex(ValueError, "^Demoversion von Dr. Drago's Madcap Chase .* nicht unterstützt"):
+            editions.require_profile(demo.upper(), "directory")
+        for sha in (None, "", GERMAN_RETAIL["executable_sha256"], "f" * 64):
+            self.assertIsNone(editions.demo_message(sha))
         with self.assertRaisesRegex(ValueError, "Unsupported original executable; this directory"):
-            editions.require_profile(limited, "directory")
+            editions.require_profile("f" * 64, "directory")
         self.assertIn("26260860553361b356a8884b290c659ab6cedf2e29645fbcf2f8f0c511551fc7",
                       ENGLISH_RETAIL["known_isos"])
 

@@ -55,6 +55,8 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         analysis = inspect_game(data)
         executable = analysis["executable"]["sha256"]
         profile = editions.profile_for_executable(executable)
+        if profile is None and editions.demo_message(executable):
+            raise ValueError(editions.demo_message(executable))
         if profile is None:
             raise ValueError("Unsupported rally.exe version; preserve this image for version analysis")
         for required in profile["required"]:

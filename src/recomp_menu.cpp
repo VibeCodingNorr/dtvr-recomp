@@ -2,6 +2,7 @@
 #include "recomp_menu.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace dtvr {
 namespace {

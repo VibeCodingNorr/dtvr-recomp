@@ -42,7 +42,7 @@ const std::vector<EditionProfile>& editionProfiles() {
          {640, 800, 1024}, // seg5:1227: art dirs 6, 8, 1
          {"dat/lan.inf", "dat/d/rally_d.dat", "map/europe.inf", "map/europe.str", "map/europe.map", "map/europe.pit", "map/europe_d.tow",
           "map/0/part0000.sbb", "sbs/d.sbs", "butt/1/map.bmp"},
-         "butt/1/map.bmp", true},
+         "butt/1/map.bmp", true, "DE", "saves"}, // the directory of all saves before round E3
         // Full US retail CD (PROGRAM/ on its ISO): German rules with English resources
         // (retail audit). The canvas choice R seg5:1239-135B equals D seg5:1227-1349 (same
         // immediates and DS operands), and art dirs 1, 6 and 8 ship (BUTT/<n>/MAP.BMP).
@@ -53,7 +53,7 @@ const std::vector<EditionProfile>& editionProfiles() {
          {640, 800, 1024},
          {"dat/lan.inf", "dat/e/rally_e.dat", "map/europe.inf", "map/europe.str", "map/europe.map", "map/europe.pit", "map/europe_e.tow",
           "map/0/part0000.sbb", "sbs/d.sbs", "butt/6/map.bmp", "butt/8/map.bmp", "butt/1/map.bmp"},
-         "butt/6/map.bmp", true},
+         "butt/6/map.bmp", true, "US", "saves-en-us-retail"},
     };
     return kProfiles;
 }
@@ -69,6 +69,21 @@ const EditionProfile* profileForExecutableHash(const std::string& sha256) {
     for (const auto& profile : editionProfiles())
         if (hash == profile.exeSha256) return &profile;
     return nullptr;
+}
+
+const char* knownDemoForExecutableHash(const std::string& sha256) {
+    // Blue Byte's official English demo ("Demo Version", 27-MAY-95; docs/media-variants.md),
+    // as KNOWN_DEMOS in tools/editions.py.
+    if (lower(sha256) == "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9")
+        return "Demoversion von Dr. Drago's Madcap Chase (offizielle englische Demo, 27-MAY-95)";
+    return nullptr;
+}
+
+std::string demoRefusal(const std::string& sha256) {
+    const char* demo = knownDemoForExecutableHash(sha256);
+    return demo ? std::string(demo) + " – nicht unterstützt. Bitte die Daten einer Verkaufsversion verwenden"
+                                      " (deutsch oder US-englisch)."
+                : std::string();
 }
 
 int chooseCanvasWidth(const EditionProfile& profile, int screenWidth, int screenHeight, int requestedWidth) {
@@ -130,6 +145,8 @@ DetectedEdition detectEdition(const fs::path& directory) {
     if (const fs::path exe = findCaseInsensitive(programDir, "rally.exe"); !exe.empty() && fs::is_regular_file(exe)) {
         const std::string hash = sha256FileHex(exe);
         fromExe = {profileForExecutableHash(hash), {EditionEvidence::Source::Executable, exe, hash}};
+        if (!fromExe.profile && knownDemoForExecutableHash(hash))
+            throw std::runtime_error(demoRefusal(hash) + " (" + exe.string() + ")");
         if (!fromExe.profile)
             throw std::runtime_error("Unbekannte rally.exe-Version (SHA-256 " + hash + "): " + exe.string()
                                      + ". Diese Ausgabe wird nicht unterstützt.");
@@ -150,6 +167,8 @@ DetectedEdition detectEdition(const fs::path& directory) {
             throw std::runtime_error(std::string(e.what()) + " (" + manifest.string() + ")");
         }
         fromManifest = {profileForExecutableHash(entry.sha256), {EditionEvidence::Source::Manifest, manifest, entry.sha256}};
+        if (!fromManifest.profile && knownDemoForExecutableHash(entry.sha256))
+            throw std::runtime_error(demoRefusal(entry.sha256) + " (" + manifest.string() + ")");
         if (!fromManifest.profile)
             throw std::runtime_error("Installation mit unbekannter rally.exe-Version (SHA-256 " + entry.sha256 + "): "
                                      + manifest.string());

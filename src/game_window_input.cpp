@@ -274,6 +274,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
                 sound_.play(2, 7);
                 std::cerr << "Laden fehlgeschlagen: " << error << "\n";
                 openTitle();
+                foreignSaveNotice(screen_.saveSlots().foreignSlot(saveDialog.slot()));
             }
             return;
         }

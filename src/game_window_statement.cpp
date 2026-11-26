@@ -43,8 +43,11 @@ void GameWindow::updateStatement() {
 
 bool GameWindow::handleStatementEvent(const SDL_Event& event) {
     StatView& stat = screen_.statement();
-    // The recomp menu (Escape, F8) and a save dialog keep their input; SaveSlots refuses
-    // the save in Phase::Statement (it could not be loaded).
+    // The recomp menu (Escape, F8) and a save dialog keep their input. Since the recomp
+    // menu no longer opens the save dialog (PR #36), only the menu commands 1021 / 1062 and
+    // --save-dialog open it, none of them over STAT; but updateStatement does not wait for
+    // a save dialog, so the check stays as a guard should one already be open when STAT
+    // opens. SaveSlots refuses the save in Phase::Statement (it could not be loaded).
     if (!stat.isOpen() || recompMenu_.isOpen() || screen_.saveDialog().isOpen()) return false;
     switch (event.type) {
     case SDL_KEYDOWN: case SDL_KEYUP: case SDL_MOUSEBUTTONDOWN: case SDL_MOUSEBUTTONUP: case SDL_MOUSEMOTION:

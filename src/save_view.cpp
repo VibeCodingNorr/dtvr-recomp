@@ -8,6 +8,7 @@ namespace {
 
 constexpr int kWidth = 0x22E, kHeight = 0x1CE, kRow = 0x2A; // CreateWindow seg8:B26B
 constexpr SDL_Color kBrown{67, 27, 0, 255}, kWhite{255, 255, 255, 255}; // 0x45, 0xFF
+constexpr SDL_Color kGrayed{123, 95, 27, 255}; // 0x43, the grayed menu items' colour (seg5:5B2C)
 
 } // namespace
 
@@ -79,8 +80,12 @@ void SaveView::draw(const SaveSlots& slots) {
         std::string label = slots.description(s);
         // GetPrivateProfileString default: German "leer" (DS:80D7), English string 11.
         if (label.empty()) label = emptySlotLabel(layout_.edition, text(11));
+        // Recomp (round E3): another edition's save with its edition mark, in the grayed
+        // colour unless chosen (docs/save-format.md "Editions").
+        const std::string foreign = slots.foreignSlot(s);
+        label = markForeignSave(label, foreign);
         text_.draw(renderer_, label, ScreenRect{b.x + 15, b.y + s * kRow + 0x34, kWidth - 15, 0x29},
-                   TextStyle{13, false, false, false, false, 0, chosen ? kWhite : kBrown});
+                   TextStyle{13, false, false, false, false, 0, chosen ? kWhite : foreign.empty() ? kBrown : kGrayed});
     }
     // Footer seg8:BBD2: KO_Z at y 420; text 116 (Nein) from x 30, text 114 (Ok) right
     // aligned to x 528, y + 8 + 10; the highlighted button (DS:8D64) in white.

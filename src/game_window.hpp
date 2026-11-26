@@ -77,6 +77,7 @@ private:
     void openTitle();
     void startGame(bool fresh = false);
     void askQuit(bool reopenMain);
+    void foreignSaveNotice(const std::string& edition); // recomp: the foreign-save message
     void command(int id);
     // game_window_frame.cpp
     void updateFrame(int frame);
