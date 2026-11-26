@@ -67,10 +67,11 @@ bool GameWindow::handleStatementEvent(const SDL_Event& event) {
     const int p = g.statementPlayer();
     if (statementShown_ && p >= 0 && g.isComputer(p)) {
         // seg1:00D2 drops keys and buttons while a computer is the current player; only
-        // seg1:01D7's Escape / right button reaches the game window (the end of a demo).
-        const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-                             || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
-        return !(endDemo && !g.humansLeft());
+        // seg1:01D7's Escape / right button reaches the game window (GameWindow::computerEscape:
+        // the end of a demo or the takeover of the computer).
+        const bool escape = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+                            || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
+        return !escape;
     }
     if (stat.closes(event)) stat.close(); // seg1:98CA / 9A7A -> DestroyWindow
     return true;

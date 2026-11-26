@@ -208,7 +208,8 @@ is claimed.
 127. (PR #33) The computer plans its route after the slot window closes (seg2:66F9 → seg5:71B3(5)).
 128. (PR #35, #36) The recomp menu keeps no save or load entries: saving and loading stay with MAIN1 and the title menu.
 129. (PR #38) A computer's investment offer is declined by the window's timeout (seg6:0FB4, 2.5 s × pause factor).
-130. *Next:* remaining presentation details (compare windows with rally.exe).
+130. Taking over a computer (round sound-takeover): Escape, a right click or the pad's B on a computer's turn make that driver a human with the Elefant sound, as seg1:01D7 (not in the demo, not during a Steuerlos turn); in the demo they end it with the same sound. The yellow field sounds Hebel05 with its card and Sfx08 before a full hand's discard ([evidence](docs/formats.md#taking-over-a-computer-round-sound-takeover)).
+131. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 
@@ -337,7 +338,8 @@ number of stages (1–300).
 | Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
-| Escape | On the map: recomp menu (pause, graphics, audio, game, controls; recomp; rally.exe opens RIGHTBTN, seg4:01D1, which Backspace still does); in a turn menu without a checked item (ONFIELD) and in the title menu: recomp menu; in a game of computers with no menu open: end it and return to the title (seg1:021D); in windows: back |
+| Escape | On a computer's turn (also with a window open): take the computer over as a human, with the Elefant sound (seg1:01D7; not during his Steuerlos turn); in the demo: end it and return to the title (seg1:021D). Otherwise on the map: recomp menu (pause, graphics, audio, game, controls; recomp; rally.exe opens RIGHTBTN, seg4:01D1, which Backspace still does); in a turn menu without a checked item (ONFIELD) and in the title menu: recomp menu; in windows: back |
+| Right click on a computer's turn | Like Escape there (seg1:01D7): takeover, or the end of the demo |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
@@ -362,8 +364,10 @@ original options window; the others are recomp settings in `[Display]` /
 opens RIGHTBTN like Backspace (seg4:01D1); the recomp takes Escape for its menu
 there (deliberate deviation), Backspace and the menu's "Originales Spielmenü" keep
 RIGHTBTN. In the original turn menu ONFIELD Escape did nothing; the recomp opens its
-menu there too. In a game without humans Escape or a right click end it and return
-to the title (seg1:021D) when no menu is open. Dialogs keep their Escape. In the title
+menu there too. On a computer's turn Escape or a right click go to seg1:01D7 before any window
+or menu: they make that computer a human (Elefant sound; not in the demo, not during
+his Steuerlos turn), and in the demo they end it and return to the title (seg1:021D).
+A game of computers set up in the player window is taken over, not ended. Dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
 the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
 keep the original Escape (Weiter spielen, Zurück). The target choice (SELPLAYER, also

@@ -57,6 +57,46 @@ bool Game::requestDemoEnd() {
     return true;
 }
 
+int Game::escapePlayer() const {
+    // DS:94E2: during STAT the new month's first slot (seg2:074E) or the winner, which the
+    // rebuild keeps apart from current_ until the change completes.
+    return phase_ == Phase::Statement ? statementPlayer_ : current_;
+}
+
+Game::EscapeAction Game::computerEscapeAction() const {
+    // seg1:00D2 passes the input to seg1:01D7 only while seg2:5C02(DS:94E2) holds: the
+    // status byte is 2 and a game runs (DS:94C4). Not traced for the year balance's own
+    // loop (BILANZ takes Escape itself, seg8:99AC), so that phase is left out.
+    const int p = escapePlayer();
+    if (p < 0 || p >= kPlayerSlots || phase_ == Phase::GameOver || phase_ == Phase::Balance || !isComputer(p))
+        return EscapeAction::None;
+    if (!humansLeft() && demo_) return EscapeAction::DemoEnd; // seg1:0211-021D -> seg2:5CAD
+    if (demo_) return EscapeAction::None;                    // seg1:0241: DS:14
+    // seg1:024A: DS:10 holds the saved status of a Steuerlos driver from his turn start
+    // (seg2:0A7F / 0AC8) until the Return of the arrival restores it (seg2:0CF9-0D15).
+    // The rebuild's computer arrives at once, so the arrival phase counts as restored;
+    // STAT comes before the turn start of its player (seg2:07E1), with DS:10 = 0.
+    if (phase_ != Phase::Statement) {
+        if (players_[size_t(p)].flags & kFlagSteerless) return EscapeAction::None;
+        if (aiTurn_ && aiSteerless_ && phase_ != Phase::Arrived) return EscapeAction::None;
+    }
+    return EscapeAction::TakeOver;
+}
+
+bool Game::takeOverComputer() {
+    if (computerEscapeAction() != EscapeAction::TakeOver) return false;
+    const int p = escapePlayer();
+    players_[size_t(p)].status = 1; // seg1:0261-026E
+    // seg1:0277 -> seg5:6CE8: DS:8CDC / 8CDE / 4E5C / 4E5E / 8D2A = 0. seg5:6D20 acts no
+    // more (seg2:5C02 fails), so the human goes on from the current phase.
+    aiTurn_ = false;
+    aiSteerless_ = false;
+    aiRoute_.clear();
+    aiRoutePlanned_ = false;
+    messages_.push_back(playerName(p) + " wird von einem Menschen gesteuert");
+    return true;
+}
+
 bool Game::computerControls() const {
     // seg2:5C02, plus card Steuerlos (bit 0x20, seg2:0A6F) for one turn.
     return isComputer(current_) || (players_[size_t(current_)].flags & kFlagSteerless);

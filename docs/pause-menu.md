@@ -5,8 +5,11 @@ no SDL; `src/recomp_menu_view.{hpp,cpp}` drawing and input; tests in
 `tests/recomp_menu_test.cpp`). Escape opens it on the map, where rally.exe's Escape
 opens RIGHTBTN like Backspace (seg4:01D1; deliberate deviation), and in a menu without
 a checked item such as ONFIELD, where rally.exe's Escape does nothing. Backspace and
-the entry "Originales Spielmenü" keep RIGHTBTN. In a game without humans and with no menu open, Escape (and
-a right click) still end the game and return to the title first, as seg1:021D does.
+the entry "Originales Spielmenü" keep RIGHTBTN. On a computer's turn Escape (and a right
+click) never reach the menu: seg1:00D2 hands them to seg1:01D7, which takes the computer
+over as a human, or in the demo without humans ends it (seg1:021D, back to the title);
+during a Steuerlos turn they do nothing (docs/formats.md "Taking over a computer").
+An open recomp menu still takes Escape first (it closes).
 Deliberate deviation: in the title menu MAIN, rally.exe's Escape posts the checked item (seg5:543D:
 GETMENUSTATE & MF_CHECKED → WM_COMMAND), which is "Neues Spiel"; the recomp opens its
 menu there instead. MAIN1 (Weiter spielen) and RIGHTBTN (Zurück) keep seg5:543D. Pages: Pause, Grafik,

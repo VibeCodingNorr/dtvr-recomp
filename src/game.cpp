@@ -402,6 +402,7 @@ void Game::arrive() {
         // seg2:10A5: top card of the deck (seg3:032D(0)); nothing if it is taken.
         if (deck_.peek() == Deck::kTaken) break;
         if (handCount(current_) == 8) { // seg3:1057: one card must be discarded first (text 403)
+            sound(3, 15); // seg2:110D-1113: Sfx08 on channel 3 before seg3:1057
             yellowPending_ = true;
             messages_.push_back(who + ": Hand voll - erst eine Karte ablegen (Text 403)");
             notice(403);
@@ -496,7 +497,9 @@ void Game::giveYellowCard() {
     const int slot = deck_.take();
     addToHand(hands_[size_t(current_)], slot);
     messages_.push_back(playerName(current_) + " bekommt die Karte " + cardName(slot));
-    notice(4201 + rng_.random(13), {playerArg(current_)}); // seg2:1127
+    const int text = 4201 + rng_.random(13); // seg2:1127
+    sound(2, 19); // seg2:1175-117B: Hebel05 on channel 2, then the message seg2:1191
+    notice(text, {playerArg(current_)});
     dragoAct(current_);
 }
 

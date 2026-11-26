@@ -12,6 +12,7 @@ void Game::resumeLoaded() {
     // seg4:066F / 05EA: Spiel laden and Spiel fortsetzen clear DS:16 (the demo's end
     // request) before the file is read; DS:16 is not part of the file.
     demoEnd_ = false;
+    demo_ = false; // DS:14 = 0 there too (seg4:0675 / 05F0)
 
     // The loader seg8:AC9A after its reads (seg8:AF67 ff.):
     // AF67: with DS:A10F = 0 (East open) seg8:69F0(1) replaces the barrier tiles without
