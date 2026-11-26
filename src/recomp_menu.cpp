@@ -136,8 +136,6 @@ void RecompMenu::build(bool inGame) {
     Page pause{"Pause", {}};
     pause.items.push_back(command("Weiterspielen", Action::Resume, "Zurück zum Spiel (Esc)."));
     if (inGame) {
-        pause.items.push_back(command("Spiel speichern", Action::SaveGame, "Öffnet den Speicherdialog des Originals."));
-        pause.items.push_back(command("Spiel laden", Action::LoadGame, "Lädt einen Spielstand; das laufende Spiel endet."));
         pause.items.push_back(command("Originales Spielmenü", Action::OriginalMenu,
                                       "Das Menü von rally.exe (auch mit der Rücktaste)."));
     }
@@ -207,7 +205,6 @@ void RecompMenu::open(const Settings& settings, bool inGame) {
     build(inGame);
     capture_ = PadAction::kCount;
     padNote_.clear();
-    note_.clear();
     page_ = 0;
     row_ = 0;
     inItems_ = true; // the first entry, Weiterspielen, has the focus
@@ -225,16 +222,10 @@ void RecompMenu::resume(const Settings& settings) {
     if (inItems_ && !selectable(list[size_t(row_)])) moveRow(1);
 }
 
-CommandPlan planCommand(RecompMenu::Action action, bool gameWindowOpen) {
+CommandPlan planCommand(RecompMenu::Action action) {
     using Action = RecompMenu::Action;
     CommandPlan p;
     switch (action) {
-    case Action::SaveGame: case Action::LoadGame:
-        if (gameWindowOpen) { p.refused = true; return p; }
-        p.originalCommand = action == Action::SaveGame ? 1062 : 1021; // MAIN1 / MAIN (seg4:0B76)
-        p.hide = true;
-        p.returnAfter = true;
-        return p;
     case Action::Quit: // the question; its No brings the menu back
         p.hide = true;
         p.returnAfter = true;
@@ -329,7 +320,6 @@ std::string RecompMenu::valueText(const Item& item) const {
 }
 
 void RecompMenu::moveRow(int delta) {
-    note_.clear();
     const auto& items = pages_[size_t(page_)].items;
     if (items.empty()) return;
     // Info rows are skipped; a page of only info rows keeps the first row.
@@ -342,7 +332,6 @@ void RecompMenu::moveRow(int delta) {
 
 void RecompMenu::focusPage(int page) {
     if (page < 0 || page >= int(pages_.size())) return;
-    note_.clear();
     if (page != page_) row_ = 0;
     page_ = page;
     inItems_ = false;

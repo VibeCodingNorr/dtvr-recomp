@@ -2823,8 +2823,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   block seg2:C00C at 08DC), whose non-zero result jumps back (seg2:0819) to the search
   before the month test seg2:0766. The first slot's own sit-out text comes after STAT, since
   its seg2:089D runs after seg2:07E1. *Saving:* no save is written in `Phase::Statement` or
-  `Phase::Balance` (`SaveSlots::save` / `saveAuto` refuse, the save dialog plays Fate01); a
-  save dialog opened from the recomp menu keeps its input over STAT. The sheet: `src/stat_sheet.cpp`;
+  `Phase::Balance` (`SaveSlots::save` / `saveAuto` refuse, the save dialog plays Fate01); an
+  open save dialog keeps its input over STAT. The sheet: `src/stat_sheet.cpp`;
   the window: `src/stat_view.cpp`, wired in `src/game_window_statement.cpp`
   (`--statement` shows it with the values of the started game). Save format 7 (`flow`), rules
   revision 46.
@@ -4068,8 +4068,8 @@ a recomp element and now reads the pad itself:
 - **Rebuilt** (`src/game_load.cpp`, `Game::resumeLoaded`, called by
   `SaveSlots::load` / `loadAuto` after a Session decode): the same steps in the
   same order on the game's running MS C generator; the turn start runs only for
-  saves in the spin phase (rally.exe saves only there; the recomp menu can save
-  other phases, which then continue where they were).
+  saves in the spin phase (rally.exe saves only there; saves the rebuild writes in
+  other phases continue where they were).
 - **Hand order** seg2:3CF1(player): for k = 0..6 an empty slot k pulls slots
   k + 1..7 down once and slot 7 becomes empty; k is not revisited. Called at every
   turn start (seg2:0473) and after a card shop purchase / sale (seg3:48B1 / 49CC);
