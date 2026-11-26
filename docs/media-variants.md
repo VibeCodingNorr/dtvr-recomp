@@ -194,3 +194,20 @@ check skipped MIDI preparation dependencies; it did not build or publish an
 installation. The appropriate input for this example is its ISO, explicitly
 selected via `--iso`, rather than the installed game folder or the whole
 DOSBox/Windows environment.
+
+## US English retail release with Ogg CD music (audio only)
+
+A US English retail release (data image `track01.iso`, SHA-256
+`26260860553361b356a8884b290c659ab6cedf2e29645fbcf2f8f0c511551fc7`, 2048-byte
+sectors, `rally.exe` SHA-256
+`a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a`, `dat/lan.inf`
+`E`) ships its CD music as a cue sheet and six lossy Ogg Vorbis files re-encoded by
+that release. The image holds no CD-DA, so `cd_audio.py` reports `no-known-layout`.
+By user decision these Ogg files are an accepted, explicitly **non-original** music
+source for this edition only: `tools/install.py --iso … --cd-audio-dir …` checks the
+pinned hashes and copies them unmodified, labelled "Release-OGG (nicht original)".
+The six tracks (cue tracks 02–07) carry the same six recordings as the German
+regions 01–06. Hashes, mapping and measured silence: [CD audio](cd-audio.md#release-ogg-nicht-original-us-english-retail).
+
+This does not lift the version gate: the installer still rejects this executable
+until the English edition is supported, and German images refuse `--cd-audio-dir`.

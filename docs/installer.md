@@ -182,6 +182,28 @@ The game window plays complete installed Ogg packs through recovered music cues,
 without a mounted disc. The six provisional CD recordings alone remain incomplete;
 see [native music](native-music.md).
 
+**Release Ogg tracks (not original).** `--cd-audio-dir /path/to/release-folder`
+together with `--iso /path/to/track01.iso` accepts a release's cue sheet and its
+lossy `track02.ogg`..`track07.ogg` as the CD music source, labelled
+"Release-OGG (nicht original)" in the log, manifest (`cd_audio.label`,
+`source_kind: release-ogg`, `original: false`) and sound-set name. Preflight
+refuses the option with `--directory`, with any image other than the pinned
+US English retail image, or when the cue sheet or one Ogg file differs from its
+pinned SHA-256; the folder must not overlap the destination. During import the
+executable hash and the `dat/lan.inf` letter must match the same edition
+(tools/release_ogg.py, `require_edition`). The six files are copied byte for byte
+(no transcoding, no encoder needed) to `data/music/segment-01.ogg`..`segment-06.ogg`
+and the hybrid set becomes `data/music/packs/release-ogg-hybrid`. Profile,
+hashes and measured silence: [CD audio](cd-audio.md#release-ogg-nicht-original-us-english-retail).
+The US English executable is still rejected by the installer's version gate, so
+this path becomes usable only once that edition is supported; German imports are
+unaffected.
+
+```sh
+python3 tools/install.py --iso /path/to/release/track01.iso \
+    --cd-audio-dir /path/to/release --output /path/to/new/installation
+```
+
 Complete original-MIDI music is the default. Known system GM banks are detected;
 pass `--soundfont /path/to/bank.sf2` to choose one explicitly. A missing bank is
 reported before installation; no bank is bundled or downloaded. Use `--no-music`
