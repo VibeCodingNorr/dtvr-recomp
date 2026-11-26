@@ -13,7 +13,7 @@ namespace dtvr {
 constexpr int kSaveFormat = 8;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
                                    // 4: no extensions record, 5: no worth records, 6: no flow records,
                                    // 7: no edition record, i.e. a German save)
-constexpr int kRulesRevision = 50; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 51; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
                                    // year balance's draws, seg8:88DF / 8C49 / 8C57; 29: one more
@@ -58,7 +58,11 @@ constexpr int kRulesRevision = 50; // rule reconstruction round the state belong
                                    // hand order seg2:3CF1 at every turn start and after
                                    // the card shop, seg2:0473 / seg3:48B1 / 49CC;
                                    // 50: Return ends Verdoppeln and the TimeOut timer,
-                                   // not the player change, seg2:0CE8 / 0CEE)
+                                   // not the player change, seg2:0CE8 / 0CEE;
+                                   // 51: Dr. Drago's laugh random(1) before every
+                                   // message of his, seg2:BB48 (BC8B / BD84 / BE78 /
+                                   // BF8C / C067); an empty torn slot gives a property,
+                                   // seg2:BE96)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

@@ -6,11 +6,14 @@
 
 namespace dtvr {
 
-void Game::announceSitOut(int text, int player) {
+void Game::announceSitOut(const SitOutText& t) {
+    const int text = t.text, player = t.player;
     messages_.push_back(playerName(player) + " setzt aus");
-    // The sound starts before the modal message opens (seg2:095B before 096F, 09F9 before 0A0D).
+    // The sound starts before the modal message opens (seg2:095B before 096F, 09F9 before 0A0D,
+    // Dr. Drago's laugh seg2:C067 before C07A).
     if (text >= 1000 && text < 1010) sound(5, 15);      // Zucker: Sfx08 (seg2:095B)
     else if (text >= 1010 && text < 1020) sound(5, 20); // Schlafen: Schlaf01 (seg2:09F9)
+    else if (t.sound >= 0) sound(kDragoLaughChannel, t.sound);
     notice(text, {playerArg(player)});
     if (text >= 3251 && text < 3256) notices_.back().picture = Notice::Picture::Drago; // qp.bmp (seg2:C040)
 }
@@ -19,7 +22,7 @@ void Game::announceChange(const TurnChange& change) {
     // The game's TurnHooks::announce shows each text when nextPlayer reaches it
     // (seg2:096F / 0A0D before seg2:0977 / 0A15, round R3b); this covers a change
     // computed without that hook.
-    for (const auto& [text, p] : change.texts) announceSitOut(text, p);
+    for (const SitOutText& t : change.texts) announceSitOut(t);
 }
 
 void Game::suspendTurn(TurnChange change) {

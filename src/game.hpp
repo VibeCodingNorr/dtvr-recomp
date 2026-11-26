@@ -559,7 +559,7 @@ private:
     // game_statement.cpp: a change waiting for the balance or the statement; the texts and
     // sit-outs found so far are announced before the window (their messages are modal).
     void suspendTurn(TurnChange change);
-    void announceSitOut(int text, int player); // seg2:096F / 0A0D / B74D
+    void announceSitOut(const SitOutText& t); // seg2:096F / 0A0D / C07A
     void announceChange(const TurnChange& change);
     bool openStatement(int player, bool master);
     bool statementWindow_ = false, statementMaster_ = false;

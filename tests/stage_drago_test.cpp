@@ -104,7 +104,7 @@ int main() {
             MsRandom rng(7), copy(7);
             std::vector<std::string> order;
             TurnHooks hooks;
-            hooks.announce = [&](int text, int p) { order.push_back("text " + std::to_string(text) + " " + std::to_string(p)); };
+            hooks.announce = [&](const SitOutText& t) { order.push_back("text " + std::to_string(t.text) + " " + std::to_string(t.player)); };
             hooks.afterSitOut = [&](int p) { order.push_back("drago " + std::to_string(p)); };
             hooks.afterPlayerChange = [&](int p) { order.push_back("event " + std::to_string(p)); };
             const auto tc = nextPlayer(turn, 0, cal, rng, hooks);
@@ -115,7 +115,7 @@ int main() {
             turn[1].flags = flag;
             hooks.announce = nullptr;
             const auto collected = nextPlayer(turn, 0, cal, rng, hooks);
-            CHECK(collected.texts.size() == 1 && collected.texts[0].second == 1);
+            CHECK(collected.texts.size() == 1 && collected.texts[0].player == 1 && collected.texts[0].sound == -1);
         }
     }
 

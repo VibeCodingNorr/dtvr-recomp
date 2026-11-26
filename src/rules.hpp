@@ -144,12 +144,26 @@ struct Calendar {
     double inflation = 1.0; // DS:A11B
 };
 
+// Dr. Drago's laugh seg2:BB48: random(1) (seg2:BB5E) picks sound 3 Lachen01 (0) or
+// 29 Lachen02 (1) for seg1:2C9B on channel 5 (seg2:BB73 / BB84). Every Drago message
+// with his picture calls it right before its modal window seg6:51EA opens.
+constexpr int kDragoLaughChannel = 5;
+int dragoLaugh(MsRandom& rng);
+
+// A sit-out message on the way of nextPlayer: the language text, the player and the
+// channel-5 sound that starts before the message opens (-1: none from the rules).
+struct SitOutText {
+    int text = 0;
+    int player = -1;
+    int sound = -1;
+};
+
 struct TurnChange {
     int player = -1;               // -1 when no player is active
     int monthsAdvanced = 0;
     int yearsEnded = 0;
     std::vector<int> satOut;       // players that consumed a sit-out flag
-    std::vector<std::pair<int, int>> texts; // (language text, player) announced on the way
+    std::vector<SitOutText> texts; // announced on the way
     // The year balance hook asked to wait (round 144): the change stopped after the
     // inflation, before the credits are cleared; resume with nextPlayer(..., resumePlayer).
     bool suspended = false;
@@ -173,8 +187,8 @@ struct TurnHooks {
     std::function<void()> clearMonth;       // every month advance, last (seg1:8CBA at seg2:07E6)
     // A sit-out's modal message (seg2:096F / 0A0D, Dr. Drago's block seg2:B74D) where
     // rally.exe shows it: before the sit-out hook and before later players' events.
-    // Without it the texts are collected in TurnChange::texts.
-    std::function<void(int text, int player)> announce;
+    // Without it the texts are collected in TurnChange::texts. `sound`: see SitOutText.
+    std::function<void(const SitOutText&)> announce;
     std::function<void(int)> afterSitOut;   // Dr. Drago acts on a sit-out turn (seg2:0977 / 0A15)
     std::function<void(int)> afterPlayerChange; // event trigger seg8:1624 (seg2:07EF/07FC)
     int dragoHolder = -1;                   // DS:9CFC for flag bit 0
@@ -185,7 +199,7 @@ struct TurnHooks {
 // the year ends first (credits, settlement, year + 1, inflation, clear credits).
 // seg2:089D then checks the new player's flags: bit 0 (Dr. Drago's block) is
 // cleared and the player sits out only while holding Dr. Drago (seg2:C00C, text
-// random(4)); otherwise bit 1 or bit 2 make the player sit out once (text random(2),
+// random(4), then the laugh random(1) of seg2:BB48 at seg2:C067); otherwise bit 1 or bit 2 make the player sit out once (text random(2),
 // then the sit-out hook). The search continues after a sit-out.
 // `resumePlayer` >= 0 continues a suspended change right after the year balance or,
 // with `afterStatement`, right after the monthly statement.
