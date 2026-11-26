@@ -14,31 +14,25 @@ Communicate with the user in German. Code and technical documentation may use En
   modules or shared integration files as part of parallel feature work. Prepare
   any required integration separately for handoff instead.
 
-The current C++17 / SDL2 executable is a data viewer. It loads the original Europe
-overview and presents SBB bitmap strips as a graphics-block grid. Zoom, pan, view
-switching and SBB file navigation are implemented. SBS frames are decoded and
-the full world map is composed from europe.map with rules recovered from
-rally.exe. The board (700 fields, links, 115 towns) is decoded and shown as an
-overlay. Movement counting, the slot machine and the original random generator
-are reconstructed as tested rules; a move preview exists in the world view. The
-arrival condition and the money, inflation and destination rules of field kinds
-are rebuilt. Player change, months, destinations and stages complete a playable
-hotseat rally (`--play`, src/game.cpp) with the event card deck and movement
-cards plus money and status cards (src/cards.cpp) and the property economy with
-selling and credit (src/economy.cpp); Dr. Drago with his actions (src/drago.cpp,
-src/game_drago.cpp); the event trigger, event tables, Eastern Europe and robbers
-(src/events.cpp, src/game_events.cpp); road obstacles and property damage with
-the passive cards (src/obstacles.cpp); professor / football investments and the
-cards Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln (src/game_cards.cpp).
-Property cards 1-8 in the town dialog and Tschüss follow in round 14, the card
-field shop and the deck return in round 15, computer players (driving, town
-purchases, Steuerlos; src/ai.cpp, src/game_ai.cpp) in round 16, their card play
-and card field use (src/ai_cards.cpp) in round 17, the native save format
-(src/save.cpp, docs/save-format.md) in round 18, Risiko (src/game_risiko.cpp) and
-the single-player computer opponent in round 19, player slots and games of
-computers in round 20.
-The SDL play mode lives in src/play_view.cpp. No game interface (menus, dialogs, save UI),
-SBS animation playback or executable translation have been implemented.
+The C++17 / SDL2 executable is a manual reconstruction of rally.exe, not a
+translation of its instructions. Its main mode is the game window (`--game`, the
+installed launcher's default): Blue Byte logo, intro, title menu, player setup and
+stage count, then the rally with the recovered rules and the original windows,
+menus, dialogs, messages, scenes, films, sounds and music, all art and text loaded
+from the user's installation at run time. The SDL-independent simulation
+(src/game*.cpp with src/cards, economy, drago, events, obstacles, rules and the
+computer players in src/ai*.cpp) also drives the terminal hotseat mode `--play`
+(src/play_view.cpp). Games are saved in the native versioned format (src/save.cpp,
+docs/save-format.md) through the original save dialog, one save directory per
+edition; loading repeats rally.exe's loader (src/game_load.cpp). The German and
+the US English retail editions are installable and playable. Recomp additions:
+the Escape menu (docs/pause-menu.md), game controllers with an on-screen keyboard
+and remappable pad buttons, window / fullscreen scaling, widescreen, text
+smoothing and animation tempo. The viewer modes (`--tiles`, `--sprites`,
+`--world`) remain debugging aids. Open: remaining presentation and timing details
+of single windows compared with rally.exe, the gaps listed in the README status
+table and docs/formats.md, multiplayer (after the port) and any translation of
+original instructions.
 
 ## Source-only distribution and user input
 
@@ -59,7 +53,8 @@ SBS animation playback or executable translation have been implemented.
   installation, mounted disc, download URL or symlink to original game content.
 - Distribution model: ship our installer/toolchain; users supply their original data.
   Use `python3 tools/install.py --iso /path/to/dtvr.iso` to build a local installation.
-  This currently produces the native viewer, not a playable translated executable.
+  It builds and installs the native game (`play` opens `--game`): a manual
+  reconstruction, not a translated executable.
 - Treat original files as read-only. Accept paths through `--data`; do not hardcode
   this machine's path into the runtime.
 - Keep original executables, assets, extracted game content, screenshots containing
@@ -93,8 +88,8 @@ python3 tools/ne_disasm.py /path/to/extracted/program/rally.exe /path/to/private
 python3 tools/inspect_game.py /path/to/extracted > /path/to/artifacts/game-analysis.json
 ```
 
-Requires CMake, pkg-config, a C++17 compiler, SDL2 >= 2.0.10 development files and
-Python 3. Optional: SDL2_ttf with Arial or Liberation Sans for text in the game
+Requires CMake, pkg-config, a C++17 compiler, SDL2 >= 2.0.10, libvorbisfile and
+json-c >= 0.15 development files and Python 3. Optional: SDL2_ttf with Arial or Liberation Sans for text in the game
 window (`--game`); without it the window is built without text. The analysis script uses only the Python standard library.
 Inspect externally stored screenshots when changing rendering. Some image viewers require conversion
 from BMP to PNG; Pillow is available on the current machine, but is not a build dependency.
@@ -106,7 +101,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/sbs.{hpp,cpp}`: bounds-checked SBSF sprite container parser (no SDL).
 - `src/worldmap.{hpp,cpp}`: europe.map cells, season table, SBB tile split and
   map composition following rally.exe (no SDL).
-- `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules.
+- `src/game.{hpp,cpp}`: SDL-independent hotseat game built from the recovered rules;
+  `src/game_load.cpp` what rally.exe's loader recomputes after reading a save.
 - `src/ai.{hpp,cpp}`: computer strategy tables, route planning and town plan (no SDL);
   `src/ai_cards.cpp` card choice, targets, card worth and card field; `src/game_ai.cpp`
   runs computer turns.
@@ -118,13 +114,13 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/ne_strings.{hpp,cpp}`: RT_STRING and RT_MENU reader for the language file and Windows-1252 conversion.
 - `src/layout.{hpp,cpp}`: original window geometry; `src/panel.{hpp,cpp}`: player info panel
   contents (both no SDL).
-- `src/data_paths.{hpp,cpp}` (no SDL): case-insensitive paths and the `dat/lan.inf` language letter; `src/edition.{hpp,cpp}` and `src/sha256.{hpp,cpp}` (no SDL): edition profiles detected by the EXE SHA-256 (docs/media-variants.md "Edition profiles");
+- `src/data_paths.{hpp,cpp}` (no SDL): case-insensitive paths and the `dat/lan.inf` language letter; `src/sha256.{hpp,cpp}` (no SDL): the SHA-256 behind the edition check;
   `src/sdl_assets.{hpp,cpp}`: BMP/world loading; `src/text.{hpp,cpp}`:
   GDI-like text through optional SDL2_ttf; `src/game_screen.{hpp,cpp}`: the game window (`--game`)
   and `src/game_window.{hpp,cpp}` its flow (class GameWindow: set-up, title, menu commands, loop) with
   `src/game_window_frame.cpp` (per frame), `src/game_window_input.cpp` (input order) and
   `src/game_window_dialogs.cpp` (game dialogs);
-  `src/slot_view.{hpp,cpp}`: the slot machine over the map; `src/message_view.{hpp,cpp}`: the
+  `src/slot_view.{hpp,cpp}`: the slot machine over the map with `src/slot_records.{hpp,cpp}` (no SDL) its animation records; `src/message_view.{hpp,cpp}`: the
   message window (texts from `Game::takeNotices`); `src/menu_view.{hpp,cpp}`: the menu window
   (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window and `src/card_window_choice.{hpp,cpp}` (no SDL) its play path;
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
@@ -139,9 +135,10 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/recomp_menu_view.{hpp,cpp}`: the recomp Escape menu (docs/pause-menu.md);
   `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots;
   `src/osk.{hpp,cpp}` (no SDL) and `src/osk_view.{hpp,cpp}`: SBINPUT name rules and the recomp
-  on-screen keyboard for names; `src/stage_count.{hpp,cpp}` (no SDL): the TEMP count and its key steps; `src/settings.{hpp,cpp}` (no SDL) and
+  on-screen keyboard for names, `src/osk_pad.{hpp,cpp}` (no SDL) its pad feel (repeat, stick hysteresis); `src/stage_count.{hpp,cpp}` (no SDL): the TEMP count and its key steps; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
-  sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
+  sound effects (cues from `Game::takeSounds`) and `src/audio_mix.{hpp,cpp}` (no SDL) the mixing rule of one sample;
+  `src/presentation_clock.{hpp,cpp}` (no SDL): the animation tempo clock; `src/busy_cursor.hpp`: the system wait cursor while loading; `src/finish_view.{hpp,cpp}`: the finish sequence;
   `src/victory_view.{hpp,cpp}`: the victory; `src/finale_scenes.{hpp,cpp}` (no SDL): their records and passes; `src/record_canvas.{hpp,cpp}`: their DIB, window image and SBS slots over `src/record_paint.{hpp,cpp}` (no SDL); `src/balance_view.{hpp,cpp}`: the year balance with `src/balance_players.{hpp,cpp}` (no SDL) its players' part and `src/balance_closing.{hpp,cpp}` (no SDL) its closing part and `src/balance_board.{hpp,cpp}` (no SDL) / `src/balance_board_view.cpp` its board;
   `src/stage_view.{hpp,cpp}`: the destination announcement; `src/card_shop_view.{hpp,cpp}`: the card shop;
   `src/select_player_view.{hpp,cpp}`: the target choice; `src/flight_view.{hpp,cpp}`: the Flugzeug booking;
@@ -151,7 +148,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   (no SDL): centring, clamping and edge scrolling of the map origin; `src/event_scenes.{hpp,cpp}`
   (no SDL): event animation table and timing; `src/mouse_control_view.{hpp,cpp}`: the MCTRL
   mouse steering cross; `src/controller.{hpp,cpp}`: game controllers as the original joystick with `src/pad_input.{hpp,cpp}` (no SDL calls) its key logic and the recomp pad layer, `src/pad_map.{hpp,cpp}` (no SDL) the pad button remapping ([Gamepad]) and `src/game_window_pad.cpp` its context in the game window; `src/flc.{hpp,cpp}` (no SDL): FLC film decoder;
-  `src/film_view.{hpp,cpp}`: the FLIC window; `src/sight_view.{hpp,cpp}`: the Tourism sights window; `src/voice_sync.{hpp,cpp}` (no SDL): sync.dat subtitle timing; `src/subtitle_view.{hpp,cpp}`: the SUBTITLE window; `src/intro_script.{hpp,cpp}` (no SDL): the start intro state machine; `src/ambient.{hpp,cpp}` (no SDL): the ambient map animations; `src/intro_view.{hpp,cpp}`: the INTRO window; `src/logo_view.{hpp,cpp}`: the Blue Byte logo (PICT) while loading; `src/vehicle_air.{hpp,cpp}` (no SDL): the plane transformation on sea routes; `src/drago_vehicle.{hpp,cpp}` (no SDL): Dr. Drago's own vehicle following his holder;
+  `src/film_view.{hpp,cpp}`: the FLIC window; `src/sight_view.{hpp,cpp}`: the Tourism sights window; `src/voice_sync.{hpp,cpp}` (no SDL): sync.dat subtitle timing; `src/subtitle_view.{hpp,cpp}`: the SUBTITLE window; `src/intro_script.{hpp,cpp}` (no SDL): the start intro state machine; `src/ambient.{hpp,cpp}` (no SDL): the ambient map animations; `src/intro_view.{hpp,cpp}`: the INTRO window; `src/logo_view.{hpp,cpp}`: the Blue Byte logo (PICT) while loading; `src/vehicle_air.{hpp,cpp}` (no SDL): the plane transformation on sea routes; `src/vehicle_anim.{hpp,cpp}` (no SDL): the vehicles' frame animation; `src/drago_vehicle.{hpp,cpp}` (no SDL): Dr. Drago's own vehicle following his holder;
   `src/scene.{hpp,cpp}` and `src/scene_record.hpp`: their animation records.
 - `src/game_cards.cpp`: playing hand cards and the investment offer; `src/play_view.{hpp,cpp}`:
   SDL keys, title and map marks of the play mode.
@@ -171,7 +168,16 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   the trigger and effects in the game.
 - `src/obstacles.{hpp,cpp}`: road obstacle table, expiry, placement and link lookup (no SDL).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
-- `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/install.py`: validated ISO / directory import, native build/test/install and launcher;
+  `tools/installer_gui.py` the Tk assistant with `tools/installer_*.py` (preflight checks,
+  dependencies, directory import, process, progress, layout and theme) and
+  `tools/installation_manifest.py` the manifest and its verification.
+- `tools/project_version.py`, `tools/build_appimage.py`, `tools/check_appimage.py`,
+  `tools/export_branding.py` / `tools/branding_render.py`: version, setup AppImage and
+  branding exports (docs/releases.md).
+- `tools/soundtrack.py`, `tools/build_soundtrack.py`, `tools/cd_soundtrack.py`,
+  `tools/soundfont_defaults.py`, `tools/inspect_music.py`: Ogg sound-set preparation and
+  music research (docs/soundtracks.md).
 - `tools/editions.py`: the installer's edition profiles and known demos (mirrors
   `src/edition.cpp`); `tests/test_editions.py` checks both.
 - `tools/installer_update.py`: explicit verified updates, preserved local files/Ogg
@@ -222,15 +228,17 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - Do not invent game mechanics or infer record layouts solely from file sizes.
 - Original graphics displayed by the viewer are not evidence that the original
   renderer, world map or gameplay has been reconstructed.
-- Identify binaries by hash when comparing versions. This local `rally.exe` has
-  SHA-256 `aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83`.
+- Identify binaries by hash when comparing versions. The German retail `rally.exe` has
+  SHA-256 `aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83`, the US
+  English retail one `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a`
+  (docs/media-variants.md); addresses in the docs are German (D) unless marked R.
 - The executable is 16-bit Windows NE, using segmented addressing and WinG/GDI.
   Account for this when selecting disassembly or translation tools. Segment 9
   switches itself to 32-bit code; disassemble it with `--use32 9`.
 - Bounds-check new binary parsers and test malformed input as well as original
   files. Preserve indexed palettes and investigate transparency explicitly.
 - Add focused modules as more formats are decoded; keep format parsing separate
-  from gameplay and rendering when extending beyond this first viewer.
+  from gameplay and rendering.
 
 ## Next work
 
@@ -247,8 +255,10 @@ recognition and proven original CD control flow.
 Follow `docs/architecture.md` when introducing gameplay: use an SDL-independent
 simulation, explicit validated commands, authoritative random outcomes and a
 versioned serializable state. Local, AI and remote play must share this boundary.
-LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
-cosmetic effects local and optional; preserve the alignment of roads and fields.
+LAN then Internet multiplayer are agreed goals, not current capabilities; by user
+decision (2026-11-26) that work starts only after the port is complete
+(`docs/architecture.md`, "Multiplayer"). Keep cosmetic effects local and optional;
+preserve the alignment of roads and fields.
 
 Both retail editions are supported and installable: the German "Die total
 verrückte Rallye" and the US English "Dr. Drago's Madcap Chase" (playable since
@@ -260,9 +270,14 @@ Saves record their edition (format 8) and live in a directory per edition
 (`docs/save-format.md`); `map/europe.map` is read afresh for every new or loaded
 game.
 
-Next: continue the game window as in the original (agreed with the user: it must
-look like rally.exe; `--game`, src/game_screen.cpp): the remaining messages, menu,
-dialogs and smooth vehicle movement, with all art and text loaded from the installation. Keep `kSaveFormat` / `kRulesRevision` in src/save.hpp current when the
-state changes. The viewer is a debugging aid only; put effort into the simulation.
-Reconstruct and validate one complete human turn before broadening gameplay. Choosing a static translator versus
-manual reconstruction requires further executable analysis.
+Game controllers are fully supported (every window and dialog operable by pad,
+on-screen keyboard for names, every pad button remappable on the recomp menu's
+Steuerung page); keyboard keys stay fixed (user decision).
+
+Next: finish the game window as in the original (agreed with the user: it must
+look like rally.exe; `--game`, src/game_screen.cpp): compare each window, message
+and its input and timing with rally.exe and close the remaining deviations, with
+all art and text loaded from the installation. Keep `kSaveFormat` /
+`kRulesRevision` in src/save.hpp current when the state changes. The viewer is a
+debugging aid only; put effort into the simulation and the game window. The port
+remains a manual reconstruction; a static translator is not in use.

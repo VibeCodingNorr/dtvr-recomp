@@ -138,11 +138,10 @@ are absent. No disc image or CD audio layout has been established for this copy.
 ## US English integration handoff
 
 The user explicitly agreed on 2026-11-23 that the US English edition should be
-supported in the future and requested this handoff to Claude. This is a planned
-compatibility goal, not a request to interrupt the current German game-window
-reconstruction. Keep the importer work separate and schedule engine integration
-with the existing owner. See also [architecture](architecture.md#editions-and-languages)
-and the standing project instructions in `AGENTS.md`.
+supported and requested this handoff to Claude. It is completed: rounds E1–E3
+(2026-11-26) made the retail edition installable and playable. See also
+[architecture](architecture.md#editions-and-languages) and the standing project
+instructions in `AGENTS.md`.
 
 The English demo above stays unsupported; the retail edition is supported by the
 runtime and the installer since round E2 (see [Edition profiles](#edition-profiles)).
@@ -159,9 +158,6 @@ Do not rename English assets to German paths. The handoff checklist, now done:
   (done, round E2: `tools/editions.py`).
 - Verify one complete human turn and the installer smoke checks against the
   English copy using external installation/artifact directories (done, round E2).
-
-This engine work is separate from the directory importer so it can be coordinated
-with the ongoing game-window reconstruction.
 
 **Language letter (supported German EXE, checked 2026-11-23 after a user hint).**
 seg5:0239 formats `%s\lan.inf` (DS:0118) with the `dat` directory DS:7E, reads it
@@ -197,8 +193,9 @@ comparisons (Statistik spacing, Sieg banner). A missing, empty or unreadable fil
 stops the program with an error, as rally.exe does. Rebuild decision: a first
 byte that is not an ASCII letter is rejected at once, whereas rally.exe would use
 it and only fail if no `dat\<byte>\Rally_<byte>.dat` loads. Not rebuilt: the
-`E` / `e` subtitle rule of seg5:219C (only relevant with an English library). This
-does not lift the version gate; the English EXE stays unsupported.
+`E` / `e` subtitle rule of seg5:219C (only relevant with an English library; the
+retail EXE has no such comparison, see "Edition profiles"). This section predates
+round E1; the version gate now admits the US English retail profile.
 
 ## German installed-directory example, inspected 2026-11-23
 
@@ -243,5 +240,5 @@ pinned hashes and copies them unmodified, labelled "Release-OGG (nicht original)
 The six tracks (cue tracks 02–07) carry the same six recordings as the German
 regions 01–06. Hashes, mapping and measured silence: [CD audio](cd-audio.md#release-ogg-nicht-original-us-english-retail).
 
-This does not lift the version gate: the installer still rejects this executable
-until the English edition is supported, and German images refuse `--cd-audio-dir`.
+Since round E2 the installer accepts this executable through its edition profile;
+German images refuse `--cd-audio-dir`.

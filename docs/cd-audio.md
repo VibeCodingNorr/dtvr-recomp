@@ -79,8 +79,9 @@ and the original CD track numbers are still unverified/unimplemented.
 3. Add a versioned mapping from original music cue/track IDs to installed Ogg
    assets. Do not treat provisional segment numbers as original track IDs.
 4. Add a native streaming Ogg decoder/audio backend with play, stop, pause, resume,
-   seek and repeat behavior as required by the recovered original. Backend choice
-   remains open; the current viewer has no music playback implementation.
+   seek and repeat behavior as required by the recovered original. *Done for the
+   game window:* `src/music_stream.cpp` / `src/music_player.cpp` stream complete
+   installed Ogg sets (docs/native-music.md).
 5. Route recovered music events through this mapping. Honor local music volume
    and mute settings; host/client game-state synchronization must not wait on
    decoding or playback completion.

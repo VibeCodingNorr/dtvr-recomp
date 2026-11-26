@@ -1,8 +1,10 @@
 # Native game architecture and modernization
 
-Status: agreed direction and implementation requirements. These systems are not
-implemented by the current data viewer. Original game behavior remains the
-reference; preserve evidence and label deliberate changes.
+Status: agreed direction and implementation requirements. The simulation boundary,
+editions, native saves and parts of the usability scope exist (see the README
+status table); multiplayer, replays and the optional graphics effects do not.
+Original game behavior remains the reference; preserve evidence and label
+deliberate changes.
 
 ## Simulation boundary
 
@@ -24,10 +26,12 @@ resolved outcomes so replay need not depend on an unspecified platform RNG.
 
 ## Editions and languages
 
-Support for the US English edition is an agreed user goal (2026-11-23). Since
-round E2 the US retail edition is playable: the runtime and the installer identify
-it through explicit edition profiles (`src/edition.hpp`, `tools/editions.py`), and
-saves record their edition.
+Two editions are supported: the German retail edition and, since round E2, the
+US English retail edition ("Dr. Drago's Madcap Chase"). The runtime and the
+installer identify them through explicit edition profiles (`src/edition.hpp`,
+`tools/editions.py`); saves record their edition (format 8) and, since round E3,
+live in a save directory per edition. Blue Byte's official English demo is
+recognised and refused (user decision 2026-11-26).
 Verified fingerprints, resource differences and the engine handoff are recorded
 in [media variants](media-variants.md).
 
@@ -42,11 +46,13 @@ resources through an explicit profile rather than substituting German filenames.
 Compare gameplay tables and executable rules before declaring simulation
 compatibility. Share simulation rules where evidence establishes equivalence;
 represent confirmed edition differences explicitly instead of guessing them.
-Keep this work separate from the current game-window reconstruction until its
-integration is coordinated. Enabling a new profile requires native smoke checks
-and validation of a complete human turn using that edition's original data.
+Enabling a further profile requires native smoke checks and validation of a
+complete human turn using that edition's original data.
 
 ## Multiplayer
+
+Not implemented. By user decision (2026-11-26) multiplayer work starts only after
+the port of the original game is complete; until then this section is the plan.
 
 One host owns the authoritative state. Clients send commands, not replacement
 states, random outcomes or account balances. The host checks sender ownership,
@@ -64,16 +70,23 @@ authority boundary without requiring a network socket.
 
 ### Delivery order
 
-1. Recover a complete human turn and make its state serializable.
+1. Recover a complete human turn and make its state serializable. Saves exist
+   (docs/save-format.md); a command boundary with revisions and a snapshot of every
+   phase for the network do not yet.
 2. Add a host/join lobby over LAN with direct address entry and explicit player
    slot assignment. Later add discovery and local-machine naming.
 3. Add reconnect using session identity, a reconnect credential and an authoritative
    snapshot. Pause on player disconnect by default; AI replacement is an explicit
    host decision. Agree a deadline policy before timed multiplayer is enabled.
 4. Support saved multiplayer sessions, preserving slot ownership and rules.
-5. Extend transport to Internet play. Direct host connections are an initial path;
-   convenient connectivity may require rendezvous and relay services. Service
-   hosting, credentials and maintenance require a separate implementation decision.
+5. Extend transport to Internet play through a host code (user decision
+   2026-11-26, a plan): the host gets a short code from the recomp menu and joiners
+   enter it; both sides connect outbound over WebSocket to a small relay that only
+   forwards messages within a room (no game logic, no original data, no accounts,
+   rooms expire). The host stays authoritative and approves every joiner. LAN and
+   direct IP use the same protocol; the relay source is to be published under
+   GPL-3.0-only for self-hosting. Who operates a default relay instance, the
+   network library and the relay limits are still open decisions.
 
 Match protocol version, ruleset version and a manifest of gameplay-relevant data
 before starting. Allow local cosmetic settings to differ. Keep transport separate
@@ -106,9 +119,9 @@ recomp feature.
   only by explicit choice.
 
 Open decisions for the user before implementation: chat (none, text, or the
-show master's phrases as emotes), spectators without a slot, a per-turn time
-limit (none, the original `[Setup] TimeOut`, or configurable), and whether
-Internet play gets a relay service or stays with direct connections.
+show master's phrases as emotes), spectators without a slot and a per-turn time
+limit (none, the original `[Setup] TimeOut`, or configurable). Internet play uses
+the host-code relay (delivery order, step 5).
 
 ## Save files and event history
 
@@ -131,12 +144,16 @@ feature is deferred until state transitions and version compatibility are tested
 - Autosave history and restore points.
 - A readable record of money changes and events with their causes.
 - Symbols or patterns in addition to field colors.
-- Separate music, speech and effect volume controls.
+- One master volume (implemented); separate music, speech and effect levels are
+  deliberately not offered, as rally.exe only switches them on and off at full
+  volume (docs/pause-menu.md).
 - Preserve hotseat alongside LAN and eventual Internet play.
-- Remappable keyboard and controller bindings, with reset to defaults and visible
-  prompts for the active input device. Save bindings locally per device/profile.
+- Remappable controller bindings with reset to defaults (implemented: every pad
+  button on the recomp menu's Steuerung page, `[Gamepad]`, for all pads). Keyboard
+  keys stay fixed by user decision.
 - Full controller navigation through menus, route choices and dialogs, with clear
-  focus indicators. Route every input device through the same game commands.
+  focus indicators (implemented, with an on-screen keyboard for names). Route every
+  input device through the same game commands.
 
 Original rules are the baseline. Balance changes, new events and changed turn
 limits belong to an explicit ruleset selected by the host and stored in saves.
@@ -144,15 +161,15 @@ Visual and audio preferences belong to each local client, not the shared ruleset
 
 ### Feature backlog
 
-All entries below are planned and remain unimplemented. Start them once the
-recovered gameplay or rendering layer they depend on exists.
+Entries are planned and unimplemented unless the table says otherwise. Start them
+once the recovered gameplay or rendering layer they depend on exists.
 
 | Priority | Feature | First acceptance target |
 | --- | --- | --- |
-| Early | Key rebinding | Rebind an action, persist it across restart, detect conflicts and restore defaults. |
+| Early | Key rebinding | Rebind an action, persist it across restart, detect conflicts and restore defaults. *Implemented for pad buttons (a taken button is swapped); keyboard keys stay fixed.* |
 | Early | Financial and event history | Show turn, player, amount, cause and resulting balance from authoritative events. |
-| Early, after scene timing separation | Animation tempo | Original/2×/4× presentation, persistent local preference, unchanged game outcomes and input deadlines; [handoff](animation-tempo.md). |
-| After input actions exist | Controller support | Complete a turn and navigate every required dialog without a mouse; handle disconnect without submitting actions. |
+| Early, after scene timing separation | Animation tempo | Original/2×/4× presentation, persistent local preference, unchanged game outcomes and input deadlines; [handoff](animation-tempo.md). *Implemented: Animationstempo 1× / 2× and Computerzüge 1× / 2× / 4×.* |
+| After input actions exist | Controller support | Complete a turn and navigate every required dialog without a mouse; handle disconnect without submitting actions. *Implemented.* |
 | After scene/UI separation | Optional shader presets | Toggle effects at runtime, keep text readable and support an effects-free fallback. |
 | After suitable layers exist | Subtle parallax | Move background layers independently while board positions and hit targets remain aligned; honor reduced-motion settings. |
 | After save/event stability | Replays | Replay a saved initial state and recorded outcomes to the same final state; reject incompatible versions clearly. |

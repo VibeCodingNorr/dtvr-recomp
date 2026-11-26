@@ -251,9 +251,9 @@ Mode 2 sectors and directory cycles are rejected. Extent, tree depth, record cou
 and extraction size limits protect the bounded reader. This is a DTVR media
 importer, not a general-purpose CD filesystem implementation.
 
-Only the original executable hash documented in `AGENTS.md` is accepted. A
-different release requires analysis and explicit support, rather than bypassing
-the version check. Matching the executable identifies the supported version; it
+Only the executable hashes of the edition table above are accepted (the German
+and the US English retail edition). A different release requires analysis and an
+explicit profile, rather than bypassing the version check. Matching the executable identifies the supported version; it
 does not authenticate every asset against a known disc manifest. Per-file hashes
 record what was actually installed.
 
@@ -273,8 +273,9 @@ omitted from the final installation. Compare per-file hashes when changing the i
 
 ## Future reconstruction stages
 
-The current installer builds the native viewer and installs original data. It
-does not yet recompile original instructions. If executable translation or data
+The current installer builds the native game (a manual reconstruction; viewer
+modes included) and installs original data. It does not recompile original
+instructions. If executable translation or data
 conversion is introduced, add explicit, versioned stages after media validation,
 and record input hashes, conversion/tool versions and generated outputs in the
 manifest. Original executable bytes are only temporary validation/analysis inputs
@@ -301,11 +302,13 @@ After successful tests, copy local files and existing Ogg packs into staging.
 A newly rendered pack replaces an old pack with the same ID. Symlinks, special
 files and collisions between user files and new managed files are rejected.
 
-Game saves under the installation's `saves/` directory, including the default XDG
-location, are preserved as mutable user files. Settings normally live separately
+Game saves under the installation's `saves/` and `saves-en-us-retail/` directories
+(the per-edition save directories when the installation is the default XDG data
+directory, docs/save-format.md) are preserved as mutable user files. Settings normally live separately
 at `$XDG_CONFIG_HOME/dtvr-recomp/settings.ini` (or `~/.config/dtvr-recomp/settings.ini`)
 and are never modified by the installer. Unmanaged local files are copied and
-excluded from managed-file hashes; saves are always excluded. The game must remain
+excluded from managed-file hashes; `saves/` is always excluded, and
+`saves-en-us-retail/` holds only such unmanaged files. The game must remain
 closed throughout the update because the installer cannot lock a running game.
 Preserving bytes does not migrate incompatible save formats; the game validates them.
 

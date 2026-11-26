@@ -5,7 +5,8 @@
   <img src="assets/branding/logo.svg" alt="dtvr-recomp: a winding road, town tower and five-pip die" width="1200">
 </picture>
 
-Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte).
+Native Linux reconstruction of **Die total verrückte Rallye** (Blue Byte; US English
+retail edition: *Dr. Drago's Madcap Chase*).
 Current project version: **0.0.1** ([release and AppImage policy](docs/releases.md)).
 The game window (`--game`) is playable: title, player setup, the rally with its
 recovered rules, computer opponents, cards, towns, events and the original
@@ -27,25 +28,25 @@ is claimed.
 | US English edition | ✅ Implemented | The US English retail CD ("Dr. Drago's Madcap Chase", `RALLY.EXE` `a8374ca9…`) is installable and playable with its own data: edition profiles in the runtime ([edition](src/edition.cpp)) and the installer ([editions](tools/editions.py)) identify it by the SHA-256 of `rally.exe` or of the installation manifest, check its files and the `dat/lan.inf` letter, and select overview, canvases, the retail empty-slot label, credits path and 640 setup name fields. Its rules are the German ones (retail audit); one complete human turn gave the same simulation log as the German data. Saves record the edition, live in a directory per edition and refuse the other one; both editions read `europe.map` afresh for every new or loaded game (retail behaviour). Music: the pinned release Ogg tracks (not original) or MIDI. Blue Byte's official English demo (`c8b7dab6…`, Demo Version 27-MAY-95) is recognised and refused as unsupported. | [Edition profiles](docs/media-variants.md#edition-profiles), [installer](docs/installer.md), [saves](docs/save-format.md#editions) |
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
-| Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
+| Native executable translation | ⬜ Not implemented | The game is a manual C++ reconstruction; original instructions are not translated. | [Architecture](docs/architecture.md) |
 | Sprite data | 🟡 Partial | SBS frames decoded; colour key 0 confirmed from the blitter, callers of seg2:9497 pass their own key (e.g. 0xFF for the statistics arrows). Animation records and their exact step rule (seg2:6DCB) drive the finish, victory and all event scenes. Vehicle frames placed as the original sprite list (seg2:3EB0). | [SBS parser](src/sbs.cpp), [event scenes](src/event_scenes.cpp) |
 | World map and seasons | 🟡 Partial | Full tile map, layers, mirroring and seasonal tile selection; the map origin is centred, clamped and edge-scrolled as in rally.exe, with zoom; the water cycles its palette as the original. | [World map](src/worldmap.cpp), [scrolling](src/map_scroll.cpp) |
-| Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns decoded, with graph overlay; field actions and town entry meanings still open. | [Board parser](src/board.cpp) |
+| Board and towns | 🟡 Partial | 700 fields, links, field lists and 115 towns with their property entries decoded (graph overlay in the viewer); the field actions are rebuilt (see turn logic). Open: the town entry fields +0x1E (category, value 3 tested separately) and +0x20, `flagset` bits 0–4 and `europe.car`. | [Board parser](src/board.cpp) |
 | Viewer input and display | ✅ Viewer implemented | Mouse zoom/pan, keyboard navigation and inspection views; a debugging aid next to the game window (`--game`). | [SDL viewer](src/main.cpp) |
-| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, monthly statement, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Blue Byte logo while loading, intro, sights, subtitles, ambient map animations, the stage count window (with a slider as a recomp addition) and the forced sale. Open: remaining presentation details. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
+| Original game window | 🟡 Partial | `--game` (optionally `--resolution 640/800/1024`, F11 fullscreen): title, player setup, options, save / load dialog, menus of the language file, the canvas with map, portrait, info panel and slot machine, all at the original positions with art and text loaded from the installation. The message window shows the language texts with the showmaster, Dr. Drago, card, professor or club pictures and Yes / No questions (obstacle card, quit). Card window with SBBUTTON focus, press and GESPERRT overlay; target choice, Flugzeug booking, Nägel direction, investment offer, Risiko, card shop, town dialog ESTATES, statistics, overview, Umfeld and zoom; stage announcement, year balance, monthly statement, finish and victory sequences; every event plays its original animation at its place. Card films (FLC) play natively; vehicles become planes on sea routes. Blue Byte logo while loading, intro (skipping it opens the title at once), sights, subtitles, ambient map animations, the stage count window (with a slider as a recomp addition) and the forced sale. On the map only the main window's keys of seg4:0259 (plus the recomp keys) act, no viewer shortcuts; Return there is seg2:0BC3. Open: remaining presentation and timing details. Not rebuilt by decision (user, 2026-11-26): the joystick calibration dialog (key C, seg2:7F72); modern controllers need none. | [Game window](src/game_screen.cpp), [flow](src/game_window.cpp), [layout](src/layout.cpp), [evidence](docs/formats.md#game-window-round-21) |
 | CD audio import | 🟡 Partial | Six provisional Ogg segments exported and verified; original track boundaries/IDs remain unverified. | [Audio importer](tools/cd_audio.py), [evidence](docs/cd-audio.md) |
 | Native music, speech and effects | 🟡 Partial | Ogg streaming shares the stereo effects mixer; startup, game, destination, winner, Drago and recovered event cues. Sound set and master volume on the Audio page of the recomp menu (F8); mixing as rally.exe (voices silence the effects); remaining original transition boundaries and listening validation are open. | [Native music](docs/native-music.md), [effects](src/sound.cpp) |
 | Complete Ogg sound sets | ✅ Preparation and selection implemented | Render all 25 cues using supplied banks; classic/dry styles, catalog validation, native discovery and selection in the recomp menu (F8). | [Soundtrack builder](docs/soundtracks.md) |
 | Movement rules | 🟡 Partial | Slot machine roll, field step counting with undo, original random generator, tile properties (`europe.pit`) and routes recovered and tested; move preview in the world view; arrow-key driving and the original mouse steering cross (MCTRL) and game controllers as the original joystick, with the step and arrival rules. | [Rules](src/rules.cpp), [evidence](docs/formats.md#movement-round-4) |
-| Turn logic and original rules | 🟡 Partial | Playable hotseat rally (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages, the Master-Rallye (all drivers moved to the start cells, Dr. Drago to the leader, final destination Brussels) and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions and follows on the map in his own vehicle (bicycle / boat, rocket car, blimp), leaving and returning at a form change and driving to the new holder at Hau ab; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
-| AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn. Driver names come from the language file at run time. A computer's investment offer is declined by the window's timeout as in rally.exe. | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
-| LAN / Internet multiplayer | ⬜ Planned | Host authority, lobby and reconnection; LAN first, Internet later. | [Multiplayer](docs/architecture.md#multiplayer) |
-| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick plus recomp pad buttons (Start, View, X, Y, LB/RB, right stick; [pad layer](src/pad_input.cpp)), every pad button remappable on the Steuerung page ([pad map](src/pad_map.cpp)), mouse wheel where the original has page arrows, recomp menu (Escape / F8), F12 text smoothing. Planned: contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
+| Turn logic and original rules | 🟡 Partial | Playable rally in the game window and the terminal hotseat mode (`--play`): London start, slot roll, field movement with undo, money fields, inflation, player change, months, random destinations, stages, the Master-Rallye (all drivers moved to the start cells, Dr. Drago to the leader, final destination Brussels) and game end — all from recovered rules. Event card deck with yellow-field draws; 37 of 41 card types playable (movement, Fiskus, Konto, Schulden, Zero, Zucker, Schlafen, Blockieren, Weihnachten, Hau ab, Erdbeben, Nägel, Punch, Konferenz, Flugzeug, Verdoppeln, Tschüss, Steuerlos, Risiko and the eight property cards in the town dialog) plus four passive protection cards; Dr. Drago rides along with all six of his actions and follows on the map in his own vehicle (bicycle / boat, rocket car, blimp), leaving and returning at a form change and driving to the new holder at Hau ab; properties can be bought and sold in towns (starting cash 30,000, monthly income, whole-town bonus, credit charged at the year end); random events are triggered and Eastern Europe stays behind border barriers until enough property is owned; robbers, road obstacles (cleared with Schneepflug) and property damage (protected by Versicherung / Nessie) work; the professor and football club offer investments that return double or nothing. Computer players drive, buy, play and trade cards with the original strategy tables, Steuerlos hands a turn to them, and a single human gets a computer opponent as in the original. Nebel is unused in the original executable. Card fields work as a card shop (buy at the card value, sell for half; used cards return to the deck). Not modelled: the Steuerlos swap of DS:10 and the computer's 1 s wait before its Return. | [Game](src/game.cpp), [Dr. Drago](src/drago.cpp), [events](src/events.cpp), [obstacles](src/obstacles.cpp), [cards](src/cards.cpp), [economy](src/economy.cpp), [evidence](docs/formats.md#risiko-nebel-and-the-player-setup-round-19) |
+| AI, saves and hotseat | 🟡 Partial | Hotseat for 1–8 players; computer players with the original strategy tables (driving, buying, cards, card field); versioned native save format with exact round trip and atomic writes, the original save dialog with slots and an autosave at each turn; saving from MAIN1, loading from the title menu, one save directory per edition, and loading recomputes what rally.exe's loader does (seg8:AC9A). Driver names come from the language file at run time. A computer plans its route after the slot window, and its investment offer is declined by the window's timeout as in rally.exe. | [AI](src/ai.cpp), [saves](docs/save-format.md), [save slots](src/save_slots.cpp) |
+| LAN / Internet multiplayer | ⬜ Planned | Starts after the port is complete (user decision 2026-11-26). Plan: host authority, lobby, host code over a small WebSocket relay, the same protocol for LAN / direct IP, reconnection. | [Multiplayer](docs/architecture.md#multiplayer) |
+| Modern controls and usability | 🟡 Partial | Game controllers as the original joystick (every window and dialog reachable by pad) plus recomp pad buttons (Start, View, X, Y, LB/RB, right stick; [pad layer](src/pad_input.cpp)), every pad button remappable on the Steuerung page ([pad map](src/pad_map.cpp)), an on-screen keyboard for names ([OSK](src/osk.cpp)), mouse wheel where the original has page arrows, recomp menu (Escape / F8), F12 text smoothing. Planned: contextual help, route planning and event history. | [Backlog](docs/architecture.md#feature-backlog) |
 | Optional graphics | 🟡 Partial | Window / fullscreen with whole-number pixel scaling and black borders (F11, `[Display]`); optional widescreen with a wider map window (`--widescreen`, `[Display] Widescreen`, [layout](src/layout.cpp)); text smoothing F12 / `[Display] TextSmoothing`: 0 Original (no anti-aliasing), 1 at canvas size, 2 at screen resolution while scaled. Shaders, smoothing filters and parallax are planned. | [Graphics](docs/architecture.md#optional-graphics) |
 | Automated validation | ✅ Implemented | Synthetic parser/installer tests and repository policy workflow; local ISO integration checks. | [Tests](tests), [CI](.github/workflows/source-policy.yml) |
 
 <details>
-<summary>Reconstruction rounds so far (evidence with addresses in <a href="docs/formats.md">docs/formats.md</a>)</summary>
+<summary>Reconstruction steps so far (evidence with addresses in <a href="docs/formats.md">docs/formats.md</a>; list numbers are not the "round N" numbers used there; later steps name their pull requests)</summary>
 
 1. SBS sprite container decoded (all 94 files, 1,559 frames).
 2. World map composed with the original loader and draw rules; transparency confirmed.
@@ -194,7 +195,20 @@ is claimed.
 114. Start: the Blue Byte logo `butt/<n>/bb.bmp` centred on the wooden canvas while the game loads, as seg6:0A4D; rally.exe has no timer, the recomp keeps it at least 2.5 s (a key or click ends it). Recomp change: the second logo rally.exe shows after the intro (seg5:0193) is left out (user decision 2026-11-25). The intro runs over the wooden canvas.
 115. Dr. Drago at a stage change (round R3b): the distance array DS:22 is modelled as rally.exe keeps it; the placement still reads the distances from the destination just reached, compared unsigned so an unreached field wins ([rules](src/rules.cpp), [evidence](docs/formats.md)); a sit-out's message comes before Dr. Drago's action (rules revision 47). Not modelled (timing): a route of Dr. Drago's vehicle that starts during the announcement can rebuild the array from the new destination first.
 116. Tschüss and Flugzeug from the real view (rounds R6 / R7): the carried player lands outside the zoomed map view of the original canvas centred on him (13 / 17 / 21 cells at 640 / 800 / 1024, touching counts as visible), then the carrier's corner is drawn; Flugzeug first carries the player away the same way before landing. Mitspieler works only at the turn start as in rally.exe; a computer then plays the whole turn from its card choice ([cards](src/game_cards.cpp), [evidence](docs/formats.md)) (rules revision 48).
-117. *Next:* remaining presentation details (compare windows with rally.exe).
+117. (PR #20) Finish ZIEL and victory SIEG paint their animation records and fill their frames as rally.exe (seg7:1E3C; seg7:2C55 ff. / seg7:7548 ff.).
+118. (PR #21, #25, #28, #31) Pad rounds 2–4: on-screen keyboard for the player names (SBINPUT rules: 19 characters in the field, 18 handed to the game, IsCharAlphaNumeric filter), pad handling of the setup, options and stage count windows, the Steuerung page and remapping of every pad button (`[Gamepad]`); the keyboard reacts on the press with an accelerating repeat.
+119. (PR #22) Loading as rally.exe's loader (seg8:AC9A): start facing, Dr. Drago re-placed with random(3) + 4, western property value, turn start seg2:0407 (rules revision 49).
+120. (PR #23) Ambient map animations shown in the visible view again (tile origin converted to pixels, seg8:81E2).
+121. (PR #24) Umfeld as seg6:1681: the right button ends it, a left click in a 60-pixel edge strip scrolls, digits 2 / 4 / 6 / 8, the numeric pad only without NumLock.
+122. (PR #26) The card window opened from the town dialog plays its cards through seg3:0E11; viewer shortcuts no longer act on the map, only the main window's keys (seg4:0259-02C3).
+123. (PR #27) Skipping the intro opens the title at once, without a map frame.
+124. (PR #29) Return on the map as seg2:0BC3: ends Verdoppeln and the TimeOut timer, then runs a due arrival or the sights; it never ends a turn or rolls (rules revision 50).
+125. (PR #30, #34, #37) Editions E1–E3: profiles by the EXE SHA-256, the US English retail edition installable and playable, saves record their edition (format 8) and live in a directory per edition, `europe.map` read afresh for every game, Blue Byte's English demo refused.
+126. (PR #32) The US retail release's Ogg tracks as a marked, non-original CD music source (`--cd-audio-dir`).
+127. (PR #33) The computer plans its route after the slot window closes (seg2:66F9 → seg5:71B3(5)).
+128. (PR #35, #36) The recomp menu keeps no save or load entries: saving and loading stay with MAIN1 and the title menu.
+129. (PR #38) A computer's investment offer is declined by the window's timeout (seg6:0FB4, 2.5 s × pause factor).
+130. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 
@@ -268,6 +282,18 @@ hard-disk folder without `butt/` is incomplete, use the disc image then.
 Directories do not provide CD audio regions; original MIDI music can still be
 prepared with a local SoundFont.
 
+The US English retail edition installs the same way. Its known release ships the
+data image with a cue sheet and Ogg tracks; the CLI accepts those tracks as a
+marked, non-original CD music source (not offered in the GUI):
+
+```sh
+python3 tools/install.py --iso /path/to/release/track01.iso --cd-audio-dir /path/to/release
+```
+
+Only the pinned image, cue sheet and Ogg hashes are accepted
+([Release-OGG](docs/cd-audio.md#release-ogg-nicht-original-us-english-retail)); without
+`--cd-audio-dir` the image installs with MIDI music only.
+
 The installer reads the ISO without mounting it, extracts the `program` tree,
 validates the known original executable, builds and tests the native code, and
 creates a local installation with a launcher and hash manifest. It supports
@@ -306,12 +332,12 @@ number of stages (1–300).
 
 | Key / input | Game window (as rally.exe unless marked) |
 | --- | --- |
-| Enter | Spin the slot machine, stop its reels / close it, confirm |
+| Enter | Confirm in menus and windows; slot machine: pull the lever, stop the reels, close it; on the map (seg2:0BC3): end a move whose steps are used up or show the sight at a view point, never ends a turn |
 | Slot machine: left click / right click | Like Enter (anywhere, the window captures the mouse) / like Escape |
 | Slot machine: Escape, Backspace | Before the reels stop: take back the Würfeln of a human (the turn menu opens again) |
 | Arrow keys | Steer field by field; in windows move the focus |
 | Left click on the map | Mouse steering cross (MCTRL) |
-| Escape | Recomp menu (pause, graphics, audio, game, controls; recomp) where rally.exe has no Escape action; in windows: back |
+| Escape | On the map: recomp menu (pause, graphics, audio, game, controls; recomp; rally.exe opens RIGHTBTN, seg4:01D1, which Backspace still does); in a turn menu without a checked item (ONFIELD) and in the title menu: recomp menu; in a game of computers with no menu open: end it and return to the title (seg1:021D); in windows: back |
 | Backspace / right click | Menu RIGHTBTN (cards, statistics, overview, save, main menu); in windows: back |
 | Space | Centre the map on the current driver |
 | Insert / Delete | Zoom in / out |
@@ -325,15 +351,19 @@ number of stages (1–300).
 | F12 | Text smoothing: Original / canvas size / screen resolution (recomp) |
 | Mouse wheel | Scroll lists that have page arrows in the original (recomp) |
 
-**Escape** opens the recomp menu over the paused game (computers, the time limit and
+**Escape** on the map opens the recomp menu over the paused game (computers, the time limit and
 the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
 original RIGHTBTN menu, quit with the original question; saving and loading stay
 in the original MAIN1 and title menus),
 Grafik, Audio, Spiel and Steuerung (a table of the keyboard and pad controls).
 Switches marked ORIGINAL are those of the
 original options window; the others are recomp settings in `[Display]` /
-`[Extensions]`. Changes apply at once and persist. In
-the original turn menu Escape did nothing; dialogs keep their Escape. In the title
+`[Extensions]`. Changes apply at once and persist. On the map rally.exe's Escape
+opens RIGHTBTN like Backspace (seg4:01D1); the recomp takes Escape for its menu
+there (deliberate deviation), Backspace and the menu's "Originales Spielmenü" keep
+RIGHTBTN. In the original turn menu ONFIELD Escape did nothing; the recomp opens its
+menu there too. In a game without humans Escape or a right click end it and return
+to the title (seg1:021D) when no menu is open. Dialogs keep their Escape. In the title
 menu MAIN rally.exe's Escape chooses the checked item "Neues Spiel" (seg5:543D);
 the recomp opens its menu there instead (deliberate deviation). MAIN1 and RIGHTBTN
 keep the original Escape (Weiter spielen, Zurück). The target choice (SELPLAYER, also
@@ -442,7 +472,7 @@ properties; **1–9, 0** buy entry 1–10, **Shift+1–9, 0** sell it and
 **Ctrl+1–8** plays a property card (Kaufen, Gold, Platin, Mieten, Nimm,
 Abkaufen, Kredit, Verkaufen) whose mode lasts until the turn ends. Status
 (including cash) is shown in the window title, the log and your hand in the
-terminal. Multiplayer remains planned. Ogg music is available in `--game`.
+terminal. Ogg music is available in `--game`.
 
 The data viewer is a debugging aid:
 
@@ -488,8 +518,9 @@ Use `play --help` for the complete command-line options.
 
 ## Build and run
 
-Requires a C++17 compiler, CMake, pkg-config and SDL2 development files
-(optional: SDL2_ttf with Arial or Liberation Sans for text in the game window).
+Requires a C++17 compiler, CMake, pkg-config and the development files of SDL2,
+libvorbisfile and json-c >= 0.15 (optional: SDL2_ttf with Arial or Liberation Sans
+for text in the game window).
 Python 3 is used for the analysis tool. No Python packages are required.
 
 ```sh
@@ -543,8 +574,8 @@ and testing the source does not require original assets.
 
 See [docs/formats.md](docs/formats.md) for observations and next steps.
 The agreed [architecture and modernization plan](docs/architecture.md) covers
-LAN/Internet multiplayer, save files, usability and optional graphical effects.
-These are planned features, not capabilities of the current viewer.
+the simulation boundary, editions, LAN/Internet multiplayer, save files, usability
+and optional graphical effects; the status table above says which parts exist.
 
 ## License
 

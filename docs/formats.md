@@ -3375,7 +3375,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   The repetition is the tested `JoystickRepeater`; its keys are pushed into the
   SDL queue so menus, dialogs and driving receive them like the keyboard, and a
   released direction sends key-up (clears the held arrow, DS:A77A). **Not
-  rebuilt / assumptions:** the calibration dialog (SDL reports calibrated axes;
+  rebuilt / assumptions:** the calibration dialog (deliberately, user decision
+  2026-11-26: modern controllers need no calibration; SDL reports calibrated axes;
   the stick limit is half the range), the two-stick mode.
 - **Evidence for the key details:** the PostMessage calls of seg2:8A30 (seg2:8B44,
   8B84, 8BBC, 8BF4) send WM_KEYDOWN (0x100) with lParam 0 to the GetFocus window
@@ -4093,8 +4094,8 @@ a recomp element and now reads the pad itself:
   Colour cycling (`[Setup] Colorcycle`) is traced in "Colour cycling" (round 82).
 - Frame names suggest animation sequences (`DDOWN1..4`, `V01..`); playback order,
   timing and placement come from code that is not yet analysed.
-- `map/europe_d.tow`: contains readable city and property names, including
-  London and Tower-Cafe. Record layout is not yet established.
+- `map/europe_d.tow`: city and property names (e.g. London, Tower-Cafe); the
+  record layout is in "Properties and money (round 8)", "Town entries".
 - `dat/d/rally_d.dat` is itself an MZ/NE binary despite the `.dat` suffix.
 - Tourist information in `butt/d/views/*.txt` is readable as Windows-1252.
 
