@@ -519,13 +519,25 @@ bool GameScreen::handleSurroundings(const SDL_Event& event) {
         }
         return true;
     }
-    if (event.type == SDL_KEYDOWN) { // seg6:1906 -> 1991
-        switch (event.key.keysym.sym) {
-        case SDLK_RETURN: case SDLK_ESCAPE: case SDLK_SPACE: surroundings_ = false; break; // seg6:1985
-        case SDLK_LEFT: case SDLK_KP_4: move(-1, 0); break;  // seg6:1969
-        case SDLK_UP: case SDLK_KP_8: move(0, -1); break;    // seg6:1915
-        case SDLK_RIGHT: case SDLK_KP_6: move(1, 0); break;  // seg6:1931
-        case SDLK_DOWN: case SDLK_KP_2: move(0, 1); break;   // seg6:194D
+    if (event.type == SDL_KEYDOWN) { // seg6:1906 -> 1991 (Windows virtual-key codes)
+        SDL_Keycode key = event.key.keysym.sym;
+        // Windows sends the numeric pad as VK_RETURN / arrows with NumLock off and as
+        // VK_NUMPADn (0x60+, no case at seg6:1991) with NumLock on.
+        const bool numLock = (event.key.keysym.mod & KMOD_NUM) != 0;
+        switch (key) {
+        case SDLK_KP_ENTER: key = SDLK_RETURN; break;
+        case SDLK_KP_4: key = numLock ? SDLK_UNKNOWN : SDLK_LEFT; break;
+        case SDLK_KP_8: key = numLock ? SDLK_UNKNOWN : SDLK_UP; break;
+        case SDLK_KP_6: key = numLock ? SDLK_UNKNOWN : SDLK_RIGHT; break;
+        case SDLK_KP_2: key = numLock ? SDLK_UNKNOWN : SDLK_DOWN; break;
+        default: break;
+        }
+        switch (key) {
+        case SDLK_RETURN: case SDLK_ESCAPE: case SDLK_SPACE: surroundings_ = false; break; // 0x0D/1B/20: seg6:1985
+        case SDLK_LEFT: case SDLK_4: move(-1, 0); break;  // 0x25 / '4' 0x34: seg6:1969
+        case SDLK_UP: case SDLK_8: move(0, -1); break;    // 0x26 / '8' 0x38: seg6:1915
+        case SDLK_RIGHT: case SDLK_6: move(1, 0); break;  // 0x27 / '6' 0x36: seg6:1931
+        case SDLK_DOWN: case SDLK_2: move(0, 1); break;   // 0x28 / '2' 0x32: seg6:194D
         default: break;
         }
         return true;

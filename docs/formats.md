@@ -3109,8 +3109,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   redraws. A left click in the map window (seg6:1798, WM_LBUTTONDOWN; coordinates ÷
   (zoom DS:9C70 + 1); corrected in round 78, not a mouse move): in a strip of 0x3C pixels at an edge of the viewport DS:94DA..94E0
   (corner squares excluded) the target moves by (width ÷ ±3) ÷ 16 tiles in that
-  direction. Keys (seg6:1991): arrows and numpad 2 / 4 / 6 / 8 move the same way;
-  Enter, Escape and Space end it; the right button ends it (seg6:176E, see the
+  direction. Keys (seg6:1991, virtual-key codes): the arrows 0x25..0x28 and the
+  main-row digits '2' / '4' / '6' / '8' (0x32 / 0x34 / 0x36 / 0x38, seg6:19C0..19DC;
+  not VK_NUMPADn 0x62+) move the same way; Enter 0x0D, Escape 0x1B and Space 0x20
+  end it. The numeric pad therefore scrolls only with NumLock off, when Windows
+  sends it as arrows (and its Enter as VK_RETURN); the rebuild maps SDLK_KP_2/4/6/8
+  to arrows only without KMOD_NUM in the key event and ignores them otherwise.
+  The original sets the target from the current origin and applies it once per loop
+  pass (wait seg6:0CDF(10, 0)), so two same-axis events between passes do not add
+  up; the rebuild applies each event at once (a difference only for very fast
+  input); the right button ends it (seg6:176E, see the
   mouse trace below; corrected in the Umfeld mouse round).
 - **Umfeld mouse trace** (map window procedure seg6:1681, dispatch seg6:1A00 ff.):
   the cases are WM_CREATE 0x01 → 169A, WM_SIZE 0x05 → 1751, WM_PAINT 0x0F → 1743,
