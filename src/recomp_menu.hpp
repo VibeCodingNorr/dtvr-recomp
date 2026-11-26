@@ -7,6 +7,7 @@
 #include "settings.hpp"
 
 #include <cstdint>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,12 @@ public:
     void setMusic(Music music); // rebuilds the Audio page when the sets change
     const Music& music() const { return music_; }
     void close() { open_ = false; capture_ = PadAction::kCount; }
+    // Opens again where it was hidden (page, entry) with the current settings: after a
+    // dialog of a Pause command (CommandPlan::returnAfter) has closed.
+    void resume(const Settings& settings);
+    // A line for the footer of the Pause page (a refused command); cleared by moving.
+    void setNote(std::string note) { note_ = std::move(note); }
+    const std::string& note() const { return note_; }
     bool isOpen() const { return open_; }
 
     Action input(Input in);
@@ -120,7 +127,22 @@ private:
     bool captureStamped_ = false;
     std::uint32_t captureSince_ = 0;
     std::string padNote_;
+    std::string note_;
 };
+
+// What the game window does with a command of the Pause page. Every press has one
+// consumer and the dialog is the only window in front: like MAIN1's 1062 (seg4:07B8:
+// seg5:52AC closes the menu DS:9EDE, then seg8:B157(1)) the original menu that was
+// open under the recomp menu (ONFIELD, MAIN1, RIGHTBTN) closes before the dialog.
+struct CommandPlan {
+    int originalCommand = 0;  // WM_COMMAND id run instead (1062 Spiel speichern, 1021 Spiel laden), 0 none
+    bool hide = false;        // the recomp menu closes for the dialog / menu
+    bool returnAfter = false; // it opens again when that dialog closes (not after a load)
+    bool refused = false;     // another window of the game is open: the menu stays, note()
+};
+// `gameWindowOpen`: a window of rally.exe other than its menus has the input (message,
+// card window, town dialog, OPTION, ...); rally.exe saves only from MAIN1 (1062).
+CommandPlan planCommand(RecompMenu::Action action, bool gameWindowOpen);
 
 // The Steuerung page: keyboard and pad side by side with the pad map's buttons
 // (recomp texts, not in the language file); its Binding rows remap the pad.

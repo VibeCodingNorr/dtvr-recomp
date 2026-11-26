@@ -269,6 +269,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (r == SaveView::Result::Confirm && !saveDialog.saving()) { // load (title)
             std::string error;
             saveDialog.close();
+            recompReturn_ = false; // a load replaces the game; a failed one shows the title
             if (screen_.saveSlots().load(saveDialog.slot(), play_.game(), error)) startGame();
             else { // seg8:B3F9: Zaehler2
                 sound_.play(2, 7);
@@ -288,7 +289,11 @@ void GameWindow::handleEvent(const SDL_Event& event) {
             else
                 std::cerr << "Speichern fehlgeschlagen: " << error << "\n";
         }
-        if (r != SaveView::Result::None) saveDialog.close();
+        if (r != SaveView::Result::None) {
+            saveDialog.close();
+            if (recompReturn_) recompMenu_.menu().resume(menuSettings()); // back to the Pause page
+            recompReturn_ = false;
+        }
         return;
     }
     if (handleGameDialog(event)) return;
@@ -307,6 +312,10 @@ void GameWindow::handleQuestion(const SDL_Event& event) {
         quitAsked_ = false;
         if (answer == 6) running_ = false;
         else if (quitReopensMain_) openMenu("MAIN1");
+        else if (recompReturn_ && !screen_.saveDialog().isOpen()) { // asked from the recomp menu
+            recompMenu_.menu().resume(menuSettings());
+            recompReturn_ = false;
+        }
     } else if (play_.game().answerObstacle(answer == 6)) {
         report();
     }
@@ -346,11 +355,21 @@ void GameWindow::handleRecompMenu(const SDL_Event& event) {
         if (!applyMusicChoice(music_, recompMenu_.menu().music(), musicConfig_, error))
             std::cerr << "Musik: " << error << "\n";
     } else if (a != Action::None && a != Action::Resume) {
-        recompMenu_.menu().close();
-        if (a == Action::SaveGame) screen_.saveDialog().open(true);       // as Spiel speichern (1062)
-        else if (a == Action::LoadGame) screen_.saveDialog().open(false);
-        else if (a == Action::OriginalMenu) openMenu("RIGHTBTN");
-        else if (a == Action::Quit) askQuit(false);
+        // estates / MCTRL / Risiko / PLAYER / TEMP are no part of modal_ but have the input too.
+        const bool busy = gameWindowOpen() || screen_.estates().isOpen() || screen_.mouseControl().isOpen()
+                          || play_.game().phase() == Game::Phase::Risiko || screen_.setup().isOpen()
+                          || screen_.stages().isOpen();
+        const CommandPlan plan = planCommand(a, busy);
+        if (plan.refused) {
+            recompMenu_.menu().setNote("Erst das offene Fenster des Spiels schlie\u00dfen, dann speichern oder laden.");
+            sound_.play(2, 7); // recomp: Zaehler2, the sound of a refused action
+        } else if (plan.hide) {
+            recompMenu_.menu().close();
+            recompReturn_ = plan.returnAfter;
+            if (plan.originalCommand) command(plan.originalCommand); // closes ONFIELD / MAIN1 / RIGHTBTN first
+            else if (a == Action::OriginalMenu) openMenu("RIGHTBTN");
+            else if (a == Action::Quit) askQuit(false);
+        }
     }
     heldArrow_ = SDLK_UNKNOWN;
 }

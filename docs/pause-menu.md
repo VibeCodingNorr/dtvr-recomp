@@ -37,6 +37,18 @@ texts and must follow `src/pad_input.cpp`, `src/pad_map.cpp` and the game window
 keys; `tests/recomp_menu_test.cpp` checks every action's row, capture, swap,
 timeout and reset. The footer's key line and the on-screen keyboard's help line name
 the buttons in use (Tab/RB, Enter/A, Esc/B by default).
+Pause commands (`planCommand`, `src/game_window_input.cpp`): "Spiel speichern" /
+"Spiel laden" run the original commands 1062 / 1021, which first close the original
+menu that was open under the recomp menu (ONFIELD, MAIN1, RIGHTBTN; as MAIN1's
+1062 at seg4:07B8 closes DS:9EDE via seg5:52AC before seg8:B157(1)), so the save
+dialog is the only window in front and takes the next Enter / A. The recomp menu
+hides meanwhile and opens again on the same entry when the dialog closes (Ok or
+Nein; not after a load, which replaces the game). "Rallye beenden" works the same
+way: a No to the quit question brings the menu back. "Originales Spielmenü"
+replaces it with RIGHTBTN. While another window of the game has the input (message,
+card window, town dialog, OPTION, Risiko, ...) save and load are refused with a
+footer note and Zaehler2; rally.exe saves only from MAIN1. The pad's A is exactly
+the keyboard's Enter here (one Return per press, src/pad_input.cpp).
 Not yet: help pages, multiplayer entries, a native start screen. Keyboard keys are
 not remappable (user decision).
 

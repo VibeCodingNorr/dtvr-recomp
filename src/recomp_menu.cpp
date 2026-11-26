@@ -207,10 +207,43 @@ void RecompMenu::open(const Settings& settings, bool inGame) {
     build(inGame);
     capture_ = PadAction::kCount;
     padNote_.clear();
+    note_.clear();
     page_ = 0;
     row_ = 0;
     inItems_ = true; // the first entry, Weiterspielen, has the focus
     open_ = true;
+}
+
+void RecompMenu::resume(const Settings& settings) {
+    const int page = page_, row = row_;
+    const bool items = inItems_;
+    open(settings, inGame_);
+    page_ = std::clamp(page, 0, int(pages_.size()) - 1);
+    const auto& list = pages_[size_t(page_)].items;
+    inItems_ = items && !list.empty();
+    row_ = std::clamp(row, 0, std::max(0, int(list.size()) - 1));
+    if (inItems_ && !selectable(list[size_t(row_)])) moveRow(1);
+}
+
+CommandPlan planCommand(RecompMenu::Action action, bool gameWindowOpen) {
+    using Action = RecompMenu::Action;
+    CommandPlan p;
+    switch (action) {
+    case Action::SaveGame: case Action::LoadGame:
+        if (gameWindowOpen) { p.refused = true; return p; }
+        p.originalCommand = action == Action::SaveGame ? 1062 : 1021; // MAIN1 / MAIN (seg4:0B76)
+        p.hide = true;
+        p.returnAfter = true;
+        return p;
+    case Action::Quit: // the question; its No brings the menu back
+        p.hide = true;
+        p.returnAfter = true;
+        return p;
+    case Action::OriginalMenu: // RIGHTBTN replaces it
+        p.hide = true;
+        return p;
+    default: return p;
+    }
 }
 
 void RecompMenu::openAt(const Settings& settings, bool inGame, const std::string& page) {
@@ -296,6 +329,7 @@ std::string RecompMenu::valueText(const Item& item) const {
 }
 
 void RecompMenu::moveRow(int delta) {
+    note_.clear();
     const auto& items = pages_[size_t(page_)].items;
     if (items.empty()) return;
     // Info rows are skipped; a page of only info rows keeps the first row.
@@ -308,6 +342,7 @@ void RecompMenu::moveRow(int delta) {
 
 void RecompMenu::focusPage(int page) {
     if (page < 0 || page >= int(pages_.size())) return;
+    note_.clear();
     if (page != page_) row_ = 0;
     page_ = page;
     inItems_ = false;
