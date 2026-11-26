@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <unistd.h>
 
 using namespace dtvr;
 namespace fs = std::filesystem;
@@ -75,8 +76,10 @@ int main() {
     const std::string sharedIndex = readAll(shared / "saves.ini");
 
     // German: nothing to copy, its directory stays where it was.
-    int copied = -1;
-    CHECK(adoptEditionSaves(shared, saveDirectory(Edition::GermanRetail), Edition::GermanRetail, copied, error) && copied == 0);
+    EditionAdoption adoption;
+    adoption.copied = -1;
+    CHECK(adoptEditionSaves(shared, saveDirectory(Edition::GermanRetail), Edition::GermanRetail, adoption)
+          && adoption.copied == 0);
     // Foreign slots and the foreign autosave in the German dialog: marked, Continue grayed.
     CHECK(common.foreignSlot(0).empty() && common.foreignSlot(1) == "en-us-retail");
     CHECK(common.foreignSlot(2).empty() && common.foreignSlot(3) == "en-us-retail");
@@ -92,8 +95,25 @@ int main() {
         CHECK(SaveCodec::encode(target) == before); // a refused load changes nothing
     }
 
+    // A failure in the middle (the second file) leaves no directory: the next start retries.
+    const fs::path temporary = base / "dtvr-recomp" / "saves-en-us-retail.tmp";
+    {
+        int calls = 0;
+        const SaveFileCopy failing = [&](const fs::path& from, const fs::path& to, std::string& why) {
+            if (++calls == 2) { why = "simulated"; return false; }
+            std::string text;
+            return readSaveFile(from.string(), text, why) && writeSaveFile(to.string(), text, why);
+        };
+        CHECK(!adoptEditionSaves(shared, own, Edition::EnglishRetail, adoption, failing) && adoption.error == "simulated");
+        CHECK(calls == 2 && adoption.copied == 0 && !fs::exists(own) && !fs::exists(temporary));
+        CHECK(readAll(shared / "saves.ini") == sharedIndex && fs::exists(common.file(1)));
+        // A leftover temporary directory of an interrupted copy is replaced.
+        fs::create_directories(temporary);
+        std::ofstream(temporary / "slot7.sav") << "leftover";
+    }
     // English: its slots and the autosave are copied once, with their descriptions.
-    CHECK(adoptEditionSaves(shared, own, Edition::EnglishRetail, copied, error) && copied == 3);
+    CHECK(adoptEditionSaves(shared, own, Edition::EnglishRetail, adoption) && adoption.copied == 3);
+    CHECK(adoption.skipped.empty() && !fs::exists(temporary) && !fs::exists(own / "slot7.sav"));
     const SaveSlots mine(own, Edition::EnglishRetail);
     CHECK(mine.description(1) == "January (1) - Bob" && mine.description(3) == "March (1) - Bob");
     CHECK(mine.description(0).empty() && mine.description(2).empty());
@@ -109,7 +129,7 @@ int main() {
     }
     // Only once: an existing directory is never filled again (a deleted save stays deleted).
     fs::remove(mine.file(3));
-    CHECK(adoptEditionSaves(shared, own, Edition::EnglishRetail, copied, error) && copied == 0);
+    CHECK(adoptEditionSaves(shared, own, Edition::EnglishRetail, adoption) && adoption.copied == 0);
     CHECK(!fs::exists(mine.file(3)));
     // Saves of the two editions no longer meet: the German autosave leaves the English one.
     CHECK(common.saveAuto(german, error) && common.hasOwnAuto() && mine.hasOwnAuto());
@@ -124,11 +144,38 @@ int main() {
     // No common directory, or nothing of the edition in it: no directory is created.
     {
         const fs::path empty = base / "elsewhere";
-        CHECK(adoptEditionSaves(base / "missing", empty, Edition::EnglishRetail, copied, error) && copied == 0);
+        CHECK(adoptEditionSaves(base / "missing", empty, Edition::EnglishRetail, adoption) && adoption.copied == 0);
         const fs::path germanOnly = base / "german-only";
         CHECK(SaveSlots(germanOnly).save(0, german, "x", error));
-        CHECK(adoptEditionSaves(germanOnly, empty, Edition::EnglishRetail, copied, error) && copied == 0);
+        CHECK(adoptEditionSaves(germanOnly, empty, Edition::EnglishRetail, adoption) && adoption.copied == 0);
         CHECK(!fs::exists(empty));
+    }
+
+    // Permissions (not as root, which reads everything): an unreadable file of the common
+    // directory is skipped and named; an inaccessible directory counts as empty, no exception.
+    if (geteuid() != 0) {
+        const fs::path mixed = base / "mixed", target = base / "mixed-en";
+        const SaveSlots m(mixed);
+        CHECK(m.save(0, english, "a", error) && m.save(1, english, "b", error));
+        fs::permissions(m.file(1), fs::perms::none);
+        CHECK(adoptEditionSaves(mixed, target, Edition::EnglishRetail, adoption) && adoption.copied == 1);
+        CHECK(adoption.skipped.size() == 1 && adoption.skipped[0] == m.file(1).string());
+        CHECK(fs::exists(target / "slot0.sav") && !fs::exists(target / "slot1.sav"));
+        fs::permissions(m.file(1), fs::perms::owner_read | fs::perms::owner_write);
+
+        const fs::path locked = base / "locked";
+        const SaveSlots l(locked);
+        CHECK(l.save(2, german, "c", error) && l.saveAuto(english, error));
+        fs::permissions(locked, fs::perms::none);
+        bool threw = false;
+        try {
+            CHECK(!l.hasAuto() && l.description(2).empty() && l.foreignAuto().empty() && !l.hasOwnAuto());
+            CHECK(adoptEditionSaves(locked, base / "locked-en", Edition::EnglishRetail, adoption) && adoption.copied == 0);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        CHECK(!threw && !fs::exists(base / "locked-en"));
+        fs::permissions(locked, fs::perms::owner_all);
     }
 
     // The message in the running edition's language.

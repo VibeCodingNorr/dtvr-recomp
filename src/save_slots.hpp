@@ -9,8 +9,10 @@
 #include "game.hpp"
 
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace dtvr {
 
@@ -28,9 +30,19 @@ std::filesystem::path saveDirectory(Edition edition);
 // from `shared` (the former common directory), copies the slots, their descriptions and
 // the autosave of `edition` from `shared` into `own`. Copies only, never moves or
 // deletes: the originals stay and show as foreign saves in the other edition's dialog.
-// `copied` counts the files copied. False with `error` when copying fails.
+// All or nothing: the files go into the sibling `<own>.tmp` (a leftover one is removed
+// first), which is renamed to `own` at the end; on any failure it is removed again and
+// `own` stays absent, so the next start tries again. A file of `shared` that cannot be
+// read (its edition unknown) is skipped and named in `skipped`; it is not retried.
+struct EditionAdoption {
+    int copied = 0;                    // files copied (slots and autosave)
+    std::vector<std::string> skipped;  // unreadable files of `shared`
+    std::string error;                 // why it failed
+};
+// Copies one save file (`from`, `to`); false with `error`. Replaceable for tests.
+using SaveFileCopy = std::function<bool(const std::filesystem::path& from, const std::filesystem::path& to, std::string& error)>;
 bool adoptEditionSaves(const std::filesystem::path& shared, const std::filesystem::path& own, Edition edition,
-                       int& copied, std::string& error);
+                       EditionAdoption& result, const SaveFileCopy& copy = {});
 
 // The recomp message when a save of edition `saveEdition` (id) cannot be loaded by
 // `running`: in English for an English edition (language letter 'E'), else German.

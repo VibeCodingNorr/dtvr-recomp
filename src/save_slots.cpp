@@ -68,34 +68,70 @@ const EditionProfile* profileById(const std::string& id) {
 
 } // namespace
 
-bool adoptEditionSaves(const fs::path& shared, const fs::path& own, Edition edition, int& copied, std::string& error) {
-    copied = 0;
+namespace {
+
+// fs::exists without exceptions: an inaccessible path counts as absent.
+bool present(const fs::path& path) {
     std::error_code ec;
-    if (own.lexically_normal() == shared.lexically_normal() || fs::exists(own, ec) || ec || !fs::is_directory(shared, ec)) return true;
+    return fs::exists(path, ec) && !ec;
+}
+
+bool readable(const fs::path& file) { return std::ifstream(file, std::ios::binary).is_open(); }
+
+bool copySave(const fs::path& from, const fs::path& to, std::string& error) {
+    std::string text;
+    return readSaveFile(from.string(), text, error) && writeSaveFile(to.string(), text, error);
+}
+
+} // namespace
+
+bool adoptEditionSaves(const fs::path& shared, const fs::path& own, Edition edition, EditionAdoption& result,
+                       const SaveFileCopy& copy) {
+    result = EditionAdoption{};
+    std::error_code ec;
+    if (own.lexically_normal() == shared.lexically_normal() || fs::exists(own, ec) || ec || !fs::is_directory(shared, ec))
+        return true;
     const std::string id = editionProfile(edition).id;
     const SaveSlots from(shared, edition);
+    auto candidate = [&](const fs::path& file) {
+        if (!present(file)) return false;
+        if (!readable(file)) { result.skipped.push_back(file.string()); return false; }
+        return fileEdition(file) == id;
+    };
     std::vector<std::pair<int, std::string>> slots;
     for (int s = 0; s < kSaveSlots; ++s)
-        if (fs::exists(from.file(s)) && fileEdition(from.file(s)) == id) slots.emplace_back(s, from.description(s));
-    const bool autosave = fs::exists(from.autoFile()) && fileEdition(from.autoFile()) == id;
+        if (candidate(from.file(s))) slots.emplace_back(s, from.description(s));
+    const bool autosave = candidate(from.autoFile());
     if (slots.empty() && !autosave) return true; // nothing of this edition: the directory follows the first save
-    fs::create_directories(own, ec);
-    if (ec) { error = "Verzeichnis " + own.string() + ": " + ec.message(); return false; }
-    const SaveSlots to(own, edition);
+    const fs::path temporary = own.parent_path() / (own.filename().string() + ".tmp");
+    auto fail = [&](const std::string& why) {
+        result.error = why;
+        result.copied = 0;
+        std::error_code ignored;
+        fs::remove_all(temporary, ignored);
+        return false;
+    };
+    fs::remove_all(temporary, ec); // a leftover of an interrupted copy
+    if (ec) return fail("Verzeichnis " + temporary.string() + ": " + ec.message());
+    fs::create_directories(temporary, ec);
+    if (ec) return fail("Verzeichnis " + temporary.string() + ": " + ec.message());
+    const SaveFileCopy& copyFile = copy ? copy : SaveFileCopy(copySave);
+    const SaveSlots to(temporary, edition);
     std::ostringstream index;
     index << "[Save]\n";
+    std::string error;
     for (const auto& [s, description] : slots) {
-        std::string text;
-        if (!readSaveFile(from.file(s).string(), text, error) || !writeSaveFile(to.file(s).string(), text, error)) return false;
+        if (!copyFile(from.file(s), to.file(s), error)) return fail(error);
         index << "Slot" << s << '=' << description << '\n';
-        ++copied;
+        ++result.copied;
     }
-    if (!slots.empty() && !writeSaveFile((own / kIndex).string(), index.str(), error)) return false;
+    if (!slots.empty() && !writeSaveFile((temporary / kIndex).string(), index.str(), error)) return fail(error);
     if (autosave) {
-        std::string text;
-        if (!readSaveFile(from.autoFile().string(), text, error) || !writeSaveFile(to.autoFile().string(), text, error)) return false;
-        ++copied;
+        if (!copyFile(from.autoFile(), to.autoFile(), error)) return fail(error);
+        ++result.copied;
     }
+    fs::rename(temporary, own, ec);
+    if (ec) return fail("Verzeichnis " + own.string() + ": " + ec.message());
     return true;
 }
 
@@ -152,7 +188,7 @@ std::map<int, std::string> SaveSlots::readIndex() const {
 }
 
 std::string SaveSlots::description(int slot) const {
-    if (slot < 0 || slot >= kSaveSlots || !fs::exists(file(slot))) return {};
+    if (slot < 0 || slot >= kSaveSlots || !present(file(slot))) return {};
     const auto index = readIndex();
     const auto it = index.find(slot);
     return it == index.end() ? std::string("?") : it->second;
@@ -201,7 +237,7 @@ bool SaveSlots::loadAuto(Game& game, std::string& error) const {
     return true;
 }
 
-bool SaveSlots::hasAuto() const { return fs::exists(autoFile()); }
+bool SaveSlots::hasAuto() const { return present(autoFile()); }
 
 std::string SaveSlots::foreignSlot(int slot) const {
     if (slot < 0 || slot >= kSaveSlots) return {};

@@ -394,13 +394,15 @@ static int run(int argc, char** argv) {
             if (!dtvr::adoptFormerName(path, error)) std::cerr << "Daten von DTVR Recomb: " << error << '\n';
         }
         { // Round E3: this edition's saves from the former common directory, copied once.
-            std::string error;
-            int copied = 0;
+            dtvr::EditionAdoption adoption;
             const fs::path own = dtvr::saveDirectory(edition.edition);
-            if (!dtvr::adoptEditionSaves(dtvr::defaultSaveDirectory(), own, edition.edition, copied, error))
-                std::cerr << "Spielstände der Ausgabe: " << error << '\n';
-            else if (copied > 0)
-                std::cout << copied << " Spielstand-Datei(en) dieser Ausgabe nach " << own.string() << " kopiert\n";
+            const bool adopted = dtvr::adoptEditionSaves(dtvr::defaultSaveDirectory(), own, edition.edition, adoption);
+            for (const std::string& file : adoption.skipped)
+                std::cerr << "Spielstand nicht lesbar, nicht übernommen: " << file << '\n';
+            if (!adopted)
+                std::cerr << "Spielstände der Ausgabe (nächster Start versucht es erneut): " << adoption.error << '\n';
+            else if (adoption.copied > 0)
+                std::cout << adoption.copied << " Spielstand-Datei(en) dieser Ausgabe nach " << own.string() << " kopiert\n";
         }
         const int code = dtvr::runGameWindow(*game, root, language, board, towns, options);
         SDL_Quit();

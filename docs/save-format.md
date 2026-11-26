@@ -145,4 +145,12 @@ autosave from `saves` into it, once; nothing is moved or deleted. The originals 
 in `saves`, where the German edition shows them as foreign slots (see Editions); the
 user may delete them by hand. Once the directory exists it is never filled again.
 Without US saves in `saves` no directory is created before the first US save.
+The copy is all or nothing: it goes into `saves-en-us-retail.tmp` (a leftover of an
+interrupted copy is removed first), which is renamed to `saves-en-us-retail` at the end;
+after any failure the temporary directory is removed, the target stays absent and the
+next start tries again (stderr says so). A file of `saves` that cannot be read (its
+edition is unknown) is skipped with a note on stderr and is not retried later, so an
+unreadable file never blocks the copy of the readable ones; the user can copy it by
+hand once it is readable. An inaccessible `saves` directory counts as empty (no
+exception, Continue grayed, slots shown as unused).
 Saves are user data: the installer neither hashes nor manages them.
