@@ -14,6 +14,7 @@ void Game::eventTick(int player) {
     const int season = seasonForMonth(calendar_.month);
     if (season != loadedSeason_) {                     // seg5:186A reloads tiles: no event
         loadedSeason_ = season;
+        ++seasonChanges_; // the window's blind wipe (seg8:1667-16A4)
         messages_.push_back("Neue Jahreszeit (map/" + std::to_string(season) + ")");
         return;
     }

@@ -80,8 +80,12 @@ int main() {
             CHECK(!std::filesystem::exists(slots.file(0)) && !std::filesystem::exists(slots.autoFile()));
             std::filesystem::remove_all(dir);
         }
+        // The turn start (seg2:0407, centring seg2:3216) comes after STAT: the serial the
+        // window centres on changes with the new current player, not before the hold.
+        const int serialHeld = watched.turnSerial(), playerHeld = watched.currentPlayer();
         CHECK(watched.statementFinish() && !watched.statementFinish());
         CHECK(watched.phase() != Game::Phase::Statement && watched.calendar().month == 1);
+        CHECK(watched.turnSerial() == serialHeld + 1 && watched.currentPlayer() != playerHeld);
         for (int p = 0; p < 3; ++p)
             CHECK(watched.economy().money(p).monthFlow == 0 && watched.economy().money(p).monthlyIncome == 0);
         // STAT draws nothing: both games are the same, also later.

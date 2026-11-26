@@ -556,7 +556,6 @@ bool Game::forcedSell(int town, int entry) {
 }
 
 void Game::advanceTurn() {
-    ++turnSerial_;
     // DS:2EB0 (Verdoppeln) is not cleared at the player change: only Return (seg2:0CE8)
     // and the card handler (seg3:0E9F) write it.
     propertyMode_ = 0xFF; // the town dialog closes (seg1:5399 / 5508 / 5767)
@@ -685,6 +684,9 @@ void Game::completeTurn(const TurnChange& change) {
     }
     current_ = change.player;
     phase_ = Phase::Roll;
+    // The turn start seg2:0407 of the new player (also after STAT or BILANZ held the
+    // change): the window centres on him there (seg2:044E -> seg2:3216 -> seg6:3064).
+    ++turnSerial_;
     messages_.push_back(playerName(current_) + " ist dran (Monat "
                         + std::to_string(calendar_.month % 12 + 1) + ")");
     beginTurn(); // seg2:07F4 / 0801 -> seg2:0407

@@ -240,7 +240,20 @@ void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
     animClock_.update(realNow);
 }
 
+void GameScreen::updateSeasonWipe(Uint32 realNow) {
+    if (game_.seasonChanges() == seasonChangesSeen_) return;
+    seasonChangesSeen_ = game_.seasonChanges();
+    // seg5:186A returns non-zero only for a new tile directory: never with [Setup]
+    // Colorcycle off (seg5:1929 fixes it to 1), and not before the first map is loaded.
+    const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
+    if (colorcycle && worldSeason_ >= 0 && seasonForMonth(game_.calendar().month) != worldSeason_)
+        seasonWipe_.start(realNow);
+}
+
 void GameScreen::advanceVehicles(Uint32 now) {
+    // seg8:1624 wipes the season in before the turn start seg2:0407 centres the view.
+    updateSeasonWipe(SDL_GetTicks());
+    const bool wiping = seasonWipe_.active(SDL_GetTicks());
     if (eventSceneActive(sceneNow())) { // Nessie: seg6:3064 on Loch Ness, then on the place
         const size_t pass = std::min(size_t((sceneNow() - sceneStart_) / kSceneStepMs), sceneSteps_.size() - 1);
         for (; sceneCamera_ <= pass; ++sceneCamera_) {
@@ -353,7 +366,7 @@ void GameScreen::advanceVehicles(Uint32 now) {
     }
     advanceDrago(ticks);
     // seg2:044E at a player change and seg2:64E5 at a spin centre on the player.
-    if (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_) {
+    if (!wiping && (game_.turnSerial() != seenTurn_ || game_.spinSerial() != seenCentreSpin_ || !originSet_)) {
         if (game_.turnSerial() != seenTurn_) viewStop_ = false, viewPassed_ = SDL_Point{-1, -1};
         seenTurn_ = game_.turnSerial();
         seenCentreSpin_ = game_.spinSerial();
@@ -633,7 +646,8 @@ void GameScreen::drawMap() {
     // (seg5:1929) and stops the water's palette cycle (seg5:3C22).
     const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
     const int season = colorcycle ? seasonForMonth(game_.calendar().month) : 1;
-    if (season != worldSeason_) {
+    updateSeasonWipe(SDL_GetTicks()); // the old tiles stay while the old map is blacked out
+    if (season != worldSeason_ && seasonWipe_.stage(SDL_GetTicks()) != SeasonWipe::Stage::Out) {
         world_ = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0, colorcycle, &tiles_); // Views
         // seg8:7CFB: the animated objects of the map (rebuilt with the season's tiles).
         try {
@@ -884,6 +898,14 @@ void GameScreen::draw() {
     if (SDL_Texture* background = art(fs::path("butt") / std::to_string(layout_.artDir) / "bk.bmp"))
         drawBackground(background);
     drawMap();
+    { // seg8:0E20 mode 0 over the map window's client area (season change)
+        const SDL_Rect map = toSdl(layout_.mapClient());
+        SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+        for (const BlindRun& run : seasonWipe_.blackRows(map.h, SDL_GetTicks())) {
+            const SDL_Rect band{map.x, map.y + run.top, map.w, run.height};
+            SDL_RenderFillRect(renderer_, &band);
+        }
+    }
     drawPortrait();
     drawHandStack();
     drawPlayerInfo();

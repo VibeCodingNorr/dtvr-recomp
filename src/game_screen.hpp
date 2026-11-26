@@ -16,6 +16,7 @@
 #include "sight_view.hpp"
 #include "play_view.hpp"
 #include "sdl_assets.hpp"
+#include "season_wipe.hpp"
 #include "card_view.hpp"
 #include "card_shop_view.hpp"
 #include "select_player_view.hpp"
@@ -74,7 +75,11 @@ public:
     // from seg5:186A(.., 1) and the loader R seg8:AF67), the German one reads it once per
     // run (D seg5:1559), so tiles changed by the previous game would stay. The next
     // drawMap rebuilds the world bitmap and the ambient animations' map from the file.
-    void reloadMap() { worldSeason_ = -1; }
+    void reloadMap() {
+        worldSeason_ = -1;
+        seasonWipe_.stop();
+        seasonChangesSeen_ = game_.seasonChanges();
+    }
     MessageView& messages() { return messages_; }
     MenuView& menu() { return menu_; }
     MouseControlView& mouseControl() { return mouseControl_; }
@@ -146,6 +151,13 @@ public:
     // Plays an event animation at a map cell (seg8:6E0F); the message waits for it.
     void startEventScene(const EventScene& scene, int cellX, int cellY, int corner, Uint32 now);
     bool eventSceneActive(Uint32 now) const;
+    // The blind wipe of a season change (seg8:1624 -> seg8:0E20 mode 0) runs; it keeps
+    // the game waiting like the synchronous original (src/season_wipe.hpp). Starts it
+    // when the game has changed the season since the last call.
+    bool seasonWipeActive() {
+        updateSeasonWipe(SDL_GetTicks());
+        return seasonWipe_.active(SDL_GetTicks());
+    }
     // The slot machine is on the map (sliding in, turning, or sliding out; modal in rally.exe).
     bool slotActive(Uint32 now) const { return slot_.active(now); }
     // The slot window of spin `serial` has been shown and has closed again.
@@ -233,6 +245,9 @@ private:
     std::map<std::string, Texture> art_;
     Surface world_{nullptr, SDL_FreeSurface};      // 8-bit world, its palette cycles
     int worldSeason_ = -1;
+    SeasonWipe seasonWipe_;    // real time: the original wipe has no timer
+    int seasonChangesSeen_ = 0; // Game::seasonChanges() already wiped
+    void updateSeasonWipe(Uint32 realNow);
     std::array<SDL_Color, 10> cycleBase_{};        // palette entries 0x90..0x99 as loaded
     int cyclePhase_ = 0;
     Surface viewRgb_{nullptr, SDL_FreeSurface};    // the visible world area, converted
