@@ -122,7 +122,7 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/game_window_dialogs.cpp` (game dialogs);
   `src/slot_view.{hpp,cpp}`: the slot machine over the map; `src/message_view.{hpp,cpp}`: the
   message window (texts from `Game::takeNotices`); `src/menu_view.{hpp,cpp}`: the menu window
-  (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window;
+  (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window and `src/card_window_choice.{hpp,cpp}` (no SDL) its play path;
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
   `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
   `src/stat_sheet.{hpp,cpp}` (no SDL) and `src/stat_view.{hpp,cpp}`: the monthly statement STAT,

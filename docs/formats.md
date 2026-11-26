@@ -1014,6 +1014,19 @@ Risiko, card fields, Nebel, computer players.
   mask is 2 (seg4:0951), from the town dialog's card button 1 (seg1:54C1), after
   a card 0. Category 1 = property cards 1–8, 2 = all other playable cards,
   4 = the passive protection cards (never enabled).
+  A click on an enabled card (seg4:0A8D) calls the dispatcher
+  seg3:0E11(slot + 0x78, 1) in both masks (mask 1 seg4:0AA8, mask 2 seg4:0AE6;
+  mask 0 seg4:0AFF passes 0). The dispatcher uses the card up (seg3:0E94 →
+  seg2:3C62) and calls the type's handler from DS:2EBC (seg3:0EDB); it never buys
+  a property. Rebuilt in `cardWindowChoice` (src/card_window_choice.cpp); the game
+  window had sent no-target cards through the viewer's digit key, which in phase
+  Arrived bought property `slot` instead of playing the card.
+- **Main window keys** (WM_KEYDOWN seg4:0259–02C3): Backspace, Enter, Escape, Space,
+  the arrows, Insert / Delete, '1'–'4' (VK 0x31–0x34), 'C' (seg2:7F72) and 'Q'
+  (seg4:0EDF); every other key reaches DefWindowProc. The game window therefore
+  passes only Enter, Space, Backspace / Escape and the arrows on to the `--play`
+  key mapping (src/game_window_input.cpp); its digits 5–0, W, I, N, B, T and
+  PgUp / PgDn are viewer keys only.
 - **Property cards** (seg3:134D–1481) only set DS:3FC6 = card type + 1 and switch
   computer state machine to state 0xB (seg5:71B3, DS:8CDC; computers only, see
   round 16 — the earlier "advisor" reading was wrong). The town dialog's
