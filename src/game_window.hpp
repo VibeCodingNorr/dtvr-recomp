@@ -14,6 +14,7 @@
 #include "game_screen.hpp"
 #include "logo_view.hpp"
 #include "music_player.hpp"
+#include "osk_view.hpp"
 #include "recomp_menu_view.hpp"
 #include "scripted_input.hpp"
 #include "settings.hpp"
@@ -49,6 +50,7 @@ struct GameWindowResources {
     RecompMenuView& recompMenu;
     LogoView& logo; // the Blue Byte logo while loading (seg6:0A4D)
     BusyCursor& busyCursor; // the loading cursor, released before the intro / title (seg5:0207)
+    ScreenKeyboardView& keyboard; // the on-screen keyboard for names (recomp, pad)
 };
 
 class GameWindow {
@@ -91,8 +93,15 @@ private:
     bool handleGameDialog(const SDL_Event& event);
     bool handleCardWindow(const SDL_Event& event);
     bool handleEstates(const SDL_Event& event);
+    void openEstateCards(); // the town dialog's Karte (also the pad's Y)
     // game_window_pad.cpp: the game controllers' tick and the recomp pad buttons
     void updatePad();
+    PadContext padContext();
+    // The on-screen keyboard over PLAYER (recomp): open on the focused name field, input
+    // while it is open (true: taken), close with or without the name.
+    void openKeyboard();
+    bool handleKeyboard(const SDL_Event& event);
+    void closeKeyboard(ScreenKeyboardView::Result result);
 
     PlayView& play_;
     const std::vector<Town>& towns_;
@@ -114,6 +123,7 @@ private:
     RecompMenuView& recompMenu_;
     LogoView& logo_;
     BusyCursor& busyCursor_;
+    ScreenKeyboardView& keyboard_;
     MenuView& menu_;
     CardView& cards_;
 

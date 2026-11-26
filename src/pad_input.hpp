@@ -62,7 +62,10 @@ struct PadContext {
     bool backOpensMenu = false; // Backspace reaches RIGHTBTN (the map) or closes it (Zurück)
     bool surroundings = false;  // Umfeld is open: the right stick scrolls with arrows
     bool turnMenu = false;      // ONFIELD has the input: Y is "Karte einsetzen" (1031)
-    bool setup = false;         // PLAYER has the input: Y is F9 (computer extra cards)
+    bool yIsF9 = false;         // PLAYER / OPTION have the input: Y is F9 (their recomp extras)
+    bool nameField = false;     // a PLAYER name field has the focus: A opens the on-screen keyboard, Y nothing
+    bool keyboard = false;      // the on-screen keyboard is open: Start is done, Y shift
+    bool townCards = false;     // the town dialog's header has the input: Y is its Karte item
 };
 
 // Result of one tick: keys for the SDL queue and the actions that are no key.
@@ -70,6 +73,10 @@ struct PadOutput {
     std::vector<PadKey> keys;
     bool pauseMenu = false; // Start: open / close the recomp menu (its Pause page)
     bool handCards = false; // Y in ONFIELD: WM_COMMAND 1031
+    bool keyboard = false;       // A on a name field: open the on-screen keyboard (no key)
+    bool keyboardAccept = false; // Start in the on-screen keyboard: take the name
+    bool keyboardShift = false;  // Y in the on-screen keyboard: capitals on / off
+    bool townCards = false;      // Y in the town dialog: its header item Karte
     // Right stick in Umfeld: one scroll step (an arrow) for GameScreen::handleSurroundings,
     // called directly, never an SDL key event (it must not become a driving direction).
     SDL_Keycode scroll = SDLK_UNKNOWN;

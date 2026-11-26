@@ -160,6 +160,16 @@ bool GameWindow::handleCardWindow(const SDL_Event& event) {
     return false;
 }
 
+// The town dialog's Karte: the card window for property cards (mask 1).
+void GameWindow::openEstateCards() {
+    Game& g = play_.game();
+    sound_.play(2, 2); // seg1:54B2
+    if (g.openCardWindow() && cards_.open(g, 1)) {
+        cardWindowState_ = turnState();
+        cardsFromEstates_ = true;
+    }
+}
+
 bool GameWindow::handleEstates(const SDL_Event& event) {
     EstatesView& estates = screen_.estates();
     if (!estates.isOpen() || cards_.isOpen()) return false;
@@ -176,12 +186,8 @@ bool GameWindow::handleEstates(const SDL_Event& event) {
         }
     } else if (action.kind == Kind::Tab) {
         sound_.play(2, 2); // seg1:5436 / 546D: Plopp02
-    } else if (action.kind == Kind::Cards) { // the card window for property cards
-        sound_.play(2, 2); // seg1:54B2
-        if (g.openCardWindow() && cards_.open(g, 1)) {
-            cardWindowState_ = turnState();
-            cardsFromEstates_ = true;
-        }
+    } else if (action.kind == Kind::Cards) {
+        openEstateCards();
     } else if (action.kind == Kind::ForcedSell) { // seg1:57A4 -> seg1:8327
         const bool sold = g.forcedSell(action.town, action.entry);
         sound_.play(2, sold ? 2 : 7); // seg1:57F7 / 58DE

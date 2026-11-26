@@ -120,4 +120,13 @@ PadOutput ControllerInput::update(Uint32 now, bool enabled, bool focused, const 
     return out;
 }
 
+PadOutput ControllerInput::scripted(const PadState& state, const PadContext& context) {
+    if (!input_.active()) input_.tick(PadState{}, context); // the neutral start
+    PadOutput out = input_.tick(state, context);
+    for (const PadKey& k : input_.tick(PadState{}, context).keys) out.keys.push_back(k); // released
+    for (const PadKey& k : out.keys) push(k);
+    out.keys.clear();
+    return out;
+}
+
 } // namespace dtvr

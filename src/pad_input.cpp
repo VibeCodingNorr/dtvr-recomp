@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "pad_input.hpp"
 
+#include <algorithm>
+
 namespace dtvr {
 
 // seg2:8A30 (docs/formats.md "Joystick"). The original posts WM_KEYDOWN with lParam 0
@@ -57,21 +59,31 @@ PadOutput PadInput::tick(const PadState& state, const PadContext& context) {
 
     // The original layer (unchanged): direction, A = button 1, B = button 2.
     out.keys = original_.tick(state.direction, buttons & (kPadA | kPadB));
-    if (context.aIsSpace) // RECOMP: SBBUTTON windows without Return of their own (PLAYER, OPTION)
+    if (context.nameField) { // RECOMP: A on a name field opens the on-screen keyboard, no key
+        const auto ret = [](const PadKey& k) { return k.key == SDLK_RETURN; };
+        for (const PadKey& k : out.keys) out.keyboard = out.keyboard || (ret(k) && k.down);
+        out.keys.erase(std::remove_if(out.keys.begin(), out.keys.end(), ret), out.keys.end());
+    } else if (context.aIsSpace) { // RECOMP: SBBUTTON windows without Return of their own (PLAYER, OPTION)
         for (PadKey& k : out.keys)
             if (k.key == SDLK_RETURN) k.key = SDLK_SPACE;
+    }
 
     // RECOMP ADDITION: the other buttons, each when newly pressed.
     if (pressed & kPadX) press(out.keys, SDLK_BACKSPACE);
     if ((pressed & kPadBack) && context.backOpensMenu) press(out.keys, SDLK_BACKSPACE);
     if (pressed & kPadLB) press(out.keys, SDLK_TAB, KMOD_LSHIFT);
     if (pressed & kPadRB) press(out.keys, SDLK_TAB);
-    if (pressed & kPadStart) out.pauseMenu = true;
+    if (pressed & kPadStart) {
+        if (context.keyboard) out.keyboardAccept = true;
+        else out.pauseMenu = true;
+    }
     if (pressed & kPadY) {
-        if (context.turnMenu) out.handCards = true;
-        else if (context.setup) press(out.keys, SDLK_F9);
-        // Round 2 hook: the town dialog's "Karten" (game_window_dialogs.cpp) has no
-        // context flag yet; Y does nothing elsewhere.
+        if (context.keyboard) out.keyboardShift = true;
+        else if (context.nameField) {} // a name field has the input: Y is no card and no F9
+        else if (context.turnMenu) out.handCards = true;
+        else if (context.townCards) out.townCards = true;
+        else if (context.yIsF9) press(out.keys, SDLK_F9);
+        // Y does nothing elsewhere.
     }
     // The right stick scrolls Umfeld with the original repetition, as a scroll step
     // outside the key queue. Not in a tick with other keys: one of them may close Umfeld.

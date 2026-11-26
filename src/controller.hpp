@@ -33,6 +33,9 @@ public:
     // input focus (seg2:8A35). Without either, or without a pad, a held direction is
     // released at once and nothing else happens.
     PadOutput update(Uint32 now, bool enabled, bool focused, const PadContext& context);
+    // Smoke tests (--press Pad:A ...): one press and release of `state` through the same
+    // layer, without a device.
+    PadOutput scripted(const PadState& state, const PadContext& context);
     bool connected() const { return !pads_.empty(); }
 
 private:

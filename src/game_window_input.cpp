@@ -86,6 +86,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         return;
     }
     if (recompMenu_.isOpen()) { handleRecompMenu(event); return; }
+    if (handleKeyboard(event)) return; // the recomp on-screen keyboard over PLAYER
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
     if (screen_.messages().open() && screen_.eventSceneActive(screen_.sceneNow())) return; // animation first
     if (screen_.messages().question()) { handleQuestion(event); return; }
@@ -206,6 +207,17 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) return;
     }
     if (screen_.overview().isOpen()) { screen_.overview().handle(event); return; }
+    if (screen_.surroundings() && event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
+        // The map window's WM_RBUTTONDOWN (seg6:176E) in Umfeld clears DS:169C (seg6:1777):
+        // it ends like its Escape key (seg6:1991).
+        SDL_Event end{};
+        end.type = SDL_KEYDOWN;
+        end.key.state = SDL_PRESSED;
+        end.key.keysym.sym = SDLK_ESCAPE;
+        screen_.handleSurroundings(end);
+        heldArrow_ = SDLK_UNKNOWN;
+        return;
+    }
     if (screen_.handleSurroundings(event)) {
         if (!screen_.surroundings()) heldArrow_ = SDLK_UNKNOWN; // left: no drive from its keys
         return;
@@ -345,6 +357,19 @@ void GameWindow::handleRecompMenu(const SDL_Event& event) {
 // The map and the main window's keys (seg4:018B ff.) when no window took the event.
 void GameWindow::handleKey(const SDL_Event& event) {
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
+    if (click && event.button.button == SDL_BUTTON_RIGHT) {
+        // The canvas (seg8:018C) and the map window (seg6:1780) send WM_RBUTTONDOWN to the
+        // main window, whose handler (seg4:0417, also WM_RBUTTONDBLCLK) posts itself
+        // WM_KEYDOWN VK_BACK while DS:96A0 lets keys through (seg4:046C): RIGHTBTN as with
+        // the Backspace key below.
+        SDL_Event back{};
+        back.type = SDL_KEYDOWN;
+        back.key.state = SDL_PRESSED;
+        back.key.keysym.sym = SDLK_BACKSPACE;
+        back.key.keysym.scancode = SDL_SCANCODE_BACKSPACE;
+        handleKey(back);
+        return;
+    }
     if (click && event.button.button == SDL_BUTTON_LEFT && !modal_ && !moving_ && !screen_.title()) {
         // seg6:1798 -> seg4:0F52: a click on the map opens the steering cross there.
         const Game& g = play_.game();

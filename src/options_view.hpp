@@ -33,7 +33,8 @@ public:
     // Toggled: a switch changed (seg1:B2E2 ff. apply it at once); Close: star, stop,
     // F10 and the cancel of an SBBUTTON all run seg1:B539, which keeps the values.
     // RecompMenu: the recomp addition between stop and star (not in rally.exe) was
-    // clicked: further settings (graphics, sound sets, music volume) in the recomp menu.
+    // clicked or F9 (a key OPTION does not use, seg1:B629; the pad's Y) was pressed:
+    // further settings (graphics, sound sets, music volume) in the recomp menu.
     enum class Result { None, Toggled, Close, RecompMenu };
     Result handle(const SDL_Event& event);
     // The SBBUTTON sound of the last handled event for channel 2, -1 none.

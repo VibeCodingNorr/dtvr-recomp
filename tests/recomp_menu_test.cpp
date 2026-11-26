@@ -122,6 +122,17 @@ int main() {
     m.focusPage(99); // ignored
     CHECK(m.page() == int(m.pages().size()) - 1);
 
+    // LB / RB (Shift+Tab / Tab): the neighbour page, wrapping; in the entries they stay in
+    // the entries (first selectable row), on the page list on the list.
+    m.open(base, true);
+    CHECK(m.inItems() && m.page() == 0);
+    CHECK(m.input(Input::NextPage) == Action::None && m.page() == pageIndex(m, "Grafik") && m.inItems() && m.row() == 0);
+    CHECK(m.input(Input::PrevPage) == Action::None && m.page() == 0 && m.inItems());
+    CHECK(m.input(Input::PrevPage) == Action::None && m.page() == controls && !m.inItems()); // info rows only
+    CHECK(m.input(Input::NextPage) == Action::None && m.page() == 0 && !m.inItems());       // from the list: list
+    CHECK(m.input(Input::NextPage) == Action::None && m.page() == 1 && !m.inItems());
+    CHECK(m.settings().fullscreen == base.fullscreen); // switching pages changes nothing
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("recomp_menu_test: OK");
     return failures != 0;

@@ -356,13 +356,21 @@ option Joystick is on: d-pad or left stick steer and move through menus, A confi
 (Return), B goes back (Escape). Recomp additions on the same switch: **Start** opens
 or closes the recomp menu (Pause page; in the options window its Grafik page),
 **View/Back** opens the right-button menu on the map (as Backspace) and closes it
-again, **X** is Backspace, **LB / RB** are Shift+Tab / Tab, **Y** is "Karte einsetzen"
-in the turn menu and the extra-cards switch (F9) in the player setup, **A** toggles
-like Space in the player setup and options windows, and the **right stick** scrolls
-the Umfeld view. All connected pads act together; nothing is read while the window
+again, **X** is Backspace, **LB / RB** are Shift+Tab / Tab (in the recomp menu the
+previous / next page), **Y** is "Karte einsetzen" in the turn menu, the header item
+Karte in the town dialog, the extra-cards switch (F9) in the player setup and
+"Weitere Einstellungen" (F9) in the options window, **A** toggles like Space in the
+player setup and options windows, and the **right stick** scrolls the Umfeld view.
+Player names: walk to a name field with the d-pad and press **A** for the on-screen
+keyboard (d-pad moves, A types, X deletes, Y capitals, Start takes the name, B
+cancels; only the characters the original field accepts, at most 18). Stage count:
+d-pad left / right ±1, up / down ±10, LB / RB ±50 (1–300; the same keys on the
+keyboard), A starts. All connected pads act together; nothing is read while the window
 is unfocused, and a held direction is released when the pad is unplugged, the
-option is switched off or the window loses the focus. Not yet with the pad: player
-names and the stage count (round 2).
+option is switched off or the window loses the focus.
+
+**Mouse:** a right click on the map opens the right-button menu as in rally.exe
+(Backspace); in Umfeld it ends the view.
 
 **F11** or **Alt+Enter** switches the game window between window and fullscreen
 (`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or

@@ -3,26 +3,85 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 namespace dtvr {
+
+namespace {
+
+bool padState(const std::string& name, PadState& state) {
+    static const std::pair<const char*, unsigned> kButtons[] = {
+        {"A", kPadA}, {"B", kPadB}, {"X", kPadX}, {"Y", kPadY}, {"Back", kPadBack}, {"Start", kPadStart},
+        {"LB", kPadLB}, {"RB", kPadRB}};
+    for (const auto& [n, bit] : kButtons)
+        if (name == n) { state.buttons = bit; return true; }
+    static const std::pair<const char*, SDL_Keycode> kDirections[] = {
+        {"Up", SDLK_UP}, {"Down", SDLK_DOWN}, {"Left", SDLK_LEFT}, {"Right", SDLK_RIGHT}};
+    for (const auto& [n, key] : kDirections)
+        if (name == n) { state.direction = key; return true; }
+    return false;
+}
+
+} // namespace
 
 ScriptedInput::ScriptedInput(const std::string& keys) {
     std::istringstream in(keys);
     std::string name;
     while (std::getline(in, name, ',')) {
         if (name.empty()) continue;
-        const SDL_Keycode key = SDL_GetKeyFromName(name.c_str());
-        if (key == SDLK_UNKNOWN) throw std::invalid_argument("--press: unbekannte Taste " + name);
-        keys_.push_back(key);
+        Entry e;
+        if (name.rfind("Pad:", 0) == 0) {
+            e.pad = true;
+            if (!padState(name.substr(4), e.state)) throw std::invalid_argument("--press: unbekannte Pad-Taste " + name);
+        } else if (name.rfind("Click", 0) == 0) { // ClickLeft:x:y / ClickRight:x:y (canvas pixels)
+            const bool right = name.rfind("ClickRight:", 0) == 0;
+            if (!right && name.rfind("ClickLeft:", 0) != 0) throw std::invalid_argument("--press: unbekannter Klick " + name);
+            const std::string at = name.substr(right ? 11 : 10);
+            const size_t colon = at.find(':');
+            if (colon == std::string::npos) throw std::invalid_argument("--press: Klick ohne x:y " + name);
+            e.button = right ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT;
+            e.x = std::stoi(at.substr(0, colon));
+            e.y = std::stoi(at.substr(colon + 1));
+        } else {
+            e.key = SDL_GetKeyFromName(name.c_str());
+            if (e.key == SDLK_UNKNOWN) throw std::invalid_argument("--press: unbekannte Taste " + name);
+        }
+        entries_.push_back(e);
     }
+}
+
+bool ScriptedInput::takePad(PadState& state) {
+    if (!padPending_) return false;
+    padPending_ = false;
+    state = pad_;
+    return true;
 }
 
 void ScriptedInput::pump(int frame, int interval) {
     if (done() || interval <= 0 || frame < interval || frame % interval != 0) return;
+    const Entry& entry = entries_[next_++];
+    if (entry.pad) {
+        pad_ = entry.state;
+        padPending_ = true;
+        return;
+    }
     SDL_Event event{};
+    if (entry.button != 0) { // a click: down and up at the same point
+        event.type = SDL_MOUSEBUTTONDOWN;
+        event.button.button = Uint8(entry.button);
+        event.button.state = SDL_PRESSED;
+        event.button.clicks = 1;
+        event.button.x = entry.x;
+        event.button.y = entry.y;
+        SDL_PushEvent(&event);
+        event.type = SDL_MOUSEBUTTONUP;
+        event.button.state = SDL_RELEASED;
+        SDL_PushEvent(&event);
+        return;
+    }
     event.type = SDL_KEYDOWN;
     event.key.state = SDL_PRESSED;
-    event.key.keysym.sym = keys_[next_++];
+    event.key.keysym.sym = entry.key;
     event.key.keysym.scancode = SDL_GetScancodeFromKey(event.key.keysym.sym);
     SDL_PushEvent(&event);
     event.type = SDL_KEYUP;

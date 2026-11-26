@@ -14,7 +14,8 @@ opens it; the former F8 overlay is gone); the options window opens the menu thro
 its recomp entry "Weitere Einstellungen". Separate effect / speech / music levels are
 deliberately not offered: rally.exe only switches them on and off at full volume
 (round 132). The controller's Start (Menu) button opens and closes it on the Pause page
-(src/game_window_pad.cpp). Not yet: help pages, multiplayer entries, a
+(src/game_window_pad.cpp); Tab / Shift+Tab (the pad's RB / LB) go to the next /
+previous page, staying in the entries when the page has any. Not yet: help pages, multiplayer entries, a
 native start screen.
 
 ## Before a game

@@ -75,6 +75,8 @@ RecompMenu::Action RecompMenuView::handle(const SDL_Event& event) {
         case SDLK_LEFT: case SDLK_KP_4: return menu_.input(Input::Left);
         case SDLK_RIGHT: case SDLK_KP_6: return menu_.input(Input::Right);
         case SDLK_RETURN: case SDLK_KP_ENTER: case SDLK_SPACE: return menu_.input(Input::Accept);
+        case SDLK_TAB: // the pad's LB / RB arrive as Shift+Tab / Tab: the neighbour page
+            return menu_.input((event.key.keysym.mod & KMOD_SHIFT) ? Input::PrevPage : Input::NextPage);
         case SDLK_ESCAPE: case SDLK_BACKSPACE:
             if (event.key.repeat) return RecompMenu::Action::None; // a held key must not reopen the game at once
             return menu_.input(Input::Back);
@@ -233,7 +235,7 @@ void RecompMenuView::draw() {
         hint = menu_.music().note;
     text_.drawWrapped(renderer_, hint, ScreenRect{g.footer.x + px(28), g.footer.y + px(8), g.footer.w - px(56), px(40)},
                       TextStyle{px(16), true, false, false, false, 0, kText});
-    text_.draw(renderer_, "↑↓ Auswählen    ←→ Ändern    Enter Bestätigen    Esc Zurück",
+    text_.draw(renderer_, "↑↓ Auswählen    ←→ Ändern    Tab Seite    Enter Bestätigen    Esc Zurück",
                ScreenRect{g.footer.x + px(28), g.footer.y + px(52), g.footer.w - px(56), px(18)},
                TextStyle{px(14), true, false, false, false, 0, kMuted});
     SDL_SetRenderDrawBlendMode(renderer_, blend);

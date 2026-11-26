@@ -72,6 +72,10 @@ OptionsView::Result OptionsView::handle(const SDL_Event& event) {
         const SDL_Keycode key = event.key.keysym.sym;
         if (key >= SDLK_F1 && key <= SDLK_F8) in.id = int(key - SDLK_F1); // seg1:B60A: WM_COMMAND 0x1392 + n
         else if (key == SDLK_F10) in.id = kStar;                         // seg1:B5F5: WM_COMMAND 0x139A
+        else if (key == SDLK_F9) { // OPTION ignores F9 (seg1:B629 ff.): the recomp label's key (pad Y)
+            sound_ = 2;
+            return Result::RecompMenu;
+        }
         else in = buttons_.key(key, event.key.keysym.mod, false);
     }
     sound_ = in.sound;
@@ -102,7 +106,7 @@ void OptionsView::draw() {
     buttons_.drawFocus(renderer_);
     // Recomp addition: a label in the dialog colour (0x45) that opens the recomp menu.
     const SDL_Rect extra = extraRect();
-    text_.draw(renderer_, "Weitere Einstellungen \u203a  (Erg\u00e4nzung)",
+    text_.draw(renderer_, "Weitere Einstellungen \u203a  (Erg\u00e4nzung, F9)",
                ScreenRect{extra.x, extra.y, extra.w, extra.h},
                TextStyle{std::max(12, extra.h * 2 / 3), true, false, false, false, 0, SDL_Color{67, 27, 0, 255}});
 }

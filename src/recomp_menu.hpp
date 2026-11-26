@@ -15,7 +15,7 @@ class RecompMenu {
 public:
     // Changed: settings(); MusicChanged: music() (sound set or volume).
     enum class Action { None, Resume, Changed, MusicChanged, SaveGame, LoadGame, OriginalMenu, Quit };
-    enum class Input { Up, Down, Left, Right, Accept, Back };
+    enum class Input { Up, Down, Left, Right, Accept, Back, PrevPage, NextPage };
     enum class Kind { Command, Toggle, Choice, Slider, Info };
     // Settings the entries edit (Settings fields; Original = a switch of the OPTION window)
     // and the local music preferences (music.ini).
@@ -84,5 +84,10 @@ private:
     int page_ = 0, row_ = 0;
     bool inItems_ = false, open_ = false, inGame_ = true;
 };
+
+// Recomp-only labels of the on-screen keyboard (src/osk_view.cpp) and its help line;
+// like the menu's texts they are not in the language file.
+struct KeyboardTexts { std::string shift, erase, space, cancel, done, help; };
+const KeyboardTexts& keyboardTexts();
 
 } // namespace dtvr

@@ -116,14 +116,14 @@ void RecompMenu::build(bool inGame) {
     }});
     pages_.push_back({"Steuerung", {
         info("Menü / Pause", "Esc"),
-        info("Originales Spielmenü", "Rücktaste"),
-        info("Würfeln, bestätigen", "Enter / Leertaste"),
-        info("Fahren", "Pfeiltasten"),
+        info("Originales Spielmenü", "Rücktaste, rechte Maustaste"),
+        info("Fahren, würfeln, bestätigen", "Pfeiltasten, Enter / Leertaste"),
         info("Audio und Klangset", "F8"),
         info("Vollbild / Schriftglättung", "F11, Alt+Enter / F12"),
         // The pad (docs/formats.md "Recomp pad layer"); eight rows fit the page.
         info("Gamepad", "Kreuz/Stick, A Enter, B Esc, X Rücktaste, Start Menü"),
-        info("Gamepad", "Ansicht Spielmenü, Y Karte, LB/RB Tab, R-Stick Umfeld"),
+        info("Gamepad", "Ansicht Spielmenü, Y Karte, LB/RB Tab/Seite, R-Stick Umfeld"),
+        info("Gamepad: Namen", "A im Namensfeld öffnet die Bildschirmtastatur"),
     }});
 }
 
@@ -312,8 +312,21 @@ RecompMenu::Action RecompMenu::input(Input in) {
         if (inItems_ && page_ != 0) { inItems_ = false; return Action::None; }
         open_ = false;
         return Action::Resume;
+    case Input::PrevPage: case Input::NextPage: { // LB / RB, Shift+Tab / Tab: the neighbour page
+        const int n = int(pages_.size());
+        const bool entries = inItems_;
+        focusPage((page_ + (in == Input::NextPage ? 1 : n - 1)) % n);
+        if (entries) activate(); // stays in the entries where the page has any
+        return Action::None;
+    }
     }
     return Action::None;
+}
+
+const KeyboardTexts& keyboardTexts() {
+    static const KeyboardTexts texts{"Gro\u00df", "L\u00f6schen", "Leerzeichen", "Abbrechen", "Fertig",
+                                     "A tippen  X l\u00f6schen  Y gro\u00df/klein  Start fertig  B abbrechen"};
+    return texts;
 }
 
 } // namespace dtvr
