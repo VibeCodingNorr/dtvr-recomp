@@ -132,7 +132,12 @@ const char* padActionLabel(PadAction a);
 // like the menu's texts they are not in the language file.
 struct KeyboardTexts { std::string shift, erase, space, cancel, done, help; };
 const KeyboardTexts& keyboardTexts();
-// The on-screen keyboard's help line with the pad buttons in use.
+// The on-screen keyboard's help with the pad buttons in use: two lines ("\n"), the
+// buttons of the original layer, then the keyboard's own shortcuts.
 std::string keyboardHelp(const PadMap& map);
+// Its pad shortcuts with the buttons in use: the caret (PrevPage / NextPage) and the
+// triggers that no action has (RT space, LT focus to Fertig), joined by `separator`
+// (the help's second line).
+std::string keyboardShortcuts(const PadMap& map, const char* separator);
 
 } // namespace dtvr

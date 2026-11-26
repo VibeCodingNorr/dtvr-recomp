@@ -74,6 +74,16 @@ const char* padActionLabel(PadAction a) {
     return i >= 0 && i < kPadActionCount ? kLabels[i] : "";
 }
 
+// The on-screen keyboard's shortcuts as one compact row: the caret buttons, then the
+// triggers no action has (RT space, LT to Fertig).
+static Item keyboardRow(const PadMap& map) {
+    std::string label = "Bildschirmtastatur: Cursor", pad = std::string(padPhysicalLabel(map.of(PadAction::PrevPage)))
+                                                              + "/" + padPhysicalLabel(map.of(PadAction::NextPage));
+    if (map.actionOf(PadPhysical::RT) == PadAction::kCount) { label += ", Leerz."; pad += ", RT"; }
+    if (map.actionOf(PadPhysical::LT) == PadAction::kCount) { label += ", Fertig"; pad += ", LT"; }
+    return control(std::move(label), "Leertaste", std::move(pad));
+}
+
 // The keys of the game window and the pad layer of src/pad_input.cpp through the pad
 // map (docs/formats.md "Joystick" / "Recomp pad layer"); the pad column holds while
 // [Setup] Joystick is on. Every pad action is a Binding row (remappable).
@@ -106,6 +116,8 @@ RecompMenu::Page controlsPage(const PadMap& map) {
         // Inside Umfeld (opened from the right-button menu): seg6:1991 keys, PR #24.
         sticks,
         control("Spielernamen eingeben", "Feld wählen, tippen", button(PadAction::Confirm) + ": Bildschirmtastatur"),
+        // The on-screen keyboard's own shortcuts (osk_pad.cpp; caret, free triggers).
+        keyboardRow(map),
         control("Etappen ±1 (links/rechts) / ±10", "Pfeiltasten", "Richtungen"),
         control("Vollbild / Schriftglättung", "F11, Alt+Enter / F12", "Seite Grafik"),
         reset,
@@ -461,10 +473,20 @@ int RecompMenu::captureSecondsLeft(std::uint32_t nowMs) const {
     return used >= kCaptureMs ? 0 : int((kCaptureMs - used + 999) / 1000);
 }
 
+std::string keyboardShortcuts(const PadMap& map, const char* separator) {
+    const auto b = [&](PadAction a) { return std::string(padPhysicalLabel(map.of(a))); };
+    std::string text = b(PadAction::PrevPage) + "/" + b(PadAction::NextPage) + " Cursor";
+    // A trigger bound to no action is a shortcut of the keyboard (OskPad).
+    if (map.actionOf(PadPhysical::RT) == PadAction::kCount) text += separator + std::string("RT Leerzeichen");
+    if (map.actionOf(PadPhysical::LT) == PadAction::kCount) text += separator + std::string("LT zu Fertig");
+    return text;
+}
+
 std::string keyboardHelp(const PadMap& map) {
     const auto b = [&](PadAction a) { return std::string(padPhysicalLabel(map.of(a))); };
     return b(PadAction::Confirm) + " tippen  " + b(PadAction::Erase) + " l\u00f6schen  " + b(PadAction::Cards)
-           + " gro\u00df/klein  " + b(PadAction::Pause) + " fertig  " + b(PadAction::Cancel) + " abbrechen";
+           + " gro\u00df/klein  " + b(PadAction::Pause) + " fertig  " + b(PadAction::Cancel) + " abbrechen\n"
+           + keyboardShortcuts(map, "  ");
 }
 
 const KeyboardTexts& keyboardTexts() {

@@ -97,6 +97,13 @@ void GameWindow::updatePad() {
         if (const int fx = keyboard_.takeSound(); fx >= 0) sound_.play(2, fx);
     }
     if (a.keyboardAccept && c.keyboard) closeKeyboard(keyboard_.accept());
+    // The on-screen keyboard's own pad reading (osk_pad.hpp): commands until one closes it.
+    for (const OskCommand command : a.keyboardCommands) {
+        if (!c.keyboard || !keyboard_.isOpen()) break;
+        const ScreenKeyboardView::Result r = keyboard_.command(command);
+        if (const int fx = keyboard_.takeSound(); fx >= 0) sound_.play(2, fx);
+        if (r != ScreenKeyboardView::Result::None) { closeKeyboard(r); break; }
+    }
 }
 
 void GameWindow::openKeyboard() {
@@ -111,6 +118,12 @@ void GameWindow::openKeyboard() {
 bool GameWindow::handleKeyboard(const SDL_Event& event) {
     if (!keyboard_.isOpen()) return false;
     if (!screen_.setup().isOpen()) { keyboard_.close(); return false; }
+    // A pad event acts at once (recomp): the keyboard reads the pad now, not next frame.
+    if (event.type == SDL_CONTROLLERBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONUP
+        || event.type == SDL_CONTROLLERAXISMOTION) {
+        if (!options_.smokeTest) updatePad();
+        return true;
+    }
     const bool input = event.type == SDL_KEYDOWN || event.type == SDL_KEYUP || event.type == SDL_TEXTINPUT
                        || event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP
                        || event.type == SDL_MOUSEMOTION || event.type == SDL_MOUSEWHEEL;

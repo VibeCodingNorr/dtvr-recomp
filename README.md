@@ -364,8 +364,11 @@ Karte in the town dialog, the extra-cards switch (F9) in the player setup and
 "Weitere Einstellungen" (F9) in the options window, **A** toggles like Space in the
 player setup and options windows, and the **right stick** scrolls the Umfeld view.
 Player names: walk to a name field with the d-pad and press **A** for the on-screen
-keyboard (d-pad moves, A types, X deletes, Y capitals, Start takes the name, B
-cancels; only the characters the original field accepts, at most 18). Stage count:
+keyboard (d-pad or left stick moves, A types, X deletes, Y capitals, LB / RB move
+the text cursor, RT types a space, LT jumps to Fertig, Start takes the name, B
+cancels; only the characters the original field accepts, at most 18). The keyboard
+reacts on the press and repeats a held direction or X faster the longer it is held;
+original windows keep the original 80 ms joystick timing. Stage count:
 d-pad left / right ±1, up / down ±10, LB / RB ±50 (1–300; the same keys on the
 keyboard), A starts. All connected pads act together; nothing is read while the window
 is unfocused, and a held direction is released when the pad is unplugged, the

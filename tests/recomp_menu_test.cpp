@@ -141,6 +141,7 @@ int main() {
     CHECK(padRow("LB") && padRow("LB")->value == "Umschalt+Tab" && padRow("RB")->value == "Tab");
     CHECK(padRow("Ansicht") && padRow("Ansicht")->value.find("Rücktaste") == 0);
     CHECK(padRow("A: Bildschirmtastatur") != nullptr);
+    CHECK(padRow("LB/RB, RT, LT") != nullptr && padRow("LB/RB, RT, LT")->label == "Bildschirmtastatur: Cursor, Leerz., Fertig");
     const auto rowOf = [&](PadAction a) {
         for (size_t i = 0; i < table.items.size(); ++i)
             if (table.items[i].kind == RecompMenu::Kind::Binding && table.items[i].padAction == a) return int(i);
@@ -170,6 +171,11 @@ int main() {
     CHECK(m.pages()[size_t(controls)].items[0].hint.find("Enter / B:") == 0); // the Confirm button in use
     CHECK(m.keyLine().find("Enter/B") != std::string::npos && m.keyLine().find("Esc/A") != std::string::npos);
     CHECK(keyboardHelp(m.settings().pad).find("B tippen") == 0);
+    // The keyboard's shortcuts: LT is Erase now (bound), so only RT stays a shortcut.
+    CHECK(keyboardHelp(PadMap{}).find("abbrechen\nLB/RB Cursor  RT Leerzeichen  LT zu Fertig") != std::string::npos);
+    CHECK(keyboardHelp(m.settings().pad).find("RT Leerzeichen") != std::string::npos
+          && keyboardHelp(m.settings().pad).find("LT zu Fertig") == std::string::npos);
+    CHECK(padRow("LB/RB, RT") != nullptr && padRow("LB/RB, RT")->label == "Bildschirmtastatur: Cursor, Leerz.");
     // The same button again: unchanged.
     m.activate();
     CHECK(m.capture(int(PadPhysical::B)) == Action::None && m.settings().pad.of(PadAction::Confirm) == PadPhysical::B);

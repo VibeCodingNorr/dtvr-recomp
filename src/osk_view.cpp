@@ -41,7 +41,7 @@ ScreenKeyboardView::Geometry ScreenKeyboardView::geometry() const {
     g.gap = std::max(3, g.keyW / 12);
     constexpr int cols = ScreenKeyboard::kColumns, rows = ScreenKeyboard::kRows;
     const int gridW = cols * g.keyW + (cols - 1) * g.gap, gridH = rows * g.keyH + (rows - 1) * g.gap;
-    const int nameH = g.keyH, helpH = std::max(14, g.keyH / 2);
+    const int nameH = g.keyH, helpH = 2 * std::max(14, g.keyH / 2); // two lines
     const int clientW = gridW + 2 * kMargin;
     const int clientH = kMargin + nameH + 2 * g.gap + gridH + 2 * g.gap + helpH + kMargin;
     constexpr int border = int(BorderSize::Thin);
@@ -83,6 +83,28 @@ ScreenKeyboardView::Result ScreenKeyboardView::accept() {
     sound_ = 2; // Plopp02 as the Fertig key
     open_ = false;
     return Result::Done;
+}
+
+ScreenKeyboardView::Result ScreenKeyboardView::command(OskCommand c) {
+    if (!open_) return Result::None;
+    using Move = ScreenKeyboard::Move;
+    const auto move = [&](Move m) { if (keyboard_.move(m)) sound_ = 8; return Result::None; }; // seg1:24E5
+    switch (c) {
+    case OskCommand::Up: return move(Move::Up);
+    case OskCommand::Down: return move(Move::Down);
+    case OskCommand::Left: return move(Move::Left);
+    case OskCommand::Right: return move(Move::Right);
+    case OskCommand::Press: return apply(keyboard_.press());
+    case OskCommand::Erase: return apply(keyboard_.erase());
+    case OskCommand::Shift: return apply(keyboard_.toggleShift());
+    case OskCommand::Space: return apply(keyboard_.space());
+    case OskCommand::CaretLeft: return apply(keyboard_.caretStep(false));
+    case OskCommand::CaretRight: return apply(keyboard_.caretStep(true));
+    case OskCommand::FocusDone: return apply(keyboard_.focusDone());
+    case OskCommand::Accept: return accept();
+    case OskCommand::Cancel: open_ = false; return Result::Cancel; // as Escape, without a sound
+    }
+    return Result::None;
 }
 
 void ScreenKeyboardView::toggleShift() {
@@ -174,7 +196,9 @@ void ScreenKeyboardView::draw() {
     TextStyle input{kInput[res], true, true, false, false, 0, kBlack};
     input.serif = true;
     const SDL_Point inputSize = text_.measure("X", input);
-    text_.draw(renderer_, keyboard_.text() + "|",
+    const std::string& name = keyboard_.text(); // the caret where typing inserts (recomp)
+    const std::string head = utf8Prefix(name, keyboard_.caret());
+    text_.draw(renderer_, head + "|" + name.substr(head.size()),
                ScreenRect{g.name.x + 8, g.name.y + (g.name.h - inputSize.y) / 2, g.name.w - 16, inputSize.y}, input);
     TextStyle count{kLabel[res], true, false, false, true, 0, kText};
     const SDL_Point countSize = text_.measure("0", count);
@@ -202,7 +226,12 @@ void ScreenKeyboardView::draw() {
         }
     }
     TextStyle help{std::max(11, kLabel[res] - 3), true, false, true, false, 0, kText};
-    text_.draw(renderer_, help_.empty() ? keyboardTexts().help : help_, ScreenRect{g.help.x, g.help.y, g.help.w, g.help.h}, help);
+    const std::string& helpText = help_.empty() ? keyboardTexts().help : help_;
+    const size_t br = helpText.find('\n'); // the original layer's buttons, then the shortcuts
+    const int lineH = g.help.h / 2;
+    text_.draw(renderer_, helpText.substr(0, br), ScreenRect{g.help.x, g.help.y, g.help.w, lineH}, help);
+    if (br != std::string::npos)
+        text_.draw(renderer_, helpText.substr(br + 1), ScreenRect{g.help.x, g.help.y + lineH, g.help.w, lineH}, help);
 }
 
 } // namespace dtvr

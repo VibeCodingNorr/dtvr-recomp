@@ -3412,7 +3412,8 @@ the original windows is unchanged):
   keys framed in colour 0x45 with the red SBBUTTON focus frame (seg1:19B6), the
   name in the SBINPUT font. Keys QWERTZ with Ä Ö Ü ß, digits, space; d-pad (arrows)
   move with wrap-around, A (Return) types the focused key, X (Backspace) deletes,
-  Y toggles capitals (one capital after an empty name), Start or the key Fertig
+  Y toggles capitals (one capital after an empty name; timing, stick, caret and the
+  trigger shortcuts: "On-screen keyboard feel"), Start or the key Fertig
   takes the name, B (Escape) or Abbrechen keeps the old one; a real keyboard may type
   into it too. Typing follows SBINPUT's WM_CHAR (seg1:1F00): IsCharAlphaNumeric or
   0x20 (seg1:1F35 / 1F41), nothing once the text has the field's length (seg1:1F27),
@@ -3503,6 +3504,58 @@ unknown keys or values are ignored, an action given twice keeps its default, and
 buttons then shared by two actions go back to their defaults until every action has
 its own (`tests/pad_map_test.cpp`). `--press Pad:<name>` presses a physical button
 (also `LT`, `RT`, `LeftStick`, `RightStick`; `Up` … are the d-pad) through the map.
+
+#### On-screen keyboard feel (RECOMP ADDITION, `src/osk_pad.cpp`)
+
+User report 2026-11-26: with a pad the on-screen keyboard felt sluggish. Cause: it
+received the original joystick keys (80 ms SetTimer tick seg2:8A30, three ticks of
+waiting seg2:8B5C, then a fixed 80 ms), so a press reacted up to 80 ms late and a held
+direction never sped up. That timing stays for every original window; the keyboard is
+a recomp element and now reads the pad itself:
+
+- **Reading.** While the keyboard has the input (`PadContext::keyboard`),
+  `ControllerInput::update` skips the 80 ms gate and runs `OskPad` at every call: once
+  per frame and, from `GameWindow::handleKeyboard`, on every SDL controller button /
+  axis event, so a press acts in the frame it arrives. The original layer is released
+  meanwhile (key-up of a held direction, then a neutral start when the keyboard
+  closes, so the A / Start that closed it is not a fresh press in PLAYER). No SDL key
+  events are posted; commands (`PadOutput::keyboardCommands`) go straight to
+  `ScreenKeyboardView::command`. `OskPad` starts neutral too: buttons held when the
+  keyboard opens (the A that opened it) and a pushed stick count only after release.
+- **Repeat curve** (`HoldRepeat`, injected time, assumptions tuned by feel): a step on
+  the press itself, the first repetition 250 ms later, then intervals from 110 ms
+  falling linearly to 40 ms over 1000 ms of repeating; releasing resets the curve, a
+  new direction starts its own; a late call yields one step, never a burst. It applies
+  to the directions, Erase (X) and the caret (LB / RB); Confirm, Cards, the triggers,
+  Pause and Cancel act once per press.
+- **Stick** (`StickHysteresis`): the driving stick (`PadMap::swapSticks`) as four
+  directions; engages at 0.5 of its travel, releases below 0.35 along the held
+  direction, a diagonal counts as its dominant axis (a tie as vertical, seg2:8C2B's
+  order), and turning to another axis past 0.5 switches. Several pads: per axis the
+  largest travel counts. The bound direction buttons take precedence over the stick.
+- **Bindings** (all through the PadMap actions, so remapping applies): directions
+  move the focus, Confirm presses the focused key, Erase deletes, Cards toggles
+  capitals, Pause takes the name, Cancel keeps the old one, PrevPage / NextPage move a
+  text caret left / right. Triggers: RT types a space and LT moves the focus to Fertig
+  only while that trigger is bound to no action; a bound trigger does its action.
+  OriginalMenu and the stick clicks do nothing in the keyboard.
+- **Caret** (`ScreenKeyboard::caret`): opens after the name. Typing inserts at it and
+  erasing removes the character before it; SBINPUT's rules apply unchanged to the
+  whole text (19-character field limit counting the text after the caret, the
+  Windows-1252 / IsCharAlphaNumeric filter, sound 8 / 7 of VK_BACK, 7 with nothing
+  before the caret). At the end this is exactly SBINPUT's append and VK_BACK. The
+  caret moves with sound 8 and silently stops at either end; it is drawn as the `|`
+  inside the name. A real keyboard still types at the caret; its arrows move the
+  key focus as before.
+- **Texts.** The help has a second line with the shortcuts in use
+  (`keyboardShortcuts`, e.g. "LB/RB Cursor  RT Leerzeichen  LT zu Fertig"); the
+  Steuerung page has the info row "Bildschirmtastatur: Cursor, Leerz., Fertig" with
+  the buttons (both follow the map and omit bound triggers).
+- **Tests.** `tests/osk_pad_test.cpp` (curve, hysteresis, commands with the default
+  and a remapped map, caret), `tests/controller_test.cpp` (`oskRaw`: driving stick,
+  scripted full travel), `tests/recomp_menu_test.cpp` (help and row texts). The
+  original layer's tests are unchanged. `--press Pad:…` reaches the keyboard through
+  the same `OskPad` (one press and release).
 
 ### Start and Blue Byte logo
 

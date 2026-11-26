@@ -10,6 +10,7 @@
 
 #include "layout.hpp"
 #include "osk.hpp"
+#include "osk_pad.hpp"
 #include "sdl_assets.hpp"
 #include "text.hpp"
 #include "window_border.hpp"
@@ -41,6 +42,9 @@ public:
     // a key; the mouse pointer moves the focus.
     Result handle(const SDL_Event& event);
     Result accept();     // the pad's Start: done
+    // A command of the pad (OskPad, osk_pad.hpp): moves, the focused key, erase, shift,
+    // space, the caret, the focus to Fertig, done (as accept) or cancel (as Escape).
+    Result command(OskCommand c);
     void toggleShift();  // the pad's Y
     void setHelp(std::string help) { help_ = std::move(help); } // the help line (default: the default map's)
     int takeSound() { const int s = sound_; sound_ = -1; return s; } // channel 2, -1 none
