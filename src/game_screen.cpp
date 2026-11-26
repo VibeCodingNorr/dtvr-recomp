@@ -573,7 +573,7 @@ void GameScreen::tickAmbient(bool views) {
     std::vector<AmbientCell> changed;
     std::vector<int> sounds;
     // seg2:05A8 -> seg8:7F7D after every change of the view: the list of animated objects
-    // is rebuilt from the origin (tiles) and the view's size (pixels).
+    // is rebuilt from the origin (tiles, shifted to pixels there) and the view's size (pixels).
     const SDL_Point origin = viewOrigin();
     const MapViewSize size = viewSize();
     const std::array<int, 4> view{origin.x / WorldMap::kTile, origin.y / WorldMap::kTile, size.width, size.height};

@@ -3060,12 +3060,14 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (seg8:7FAB: frame up to the terminator, back by one) and writes its tiles, clears
   the list (seg8:8359), then lists the records (in scan order, at most 0x96,
   seg8:828B) whose rectangle — pixels: cell · 16 to (cell + size) · 16 (seg8:7EED,
-  7F1E) — touches (DS:956A, DS:9568, DS:956A − DS:94DA + DS:94DE, DS:9568 − DS:94DC +
-  DS:94E0) by seg2:42A4 (inclusive overlap). DS:956A / 9568 is the origin in *tiles*
-  (seg6:3099 `sar 4`), DS:94DE / 94E0 the view in pixels: rally.exe mixes the units,
-  so the list holds objects near the world's top left, not the visible ones.
-  Measured with europe.map (1276 objects, 99 with a sound): every origin lists 42–50
-  objects, none with a sound — the farm animals' sounds never play in rally.exe.
+  7F1E) — touches (DS:956A · 16, DS:9568 · 16, DS:956A · 16 − DS:94DA + DS:94DE, DS:9568 · 16 − DS:94DC +
+  DS:94E0) by seg2:42A4 (inclusive overlap). DS:956A / 9568 is the origin in tiles
+  (seg6:3099 `sar 4`), but seg8:81E2 / 81EB shift it left by 4 (`shl ax,0x4`) before
+  adding the view size DS:94DE / 94E0 (pixels), so the list holds the visible
+  objects. *Correction (replaces the round-132 reading that missed the shift and
+  listed only objects near the world's top left, which hid the animations in the
+  visible map):* with europe.map a 688 × 400 view at tile origin (100, 80) lists
+  49 objects, at (150, 100) 11; their sounds (farm animals) play on channel 6.
   Rebuilt exactly (`AmbientAnimations::setView`, tested).
 - **Voice** (round 102): seg1:3579 always selects the sync.dat record but loads and
   plays the WAV only with a wave device (DS:9552) and [Setup] Voice (DS:B5D4),

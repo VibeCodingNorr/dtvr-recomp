@@ -43,18 +43,29 @@ int main() {
     std::vector<int> sounds;
     a.tick(map, rng, changed, sounds);
     check(changed.empty(), "nothing moves without the list");
-    // seg8:81E2: the view is (origin in tiles, + size in pixels) against pixel rectangles:
-    // with the origin (100, 100) the object at cell (100, 100) (pixel 1600) is not listed,
-    // the one at (10, 20) (pixels 160 / 320) is.
+    // seg8:81E2: the tile origin is shifted to pixels (shl 4) and the view's size in pixels
+    // added. Regression (round 132 read the origin as pixels): a view at the tile origin
+    // (95, 95), 688 pixels wide, lists the object at cell (100, 100) where it is visible,
+    // not the one at (10, 20) near the world's top left.
+    MsRandom other(7);
+    a.setView(95, 95, 688, 688, map, other, changed);
+    check(a.listed() == 1 && changed.empty(), "the visible object in the middle of the world is listed");
+    changed.clear();
+    for (int i = 0; i < 2000 && changed.empty(); ++i) a.tick(map, other, changed, sounds);
+    check(!changed.empty() && changed[0].x == 100 && changed[0].y == 100, "the visible object moves");
+    map.setTile(0, 100, 100, 0xAD5);
+    changed.clear();
     const int pause = expected.random(10); // seg8:8277: the start pause random(+8)
-    a.setView(100, 100, 688, 688, map, rng, changed);
-    check(a.listed() == 1 && changed.empty(), "rally.exe lists the object near the top left");
+    a.setView(0, 0, 688, 688, map, rng, changed); // tiles 0..43: (10, 20) only
+    check(a.listed() == 1 && changed.size() == 1 && map.cell(0, 100, 100) == 0xADB,
+          "the top-left object is listed; the unlisted one shows its last frame");
+    changed.clear();
     a.setView(0, 0, 0, 0, map, expected, changed); // a view touching neither (pause drawn from another generator)
     check(a.listed() == 0, "an empty view lists nothing");
     check(changed.size() == 1 && map.cell(0, 10, 20) == (0x4000 | 0xADB), "the unlisted object shows its last frame");
     map.setTile(0, 10, 20, uint16_t(0x4000 | 0xAD5));
     rng = MsRandom(1);
-    a.setView(100, 100, 688, 688, map, rng, changed);
+    a.setView(0, 0, 688, 688, map, rng, changed);
     changed.clear();
     int passes = 0;
     while (map.cell(0, 10, 20) != (0x4000 | 0xAD6) && passes < 100) {

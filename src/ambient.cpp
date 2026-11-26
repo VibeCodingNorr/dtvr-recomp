@@ -100,7 +100,10 @@ void AmbientAnimations::setView(int originX, int originY, int viewWidth, int vie
         writeFrame(o, map, changed);
     }
     listed_.clear(); // seg8:8359
-    const int left = originX, top = originY, right = originX + viewWidth, bottom = originY + viewHeight; // seg8:81E2
+    // seg8:81E2 / 81EB: the tile origin DS:956A / 9568 shifted left by 4 (pixels), plus
+    // the view's size DS:94DE - 94DA / 94E0 - 94DC (seg8:81F4 / 8202).
+    const int left = originX * WorldMap::kTile, top = originY * WorldMap::kTile;
+    const int right = left + viewWidth, bottom = top + viewHeight;
     for (size_t i = 0; i < objects_.size(); ++i) {
         Object& o = objects_[i];
         const int l = o.x * 16, t = o.y * 16, r = (o.x + o.def->width) * 16, b = (o.y + o.def->height) * 16;
