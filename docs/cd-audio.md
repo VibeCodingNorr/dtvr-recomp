@@ -143,6 +143,10 @@ re-encodes (about 320 kb/s) made by that release, not the disc's CD-DA.
   `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a` and
   `dat/lan.inf` starts with `E`. German images and executables are refused.
 
+Without `--cd-audio-dir` the pinned data image installs too (edition `en-us-retail`,
+`tools/editions.py`); its manifest then records `cd_audio.status: no-cd-da-in-image`
+and the game plays MIDI only.
+
 Files are copied unmodified, verified again after copying, and never transcoded.
 The label "Release-OGG (nicht original)" appears in the installer log, in
 `audio.json` / the manifest (`source_kind: release-ogg`, `original: false`,

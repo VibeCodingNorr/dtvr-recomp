@@ -15,10 +15,11 @@ from iso9660 import IsoImage
 from cd_audio import audio_layout, convert_audio
 from soundtrack import render_pack
 from cd_soundtrack import build_cd_hybrid, hybrid_identity
-from release_ogg import (LABEL as RELEASE_LABEL, import_release_audio, language_letter,
+from release_ogg import (LABEL as RELEASE_LABEL, import_release_audio,
                          release_profile, require_edition)
-from installer_checks import KNOWN_EXE, REPO, default_output, validate_output, digest, preflight
-from installation_manifest import write_manifest, verify_installation
+from installer_checks import REPO, default_output, validate_output, digest, preflight
+import editions
+from installation_manifest import FORMAT as MANIFEST_FORMAT, write_manifest, verify_installation
 from project_version import read_version
 from installer_update import update_info, preserve_files, publish
 from installer_dependencies import DependencyError, dependency_report
@@ -52,11 +53,17 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
                 sector_size = image.sector_size
                 count = image.extract_program(data)
         analysis = inspect_game(data)
-        if analysis["executable"]["sha256"] != KNOWN_EXE:
+        executable = analysis["executable"]["sha256"]
+        profile = editions.profile_for_executable(executable)
+        if profile is None:
             raise ValueError("Unsupported rally.exe version; preserve this image for version analysis")
-        for required in ("butt/1/map.bmp", "map/0/part0000.sbb", "sbs/d.sbs"):
+        for required in profile["required"]:
             if not (data / "program" / required).is_file():
                 raise ValueError(f"Required original data missing: {required}")
+        language = editions.directory_language(data / "program")
+        editions.require_language(profile, language)
+        if previous:
+            editions.require_same_edition(previous, profile)
         # Original Windows binaries are validation inputs, not native runtime dependencies.
         for name in ("rally.exe", "sbtimer.dll", "wavemix.dll", "wavemix.ini"):
             path = data / "program" / name
@@ -68,13 +75,17 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         layout = audio_layout(iso_hash, iso.stat().st_size) if iso is not None else None
         if report.get("cd_audio_dir") is not None:
             # Release Ogg tracks (not original): only for their own edition, copied unmodified.
-            profile = release_profile(iso_hash)
-            require_edition(profile, analysis["executable"]["sha256"], language_letter(data / "program"))
+            release = release_profile(iso_hash)
+            require_edition(release, executable, language)
             print(f"DTVR_ACTIVITY:{RELEASE_LABEL} übernehmen", flush=True)
-            audio = import_release_audio(Path(report["cd_audio_dir"]), data / "music", profile)
+            audio = import_release_audio(Path(report["cd_audio_dir"]), data / "music", release)
         elif layout is not None:
             print("DTVR_ACTIVITY:CD-Aufnahmen vorbereiten", flush=True)
             audio = convert_audio(iso, data / "music", layout)
+        elif iso_hash in profile["known_isos"]:
+            # A pinned data-only image of this edition: known, but without CD-DA.
+            audio = {"status": profile["known_isos"][iso_hash], "regions": []}
+            print("This disc image holds no CD audio; no CD audio converted.", flush=True)
         else:
             audio = {"status": "unavailable-from-directory" if directory is not None else "no-known-layout", "regions": []}
             print("No CD audio available from this source; no CD audio converted.", flush=True)
@@ -109,6 +120,11 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
                    XDG_CONFIG_HOME=str(Path(temporary) / "test-config"))
         binary = stage / "bin/dtvr-recomp"
         print("DTVR_STAGE:6:Checking the installed runtime", flush=True)
+        # rally.exe is gone from the staged data; the runtime identifies the edition by
+        # the manifest beside data/ (src/edition.cpp). This identity stub is replaced
+        # by the complete manifest below.
+        (stage / "manifest.json").write_text(json.dumps(
+            {"format": MANIFEST_FORMAT, "executable_sha256": executable, "edition": profile["id"]}) + "\n")
         for view in ([], ["--tiles"], ["--sprites"], ["--world"], ["--game"]):
             subprocess.run([str(binary), "--data", str(data), "--smoke-test", *view],
                            env=env, check=True)
@@ -129,7 +145,7 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
                               "project_version": read_version(),
                               "iso_sha256": iso_hash, "iso_sector_size": sector_size,
                               "cd_audio": audio, "soundtrack_packs": packs,
-                              "executable_sha256": KNOWN_EXE}, excluded)
+                              "executable_sha256": executable, "edition": profile["id"]}, excluded)
         verify_installation(stage)
         backup = publish(stage, output, previous)
         if backup:

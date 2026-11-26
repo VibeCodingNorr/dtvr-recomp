@@ -8,6 +8,8 @@ from pathlib import Path
 import shutil
 import stat
 
+import editions
+
 
 def file_digest(path):
     result = hashlib.sha256()
@@ -70,19 +72,23 @@ def inventory(program):
     return files
 
 
-def inspect_directory(source, known_exe):
+def inspect_directory(source):
+    """Inventory of a complete original program directory of a supported edition.
+
+    Installed hard-disk folders hold only part of the data (e.g. no butt/); they are
+    rejected even when their rally.exe matches a supported edition.
+    """
     program = program_directory(source)
     files = inventory(program)
-    if files.get("program/rally.exe", {}).get("sha256") != known_exe:
-        raise ValueError("Unsupported original executable; this directory version is not supported")
-    required = {"program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"}
-    missing = sorted(required - files.keys())
+    profile = editions.require_profile(files.get("program/rally.exe", {}).get("sha256"), "directory")
+    missing = editions.missing_files(profile, files.keys())
     if missing:
         raise ValueError("Original directory is missing required game data: "
                          + ", ".join(missing)
                          + ". Choose a complete program directory or use --iso with the original disc image.")
+    editions.require_language(profile, editions.directory_language(program))
     encoded = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return {"directory": str(program), "source_files": files,
+    return {"directory": str(program), "source_files": files, "edition": profile["id"],
             "source_sha256": hashlib.sha256(encoded).hexdigest()}
 
 

@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from installer_checks import preflight, validate_output, interface_font
+from installer_scenario import synthetic_profiles
 
 
 class PreflightTests(unittest.TestCase):
@@ -26,12 +27,14 @@ class PreflightTests(unittest.TestCase):
         image = MagicMock()
         image.__enter__.return_value = image
         image.sector_size = 2048
-        image.read.return_value = b"test"
+        # Entry 4 is dat/lan.inf ("D"), every other read is the synthetic executable.
+        image.read.side_effect = lambda block, size: b"D\r\n"[:size] if block == 4 else b"test"
         image.files.return_value = [(PurePosixPath(name), i, 4) for i, name in enumerate(
-            ["program/rally.exe", "program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs"])]
+            ["program/rally.exe", "program/butt/1/map.bmp", "program/map/0/part0000.sbb", "program/sbs/d.sbs",
+             "program/dat/lan.inf"])]
         for target, replacement in [
                 ("installer_checks.IsoImage", MagicMock(return_value=image)),
-                ("installer_checks.KNOWN_EXE", hashlib.sha256(b"test").hexdigest()),
+                ("editions.PROFILES", synthetic_profiles(hashlib.sha256(b"test").hexdigest())),
                 ("installer_checks.interface_font", MagicMock(return_value="Liberation Sans")),
                 ("installer_checks.shutil.which", MagicMock(return_value="tool")),
                 ("installer_checks.subprocess.run", MagicMock(return_value=subprocess.CompletedProcess([], 0))),
@@ -42,7 +45,8 @@ class PreflightTests(unittest.TestCase):
 
     def test_success_is_read_only(self):
         report = preflight(self.iso, self.output)
-        self.assertEqual(report["program_files"], 4)
+        self.assertEqual(report["program_files"], 5)
+        self.assertEqual(report["edition"], "de-retail")
         self.assertIn("ctest", report["dependencies"])
         self.assertFalse(self.output.parent.exists())
         self.assertEqual(list(self.root.iterdir()), [self.iso])

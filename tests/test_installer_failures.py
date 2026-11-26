@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Whole-pipeline faults with real temporary files, processes and synthetic ISO."""
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -10,7 +11,9 @@ import sys
 import tempfile
 import unittest
 
-from installer_scenario import disc_fixture
+from unittest.mock import patch
+
+from installer_scenario import disc_fixture, synthetic_profiles
 from test_installer_update import installation
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -21,6 +24,10 @@ from installation_manifest import verify_installation
 SCENARIO = Path(__file__).with_name("installer_scenario.py")
 
 
+def digest_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
 class PipelineFailureTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="dtvr-installer-faults-")
@@ -29,6 +36,9 @@ class PipelineFailureTests(unittest.TestCase):
         self.iso = self.root / "original disc ü.iso"
         self.iso.write_bytes(disc_fixture())
         self.iso_hash = digest(self.iso)
+        profiles = patch("editions.PROFILES", synthetic_profiles(digest_bytes(b"synthetic executable")))
+        profiles.start()
+        self.addCleanup(profiles.stop)
         self.output = self.root / "game with spaces $(literal) ü"
         self.config = self.root / "config/settings.ini"
         self.config.parent.mkdir()
@@ -122,7 +132,7 @@ class PipelineFailureTests(unittest.TestCase):
         result = subprocess.run(self.command("success"), env=dict(self.env, DTVR_TEST_MODE="success"),
                                 capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(verify_installation(self.output)["files_verified"], 5)
+        self.assertEqual(verify_installation(self.output)["files_verified"], 6)
         launched = subprocess.run([str(self.output / "play")], env=dict(self.env, DTVR_TEST_MODE="success"),
                                   capture_output=True, text=True, check=True)
         args = json.loads(launched.stdout.split("TEST_RUNTIME:")[1])
