@@ -180,7 +180,7 @@ void validateEditionData(const EditionProfile& profile, const fs::path& programD
     if (!missing.empty()) {
         std::string list;
         for (const auto& file : missing) list += (list.empty() ? "" : ", ") + file;
-        throw std::runtime_error(std::string("Originaldaten der ") + profile.name + " unvollständig, es fehlt: " + list);
+        throw std::runtime_error(std::string("Originaldaten unvollständig (") + profile.name + "), es fehlt: " + list);
     }
     if (std::toupper(static_cast<unsigned char>(languageLetter)) != profile.languageLetter)
         throw std::runtime_error(std::string("dat/lan.inf nennt die Sprache ") + languageLetter + ", die " + profile.name
