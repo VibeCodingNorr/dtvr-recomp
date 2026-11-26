@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Game-level tests for the cards added in round 13 and the investment offer.
+#include "card_window_choice.hpp"
 #include "estates.hpp"
 #include "game.hpp"
 #include "rules.hpp"
@@ -242,6 +243,29 @@ int main() {
         CHECK(!rows.empty() && rows[0].disabled);
         CHECK(g->propertyMode() == 3);                // stays until the dialog closes
         CHECK(g->endTurn() && g->propertyMode() == 0xFF);
+    } else CHECK(false);
+
+    // The card window from the town dialog (mask 1): seg4:0AA8 sends the card to the
+    // dispatcher seg3:0E11(slot + 0x78, 1), whose handler sets the mode (seg3:0EDB ->
+    // seg3:134D). The game window routed it through the viewer's digit key, which in
+    // phase Arrived bought property `slot` at full price and kept the card.
+    if (auto g = gameWithCard(board, towns, 2, 0, 2, slot)) {
+        const CardWindowChoice early = cardWindowChoice(*g, slot);
+        CHECK(early.step == CardWindowChoice::Step::Play && early.target == -1);
+        driveRight(*g);
+        CHECK(g->phase() == Game::Phase::Arrived && g->townAt(g->playerField(0)) >= 2);
+        const double before = g->cash(0);
+        const CardWindowChoice choice = cardWindowChoice(*g, slot);
+        CHECK(choice.step == CardWindowChoice::Step::Play && choice.target == -1);
+        CHECK(g->playCard(slot, choice.target));
+        CHECK(g->propertyMode() == 3 && g->cash(0) == before && g->hand(0)[size_t(slot)] == Deck::kTaken);
+        CHECK(cardWindowChoice(*g, -1).step == CardWindowChoice::Step::None);
+        CHECK(cardWindowChoice(*g, 8).step == CardWindowChoice::Step::None);
+    } else CHECK(false);
+    // A target card with two players needs no SELPLAYER: the other one is the target.
+    if (auto g = gameWithCard(board, towns, 2, 0, 11, slot)) { // Schulden
+        const CardWindowChoice choice = cardWindowChoice(*g, slot);
+        CHECK(choice.step == CardWindowChoice::Step::Play && choice.target == 1);
     } else CHECK(false);
 
     // Verkaufen (1, round 151): seg1:68C6 greys every Verkaufen row while DS:3FC6 != 0xFF

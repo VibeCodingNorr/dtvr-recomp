@@ -5,6 +5,7 @@
 #include "game_window.hpp"
 
 #include "board.hpp"
+#include "card_window_choice.hpp"
 
 namespace dtvr {
 
@@ -112,46 +113,36 @@ bool GameWindow::handleCardWindow(const SDL_Event& event) {
     }
     if (input.id >= 0) {
         const int slot = input.id;
-        // seg2:51EA: a card with a target asks for the player when more than one is
-        // possible (excluded: the player; Tschüss excludes nobody, argument 0xFF).
-        const Game& g = play_.game();
-        if (g.yellowCardPending()) { // seg3:1057: discard mode, the clicked card is dropped
-            if (play_.game().discardForCard(slot)) report();
+        // seg4:0A8D: an enabled card goes to the dispatcher seg3:0E11(slot + 0x78, 1)
+        // in either mask (town dialog seg4:0AA8, before spinning seg4:0AE6).
+        Game& g = play_.game();
+        const CardWindowChoice choice = cardWindowChoice(g, slot);
+        using Step = CardWindowChoice::Step;
+        switch (choice.step) {
+        case Step::Discard: // seg3:1057: discard mode, the clicked card is dropped
+            if (g.discardForCard(slot)) report();
             cards_.close();
-            return true;
-        }
-        const CardKind kind = cardKind(g.deck().typeOfSlot(g.hand(g.currentPlayer())[size_t(slot)]));
-        if (cardNeedsTarget(kind) || kind == CardKind::Tschuess) {
-            std::vector<int> candidates;
+            break;
+        case Step::ChooseTarget: { // seg2:51EA: SELPLAYER
             std::array<uint8_t, kPlayerSlots> status{};
-            for (int p = 0; p < kPlayerSlots; ++p) {
-                status[size_t(p)] = g.players()[size_t(p)].status;
-                if (status[size_t(p)] && (kind == CardKind::Tschuess || p != g.currentPlayer()))
-                    candidates.push_back(p);
-            }
-            if (candidates.size() > 1) {
-                targetCardSlot_ = slot;
-                screen_.selectPlayer().open(candidates, status);
-                return true;
-            }
-            if (candidates.size() == 1 && play_.game().playCard(slot, candidates.front())) report();
-            return true;
+            for (int p = 0; p < kPlayerSlots; ++p) status[size_t(p)] = g.players()[size_t(p)].status;
+            targetCardSlot_ = slot;
+            screen_.selectPlayer().open(choice.candidates, status);
+            break;
         }
-        if (kind == CardKind::Naegel && g.nailsInWater()) { // seg3:1CCF: into the water, no window
-            if (play_.game().playCard(slot, 0)) report();
-            return true;
-        }
-        if (kind == CardKind::Naegel) { // seg3:1C96: the direction window
+        case Step::Nails: // seg3:1C96: the direction window
             nailsCardSlot_ = slot;
             screen_.nails().open(g.nailsDirections());
-            return true;
-        }
-        if (kind == CardKind::Flugzeug) { // seg3:31D5: the booking window
+            break;
+        case Step::Flight: // seg3:31D5: the booking window
             flightCardSlot_ = slot;
             screen_.flight().open(g.eastOpen(), g.remainingStages() == 0);
-            return true;
+            break;
+        case Step::Play: // the card's handler (seg3:0EDB), never the town purchase
+            if (g.playCard(slot, choice.target)) report();
+            break;
+        case Step::None: break;
         }
-        if (play_.handleKey(SDL_Keycode(SDLK_1 + slot), 0)) report();
         return true;
     }
     // A right click does nothing: the canvas passes it to RALLY (seg8:018C), which

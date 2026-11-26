@@ -23,6 +23,14 @@ SDL_Event toStage(SDL_Event event, const ScreenLayout& layout) {
 }
 
 bool isArrow(SDL_Keycode k) { return k == SDLK_UP || k == SDLK_DOWN || k == SDLK_LEFT || k == SDLK_RIGHT; }
+// The main window's WM_KEYDOWN (seg4:0259-02C3) knows only Backspace, Enter, Escape,
+// Space, the arrows, Insert / Delete, 1-4, C and Q; every other key goes to
+// DefWindowProc. The viewer's other keys (digits 5-0 buying town properties, W, I, N,
+// B, T, PgUp / PgDn) must not act in the game window.
+bool mainWindowKey(SDL_Keycode key) {
+    return key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE || key == SDLK_BACKSPACE
+           || key == SDLK_ESCAPE || isArrow(key);
+}
 
 } // namespace
 
@@ -398,7 +406,8 @@ void GameWindow::handleKey(const SDL_Event& event) {
     if (key == SDLK_ESCAPE && !risiko && !screen_.title() && !event.key.repeat)
         recompMenu_.menu().open(menuSettings(), true);
     else if ((key == SDLK_ESCAPE || key == SDLK_BACKSPACE) && !risiko) openMenu("RIGHTBTN");
-    else if (play_.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod)) report();
+    else if (mainWindowKey(key) && play_.handleKey(key == SDLK_ESCAPE ? SDLK_BACKSPACE : key, event.key.keysym.mod))
+        report();
 }
 
 } // namespace dtvr
