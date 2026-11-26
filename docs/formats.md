@@ -350,15 +350,55 @@ Confirmed from code (rally.exe SHA-256 aa3dde36…6b83, `tools/segdis.py 2 1CB0 
   posts Return too). A human's vehicle therefore stops on its last field (Carb01)
   and the field's action — money, card, town, finish — runs only when Return is
   pressed; until then an arrow can still turn back. The rebuild did this at once;
-  now `Game::setArrivalConfirm` (game window) leaves it to `confirmArrival`.
+  now `Game::setArrivalConfirm` (game window) leaves it to `Game::pressReturn`.
   Computers and the terminal mode arrive at once (an unchanged two-computer log).
   Return while the vehicle is still between cells does nothing (seg2:2C0F).
+- **seg2:0BC3 in full** (round "enter-key"): the only call is seg4:01EA (VK_RETURN
+  in the WM_KEYDOWN switch seg4:0259–02C3, reached only while DS:96A0 ≠ 0). Keys
+  reach the main window also as posts: MCTRL (seg4:11B3), the computer state
+  machine at the end of its route (seg5:6E12, and every 50 passes of state 7 at
+  seg5:6F34; the message loop seg1:018D turns 0x7EF into WM_KEYDOWN) and Flugzeug
+  (seg3:3361 after placing the player, A778 = 9D40 = 0). Menus do not forward
+  Return (seg5:5657 forwards only '1'–'4', seg5:563E). The function:
+  1. seg2:0CD6: DS:1A2A ≠ 0 → return at once (re-entry guard, set at 0CE2 and
+     cleared at 16B2; the field action and nextPlayer run inside it).
+  2. Always: seg2:0CE8 DS:2EB0 = 0 (byte write; Verdoppeln ends unused),
+     seg2:0CF1 seg8:0362(&DS:A7C8) kills the TimeOut timer (only seg2:3ABD starts
+     it; DS:12 stays set, so it stays off for the turn), seg2:0CF9 restores a
+     Steuerlos player's status byte from DS:10 and clears DS:10, seg2:0D1E: for a
+     computer (seg2:5C02) seg6:0F60(1000) waits a second.
+  3. seg2:0D38–0D6F, the arrival test (above): DS:9592 ≠ −1, DS:9D40 = DS:A778 or
+     A778 = −1, seg2:2C0F aligned, DS:9EDE = 0 (no menu) → the field handler by
+     kind (jump table seg2:160C; other kinds → MessageBox at seg2:15C0), then
+     seg2:1618 seg1:4E39 and nextPlayer seg2:06FC.
+  4. Otherwise seg2:1625: with [Setup] Views (DS:B5D8), aligned and pit bit 0x10
+     at the vehicle's cell (seg2:3260, test at seg2:1677) the sights seg6:4DCB.
+  Return therefore never ends a turn by itself and never rolls. *Correction:* the
+  earlier note that seg2:0CE8 clears DS:2EB0 "at every player change" was wrong;
+  its only writers are seg2:0CE8, seg3:0E9F (the card handler) and seg3:3FCF
+  (Verdoppeln), so a Verdoppeln left unused by a turn that ends without Return
+  (e.g. shut in) carries over to the next player. **Rebuild before this round:**
+  the game window sent Enter to the viewer mapping of `--play`, which called
+  `Game::endTurn` whenever no arrival was due — an Enter during a computer's turn
+  could end it before its town or card shop plan — and the MCTRL Return skipped
+  both the alignment test and the sights; Return never ended Verdoppeln or the
+  TimeOut timer, and `advanceTurn` cleared Verdoppeln. **Now:**
+  `Game::pressReturn(aligned)` (Roll and Move phases only: Arrived and the
+  statement phases are inside seg2:0BC3, Risiko has its own window seg7:718A)
+  ends Verdoppeln and the time limit and runs a due arrival; the arrivals at once
+  (computers, `--play`, Flugzeug) apply the same effects. `GameWindow::
+  mainWindowReturn` serves the keyboard, the pad and MCTRL alike and opens the
+  sights without an arrival. Not modelled: the DS:10 status swap (the rebuild
+  keeps Steuerlos as a flag) and the computer's 1000 ms wait. *Open:* whether
+  Return in the Roll phase with no menu open (RIGHTBTN Zurück) would re-run the
+  start field, as DS:9D40 = DS:A778 usually still holds there (9D40 is reset only
+  by seg2:7F14, seg3:335C); the rebuild never arrives outside the Move phase.
 - **Turn end after the field** (round 113): every field handler returns to
   seg2:1618, which calls the forced sale check seg1:4E39 and nextPlayer seg2:06FC
   directly. The handler's message, card dialog, town dialog or card shop runs
   modally, so a human's turn ends when it is closed, without another Enter. The
   game window now calls `Game::endTurn` itself once nothing modal is left (the
-  terminal mode `--play` keeps Enter).
+  terminal mode `--play` keeps Enter; the game window's Enter is seg2:0BC3 only).
 - **Dispatch** on `whatisit − 1`, jump table seg2:160C:
 
   | Kind | Marker | Handler | Action |
@@ -987,7 +1027,8 @@ the types 0x400/0x800 follow in round 13).
   **Assumption:** the window centred.
 - **Verdoppeln** (card 40, seg3:3FBB): sets DS:2EB0 = 1; the card handler at
   seg3:0E83 then skips removing the next card (seg2:3C62) and clears the flag.
-  seg2:0CE8 clears it at every player change.
+  The main window's Return clears it too (seg2:0CE8 in seg2:0BC3, see "Return
+  accepts the field"); the player change does not.
 
 Rebuilt in `src/events.cpp` (`investmentPayout`), `src/game_cards.cpp` and
 `src/game_events.cpp`. Simplifications: Punch uses the direction of the
@@ -3095,7 +3136,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   channel 6; afterwards every second it subtracts 500 (DS:85FE) for the first ten
   seconds, 750 (DS:8606) for the next ten, then 1000 (DS:860E) from the driver's
   cash (seg2:5A47), plays sound 0x15 on channel 6 and calls seg5:607B(1) (not
-  rebuilt). nextPlayer clears DS:12 (seg2:0716 → 3A8E). Rebuilt as
+  rebuilt). nextPlayer clears DS:12 (seg2:0716 → 3A8E); the main window's Return
+  kills the timer earlier (seg2:0CF1, see "Return accepts the field"). Rebuilt as
   `Game::timeLimitSecond`, driven by the game window while it has the input focus;
   the timer is not saved.
 

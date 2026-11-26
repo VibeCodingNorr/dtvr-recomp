@@ -209,6 +209,7 @@ bool Game::playCard(int handSlot, int target) {
         counter_ = MoveCounter(0);
         phase_ = Phase::Move;
         messages_.push_back("Flug nach " + townName(fieldOfTown(target)));
+        returnEffects(); // seg3:3361 posts VK_RETURN to the main window: seg2:0BC3
         arrive();
         return true;
     }

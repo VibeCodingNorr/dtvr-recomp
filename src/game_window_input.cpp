@@ -75,15 +75,14 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     if (screen_.sight().isOpen()) { screen_.sight().handle(event); return; } // seg6:4DCB, modal
     if (screen_.viewStopped() && event.type == SDL_KEYDOWN
         && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER)) {
-        // Enter at a view point: seg2:0BC3 -> seg2:16AA -> seg6:4DCB(x, y).
-        const SDL_Point c = screen_.viewStopCell();
-        screen_.sight().open(c.x, c.y);
+        mainWindowReturn(); // Enter at a view point: seg2:0BC3 -> seg2:16AA -> seg6:4DCB(x, y)
         return;
     }
     if (screen_.mouseControl().isOpen()) { // MCTRL (seg4:103B): the cursor stays in the cross
         bool closed = false;
         const SDL_Keycode key = screen_.mouseControl().handle(event, closed);
-        if (key != SDLK_UNKNOWN && play_.handleKey(key, 0)) report(); // posted to the main window
+        if (key == SDLK_RETURN) mainWindowReturn(); // seg4:11B3 posts it to the main window
+        else if (key != SDLK_UNKNOWN && play_.handleKey(key, 0)) report();
         if (event.type == SDL_MOUSEMOTION || event.type == SDL_MOUSEBUTTONDOWN
             || event.type == SDL_MOUSEBUTTONUP || closed)
             return;
@@ -356,6 +355,23 @@ void GameWindow::handleRecompMenu(const SDL_Event& event) {
     heldArrow_ = SDLK_UNKNOWN;
 }
 
+// seg4:01EA: the main window's Return calls seg2:0BC3 and nothing else. It never ends a
+// turn (the field handlers do, seg2:1618) and never rolls. Its game part is
+// Game::pressReturn; seg2:0D38 needs the vehicle on the cell grid (seg2:2C0F), so no
+// field while it drives. Without an arrival seg2:1625 opens the view point's sights
+// (Views on, the cell's pit bit 0x10, seg2:1677 -> seg6:4DCB). The Risiko window takes
+// its own keys (seg7:718A), and the main window's keys need a running game (DS:96A0).
+void GameWindow::mainWindowReturn() {
+    Game& g = play_.game();
+    if (screen_.title() || g.phase() == Game::Phase::Risiko) return;
+    const bool arrived = g.pressReturn(!moving_);
+    if (!arrived && screen_.viewStopped()) { // stopped on the (aligned) view point cell
+        const SDL_Point c = screen_.viewStopCell();
+        screen_.sight().open(c.x, c.y);
+    }
+    report();
+}
+
 // The map and the main window's keys (seg4:018B ff.) when no window took the event.
 void GameWindow::handleKey(const SDL_Event& event) {
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
@@ -387,8 +403,7 @@ void GameWindow::handleKey(const SDL_Event& event) {
     const SDL_Keycode key = event.key.keysym.sym;
     if (isArrow(key) && play_.game().phase() == Game::Phase::Move) { heldArrow_ = key; return; }
     if (key == SDLK_INSERT || key == SDLK_DELETE) { screen_.toggleZoom(); return; } // seg4:0212
-    // seg2:0D38 needs the vehicle on the cell grid (seg2:2C0F): no field while it drives.
-    if ((key == SDLK_RETURN || key == SDLK_KP_ENTER) && moving_ && play_.game().arrivalDue()) return;
+    if (key == SDLK_RETURN || key == SDLK_KP_ENTER) { mainWindowReturn(); return; } // seg4:01EA
     if (key >= SDLK_1 && key <= SDLK_4) { // seg4:018B -> seg6:0DA0(key - 1, 1): pause and memo
         Settings s = screen_.settings();
         s.pause = int(key - SDLK_1);

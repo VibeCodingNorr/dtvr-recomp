@@ -133,6 +133,61 @@ int main() {
         }
     }
 
+    // The main window's Return (seg4:01EA -> seg2:0BC3): it ends the TimeOut timer
+    // (seg2:0CEE) and Verdoppeln (seg2:0CE8) in the Roll and Move phases, runs only a due
+    // arrival on the cell grid, and never ends a turn or rolls.
+    for (const bool confirm : {true, false}) {
+        std::unique_ptr<Game> g;
+        int slot = -1;
+        for (uint16_t seed = 1; seed < 20000 && !g; ++seed) {
+            auto c = std::make_unique<Game>(board, towns, 1, 3, seed, 8, nullptr, nullptr, false);
+            c->setRandomEvents(false);
+            for (int k = 0; k < 8 && slot < 0; ++k)
+                if (c->deck().typeOfSlot(c->hand(0)[size_t(k)]) == 30) slot = k;
+            if (slot >= 0) g = std::move(c);
+        }
+        CHECK(g != nullptr);
+        if (!g) continue;
+        g->setTimeLimit(true);
+        g->setArrivalConfirm(confirm);
+        CHECK(g->playCard(slot, -1) && g->timeLimitRunning() && g->phase() == Game::Phase::Move);
+        if (confirm) {
+            CHECK(g->step(Direction::Right) && !g->arrivalDue());
+            CHECK(!g->pressReturn() && g->phase() == Game::Phase::Move && !g->timeLimitRunning());
+            CHECK(g->currentPlayer() == 0 && g->stepsTaken() == 1);
+            CHECK(g->step(Direction::Right) && g->arrivalDue());
+            CHECK(!g->pressReturn(false) && g->phase() == Game::Phase::Move); // between cells
+            CHECK(g->pressReturn() && g->phase() == Game::Phase::Arrived);
+        } else { // the arrival at once has the same Return effects (computer, terminal)
+            while (g->phase() == Game::Phase::Move) CHECK(g->step(Direction::Right));
+            CHECK(g->phase() == Game::Phase::Arrived && !g->timeLimitRunning());
+        }
+        // In the field action seg2:0BC3 is still running (DS:1A2A): nothing, no turn end.
+        CHECK(!g->pressReturn() && g->phase() == Game::Phase::Arrived && g->currentPlayer() == 0);
+    }
+    {
+        std::unique_ptr<Game> g;
+        int twice = -1, move = -1;
+        for (uint16_t seed = 1; seed < 20000 && !g; ++seed) {
+            auto c = std::make_unique<Game>(board, towns, 1, 0, seed, 8, nullptr, nullptr, false);
+            c->setRandomEvents(false);
+            twice = move = -1;
+            for (int k = 0; k < 8; ++k) {
+                const int type = c->deck().typeOfSlot(c->hand(0)[size_t(k)]);
+                if (type == 40) twice = k;
+                else if (cardKind(type) == CardKind::Movement) move = k;
+            }
+            if (twice >= 0 && move >= 0) g = std::move(c);
+        }
+        CHECK(g != nullptr);
+        if (g) {
+            CHECK(g->playCard(twice) && g->phase() == Game::Phase::Roll);
+            CHECK(!g->pressReturn() && g->phase() == Game::Phase::Roll && g->currentPlayer() == 0);
+            CHECK(g->allowance() == 0 && !g->spinPending());               // no roll either
+            CHECK(g->playCard(move) && g->hand(0)[size_t(move)] == Deck::kTaken); // Verdoppeln ended
+        }
+    }
+
     // Obstacle question (round 65, seg2:2404): a human with the clearing card is asked
     // (text 600, Yes / No, card picture); No keeps card and obstacle, Yes drives on.
     {

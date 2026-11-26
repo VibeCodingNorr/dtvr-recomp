@@ -83,7 +83,7 @@ int main() {
             if (g.currentPlayer() != 0 || !g.roll()) continue;
             const int a = g.allowance();
             while (g.stepsTaken() < a) g.step(Direction::Right);
-            if (!g.confirmArrival()) continue;
+            if (!g.pressReturn()) continue;
             if (g.phase() == Game::Phase::Arrived) g.endTurn();
             if (g.currentPlayer() != 1 || g.phase() != Game::Phase::Roll || !g.roll()) continue;
             const int b = g.allowance();

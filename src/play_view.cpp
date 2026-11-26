@@ -96,7 +96,9 @@ bool PlayView::handleKey(SDL_Keycode key, Uint16 mod) {
     case SDLK_BACKSPACE: g.risikoStop(); return true;
     case SDLK_w: g.roll(); return true;
     case SDLK_RETURN: case SDLK_KP_ENTER:
-        if (g.arrivalDue()) return g.confirmArrival(); // seg4:01EA -> seg2:0BC3: accept the field
+        // Terminal mode (--play) only: the game window sends Return to Game::pressReturn
+        // (seg4:01EA -> seg2:0BC3), which never ends a turn; here Enter also does.
+        if (g.arrivalDue()) return g.pressReturn();
         g.endTurn();
         return true;
     case SDLK_i: g.invest(std::max(1000, int(g.cash(g.currentPlayer()) / 2000) * 1000)); return true;

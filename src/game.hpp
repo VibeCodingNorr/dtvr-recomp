@@ -114,7 +114,9 @@ public:
     // Return (seg4:01EA): a human's vehicle stops on its last field and the field's
     // action runs only when Return accepts it — until then the move can still be
     // turned back. With setArrivalConfirm (the game window) step() leaves the arrival to
-    // confirmArrival(); computers and windowless play arrive at once (round 137).
+    // pressReturn(); computers and windowless play arrive at once (round 137), with the
+    // same Return effects, as the computer (seg5:6E12) and Flugzeug (seg3:3361) post
+    // VK_RETURN to the main window too.
     void setArrivalConfirm(bool on) { arrivalConfirm_ = on; }
     // seg8:6FBF has no computer branch and the offer window ignores the computer
     // timeout 0x7EF of seg6:0FB4 (no case in seg8:7C9C), so a computer's offer waits
@@ -123,7 +125,12 @@ public:
     // open; without humans, or without a window, it declines (round 138).
     void setInvestmentWindow(bool on) { investmentWindow_ = on; }
     bool arrivalDue() const;     // the move is complete, Return would run the field
-    bool confirmArrival();
+    // The main window's Return, seg4:01EA -> seg2:0BC3: it never ends a turn or rolls.
+    // In the turn's Roll and Move phases it ends Verdoppeln (seg2:0CE8) and the TimeOut
+    // timer (seg2:0CEE); then, with the vehicle on the cell grid (`aligned`, seg2:2C0F),
+    // it runs a due arrival. Returns true when the field's action ran. Other phases are
+    // inside seg2:0BC3 already (DS:1A2A) or belong to another window (Risiko).
+    bool pressReturn(bool aligned = true);
     bool spinPending() const { return pendingAllowance_ >= 0; }
     bool finishSpin();
     bool step(Direction d);      // one field; reversing undoes the last step
@@ -387,6 +394,7 @@ public:
     std::string townName(int field) const;
 
 private:
+    void returnEffects();        // seg2:0CE2-0D35, before the arrival test
     void arrive();
     void advanceTurn();          // nextPlayer plus month/year bookkeeping
     std::vector<int> activePlayers() const;

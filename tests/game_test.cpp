@@ -113,15 +113,15 @@ int main() {
         Game g(board, towns, 2, 0, 1);
         g.setRandomEvents(false);
         g.setArrivalConfirm(true);
-        CHECK(g.roll() && !g.arrivalDue() && !g.confirmArrival());
+        CHECK(g.roll() && !g.arrivalDue() && !g.pressReturn());
         const int n = g.allowance();
         for (int i = 0; i < n; ++i) CHECK(g.step(Direction::Right));
         CHECK(g.phase() == Game::Phase::Move && g.arrivalDue() && g.cash(0) == kStartingCash);
         if (n > 1) { // turning back undoes the last step, forward again
             CHECK(g.step(Direction::Left) && !g.arrivalDue() && g.step(Direction::Right) && g.arrivalDue());
         }
-        CHECK(g.confirmArrival() && g.phase() == Game::Phase::Arrived && g.cash(0) > kStartingCash); // blue field
-        CHECK(!g.arrivalDue() && !g.confirmArrival());
+        CHECK(g.pressReturn() && g.phase() == Game::Phase::Arrived && g.cash(0) > kStartingCash); // blue field
+        CHECK(!g.arrivalDue() && !g.pressReturn());
     }
 
     Game game(board, towns, 2, 0, 1);
