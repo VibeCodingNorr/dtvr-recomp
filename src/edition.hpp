@@ -19,12 +19,12 @@ namespace dtvr {
 
 enum class Edition {
     GermanRetail,  // Die total verrückte Rallye, rally.exe aa3dde36… (the reference of the rebuild)
-    EnglishRetail, // Dr. Drago's Madcap Chase, US retail CD, RALLY.EXE a8374ca9… (rules not audited yet)
+    EnglishRetail, // Dr. Drago's Madcap Chase, US retail CD, RALLY.EXE a8374ca9… (German rules, English resources)
 };
 
 struct EditionProfile {
     Edition edition;
-    const char* id;          // stable identifier (manifest field "edition", saves later)
+    const char* id;          // stable identifier (manifest field "edition", save record "edition")
     const char* name;        // German display name for messages
     const char* exeSha256;   // lower-case hex
     char languageLetter;     // dat/lan.inf, upper case (rally.exe compares with case)
@@ -34,7 +34,8 @@ struct EditionProfile {
     std::vector<std::string> requiredFiles;
     std::string overviewBitmap; // the viewer's overview / sprite palette
     // false: recognised but not yet validated with a complete turn; the game modes refuse it
-    // unless the developer option allows it.
+    // unless the developer option --dev-unfinished-edition allows it (no such profile at
+    // present: both retail editions are playable).
     bool playable;
 };
 
