@@ -77,7 +77,8 @@ void SaveView::draw(const SaveSlots& slots) {
         const bool chosen = s == slot_;
         blit(chosen ? "KO_ZI" : "KO_Z", (s + 1) * kRow);
         std::string label = slots.description(s);
-        if (label.empty()) label = "leer"; // GetPrivateProfileString default (DS:80D7)
+        // GetPrivateProfileString default: German "leer" (DS:80D7), English string 11.
+        if (label.empty()) label = emptySlotLabel(layout_.edition, text(11));
         text_.draw(renderer_, label, ScreenRect{b.x + 15, b.y + s * kRow + 0x34, kWidth - 15, 0x29},
                    TextStyle{13, false, false, false, false, 0, chosen ? kWhite : kBrown});
     }

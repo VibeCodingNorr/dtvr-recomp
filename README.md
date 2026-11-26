@@ -24,7 +24,7 @@ is claimed.
 | --- | --- | --- | --- |
 | Source-only distribution | ✅ Implemented | User supplies an ISO or complete original game directory; external installation, generic example paths and source policy checks. | [Policy](docs/distribution.md) |
 | Original-data installer and Linux build | ✅ Implemented | GUI selection of ISO or directory, preflight, directory input SHA-256 inventory, automatic compilation/tests, Ogg preparation, progress/cancel and game-window launch. Explicit local updates preserve user files and a complete backup. | [GUI](tools/installer_gui.py), [pipeline](docs/installer.md) |
-| US English edition | ⬜ Planned | User-agreed future support. Different EXE and resource paths identified; edition selection, rule/data comparison and native validation remain pending. Currently rejected by the version gate. | [Variant evidence and handoff](docs/media-variants.md), [architecture](docs/architecture.md#editions-and-languages) |
+| US English edition | 🟡 Recognized, not playable | Edition profiles ([edition](src/edition.cpp)) identify the German and the US English retail CD (`RALLY.EXE` `a8374ca9…`) by the SHA-256 of `rally.exe` or of the installation manifest; the runtime selects required files, overview and canvases per profile, loads upper-case disc paths and shows the retail empty-slot label (string 11), credits path and 640 setup name fields. `--game` / `--play` refuse the English profile (developer option `--dev-unfinished-edition` for tests) until its rules are audited and rebuilt; the installer still accepts only the German EXE. A limited US build (`c8b7dab6…`) is known and unsupported. | [Edition profiles](docs/media-variants.md#edition-profiles), [architecture](docs/architecture.md#editions-and-languages) |
 | Versioned setup AppImage | 🟡 Packaging implemented | Bundled Python/Tk and committed installer source; host build/audio dependencies are checked. Public releases and other-platform validation remain pending. | [Packaging and versions](docs/releases.md) |
 | Original executable analysis | ✅ Tools available | NE headers, imports and disassembly tools; generated code stays private and external. | [Tools](tools/ne_disasm.py), [findings](docs/formats.md) |
 | Native executable translation | ⬜ Not implemented | The current native viewer is our C++ code; original instruction translation is not implemented. | [Architecture](docs/architecture.md) |
@@ -261,8 +261,9 @@ python3 tools/install.py --directory /path/to/original-game
 The known EXE hash identifies the supported German version. Directory imports
 record every input file's size and SHA-256 and verify the copied data. The source
 stays unchanged. These hashes record supplied content; they do not authenticate
-every asset against a reference disc. The US English edition remains a
-[planned compatibility target](docs/media-variants.md#us-english-integration-handoff).
+every asset against a reference disc. The US English retail edition is recognized
+by the runtime but not yet playable or installable
+([edition profiles](docs/media-variants.md#edition-profiles)).
 Directories do not provide CD audio regions; original MIDI music can still be
 prepared with a local SoundFont.
 

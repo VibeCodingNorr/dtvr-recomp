@@ -66,12 +66,13 @@ int widescreenExtra(const ScreenLayout& base, int displayWidth, int displayHeigh
 }
 
 ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth) {
-    if (requestedWidth) return layoutForCanvas(requestedWidth);
-    static constexpr int kWidths[3] = {640, 800, 1024}, kHeights[3] = {480, 600, 768};
-    int chosen = 640;
-    for (int i = 0; i < 3; ++i)
-        if (screenWidth >= kWidths[i] && screenHeight >= kHeights[i]) chosen = kWidths[i];
-    return layoutForCanvas(chosen);
+    return layoutForScreen(editionProfile(Edition::GermanRetail), screenWidth, screenHeight, requestedWidth);
+}
+
+ScreenLayout layoutForScreen(const EditionProfile& profile, int screenWidth, int screenHeight, int requestedWidth) {
+    ScreenLayout l = layoutForCanvas(chooseCanvasWidth(profile, screenWidth, screenHeight, requestedWidth));
+    l.edition = profile.edition;
+    return l;
 }
 
 std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::array<bool, 8>& occupied) {
@@ -122,12 +123,21 @@ ScreenRect rect(const int (&r)[4]) { return {r[0], r[1], r[2], r[3]}; }
 
 } // namespace
 
-SetupGeometry setupGeometry(int canvasWidth) {
+SetupGeometry setupGeometry(int canvasWidth, Edition edition) {
     const int res = canvasWidth == 1024 ? 0 : canvasWidth == 800 ? 1 : 2; // seg6:12FA
     SetupGeometry g;
     for (int k = 0; k < 8; ++k) {
         g.driver[size_t(7 - k)] = rect(kButtons[res][k]); // seg1:0696: slot 7 first
         g.name[size_t(7 - k)] = rect(kNames[res][k]);
+    }
+    // US retail: buttons R DS:1BD6 (read at R seg1:058F, 064D, 07F6, AE92, B056) equal
+    // DS:1BD4; the name fields R DS:1CC6 (R seg1:06E6) equal DS:1CC4 except the 640
+    // fields of slots 6 / 5 / 4, whose y is 236 / 155 / 73 (German 235 / 154 / 74),
+    // the y of their driver buttons. Compared word by word in both EXEs.
+    if (edition == Edition::EnglishRetail && res == 2) {
+        g.name[6].y = 236;
+        g.name[5].y = 155;
+        g.name[4].y = 73;
     }
     g.start = rect(kButtons[res][8]);
     g.stop = rect(kButtons[res][9]);

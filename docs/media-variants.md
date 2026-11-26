@@ -5,9 +5,68 @@ The installer supports the original executable with SHA-256
 Directory import uses the same version gate as ISO import. Hashing an input
 directory records its contents; it does not establish compatibility by itself.
 
-## User-supplied US English directory, inspected 2026-11-23
+## Edition profiles
 
-The user identifies this copy as the US English edition. Read-only inventory
+The runtime keeps one explicit profile per supported executable
+([src/edition.hpp](../src/edition.hpp), tests in `tests/edition_test.cpp`). Addresses
+below are `D` = German, `R` = US English retail.
+
+| Profile id | EXE SHA-256 | lan.inf | Canvases | Runtime state |
+| --- | --- | --- | --- | --- |
+| `de-retail` | `aa3dde36…6b83` (438272 B) | `D` | 640, 800, 1024 | playable (reference of the rebuild) |
+| `en-us-retail` | `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a` (438272 B) | `E` | 640, 800, 1024 | recognized, not playable |
+
+**Detection.** Only the executable's SHA-256 identifies an edition, never the
+presence of files. The runtime takes it from `rally.exe` in the program directory
+(any case, e.g. an extracted disc), else from the top-level `executable_sha256` of
+`<install>/manifest.json` when the program directory is `<install>/data/program`
+(the installer removes the EXE from installed data). An optional manifest field
+`edition` must name the same profile. Unknown hashes, contradicting sources and
+directories without either source are refused with a German message. The profile
+then requires its files (`requiredFiles`, looked up without regard to case) and a
+`dat/lan.inf` letter of its language.
+
+**Not yet playable.** `--game` and `--play` refuse `en-us-retail` until its rules
+are audited and rebuilt; the developer option `--dev-unfinished-edition` starts it
+for tests only (the German rules then apply, which is not a claim of equivalence).
+Viewer modes (`--tiles`, `--sprites`, `--world`) load it. The installer's acceptance
+list is unchanged (German only).
+
+**Verified US retail differences used by the runtime** (disassembled with
+`tools/ne_disasm.py --use32 9`; private output):
+
+- Canvas choice R seg5:1239–135B equals D seg5:1227–1349 with identical immediates
+  and DS operands (only far call/jump targets differ); the disc ships `BUTT/1`, `BUTT/6`
+  and `BUTT/8` with `MAP.BMP`. `BUTT/6/MAP.BMP` and `BUTT/1/MAP.BMP` are byte-identical
+  to the German files.
+- Setup tables: driver buttons R DS:1BD6 (read at R seg1:058F, 064D, 07F6, AE92, B056)
+  equal D DS:1BD4. Name fields R DS:1CC6 (R seg1:06E6) equal D DS:1CC4 except the
+  640 fields of slots 6 / 5 / 4: y 236 / 155 / 73 instead of 235 / 154 / 74
+  (word-by-word comparison of both data segments).
+- Empty save slot: D shows `leer` (DS:80D7, default of GetPrivateProfileString);
+  R seg8:B7EE–B7FC calls LoadString(DS:B5C4, 11, buffer, 20), so string 11 clipped to
+  19 bytes ("empty" in the retail language file).
+- Credits (command 1026): D seg4:0720 passes `Credits.bmp` (DS:009A) to seg6:0A4D;
+  R seg4:0701–070F formats `%c\credits.bmp` (DS:009A) with the letter DS:A0F0, giving
+  `butt/<n>/e/credits.bmp`.
+
+Pending (E2, after the rules audit): every simulation rule and table, the language
+case comparisons (Statistik spacing, Sieg banner, the subtitle rule of D seg5:219C),
+the window title, save compatibility per edition (`kSaveFormat` / save header) and the
+installer's per-edition acceptance. Observed only: `map/europe.str` is byte-identical
+to the German file, `map/europe.map` differs (SHA-256 `5afb8c52…` vs German
+`91779387…`); `dat/e/rally_e.dat` has SHA-256 `d17a203f…`.
+
+**Known, unsupported:** a limited US English build, `RALLY.EXE`
+`c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9` (fixed route,
+two-year end, no save/load, 640 only). By user decision (2026-11-26) it has no
+runtime profile and is rejected as an unknown version; the inventory below describes
+that copy.
+
+## User-supplied US English directory (limited build), inspected 2026-11-23
+
+The user identified this copy as the US English edition; it was later found to be a
+limited build (see above) and is not supported. Read-only inventory
 found 529 regular files totaling 24,122,697 bytes in the program directory.
 Files are directly in that directory, with uppercase on-disk names; paths below
 are normalized to lowercase. No original files or generated inventory are stored
@@ -42,15 +101,16 @@ reconstruction. Keep the importer work separate and schedule engine integration
 with the existing owner. See also [architecture](architecture.md#editions-and-languages)
 and the standing project instructions in `AGENTS.md`.
 
-This variant remains unsupported. Do not add its hash to an acceptance list or
+The limited build above stays unsupported; the retail edition is recognized by the
+runtime (see [Edition profiles](#edition-profiles)) but not accepted by the installer. Do not add a hash to an acceptance list or
 rename English assets to German paths to bypass the gate. Before enabling it:
 
 - Compare simulation input tables and relevant executable rules by hash/version;
   do not apply German segment addresses to this EXE without checking them.
-- Add explicit resource selection for the English language and art directory 6,
-  covering text, town names, cards, menus, subtitles and scene assets. The language
-  letter now comes from `dat/lan.inf` (see below), but the native entry point still
-  expects `butt/1/map.bmp`.
+- Resource selection: the language letter comes from `dat/lan.inf` (see below) and
+  the entry point checks the profile's required files instead of `butt/1/map.bmp`
+  (done, round E1). Text, town names, cards, menus, subtitles and scene assets follow
+  the letter; their English contents still need the E2 checks.
 - Make preflight and installation verification accept the actual runtime layout
   of an explicitly supported profile instead of requiring the German overview.
 - Verify one complete human turn and the installer smoke checks against the
