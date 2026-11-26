@@ -1284,15 +1284,25 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   random(word +0xC), +10 for the card that reaches the destination exactly,
   sorts highest first and buys in order until one is too dear or the hand is
   full. seg3:4266 executes sales first.
-- **Investment offer** seg8:6FBF has no computer branch: the modal dialog waits
-  for input on any turn. *Round 138:* the modal loop seg6:0FB4 posts 0x7EF to the
-  window after the computer wait, but the offer window's procedure (dispatch
-  seg8:7C9C, keys seg8:73AB) has no case for it, so it stays open: the human at
-  the keyboard answers for the computer, and the amount is taken from the
-  computer's cash. The game window now does the same (`Game::setInvestmentWindow`:
-  the computer's turn waits while the offer is open). **Assumption:** without any
-  human (a demo) or without a window the computer declines, where rally.exe would
-  wait for input.
+- **Investment offer** seg8:6FBF has no computer branch: the modal dialog opens on
+  any turn (cash of DS:94E2 against DS:8776) and runs seg6:0FB4(&DS:9570). *Corrected
+  (round ai-invest; round 138 had the computer's offer wait for the human):* on a
+  computer's turn seg6:0FB4 posts 0x7EF with wParam 8 to the offer window after
+  _ftol(pause × 2500 (DS:85AE)) ms (100 ms once a demo ends, DS:16; not doubled, DS:A7BE
+  is STAT only; never while a FLIC runs, DS:A050). The message pump seg6:03F7 passes it
+  through seg1:00D2 and seg1:0176, which turns 0x7EF into WM_KEYDOWN, so the window
+  procedure (dispatch seg8:7C9C, WM_KEYDOWN seg8:7146 -> keys seg8:73AB) receives
+  VK_BACK: seg8:73B9 -> 714C plays seg1:2C9B(2, 7, 0) and destroys the window, a
+  decline without any random draw (the text's random(2) was drawn at creation,
+  seg8:7551). Meanwhile seg1:00D2 drops a human's keys and buttons (0x100–0x102,
+  0x201–0x204, 0x206) because the current player is a computer, so nobody can answer
+  for it; seg5:6D20 (called from seg2:1C37 in the loop) does not touch DS:9570. The
+  computer therefore always declines. The game window does the same
+  (`GameWindow::updateInvest`); without a window `Game::computerAdvance` declines at
+  once with the same draws. The offer is answered inside nextPlayer (seg2:07EF / 07FC)
+  before its autosave (seg2:0837 -> seg8:A870), so the rebuild's autosave waits for the
+  answer; a pending offer from an older save of the rebuild reopens its window (recomp,
+  first text of the pair, as the variant is not saved).
 
 Rebuilt in `src/ai_cards.cpp` and `src/game_ai.cpp`. DS:22 is the distances
 from the destination with the route mask (`Game::distanceTable`): round R3b

@@ -65,7 +65,8 @@ void GameWindow::updateFrame(int frame) {
                 const auto t = screen_.texts().find(n.text);
                 const std::string offer = t == screen_.texts().end() ? std::string() : formatNotice(t->second, n, play_.game());
                 const Game& g = play_.game();
-                screen_.invest().open(g.investmentOffer() == EventKind::Professor, offer, g.cash(g.currentPlayer()));
+                screen_.invest().open(g.investmentOffer() == EventKind::Professor, offer, g.cash(g.currentPlayer()),
+                                      SDL_GetTicks());
                 continue;
             }
             screen_.messages().push(std::move(n));
@@ -164,6 +165,7 @@ void GameWindow::updateFrame(int frame) {
             openTitle();
     } else if (play_.game().humansLeft() && play_.game().turnSerial() != autosaved_
                && !play_.game().computerTurnRunning() && play_.game().phase() != Game::Phase::Balance
+               && play_.game().investmentOffer() == EventKind::None // seg2:07EF (offer inside) before 0837
                && play_.game().phase() != Game::Phase::Statement) { // seg2:0837 -> seg8:A870 at each turn start
         std::string error;
         if (!screen_.saveSlots().saveAuto(play_.game(), error)) std::cerr << "Autosave: " << error << "\n";
@@ -264,6 +266,7 @@ void GameWindow::updateFrame(int frame) {
         screen_.startFinish(play_.game().finishField(), play_.game().finishPlayer(), SDL_GetTicks());
     }
     updateStatement(); // STAT (seg2:07E1 / 12A3): game_window_statement.cpp
+    updateInvest();    // the investment offer (seg8:6FBF): game_window_dialogs.cpp
     modal_ = recompMenu_.isOpen() || menu_.isOpen() || screen_.title() || gameWindowOpen();
     if (!modal_ && !moving_ && play_.update(SDL_GetTicks(), true)) report();
     // seg2:1618: after the field action (its message, town dialog, card dialog or card

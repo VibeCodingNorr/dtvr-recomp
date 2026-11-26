@@ -119,11 +119,12 @@ public:
     // same Return effects, as the computer (seg5:6E12) and Flugzeug (seg3:3361) post
     // VK_RETURN to the main window too.
     void setArrivalConfirm(bool on) { arrivalConfirm_ = on; }
-    // seg8:6FBF has no computer branch and the offer window ignores the computer
-    // timeout 0x7EF of seg6:0FB4 (no case in seg8:7C9C), so a computer's offer waits
-    // for the human at the keyboard, whose answer counts for the computer. With
-    // setInvestmentWindow (the game window) a computer's turn waits while an offer is
-    // open; without humans, or without a window, it declines (round 138).
+    // seg8:6FBF has no computer branch: on a computer's turn the modal loop seg6:0FB4
+    // posts 0x7EF (wParam 8) to the offer window after the message window's wait,
+    // seg1:0176 turns it into WM_KEYDOWN VK_BACK and seg8:73B9 -> 714C declines (no
+    // random draw); seg1:00D2 drops a human's keys and buttons meanwhile. With
+    // setInvestmentWindow (the game window) a computer's turn waits until the window has
+    // declined; without a window the computer declines at once (round ai-invest).
     void setInvestmentWindow(bool on) { investmentWindow_ = on; }
     bool arrivalDue() const;     // the move is complete, Return would run the field
     // The main window's Return, seg4:01EA -> seg2:0BC3: it never ends a turn or rolls.

@@ -6,8 +6,53 @@
 
 #include "board.hpp"
 #include "card_window_choice.hpp"
+#include "panel.hpp"
 
 namespace dtvr {
+
+void GameWindow::finishInvest(const InvestView::Result& r) {
+    if (r.sound >= 0) sound_.play(2, r.sound); // seg8:7152 / 7285 / 72A9: seg1:2C9B(2, n, 0)
+    if (!r.done) return;
+    screen_.invest().close();
+    if (r.amount > 0 && play_.game().invest(r.amount)) report();
+    else { play_.game().declineInvestment(); report(); }
+}
+
+void GameWindow::updateInvest() {
+    InvestView& invest = screen_.invest();
+    Game& g = play_.game();
+    const int p = g.currentPlayer();
+    // RECOMP: a save of the rebuild taken while an offer was open (rally.exe answers it
+    // inside nextPlayer before its autosave, seg2:07EF -> 0837) gets its window again;
+    // the text's random(2) variant is not saved, so the first text of the pair is shown.
+    if (!screen_.title() && !invest.isOpen() && g.investmentOffer() != EventKind::None && !g.hasNotices()
+        && !moving_ && !screen_.messages().open() && p >= 0) {
+        const bool professor = g.investmentOffer() == EventKind::Professor;
+        Notice n;
+        n.text = professor ? 5321 : 5401;
+        NoticeArg who;
+        who.kind = NoticeArg::Kind::Player;
+        who.player = p;
+        n.args.push_back(who);
+        const auto t = screen_.texts().find(n.text);
+        invest.open(professor, t == screen_.texts().end() ? std::string() : formatNotice(t->second, n, g), g.cash(p),
+                    SDL_GetTicks());
+    }
+    // seg6:0FB4: on a computer's turn the modal loop posts 0x7EF (wParam 8) to the window
+    // after 2500 ms (DS:85AE) times the pause factor (seg6:0E3A), 100 ms once a demo ends
+    // (DS:16), never while a FLIC runs (DS:A050); seg1:0176 turns it into WM_KEYDOWN
+    // VK_BACK and seg8:73B9 -> 714C declines. The wait starts when the window is in front
+    // (the rebuild's message window can still show the change's messages); the recomp menu
+    // holds it.
+    if (!invest.isOpen() || p < 0 || !g.isComputer(p)) return;
+    if (screen_.messages().open() || screen_.film().active() || recompMenu_.isOpen()) {
+        invest.restartWait(SDL_GetTicks());
+        return;
+    }
+    const Uint32 wait = g.demoEnding() ? 100 : Uint32(2500 * screen_.settings().pauseFactor())
+                                                 / Uint32(screen_.settings().computerTempo); // recomp: Computerzüge
+    if (SDL_GetTicks() - invest.openedAt() > wait) finishInvest(invest.timeout());
+}
 
 bool GameWindow::handleGameDialog(const SDL_Event& event) {
     const bool click = event.type == SDL_MOUSEBUTTONDOWN;
@@ -29,13 +74,15 @@ bool GameWindow::handleGameDialog(const SDL_Event& event) {
         if (button || event.type == SDL_KEYDOWN || click) return true;
     }
     if (screen_.invest().isOpen() && !screen_.messages().open()) { // seg8:7098
-        const InvestView::Result r = screen_.invest().handle(event);
-        if (r.sound >= 0) sound_.play(0, r.sound);
-        if (r.done) {
-            screen_.invest().close();
-            if (r.amount > 0 && play_.game().invest(r.amount)) report();
-            else { play_.game().declineInvestment(); report(); }
+        const Game& g = play_.game();
+        if (g.currentPlayer() >= 0 && g.isComputer(g.currentPlayer())) {
+            // seg1:00D2 drops keys and buttons while a computer is the current player; only
+            // seg1:01D7's Escape / right button reaches the game window (the end of a demo).
+            const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+                                 || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
+            return !(endDemo && !g.humansLeft());
         }
+        finishInvest(screen_.invest().handle(event));
         return true;
     }
     if (screen_.nails().isOpen()) { // seg3:1E5E
