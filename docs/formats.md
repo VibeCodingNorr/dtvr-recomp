@@ -3150,6 +3150,28 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   allowance (and DS:9C74 = 0), Plopp01 otherwise (channel 1); the window plays
   the game's cues when the drawn car has reached its field. Dr. Drago spending:
   the random(1) of seg2:BB5E chooses Lachen01 (0) or Lachen02 (1) on channel 5.
+- **Round drago-sound-order, the laugh with the message:** seg2:BB48 (random(1) at
+  BB5E, seg1:2C9B(5, 3 / 29, 0) at BB73 / BB84) is called by every Dr. Drago message
+  with his picture right before its modal seg6:51EA, after all other draws of the
+  action: spending BB24 → BB37 (after the text BAD4, the amount BAE6 and seg2:5A47),
+  dear purchase BC8B → BC9E (after seg2:B943, the purchase and the text BC41), giving
+  a property away BD84 → BD97 (after B943, seg1:8327 and the text BD42), tearing a card
+  BE78 → BE8B (after the slot draw BE05, seg2:3C62 and the text BE70), giving money
+  BF8C → BF9F (after the text BEE6, the amount BEF8, seg2:5F93 / 5F03 and the transfer
+  5A47 / 59E6), and the breakdown at the turn change seg2:C00C, C067 → C07A (after the
+  text C05F; called from seg2:08DC). The block action seg2:BFB0 (text 3351) and the
+  other Dr. Drago paths have no seg1:2C9B call: the form change / drive (seg2:9996 –
+  BA92 only draws), Hau ab (seg3:3EFB → seg2:B4E3, music f3 at B53B), the meeting
+  hand-over seg2:B290. The rebuild had the laugh only for spending, emitted after the
+  notice (so it sounded when the message had been closed), and lacked the draw for the
+  other four actions and the breakdown; now `dragoLaugh` (src/rules.cpp) is drawn and
+  emitted before each notice (`Game::dragoAct`, `nextPlayer` → `SitOutText::sound`).
+  seg2:BE2D: an empty chosen hand slot jumps to BE96, giving a property (seg2:BCAF);
+  the rebuild did nothing there. Weihnachten's gift seg3:1257 plays Hebel05 on channel
+  2 before its message seg3:126F; the rebuild played it after. Not rebuilt: seg1:B326
+  also calls seg2:BB48 when Wave is switched on in a window procedure of seg1 (after
+  seg1:2B9A succeeds), a laugh and a draw outside the game rules (unverified which
+  window).
 - **Pause** keys 1–4 (seg4:018B → seg6:0DA0(key − 1, 1)): DS:1642 = 0–3, saved as
   `[Setup] Pause` (seg6:0EBF; read at seg6:0D60, values > 3 become 0), and
   MEMO01–04 for 0–3 on channel 0. seg6:0EE0(ms) waits ms × DS:858E[DS:1642] =

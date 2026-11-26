@@ -210,14 +210,17 @@ CellRect carryView(const Field& at, int canvasWidth) {
     return {o.x, o.y, o.x + (view.width >> 4), o.y + (view.height >> 4)};
 }
 
+int dragoLaugh(MsRandom& rng) { return rng.random(1) == 0 ? 3 : 29; }
+
 TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& calendar, MsRandom& rng,
                       const TurnHooks& hooks, int resumePlayer, bool afterStatement) {
     auto call = [](const std::function<void()>& f) { if (f) f(); };
     if (players.size() < size_t(kPlayerSlots)) players.resize(kPlayerSlots);
     TurnChange change;
-    auto say = [&](int text, int who) {
-        if (hooks.announce) hooks.announce(text, who);
-        else change.texts.push_back({text, who});
+    auto say = [&](int text, int who, int sound) {
+        const SitOutText t{text, who, sound};
+        if (hooks.announce) hooks.announce(t);
+        else change.texts.push_back(t);
     };
     int player = resumePlayer >= 0 ? resumePlayer : current;
     bool resuming = resumePlayer >= 0;
@@ -271,7 +274,8 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
             p.flags &= 0xFFFE;
             if (hooks.dragoHolder == player) {
                 change.satOut.push_back(player);
-                say(3251 + rng.random(4), player); // seg2:B74D
+                const int text = 3251 + rng.random(4); // seg2:C05F -> B74D
+                say(text, player, dragoLaugh(rng));    // seg2:C067, before seg6:51EA at C07A
                 continue;
             }
             change.player = player;
@@ -281,7 +285,7 @@ TurnChange nextPlayer(std::vector<PlayerSlot>& players, int current, Calendar& c
         if (sitOut) {
             p.flags &= uint16_t(~sitOut);
             change.satOut.push_back(player);
-            say((sitOut == 0x2 ? 1000 : 1010) + rng.random(2), player); // seg2:0915 / 09B3, shown 096F / 0A0D
+            say((sitOut == 0x2 ? 1000 : 1010) + rng.random(2), player, -1); // seg2:0915 / 09B3, shown 096F / 0A0D
             if (hooks.afterSitOut) hooks.afterSitOut(player);                  // seg2:0977 / 0A15
             continue;
         }

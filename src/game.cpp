@@ -628,7 +628,7 @@ TurnHooks Game::turnHooks() {
         balanceClose();
         return false;
     };
-    hooks.announce = [this](int text, int player) { announceSitOut(text, player); };
+    hooks.announce = [this](const SitOutText& t) { announceSitOut(t); };
     hooks.afterSitOut = [this](int player) { dragoAct(player); };
     hooks.dragoHolder = drago_.holder;
     hooks.afterPlayerChange = [this](int player) { eventTick(player); };
