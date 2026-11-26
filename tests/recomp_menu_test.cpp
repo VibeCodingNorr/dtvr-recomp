@@ -27,13 +27,21 @@ int main() {
     CHECK(m.isOpen() && m.page() == 0 && m.row() == 0 && m.inItems());
     CHECK(m.input(Input::Accept) == Action::Resume && !m.isOpen());
 
-    // Commands of the pause page in a game; without a game no save, load or original menu.
+    // Commands of the pause page in a game: no save or load (the original MAIN1 / title
+    // menus have them, user decision); without a game no original menu either.
     m.open(base, true);
-    CHECK(m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::SaveGame && m.isOpen());
-    CHECK(m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::LoadGame);
-    CHECK(m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::OriginalMenu);
-    CHECK(m.input(Input::Up) == Action::None && m.input(Input::Up) == Action::None && m.input(Input::Up) == Action::None
-          && m.input(Input::Up) == Action::None && m.input(Input::Accept) == Action::Quit); // wraps to the last entry
+    {
+        const auto& pause = m.pages()[0].items;
+        CHECK(pause.size() == 3 && pause[0].label == "Weiterspielen" && pause[1].label == "Originales Spielmen\u00fc"
+              && pause[2].label == "Rallye beenden");
+        for (const auto& item : pause)
+            CHECK(item.label.find("speichern") == std::string::npos && item.label.find("laden") == std::string::npos);
+    }
+    CHECK(m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::OriginalMenu && m.isOpen());
+    CHECK(m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::Quit);
+    CHECK(m.input(Input::Down) == Action::None && m.row() == 0 && m.input(Input::Accept) == Action::Resume); // wraps
+    m.open(base, true);
+    CHECK(m.input(Input::Up) == Action::None && m.row() == 2 && m.input(Input::Accept) == Action::Quit); // wraps back
     m.open(base, false);
     CHECK(m.pages()[0].items.size() == 2 && m.input(Input::Down) == Action::None && m.input(Input::Accept) == Action::Quit);
 
@@ -234,42 +242,33 @@ int main() {
     CHECK(m.input(Input::NextPage) == Action::None && m.page() == 1 && !m.inItems());
     CHECK(m.settings().fullscreen == base.fullscreen); // switching pages changes nothing
 
-    // Pause commands in the game window (planCommand): save and load hide the menu and
-    // run the original command, which closes ONFIELD / MAIN1 first (seg4:07B8), so only
-    // the dialog is in front; afterwards the menu comes back. Refused over a game window.
+    // Pause commands in the game window (planCommand): the quit question hides the menu
+    // and its No brings it back; RIGHTBTN replaces it.
     {
-        const CommandPlan save = planCommand(Action::SaveGame, false);
-        CHECK(save.originalCommand == 1062 && save.hide && save.returnAfter && !save.refused);
-        const CommandPlan load = planCommand(Action::LoadGame, false);
-        CHECK(load.originalCommand == 1021 && load.hide && load.returnAfter && !load.refused);
-        const CommandPlan blocked = planCommand(Action::SaveGame, true);
-        CHECK(blocked.refused && !blocked.hide && blocked.originalCommand == 0);
-        CHECK(planCommand(Action::LoadGame, true).refused);
-        const CommandPlan quit = planCommand(Action::Quit, true);
-        CHECK(quit.hide && quit.returnAfter && quit.originalCommand == 0 && !quit.refused);
-        const CommandPlan original = planCommand(Action::OriginalMenu, false);
-        CHECK(original.hide && !original.returnAfter && original.originalCommand == 0);
+        const CommandPlan quit = planCommand(Action::Quit);
+        CHECK(quit.hide && quit.returnAfter);
+        const CommandPlan original = planCommand(Action::OriginalMenu);
+        CHECK(original.hide && !original.returnAfter);
         for (Action a : {Action::None, Action::Resume, Action::Changed, Action::MusicChanged}) {
-            const CommandPlan p = planCommand(a, false);
-            CHECK(!p.hide && !p.returnAfter && !p.refused && p.originalCommand == 0);
+            const CommandPlan p = planCommand(a);
+            CHECK(!p.hide && !p.returnAfter);
         }
     }
-    // resume: the menu opens again on the entry it hid from, with the current settings.
+    // resume: the menu opens again on the entry it hid from (Rallye beenden after a No),
+    // with the current settings.
     {
         RecompMenu r;
         r.open(base, true);
-        CHECK(r.input(Input::Down) == Action::None && r.input(Input::Accept) == Action::SaveGame);
+        CHECK(r.input(Input::Up) == Action::None && r.input(Input::Accept) == Action::Quit);
         r.close();
         Settings changed = base;
         changed.fullscreen = !base.fullscreen;
         r.resume(changed);
-        CHECK(r.isOpen() && r.page() == 0 && r.row() == 1 && r.inItems() && r.settings().fullscreen == changed.fullscreen);
-        r.setNote("x");
-        CHECK(r.note() == "x" && r.input(Input::Down) == Action::None && r.note().empty());
-        r.setNote("y");
+        CHECK(r.isOpen() && r.page() == 0 && r.row() == 2 && r.inItems() && r.settings().fullscreen == changed.fullscreen);
+        CHECK(r.input(Input::Accept) == Action::Quit);
         r.close();
         r.open(base, true);
-        CHECK(r.note().empty() && r.row() == 0);
+        CHECK(r.row() == 0);
         // From a page list focus it returns there too.
         r.focusPage(pageIndex(r, "Audio"));
         r.close();

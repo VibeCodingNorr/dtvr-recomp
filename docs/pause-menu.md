@@ -37,18 +37,14 @@ texts and must follow `src/pad_input.cpp`, `src/pad_map.cpp` and the game window
 keys; `tests/recomp_menu_test.cpp` checks every action's row, capture, swap,
 timeout and reset. The footer's key line and the on-screen keyboard's help line name
 the buttons in use (Tab/RB, Enter/A, Esc/B by default).
-Pause commands (`planCommand`, `src/game_window_input.cpp`): "Spiel speichern" /
-"Spiel laden" run the original commands 1062 / 1021, which first close the original
-menu that was open under the recomp menu (ONFIELD, MAIN1, RIGHTBTN; as MAIN1's
-1062 at seg4:07B8 closes DS:9EDE via seg5:52AC before seg8:B157(1)), so the save
-dialog is the only window in front and takes the next Enter / A. The recomp menu
-hides meanwhile and opens again on the same entry when the dialog closes (Ok or
-Nein; not after a load, which replaces the game). "Rallye beenden" works the same
-way: a No to the quit question brings the menu back. "Originales Spielmenü"
-replaces it with RIGHTBTN. While another window of the game has the input (message,
-card window, town dialog, OPTION, Risiko, ...) save and load are refused with a
-footer note and Zaehler2; rally.exe saves only from MAIN1. The pad's A is exactly
-the keyboard's Enter here (one Return per press, src/pad_input.cpp).
+Pause commands (`planCommand`, `src/game_window_input.cpp`): Weiterspielen,
+"Originales Spielmenü" (replaces the menu with RIGHTBTN) and "Rallye beenden" (the
+recomp menu hides for the original quit question; a No brings it back on the same
+entry). The Pause page has no save or load entries (user decision, 2026-11-26):
+saving and loading stay with the original menus as in rally.exe, MAIN1's "Spiel
+speichern" (1062, seg4:07B8 → seg8:B157(1)) and the title menu's "Spiel laden"
+(1021). The pad's A is exactly the keyboard's Enter here (one Return per press,
+src/pad_input.cpp).
 Not yet: help pages, multiplayer entries, a native start screen. Keyboard keys are
 not remappable (user decision).
 
@@ -80,7 +76,7 @@ RIGHTBTN menu on the map instead (docs/formats.md "Recomp pad layer").
 | Controls | Keyboard/controller bindings, reset defaults and visible focus navigation. |
 | Accessibility | Reduced motion, color-independent field markers and readable text options. |
 | Help | Controls, contextual rules explanations and the financial/event history. |
-| Save / Load | Only when supported and allowed by the current simulation phase; loading replaces a session and needs explicit intent. |
+| Save / Load | Not in the recomp menu (user decision): the original MAIN1 and title menus save and load. |
 | Multiplayer | Connection state and a pause request/resume action when networking exists. |
 | Return to menu/lobby | Show the impact on the current session and protect unsaved progress. |
 | Quit | Clear exit action; warn about unsaved progress when there is any. |

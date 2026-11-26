@@ -53,7 +53,7 @@ void Game::resumeLoaded() {
     // seg2:0407, the turn start of DS:94E2. rally.exe saves only at a turn start before
     // the spin (the autosave seg2:0837 after seg2:0801, Spiel speichern from MAIN1, which
     // opens only from ONFIELD), so it always runs; the rebuild's saves of other phases
-    // (its own menu) continue where they were.
+    // continue where they were.
     if (phase_ == Phase::Roll) beginTurn();
     // Then seg1:275E (the next background cue; the window), DS:94C4 = 1, seg5:6BF2 (a
     // computer starts at its card choice: computerAdvance) and seg2:068F (ONFIELD for a

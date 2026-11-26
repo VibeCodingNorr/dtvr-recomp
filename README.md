@@ -327,7 +327,8 @@ number of stages (1–300).
 
 **Escape** opens the recomp menu over the paused game (computers, the time limit and
 the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
-save, load, original RIGHTBTN menu, quit with the original question),
+original RIGHTBTN menu, quit with the original question; saving and loading stay
+in the original MAIN1 and title menus),
 Grafik, Audio, Spiel and Steuerung (a table of the keyboard and pad controls).
 Switches marked ORIGINAL are those of the
 original options window; the others are recomp settings in `[Display]` /
