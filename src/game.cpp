@@ -332,10 +332,12 @@ bool Game::step(Direction d) {
             messages_.push_back("Dr. Drago faehrt jetzt bei " + playerName(drago_.holder) + " mit");
     }
     // Field-to-field movement keeps the vehicle grid-aligned; no dialog is modelled.
-    // A human with a game window accepts the field with Return (confirmArrival).
+    // A human with a game window accepts the field with Return (pressReturn).
     if (arrivalTriggers(next, 0, 0, counter_.taken(), counter_.allowance(), false)
-        && !(arrivalConfirm_ && !computerControls()))
+        && !(arrivalConfirm_ && !computerControls())) {
+        returnEffects(); // the Return of seg5:6E12 (computer) or of a human at once
         arrive();
+    }
     return true;
 }
 
@@ -358,11 +360,22 @@ bool Game::arrivalDue() const {
         && arrivalTriggers(players_[size_t(current_)].field, 0, 0, counter_.taken(), counter_.allowance(), false);
 }
 
-bool Game::confirmArrival() { // seg2:0BC3 -> 0D38 ff.
+bool Game::pressReturn(bool aligned) { // seg2:0BC3
     messages_.clear();
-    if (!arrivalDue()) return false;
+    if (phase_ != Phase::Roll && phase_ != Phase::Move) return false;
+    returnEffects();
+    if (!aligned || !arrivalDue()) return false; // seg2:0D38-0D6F, else the view point (window)
     arrive();
     return true;
+}
+
+void Game::returnEffects() {
+    // seg2:0CE8: DS:2EB0 = 0, Verdoppeln ends unused (its only other clear is the card
+    // handler seg3:0E9F). seg2:0CEE: seg8:0362 kills the TimeOut timer DS:A7C8, which
+    // only seg2:3ABD starts again. DS:10 (Steuerlos status, seg2:0CF9) is not modelled
+    // that way here, and the computer's 1000 ms wait (seg2:0D2D) is presentation.
+    doubleNext_ = false;
+    timeLimitActive_ = false;
 }
 
 void Game::arrive() {
@@ -541,7 +554,8 @@ bool Game::forcedSell(int town, int entry) {
 
 void Game::advanceTurn() {
     ++turnSerial_;
-    doubleNext_ = false;
+    // DS:2EB0 (Verdoppeln) is not cleared at the player change: only Return (seg2:0CE8)
+    // and the card handler (seg3:0E9F) write it.
     propertyMode_ = 0xFF; // the town dialog closes (seg1:5399 / 5508 / 5767)
     declineInvestment();
     for (const auto& gone : obstacles_.tick()) { // seg8:61FE before the player loop (seg2:071B)

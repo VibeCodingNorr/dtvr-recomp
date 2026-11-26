@@ -91,6 +91,7 @@ private:
     void desktopClose(); // SDL_QUIT: through the quit question (recomp)
     void handleQuestion(const SDL_Event& event); // Yes / No message (texts 600, 700)
     void handleKey(const SDL_Event& event);
+    void mainWindowReturn(); // seg4:01EA -> seg2:0BC3 (keyboard, pad, MCTRL)
     // game_window_dialogs.cpp: true when a game dialog took the event
     bool handleGameDialog(const SDL_Event& event);
     bool handleCardWindow(const SDL_Event& event);
