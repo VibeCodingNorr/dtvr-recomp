@@ -326,7 +326,8 @@ number of stages (1–300).
 **Escape** opens the recomp menu over the paused game (computers, the time limit and
 the turn flow wait; `--recomp-menu 0-4` opens it at start). Pages: Pause (resume,
 save, load, original RIGHTBTN menu, quit with the original question),
-Grafik, Audio, Spiel and Steuerung. Switches marked ORIGINAL are those of the
+Grafik, Audio, Spiel and Steuerung (a table of the keyboard and pad controls).
+Switches marked ORIGINAL are those of the
 original options window; the others are recomp settings in `[Display]` /
 `[Extensions]`. Changes apply at once and persist. In
 the original turn menu Escape did nothing; dialogs keep their Escape. In the title
@@ -367,7 +368,14 @@ cancels; only the characters the original field accepts, at most 18). Stage coun
 d-pad left / right ±1, up / down ±10, LB / RB ±50 (1–300; the same keys on the
 keyboard), A starts. All connected pads act together; nothing is read while the window
 is unfocused, and a held direction is released when the pad is unplugged, the
-option is switched off or the window loses the focus.
+option is switched off or the window loses the focus. The recomp menu's page
+**Steuerung** lists every action with its keys and pad button side by side. With
+the pad every window and dialog can be reached and operated; the only input left
+without a pad path is the mouse steering cross (MCTRL), which only repeats the
+arrows and Return, and the TEMP slider, whose value the d-pad steps reach. The
+right stick scrolls only in Umfeld (one arrow step, a third of the view, with the
+80 ms repetition); rally.exe has no free map scroll, and Umfeld itself is opened
+with View → Umfeld. There is no virtual mouse pointer, as no window needs one.
 
 **Mouse:** a right click on the map opens the right-button menu as in rally.exe
 (Backspace); in Umfeld it ends the view, and a left click in a 60-pixel edge strip

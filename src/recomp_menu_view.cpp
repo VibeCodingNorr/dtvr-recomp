@@ -59,8 +59,14 @@ RecompMenuView::Geometry RecompMenuView::geometry() const {
     g.content = {g.sidebar.x + g.sidebar.w + px(28), bodyY + px(18), w - g.sidebar.w - px(56), bodyH - px(18)};
     for (size_t i = 0; i < menu_.pages().size(); ++i)
         g.pages.push_back({g.sidebar.x + px(14), g.sidebar.y + px(18) + int(i) * px(52), g.sidebar.w - px(28), px(44)});
-    const auto& items = menu_.pages()[size_t(menu_.page())].items;
-    for (size_t i = 0; i < items.size(); ++i)
+    const RecompMenu::Page& page = menu_.pages()[size_t(menu_.page())];
+    if (page.table()) { // compact rows under a heading row (RecompMenu::kTableRows fit)
+        g.tableHead = {g.content.x, g.content.y + px(44), g.content.w, px(26)};
+        for (size_t i = 0; i < page.items.size(); ++i)
+            g.rows.push_back({g.content.x, g.content.y + px(76) + int(i) * px(31), g.content.w, px(29)});
+        return g;
+    }
+    for (size_t i = 0; i < page.items.size(); ++i)
         g.rows.push_back({g.content.x, g.content.y + px(52) + int(i) * px(46), g.content.w, px(40)});
     return g;
 }
@@ -121,6 +127,43 @@ void RecompMenuView::drawToggle(const SDL_Rect& row, bool on, bool focused, doub
     fill(renderer_, k, on ? kDark : kMuted, 255);
 }
 
+// Columns: the action (38 %), the keyboard (34 %) and the pad (the rest), gold headings.
+// One font size for all cells: the largest down to two thirds at which every cell fits
+// its column (the canvas of 640 is narrower than the panel's 768-line proportions).
+void RecompMenuView::drawTable(const Geometry& g, const RecompMenu::Page& page) {
+    const SDL_Rect& head = g.tableHead;
+    const int pad = px(14);
+    const int x0 = head.x + pad, x1 = head.x + head.w * 38 / 100, x2 = head.x + head.w * 72 / 100;
+    const int xs[] = {x0, x1, x2}, ws[] = {x1 - x0 - pad, x2 - x1 - pad, head.x + head.w - x2 - pad};
+    TextStyle style{px(17), true, false, false, false, 0, kText};
+    const auto fits = [&] {
+        for (const RecompMenu::Item& item : page.items) {
+            const std::string* cells[] = {&item.label, &item.value, &item.pad};
+            for (int c = 0; c < 3; ++c)
+                if (text_.measure(*cells[c], style).x > ws[c]) return false;
+        }
+        return true;
+    };
+    for (const int smallest = style.pixelHeight * 2 / 3; style.pixelHeight > smallest && !fits();) --style.pixelHeight;
+    const int lineH = style.pixelHeight + px(4);
+    TextStyle heading = style;
+    heading.color = kGold;
+    for (size_t c = 0; c < page.columns.size() && c < 3; ++c)
+        text_.draw(renderer_, page.columns[c], ScreenRect{xs[c], head.y + (head.h - lineH) / 2, ws[c], lineH}, heading);
+    fill(renderer_, SDL_Rect{head.x, head.y + head.h, head.w, std::max(1, px(2))}, kGold, 140);
+    for (size_t i = 0; i < g.rows.size() && i < page.items.size(); ++i) {
+        const SDL_Rect& row = g.rows[i];
+        if (i % 2 == 0) fill(renderer_, row, SDL_Color{0, 0, 0, 255}, 40);
+        const RecompMenu::Item& item = page.items[i];
+        const std::string* cells[] = {&item.label, &item.value, &item.pad};
+        for (int c = 0; c < 3; ++c) {
+            TextStyle cell = style;
+            if (c == 0) cell.color = kMuted;
+            text_.draw(renderer_, *cells[c], ScreenRect{xs[c], row.y + (row.h - lineH) / 2, ws[c], lineH}, cell);
+        }
+    }
+}
+
 void RecompMenuView::draw() {
     if (!menu_.isOpen()) return;
     if (!woodTried_) {
@@ -171,7 +214,8 @@ void RecompMenuView::draw() {
     const RecompMenu::Page& page = menu_.pages()[size_t(menu_.page())];
     text_.draw(renderer_, page.title, ScreenRect{g.content.x, g.content.y, g.content.w, px(30)},
                TextStyle{px(26), true, false, false, false, 1, kText});
-    for (size_t i = 0; i < g.rows.size(); ++i) {
+    if (page.table()) drawTable(g, page);
+    for (size_t i = 0; i < g.rows.size() && !page.table(); ++i) {
         const RecompMenu::Item& item = page.items[i];
         const SDL_Rect& row = g.rows[i];
         const bool focused = menu_.inItems() && int(i) == menu_.row();
@@ -224,7 +268,7 @@ void RecompMenuView::draw() {
 
     // Footer: the focused entry's explanation and the keys.
     fill(renderer_, SDL_Rect{g.panel.x + px(20), g.footer.y, g.panel.w - px(40), 1}, kGold, 120);
-    std::string hint = "Wähle eine Seite.";
+    std::string hint = page.hint.empty() ? "Wähle eine Seite." : page.hint;
     if (menu_.inItems() && !page.items.empty()) {
         const RecompMenu::Item& focusedItem = page.items[size_t(menu_.row())];
         hint = focusedItem.hint;
@@ -235,7 +279,8 @@ void RecompMenuView::draw() {
         hint = menu_.music().note;
     text_.drawWrapped(renderer_, hint, ScreenRect{g.footer.x + px(28), g.footer.y + px(8), g.footer.w - px(56), px(40)},
                       TextStyle{px(16), true, false, false, false, 0, kText});
-    text_.draw(renderer_, "↑↓ Auswählen    ←→ Ändern    Tab Seite    Enter Bestätigen    Esc Zurück",
+    // Keyboard first, the pad's button after the slash (the Steuerung page has the rest).
+    text_.draw(renderer_, "↑↓ Auswählen    ←→ Ändern    Tab/RB Seite    Enter/A Bestätigen    Esc/B Zurück",
                ScreenRect{g.footer.x + px(28), g.footer.y + px(52), g.footer.w - px(56), px(18)},
                TextStyle{px(14), true, false, false, false, 0, kMuted});
     SDL_SetRenderDrawBlendMode(renderer_, blend);

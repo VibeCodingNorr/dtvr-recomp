@@ -115,7 +115,29 @@ int main() {
     m.focusPage(controls);
     m.focusItem(0);
     CHECK(!m.inItems() && m.step(1) == Action::None && m.activate() == Action::None && !m.inItems());
-    CHECK(m.valueText(m.pages()[size_t(controls)].items[0]) == "Esc");
+    // It is a table (action, keyboard, pad) that fits the panel; every row names both
+    // the keys and the pad, and the pad column covers every button of the pad layer.
+    const RecompMenu::Page& table = m.pages()[size_t(controls)];
+    CHECK(table.table() && table.columns.size() == 3 && !table.hint.empty());
+    CHECK(!table.items.empty() && int(table.items.size()) <= RecompMenu::kTableRows);
+    CHECK(m.valueText(table.items[0]) == "Pfeiltasten");
+    const auto padRow = [&](const std::string& pad) {
+        for (const RecompMenu::Item& i : table.items)
+            if (i.pad == pad) return &i;
+        return static_cast<const RecompMenu::Item*>(nullptr);
+    };
+    bool complete = true;
+    for (const RecompMenu::Item& i : table.items)
+        complete = complete && i.kind == RecompMenu::Kind::Info && !i.label.empty() && !i.value.empty() && !i.pad.empty();
+    CHECK(complete);
+    for (const char* button : {"A", "B", "X", "Y", "Start", "Ansicht", "LB / RB", "rechter Stick"})
+        CHECK(padRow(button) != nullptr);
+    CHECK(padRow("B") && padRow("B")->value == "Esc");
+    CHECK(padRow("X") && padRow("X")->value == "Rücktaste");
+    CHECK(padRow("LB / RB") && padRow("LB / RB")->value == "Umschalt+Tab / Tab");
+    CHECK(padRow("Ansicht") && padRow("Ansicht")->value.find("Rücktaste") == 0);
+    // The other pages are no tables.
+    CHECK(!m.pages()[0].table() && controlsPage().title == "Steuerung");
     // Page list wraps.
     m.focusPage(0);
     CHECK(m.input(Input::Up) == Action::None && m.page() == int(m.pages().size()) - 1);

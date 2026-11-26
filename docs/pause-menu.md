@@ -15,8 +15,14 @@ its recomp entry "Weitere Einstellungen". Separate effect / speech / music level
 deliberately not offered: rally.exe only switches them on and off at full volume
 (round 132). The controller's Start (Menu) button opens and closes it on the Pause page
 (src/game_window_pad.cpp); Tab / Shift+Tab (the pad's RB / LB) go to the next /
-previous page, staying in the entries when the page has any. Not yet: help pages, multiplayer entries, a
-native start screen.
+previous page, staying in the entries when the page has any. The page Steuerung
+(`controlsPage()`, pad round 3) is a table page: twelve info rows with the columns
+Aktion / Tastatur / Gamepad, drawn compactly in one font size that fits every cell,
+with its own footer hint (the [Setup] Joystick gate, merged pads); no row takes the
+focus. Its texts are recomp texts and must follow `src/pad_input.cpp` and the game
+window's keys; `tests/recomp_menu_test.cpp` checks that every pad button appears.
+The footer's key line names the pad button after the key (Tab/RB, Enter/A, Esc/B).
+Not yet: rebinding, help pages, multiplayer entries, a native start screen.
 
 ## Before a game
 
