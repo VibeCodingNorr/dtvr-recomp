@@ -72,9 +72,11 @@ RecompMenu::Page controlsPage() {
         control("Recomp-Menü (Pause)", "Esc, F8 (Audio)", "Start"),
         control("Originales Spielmenü", "Rücktaste, rechte Maustaste", "Ansicht"),
         control("Schließen, Zeichen löschen", "Rücktaste", "X"),
-        control("Karte einsetzen, Extras", "Spielmenü, F9", "Y"),
-        control("Vorige / nächste Seite", "Umschalt+Tab / Tab", "LB / RB"),
-        control("Umfeld verschieben", "Pfeiltasten", "rechter Stick"),
+        // Y: ONFIELD's 1031 or the town dialog's Karte; F9 in PLAYER (extras) / OPTION (Grafik).
+        control("Karte einsetzen / F9-Funktion", "Zugmenü / F9", "Y"),
+        control("Seite wechseln (dieses Menü)", "Umschalt+Tab / Tab", "LB / RB"),
+        // Inside Umfeld (opened from the right-button menu): seg6:1991 keys, PR #24.
+        control("Im Umfeld verschieben", "Pfeiltasten, 2/4/6/8", "Kreuz, rechter Stick"),
         control("Spielernamen eingeben", "Feld wählen, tippen", "A: Bildschirmtastatur"),
         control("Etappen ±1 / ±10 / ±50", "←→ / ↑↓ / Tab", "Kreuz / LB, RB"),
         control("Vollbild / Schriftglättung", "F11, Alt+Enter / F12", "Seite Grafik"),

@@ -370,11 +370,14 @@ keyboard), A starts. All connected pads act together; nothing is read while the 
 is unfocused, and a held direction is released when the pad is unplugged, the
 option is switched off or the window loses the focus. The recomp menu's page
 **Steuerung** lists every action with its keys and pad button side by side. With
-the pad every window and dialog can be reached and operated; the only input left
-without a pad path is the mouse steering cross (MCTRL), which only repeats the
-arrows and Return, and the TEMP slider, whose value the d-pad steps reach. The
-right stick scrolls only in Umfeld (one arrow step, a third of the view, with the
-80 ms repetition); rally.exe has no free map scroll, and Umfeld itself is opened
+the pad every window and dialog can be reached and operated. These keyboard and
+mouse inputs have no pad button of their own but another path: the steering cross
+(MCTRL; it only repeats the arrows and Return), the TEMP slider (d-pad steps), the
+Umfeld edge strips (d-pad / right stick), F11 / F12 (recomp menu page Grafik), the
+keys 1–4 (page Spiel) and Insert / Delete zoom (the right-button menu's Zoom). Space
+"centre on the player" has no pad path at all (the view follows the player anyway).
+The right stick scrolls only in Umfeld (one arrow step, a third of the view, with
+the 80 ms repetition); rally.exe has no free map scroll, and Umfeld itself is opened
 with View → Umfeld. There is no virtual mouse pointer, as no window needs one.
 
 **Mouse:** a right click on the map opens the right-button menu as in rally.exe

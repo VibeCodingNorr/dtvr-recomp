@@ -130,8 +130,10 @@ int main() {
     for (const RecompMenu::Item& i : table.items)
         complete = complete && i.kind == RecompMenu::Kind::Info && !i.label.empty() && !i.value.empty() && !i.pad.empty();
     CHECK(complete);
-    for (const char* button : {"A", "B", "X", "Y", "Start", "Ansicht", "LB / RB", "rechter Stick"})
+    for (const char* button : {"A", "B", "X", "Y", "Start", "Ansicht", "LB / RB", "Kreuz, rechter Stick"})
         CHECK(padRow(button) != nullptr);
+    // Umfeld: the arrows and the main-row digits (seg6:1991); the d-pad posts arrows too.
+    CHECK(padRow("Kreuz, rechter Stick") && padRow("Kreuz, rechter Stick")->value == "Pfeiltasten, 2/4/6/8");
     CHECK(padRow("B") && padRow("B")->value == "Esc");
     CHECK(padRow("X") && padRow("X")->value == "Rücktaste");
     CHECK(padRow("LB / RB") && padRow("LB / RB")->value == "Umschalt+Tab / Tab");
