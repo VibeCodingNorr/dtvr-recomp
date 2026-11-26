@@ -2823,8 +2823,9 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   block seg2:C00C at 08DC), whose non-zero result jumps back (seg2:0819) to the search
   before the month test seg2:0766. The first slot's own sit-out text comes after STAT, since
   its seg2:089D runs after seg2:07E1. *Saving:* no save is written in `Phase::Statement` or
-  `Phase::Balance` (`SaveSlots::save` / `saveAuto` refuse, the save dialog plays Fate01); an
-  open save dialog keeps its input over STAT. The sheet: `src/stat_sheet.cpp`;
+  `Phase::Balance`: the save dialog can no longer be opened there (STAT and the year balance
+  are modal, and the recomp menu has no save entry since PR #36), and `SaveSlots::save` /
+  `saveAuto` still refuse those phases as a defensive guard (a refused save plays Fate01). The sheet: `src/stat_sheet.cpp`;
   the window: `src/stat_view.cpp`, wired in `src/game_window_statement.cpp`
   (`--statement` shows it with the values of the started game). Save format 7 (`flow`), rules
   revision 46.
