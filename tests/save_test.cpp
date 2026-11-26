@@ -53,7 +53,7 @@ int main() {
     for (int p = 0; p < 3; ++p) a.setComputer(p, true);
     playTurns(a, 25);
     const std::string saved = SaveCodec::encode(a);
-    CHECK(saved.rfind("DTVR-RECOMP-SAVE 8\nedition de-retail\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
+    CHECK(saved.rfind("DTVR-RECOMP-SAVE 9\nedition de-retail\n", 0) == 0 && saved.find("\nend\n") != std::string::npos);
 
     // Load into a game started differently: the state, and every later turn, match.
     Game b(board, towns, 1, 0, 999, 1);
@@ -74,8 +74,11 @@ int main() {
     CHECK(SaveCodec::decode(n, moving, error) && n.stepsTaken() == 1 && n.phase() == Game::Phase::Move);
     CHECK(n.step(Direction::Left) && n.stepsTaken() == 0);
 
-    // An older format: the header and no edition record (format 8, round E2).
+    // An older format: the header, no colorcycle record (format 9) and no edition record
+    // (format 8, round E2).
     auto older = [](std::string text, int format) {
+        const size_t c = text.find("\ncolorcycle ");
+        if (c != std::string::npos) text.erase(c, text.find('\n', c + 1) - c);
         const size_t e = text.find("\nedition ");
         if (e != std::string::npos) text.erase(e, text.find('\n', e + 1) - e);
         return text.replace(0, 18, "DTVR-RECOMP-SAVE " + std::to_string(format));
@@ -165,7 +168,7 @@ int main() {
         Game english(board, towns, 1, 0, 7, 1);
         english.setEdition(Edition::EnglishRetail);
         const std::string en = SaveCodec::encode(english);
-        CHECK(en.rfind("DTVR-RECOMP-SAVE 8\nedition en-us-retail\n", 0) == 0);
+        CHECK(en.rfind("DTVR-RECOMP-SAVE 9\nedition en-us-retail\n", 0) == 0);
         Game german(board, towns, 1, 0, 8, 1);
         const std::string de = SaveCodec::encode(german);
         CHECK(!SaveCodec::decode(german, en, error) && error.find("anderen Ausgabe") != std::string::npos

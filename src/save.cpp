@@ -165,6 +165,7 @@ std::string SaveCodec::encode(const Game& g) {
     o << "demo " << int(g.demoEnd_) << '\n';
     o << "extensions " << int(g.computerExtraCards_) << '\n';
     o << "stages " << g.totalStages_ << '\n';
+    o << "colorcycle " << int(g.colorcycle_) << '\n';
     o << "turn " << int(g.phase_) << ' ' << g.current_ << ' ' << g.origin_ << ' ' << g.destination_ << ' '
       << g.remaining_ << '\n';
     o << "end\n";
@@ -237,6 +238,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     int demoEnd = 0;
     int extraCards = 0; // format 5: recomp extensions (0 in older saves)
     int totalStages = -1;
+    int colorcycle = 1; // format 9: [Setup] Colorcycle (on in older saves)
     std::map<std::string, int> seen;
     bool ended = false;
     while (std::getline(in, line)) {
@@ -349,6 +351,9 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
             ok = r.get(extraCards, 0, 1);
         } else if (key == "stages") {
             ok = r.get(totalStages, 0, 1 << 20);
+        } else if (key == "colorcycle") {
+            if (version < 9) return fail("Eintrag 'colorcycle' erst ab Format 9");
+            ok = r.get(colorcycle, 0, 1);
         } else if (key == "turn") {
             ok = r.get(phase, 0, int(Game::Phase::Risiko)) && r.get(current, 0, kPlayerSlots - 1)
                  && r.get(origin, -1, fields - 1) && r.get(destination, -1, fields - 1) && r.get(remaining, 0, 1 << 20);
@@ -363,6 +368,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     if (version >= 2 && seen["risiko"] != 1) return fail("Eintrag 'risiko' fehlt oder ist doppelt");
     if (version >= 3 && seen["demo"] != 1) return fail("Eintrag 'demo' fehlt oder ist doppelt");
     if (version >= 4 && seen["stages"] != 1) return fail("Eintrag 'stages' fehlt oder ist doppelt");
+    if (version >= 9 && seen["colorcycle"] != 1) return fail("Eintrag 'colorcycle' fehlt oder ist doppelt");
     if (version >= 5 && seen["extensions"] != 1) return fail("Eintrag 'extensions' fehlt oder ist doppelt");
     if (version >= 6 ? seen["worth"] != int(money.size()) : seen["worth"] != 0)
         return fail("Eintraege 'worth' unvollstaendig");
@@ -401,6 +407,7 @@ bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Ran
     g.eastOpen_ = eastOpen;
     g.yellowPending_ = yellow;
     g.loadedSeason_ = season;
+    g.colorcycle_ = colorcycle != 0;
     g.westValue_ = west;
     g.lastDirection_ = facing;
     g.deck_ = deck;

@@ -70,6 +70,7 @@ private:
     bool swallowLogoSkip(const SDL_Event& event); // the rest of the key / click that ended the logo
     Settings menuSettings();                 // the layout in use (--[no-]widescreen may override the setting)
     void applySettings(const Settings& s);   // saved; the OPTION window shows the same smoothing
+    void syncColorcycle();                   // the game takes [Setup] Colorcycle (OPTION's close)
     void report();
     void openMenu(const std::string& name);
     std::array<int, 4> turnState();

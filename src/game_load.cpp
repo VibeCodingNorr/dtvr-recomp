@@ -45,9 +45,9 @@ void Game::resumeLoaded() {
 
     // The title's start of the loaded game (seg4:069B ff. after seg8:B157(0), seg4:061D
     // ff. after seg8:A8DF(0)): seg5:186A(DS:A100, 1) reloads europe.pit and the tiles of
-    // the month's season (DS:2CA = that season; with [Setup] Colorcycle 0 always 1, which
-    // the event trigger of the rebuild does not model either).
-    loadedSeason_ = seasonForMonth(calendar_.month);
+    // the month's season (DS:2CA = that season; with [Setup] Colorcycle 0 always 1,
+    // seg5:1923 then 1929-1953).
+    loadedSeason_ = tileDirectory();
     // seg8:6709 writes the obstacles' tiles and cell flags again: derived from the table.
     messages_.clear();
     ++turnSerial_; // the turn start below; the map centres on the current player (seg2:3216)

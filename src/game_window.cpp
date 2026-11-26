@@ -74,6 +74,8 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     // Tschüss / Flugzeug avoid the map view of the original canvas (seg2:46C8), not
     // the widescreen extension's wider map.
     play.game().setMapCanvas(baseLayout.baseWidth);
+    // [Setup] Colorcycle is a rule input of the game (seg5:186A reads DS:B5DC).
+    play.game().setColorcycle(screen.settings().value[Settings::Colorcycle] != 0);
     // The command-line game (not a loaded one) takes the extension from the settings.
     if (options.loadSlot < 0)
         play.game().setComputerExtraCards(screen.settings().computerExtraCards || options.computerExtraCards);
@@ -264,6 +266,14 @@ Settings GameWindow::menuSettings() { // the layout in use (--[no-]widescreen ma
 void GameWindow::applySettings(const Settings& s) { // saved; the OPTION window shows the same smoothing
     screen_.applySettings(s);
     screen_.options().setTextSmoothing(s.textSmoothing);
+    syncColorcycle();
+}
+
+// OPTION's close (seg1:B539 -> seg5:186A(DS:A100, 0)): the game takes [Setup] Colorcycle.
+// The game waits while OPTION or the recomp menu is open (modal_), so taking it at every
+// change there is the same as taking it at the close.
+void GameWindow::syncColorcycle() {
+    play_.game().setColorcycle(screen_.settings().value[Settings::Colorcycle] != 0);
 }
 
 void GameWindow::report() {
@@ -314,6 +324,7 @@ void GameWindow::openTitle() { // seg8:03AB / 0DB0: TITEL and the menu MAIN
 void GameWindow::startGame(bool fresh) {
     screen_.setTitle(false);
     screen_.reloadMap(); // europe.map afresh for every new or loaded game (R seg5:182F)
+    syncColorcycle();    // seg5:186A(.., 1) of the start reads the current [Setup] Colorcycle
     if (fresh) {
         screen_.startAnnouncement(2, 3, SDL_GetTicks());
         autosaved_ = -1;        // the first turn of a started game is saved too

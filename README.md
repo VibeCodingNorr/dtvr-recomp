@@ -209,7 +209,8 @@ is claimed.
 128. (PR #35, #36) The recomp menu keeps no save or load entries: saving and loading stay with MAIN1 and the title menu.
 129. (PR #38) A computer's investment offer is declined by the window's timeout (seg6:0FB4, 2.5 s × pause factor).
 130. Taking over a computer (round sound-takeover): Escape, a right click or the pad's B on a computer's turn make that driver a human with the Elefant sound, as seg1:01D7 (not in the demo, not during a Steuerlos turn); in the demo they end it with the same sound. The yellow field sounds Hebel05 with its card and Sfx08 before a full hand's discard ([evidence](docs/formats.md#taking-over-a-computer-round-sound-takeover)).
-131. *Next:* remaining presentation details (compare windows with rally.exe).
+131. Colorcycle as a rule input (round colorcycle-rule): with "Wellen und Jahreszeiten" off the season never changes and the event trigger runs at months 2, 5, 8 and 11 too (seg5:1929); toggling it reloads the tiles at once as OPTION's close (seg1:B539); saved (format 9, rules revision 52).
+132. *Next:* remaining presentation details (compare windows with rally.exe).
 
 </details>
 

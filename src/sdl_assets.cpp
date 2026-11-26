@@ -31,7 +31,10 @@ Surface loadBmp(const fs::path& path) {
 }
 
 Surface loadWorld(const fs::path& root, int month, bool views, bool seasons, std::vector<Tile>* tilesOut) {
-    const int season = seasons ? seasonForMonth(month) : 1;
+    return loadSeasonWorld(root, seasons ? seasonForMonth(month) : 1, views, tilesOut);
+}
+
+Surface loadSeasonWorld(const fs::path& root, int season, bool views, std::vector<Tile>* tilesOut) {
     std::vector<Tile> tiles;
     Surface palette(nullptr, SDL_FreeSurface);
     for (int part = 0;; ++part) {

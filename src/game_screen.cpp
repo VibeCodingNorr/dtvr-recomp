@@ -243,11 +243,9 @@ void GameScreen::tickPresentation(Uint32 realNow, bool paused) {
 void GameScreen::updateSeasonWipe(Uint32 realNow) {
     if (game_.seasonChanges() == seasonChangesSeen_) return;
     seasonChangesSeen_ = game_.seasonChanges();
-    // seg5:186A returns non-zero only for a new tile directory: never with [Setup]
-    // Colorcycle off (seg5:1929 fixes it to 1), and not before the first map is loaded.
-    const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
-    if (colorcycle && worldSeason_ >= 0 && seasonForMonth(game_.calendar().month) != worldSeason_)
-        seasonWipe_.start(realNow);
+    // seg5:186A returns non-zero only for a new tile directory (DS:2CA, Game::loadedSeason,
+    // which follows [Setup] Colorcycle), and not before the first map is loaded.
+    if (worldSeason_ >= 0 && game_.loadedSeason() != worldSeason_) seasonWipe_.start(realNow);
 }
 
 void GameScreen::advanceVehicles(Uint32 now) {
@@ -642,13 +640,13 @@ void GameScreen::drawMap() {
     const SDL_Rect map = toSdl(layout_.mapClient());
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderFillRect(renderer_, &map);
-    // [Setup] Colorcycle ("Wellen und Jahreszeiten"): off fixes the tile directory to 1
-    // (seg5:1929) and stops the water's palette cycle (seg5:3C22).
-    const bool colorcycle = settings_.value[Settings::Colorcycle] != 0;
-    const int season = colorcycle ? seasonForMonth(game_.calendar().month) : 1;
+    // [Setup] Colorcycle ("Wellen und Jahreszeiten", the game's rule input): off fixes the
+    // tile directory DS:2CA to 1 (seg5:1929) and stops the water's palette cycle (seg5:3C22).
+    const bool colorcycle = game_.colorcycle();
+    const int season = game_.loadedSeason();
     updateSeasonWipe(SDL_GetTicks()); // the old tiles stay while the old map is blacked out
     if (season != worldSeason_ && seasonWipe_.stage(SDL_GetTicks()) != SeasonWipe::Stage::Out) {
-        world_ = loadWorld(root_, game_.calendar().month, settings_.value[Settings::Views] != 0, colorcycle, &tiles_); // Views
+        world_ = loadSeasonWorld(root_, season, settings_.value[Settings::Views] != 0, &tiles_); // Views
         // seg8:7CFB: the animated objects of the map (rebuilt with the season's tiles).
         try {
             ambientMap_ = std::make_unique<WorldMap>(readFile(findCaseInsensitive(root_, fs::path("map") / "europe.map")));

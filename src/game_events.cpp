@@ -11,7 +11,8 @@ void Game::eventTick(int player) {
     eventPlayer_ = player;
     ++events_.turns;                                   // DS:A0FE
     if (events_.hold > 0) --events_.hold;              // DS:A111
-    const int season = seasonForMonth(calendar_.month);
+    // seg5:186A(DS:A100, 0): with Colorcycle off the directory is 1 (seg5:1929-1953).
+    const int season = tileDirectory();
     if (season != loadedSeason_) {                     // seg5:186A reloads tiles: no event
         loadedSeason_ = season;
         ++seasonChanges_; // the window's blind wipe (seg8:1667-16A4)
@@ -30,6 +31,13 @@ void Game::eventTick(int player) {
         }
     }
     if (randomEvents_) applyEvent(chooseEvent(active, events_.turns, calendar_.month, rng_)); // seg8:180B
+}
+
+int Game::tileDirectory() const { return colorcycle_ ? seasonForMonth(calendar_.month) : 1; }
+
+void Game::setColorcycle(bool on) {
+    colorcycle_ = on;
+    loadedSeason_ = tileDirectory(); // seg5:186A(DS:A100, 0) at OPTION's close, result unused
 }
 
 void Game::applyEvent(EventKind kind) {

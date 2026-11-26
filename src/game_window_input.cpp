@@ -179,7 +179,10 @@ void GameWindow::handleEvent(const SDL_Event& event) {
             recompMenu_.menu().openAt(menuSettings(), !screen_.title(), "Grafik");
             return;
         }
-        if (r != OptionsView::Result::None) screen_.applySettings(screen_.options().settings());
+        if (r != OptionsView::Result::None) {
+            screen_.applySettings(screen_.options().settings());
+            syncColorcycle();
+        }
         if (r == OptionsView::Result::Close) {
             screen_.options().close();
             if (screen_.title()) openTitle();
