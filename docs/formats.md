@@ -3300,6 +3300,58 @@ starts counting or when pads are added / removed are ignored until released. The
 [Setup] Joystick gate applies to both layers: with the option off the pad does
 nothing at all.
 
+Round 2 "dialogs" (RECOMP ADDITIONS unless marked; the keyboard and mouse input of
+the original windows is unchanged):
+
+- **PLAYER names.** The SBBUTTON walk already reaches the SBINPUT fields (z-order
+  seg1:2474 ff.). While a name field has the focus (`SetupView::editingField`), A
+  posts no key (neither Return, which PLAYER takes as Start through seg1:2190 /
+  0C3B, nor Space) but opens the on-screen keyboard (`src/osk_view.cpp`, grid and
+  rules in `src/osk.cpp`): wooden border B1–B8 (seg6:1A68), paper `butt/<n>/p1.bmp`,
+  keys framed in colour 0x45 with the red SBBUTTON focus frame (seg1:19B6), the
+  name in the SBINPUT font. Keys QWERTZ with Ä Ö Ü ß, digits, space; d-pad (arrows)
+  move with wrap-around, A (Return) types the focused key, X (Backspace) deletes,
+  Y toggles capitals (one capital after an empty name), Start or the key Fertig
+  takes the name, B (Escape) or Abbrechen keeps the old one; a real keyboard may type
+  into it too. Typing follows SBINPUT's WM_CHAR (seg1:1F00): IsCharAlphaNumeric or
+  0x20 (seg1:1F35 / 1F41), nothing once the text has the field's length (seg1:1F27),
+  which WM_CREATE sets to 0x13 (window word +0xC, seg1:1D28; the limit message 0x415,
+  seg1:2360 -> 1DB0, is sent nowhere in rally.exe): field and keyboard hold and show 19
+  characters, PLAYER keeps 18 of them (GetWindowText 0x13, seg1:0BB7, answered by
+  lstrcpyn in WM_GETTEXT, seg1:1EF8). Characters are classified as the Windows-1252
+  byte WM_CHAR would carry; one outside the code page is dropped. The class table of
+  IsCharAlphaNumeric is Windows', not rally.exe's; rebuilt as the Unicode letters and
+  decimal digits of the code page (`isCharAlphaNumeric1252`, src/osk.cpp). *Unverified:*
+  ¹ ² ³ count as no digit, 0x8E / 0x9E (absent in the Windows 3.1 code page) as letters.
+  Y does nothing while a name field has the focus (no F9, never hand cards). Deleting plays 8, on
+  an empty name 7 (seg1:1FB3). Sounds of the keys: 8 for a move (seg1:24E5), 2 for a
+  pressed key (seg1:0FA5), 7 for a refused character (recomp; the field is silent).
+- **TEMP.** See "Stage count window": d-pad ±1 / ±10, LB / RB ±50, A accepts.
+- **OPTION.** F9 is not handled by OPTION's key procedure (seg1:B629: F1–F8 →
+  seg1:B60A, F10 → seg1:B5F5, F9 falls through), so the recomp uses it for the
+  "Weitere Einstellungen" label (recomp menu page Grafik); the pad's Y is F9 there
+  as in PLAYER. Start opens the same page (round 1).
+- **Recomp menu.** Tab / Shift+Tab (RB / LB) switch to the next / previous page.
+- **Town dialog.** Y while its header has the input (no tab, not the statistics,
+  no window in front) is a click on the header item Karte (seg1:5FB3 / 5FD9: focus
+  2, then Enter; a locked item does nothing, seg1:540F).
+- **Mouse right button on the map (original behaviour, now wired).** The canvas
+  forwards WM_RBUTTONDOWN to RALLY (seg8:018C → SendMessage DS:42); the map window
+  procedure (dispatch seg6:1A00 ff.: 0x100 → 1906, 0x201 → 1798, 0x204 → 176E) does
+  the same outside Umfeld (seg6:1780) and in Umfeld clears DS:169C instead
+  (seg6:1777), which ends the view. RALLY's handler seg4:0417 (reached for 0x204
+  at seg4:050B and 0x206 at seg4:04F2) posts WM_KEYDOWN VK_BACK to itself while
+  DS:96A0 ≠ 0 (seg4:046C), i.e. RIGHTBTN like the Backspace key (seg4:01D1). Rebuilt
+  in `GameWindow::handleKey` (Backspace path) and before `handleSurroundings`.
+  Open point: the rebuilt Umfeld ends on any left click and scrolls on mouse motion;
+  by the dispatch above WM_LBUTTONDOWN (seg6:1798) only moves the target in the edge
+  strips and the map window has no WM_MOUSEMOVE case (another path, e.g. a timer
+  reading the cursor, was not checked). Left unchanged in this round.
+- **Smoke tests.** `--press` accepts `Pad:A`, `Pad:B`, `Pad:X`, `Pad:Y`, `Pad:Back`,
+  `Pad:Start`, `Pad:LB`, `Pad:RB`, `Pad:Up` … (one press and release through
+  `PadInput` with the current context, also with `--smoke-test`) and
+  `ClickLeft:x:y` / `ClickRight:x:y` (canvas pixels).
+
 ### Start and Blue Byte logo
 
 - **Order in seg5:0000** (the start-up returning 1 on success): … seg5:1BBB creates
@@ -3569,7 +3621,7 @@ nothing at all.
   seg1:02A9 with the time) and hands it over into the running Game object
   through the save codec. The names are drawn as SBINPUT does (below; since
   round 109). **Assumptions:** a bar as caret; a disabled star is drawn
-  unchanged; Escape cancels from a button (WM_COMMAND 0xFFFF, seg1:0F77) but does nothing in a name field (round R8); non-ASCII characters pass as letters.
+  unchanged; Escape cancels from a button (WM_COMMAND 0xFFFF, seg1:0F77) but does nothing in a name field (round R8); characters are classified in Windows-1252 (pad round 2, see "Recomp pad layer").
 - **[Player] P0–P7** (round 142): seg1:02CE ff. reads the slots with
   GetPrivateProfileInt (seg5:22C0) from `rally.ini`, defaults P0 = 1, P1 = 2, others
   0, into the player records +0x00 before PLAYER opens. The window cycles a record's
@@ -3613,7 +3665,13 @@ nothing at all.
 - **Rebuilt** `src/stages_view.cpp` (profile value in `[Default] Rounds` of
   settings.ini). **Recomp addition** (not in rally.exe, always shown, as the user
   asked): a slider 1–300 on a 40 pixel taller window cut from the same paper;
-  field and slider follow each other.
+  field and slider follow each other. Pad round 2 (recomp, `src/stage_count.cpp`):
+  Left / Right step the count by 1, Up / Down by 10, Tab / Shift+Tab (the pad's RB /
+  LB) by 50, clamped to 1–300, starting from the field when it holds 1–300, else
+  from the last accepted value. In rally.exe these keys do nothing here: SBINPUT walks
+  to a sibling (seg1:21AA ff., Tab seg1:209E) and the field has none. Backspace now
+  plays SBINPUT's sounds (seg1:1FB3: 8, or 7 on an empty field, both on channel 2;
+  also in the PLAYER name fields).
 
 ### Title menu and autosave (round 35)
 

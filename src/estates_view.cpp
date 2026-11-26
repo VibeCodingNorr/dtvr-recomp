@@ -99,6 +99,14 @@ void EstatesView::afterAction(int count) {
     keepVisible(count);
 }
 
+EstatesView::Action EstatesView::chooseCards() {
+    Action action;
+    if (!cardsShortcut()) return action;
+    focus_ = 2;                                         // seg1:5FD9
+    if (!isLocked(2)) action.kind = Action::Kind::Cards; // seg1:540F: a locked item does nothing
+    return action;
+}
+
 EstatesView::Action EstatesView::handle(const SDL_Event& event, const std::vector<EstateRow>& rows) {
     Action action;
     if (!isOpen()) return action;

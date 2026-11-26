@@ -88,8 +88,11 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     SoundPlayer sound(root); // WaveMix (seg1:2C9B)
     sound.setMusic(&music.stream());
     screen.setSound(&sound);
+    ScreenKeyboardView keyboard(renderer.get(), root, layout, screen.textRenderer()); // names by pad (recomp)
+    keyboard.setSprites(screen.spriteLookup());
     GameWindow flow({play, towns, options, window.get(), renderer.get(), layout, baseLayout, wideLayout, language, screen,
-                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu, logo, busyCursor});
+                     music, musicIssues, musicConfig, sound, controller, displayControl, scripted, recompMenu, logo, busyCursor,
+                     keyboard});
     return flow.run();
 }
 
@@ -97,7 +100,8 @@ GameWindow::GameWindow(const GameWindowResources& r)
     : play_(r.play), towns_(r.towns), options_(r.options), window_(r.window), renderer_(r.renderer), layout_(r.layout),
       baseLayout_(r.baseLayout), wideLayout_(r.wideLayout), language_(r.language), screen_(r.screen), music_(r.music),
       musicIssues_(r.musicIssues), musicConfig_(r.musicConfig), sound_(r.sound), controller_(r.controller),
-      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), logo_(r.logo), busyCursor_(r.busyCursor), menu_(r.screen.menu()),
+      displayControl_(r.displayControl), scripted_(r.scripted), recompMenu_(r.recompMenu), logo_(r.logo), busyCursor_(r.busyCursor),
+      keyboard_(r.keyboard), menu_(r.screen.menu()),
       cards_(r.screen.cards()), musicEnabled_(r.screen.settings().value[Settings::Midi]),
       finishSeen_(r.play.game().finishSerial()), balanceSeen_(r.play.game().balanceSerial()),
       announceSeen_(r.play.game().announceSerial()), risikoPressSeen_(r.play.game().risikoPressSerial()),
@@ -233,6 +237,7 @@ int GameWindow::run() {
             if (!swallowLogoSkip(event) && !handleStatementEvent(event)) handleEvent(event); // STAT first: it is modal
         displayControl_.beginFrame();
         screen_.draw();
+        if (!quitAsked_ && screen_.setup().isOpen()) keyboard_.draw(); // the quit question takes the input first
         if (recompMenu_.isOpen()) recompMenu_.menu().setMusic(musicMenuState(music_, musicIssues_));
         recompMenu_.draw();
         displayControl_.endFrame();

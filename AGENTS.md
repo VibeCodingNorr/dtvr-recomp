@@ -131,7 +131,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/stages_view.{hpp,cpp}`: the stage count window TEMP with the slider;
   `src/overview_view.{hpp,cpp}`: the overview map; `src/recomp_menu.{hpp,cpp}` (no SDL) and
   `src/recomp_menu_view.{hpp,cpp}`: the recomp Escape menu (docs/pause-menu.md);
-  `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots; `src/settings.{hpp,cpp}` (no SDL) and
+  `src/display_control.{hpp,cpp}`: window, fullscreen, scaling keys and screenshots;
+  `src/osk.{hpp,cpp}` (no SDL) and `src/osk_view.{hpp,cpp}`: SBINPUT name rules and the recomp
+  on-screen keyboard for names; `src/stage_count.{hpp,cpp}` (no SDL): the TEMP count and its key steps; `src/settings.{hpp,cpp}` (no SDL) and
   `src/options_view.{hpp,cpp}`: the [Setup] options and their window; `src/sound.{hpp,cpp}`:
   sound effects (cues from `Game::takeSounds`); `src/finish_view.{hpp,cpp}`: the finish sequence;
   `src/victory_view.{hpp,cpp}`: the victory; `src/finale_scenes.{hpp,cpp}` (no SDL): their records and passes; `src/record_canvas.{hpp,cpp}`: their DIB, window image and SBS slots over `src/record_paint.{hpp,cpp}` (no SDL); `src/balance_view.{hpp,cpp}`: the year balance with `src/balance_players.{hpp,cpp}` (no SDL) its players' part and `src/balance_closing.{hpp,cpp}` (no SDL) its closing part and `src/balance_board.{hpp,cpp}` (no SDL) / `src/balance_board_view.cpp` its board;

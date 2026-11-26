@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "stages_view.hpp"
 
+#include "osk.hpp" // eraseNameChar: the SBINPUT VK_BACK
+
 #include <algorithm>
 #include <cctype>
 
@@ -23,17 +25,6 @@ int resolutionIndex(int width) { return width == 1024 ? 0 : width == 800 ? 1 : 2
 StagesView::StagesView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout,
                        const std::map<int, std::string>& texts, TextRenderer& text)
     : renderer_(renderer), root_(root), layout_(layout), texts_(texts), text_(text) {}
-
-int StagesView::parse(const std::string& text) {
-    const std::string head = text.substr(0, 4);
-    size_t i = 0;
-    while (i < head.size() && (head[i] == ' ' || head[i] == '\t')) ++i; // MS C atoi
-    bool negative = false;
-    if (i < head.size() && (head[i] == '+' || head[i] == '-')) negative = head[i++] == '-';
-    int value = 0;
-    while (i < head.size() && std::isdigit(static_cast<unsigned char>(head[i]))) value = value * 10 + (head[i++] - '0');
-    return negative ? -value : value;
-}
 
 void StagesView::open(int profile) {
     stages_ = profile < 0 || profile > kMaxStages ? 99 : profile; // seg8:09A6
@@ -87,7 +78,7 @@ void StagesView::setFromSlider(int x) {
 }
 
 bool StagesView::accept() {
-    const int value = parse(input_);
+    const int value = parseStageCount(input_);
     if (value <= 0 || value > kMaxStages) { // seg8:0A2C / 0A45: Zaehler2, the window stays
         sound_ = 7;
         return false;
@@ -123,13 +114,26 @@ StagesView::Result StagesView::handle(const SDL_Event& event) {
             if (int(input_.size()) >= kInputLimit) break;
             if (std::isalnum(ch) || ch == ' ') input_ += char(ch);
         }
-        if (const int v = parse(input_); v >= 1 && v <= kMaxStages) stages_ = v;
+        if (const int v = parseStageCount(input_); v >= 1 && v <= kMaxStages) stages_ = v;
     }
     if (event.type == SDL_KEYDOWN) {
         const SDL_Keycode k = event.key.keysym.sym;
-        if (k == SDLK_BACKSPACE && !input_.empty()) { // seg1:1FB3
-            input_.pop_back();
-            if (const int v = parse(input_); v >= 1 && v <= kMaxStages) stages_ = v;
+        if (k == SDLK_BACKSPACE) { // seg1:1FB3: sound 8, or 7 when empty
+            sound_ = eraseNameChar(input_);
+            if (const int v = parseStageCount(input_); v >= 1 && v <= kMaxStages) stages_ = v;
+        }
+        // Recomp addition (the field has no siblings, so rally.exe's SBINPUT walk does
+        // nothing here): Left / Right one stage, Up / Down ten, Tab / Shift+Tab (the pad's
+        // RB / LB) fifty, within the slider's 1..300.
+        int by = 0;
+        if (k == SDLK_RIGHT || k == SDLK_KP_6) by = 1;
+        if (k == SDLK_LEFT || k == SDLK_KP_4) by = -1;
+        if (k == SDLK_UP || k == SDLK_KP_8) by = 10;
+        if (k == SDLK_DOWN || k == SDLK_KP_2) by = -10;
+        if (k == SDLK_TAB) by = (event.key.keysym.mod & KMOD_SHIFT) ? -50 : 50;
+        if (by != 0) {
+            stages_ = stepStageCount(input_, stages_, by);
+            input_ = std::to_string(stages_);
         }
         // seg1:2144: SBINPUT posts only Enter to TEMP (seg8:0D8E), which accepts.
         if (k == SDLK_RETURN || k == SDLK_KP_ENTER) return accept() ? Result::Accept : Result::None;

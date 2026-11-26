@@ -9,11 +9,13 @@
 //
 // Recomp addition (not in rally.exe, always shown): a slider 1-300 below the text,
 // on a 40 pixel taller window cut from the same paper; it and the field follow
-// each other.
+// each other. Keys step the count (stage_count.hpp): Left / Right 1, Up / Down 10,
+// Tab / Shift+Tab 50 (the pad's d-pad and RB / LB); A (Return) accepts as before.
 #pragma once
 
 #include "layout.hpp"
 #include "sdl_assets.hpp"
+#include "stage_count.hpp"
 #include "text.hpp"
 #include "window_border.hpp"
 
@@ -27,7 +29,6 @@ namespace dtvr {
 
 class StagesView {
 public:
-    static constexpr int kMaxStages = 300; // seg8:0A45: 0x12C
     StagesView(SDL_Renderer* renderer, const std::filesystem::path& root, const ScreenLayout& layout,
                const std::map<int, std::string>& texts, TextRenderer& text);
     // `profile` is [Default] Rounds; outside 0..300 the field starts with 99 (seg8:09A6).
@@ -40,9 +41,6 @@ public:
     int takeSound() { const int s = sound_; sound_ = -1; return s; }
     void setSprites(SpriteLookup sprites) { borderSprites_ = std::move(sprites); } // B1-B8
     void draw();
-
-    // seg8:0A0D: the first four characters (GetWindowText(…, 5)) read by atoi.
-    static int parse(const std::string& text);
 
 private:
     SDL_Rect window() const;

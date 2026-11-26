@@ -30,7 +30,15 @@ public:
     void close();
     bool isOpen() const { return open_; }
     const std::array<uint8_t, kPlayerSlots>& status() const { return status_; }
-    const std::array<std::string, kPlayerSlots>& names() const { return names_; }
+    // The names PLAYER hands to the game: GetWindowText(..., 0x13) (seg1:0BB7) of each
+    // field keeps at most 18 of its characters (kPlayerNameMax, src/osk.hpp).
+    std::array<std::string, kPlayerSlots> names() const;
+    // A name field's own text: up to 19 characters (kNameFieldLimit, seg1:1D28), all shown.
+    const std::string& fieldText(int slot) const { return names_[size_t(slot)]; }
+    // The slot whose name field has the keyboard focus (SBINPUT), -1 none.
+    int editingField() const { return editing_; }
+    // The on-screen keyboard (recomp, osk_view) gives the field its text.
+    void setName(int slot, const std::string& name);
 
     // Recomp extension (not in rally.exe): "Computer spielen alle Karten"
     // ([Extensions] ComputerExtraCards) between stop and star; a click or F9 (a key

@@ -99,10 +99,63 @@ void recompButtons() {
     o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c);
     CHECK(o.keys.empty() && o.handCards);
     c = {};
-    c.setup = true;
+    c.yIsF9 = true;
     p.tick({}, c);
     o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c);
     CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_F9) && !o.handCards);
+}
+
+// Round 2: name fields, the on-screen keyboard and the town dialog's Karte.
+void dialogContexts() {
+    PadInput p;
+    PadContext c;
+    c.aIsSpace = true;  // PLAYER
+    c.yIsF9 = true;
+    c.nameField = true; // a name field has the focus
+    p.tick({}, c);
+    auto o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadA}, c);
+    CHECK(o.keys.empty() && o.keyboard);             // no Return (would start the game), no Space
+    CHECK(!p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadA}, c).keyboard); // held: once
+    p.tick({}, c);
+    c.turnMenu = c.townCards = true; // even if a turn menu or town dialog were behind PLAYER
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c); // Y in a name field: nothing
+    CHECK(o.keys.empty() && !o.handCards && !o.townCards && !o.keyboardShift && !o.keyboard);
+    c.turnMenu = c.townCards = false;
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadA}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadA | kPadB}, c); // the seg2:8B8E repeat of button 1
+    CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_ESCAPE) && o.keyboard);
+    p.tick({}, c);
+    o = p.tick({SDLK_DOWN, SDLK_UNKNOWN, 0}, c);     // the d-pad still walks out of the field
+    CHECK(o.keys.size() == 1 && o.keys[0].key == SDLK_DOWN && !o.keyboard);
+    // The keyboard is open: A is Return again, Start is done, Y shift, X Backspace, B Escape.
+    c = {};
+    c.keyboard = true;
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadA}, c);
+    CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_RETURN) && !o.keyboard);
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadStart}, c);
+    CHECK(o.keys.empty() && o.keyboardAccept && !o.pauseMenu);
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c);
+    CHECK(o.keys.empty() && o.keyboardShift && !o.handCards);
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadX}, c);
+    CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_BACKSPACE));
+    // Town dialog header: Y is Karte; with ONFIELD (never at once) the turn menu wins.
+    c = {};
+    c.townCards = true;
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c);
+    CHECK(o.keys.empty() && o.townCards && !o.handCards);
+    // OPTION: Y is F9 (its recomp link), A is Space.
+    c = {};
+    c.aIsSpace = true;
+    c.yIsF9 = true;
+    p.tick({}, c);
+    o = p.tick({SDLK_UNKNOWN, SDLK_UNKNOWN, kPadY}, c);
+    CHECK(o.keys.size() == 2 && isPress(o.keys, 0, SDLK_F9) && !o.townCards);
 }
 
 // The right stick never produces SDL key events: only PadOutput::scroll, which the game
@@ -190,6 +243,7 @@ int main() {
     originalLayerThroughPadInput();
     aAsSpace();
     recompButtons();
+    dialogContexts();
     rightStick();
     hazards();
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);

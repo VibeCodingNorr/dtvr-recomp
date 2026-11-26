@@ -59,6 +59,11 @@ public:
     };
     // `rows` are the current contents (estateRows of this town and tab).
     Action handle(const SDL_Event& event, const std::vector<EstateRow>& rows);
+    // Recomp (the pad's Y): the town dialog's header has the input (no tab, not the
+    // statistics), so its item Karte can be chosen as a click on it would (seg1:5FB3).
+    bool cardsShortcut() const { return town_ >= 0 && !statistics_ && tab_ == EstatesTab::None && !saleMode_; }
+    // The click on Karte (seg1:5FD9: focus 2, then Enter): Cards, or nothing when it is locked.
+    Action chooseCards();
     // After a successful purchase or sale with `count` rows (seg1:55A5 / 5646: VK_DOWN).
     void afterAction(int count);
     void draw(const std::vector<EstateRow>& rows, const std::array<char, 8>& ownerLetters);

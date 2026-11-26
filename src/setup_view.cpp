@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "setup_view.hpp"
 
-#include <cctype>
+#include "osk.hpp"
 
 namespace fs = std::filesystem;
 
@@ -9,17 +9,10 @@ namespace dtvr {
 namespace {
 
 constexpr char kLetters[kPlayerSlots] = {'d', 'f', 'e', 'm', 'u', 'j', 'i', 'v'}; // seg2:2D43
-constexpr size_t kNameMax = 0x13 - 1; // GetWindowText(..., 0x13) (seg1:0BB7)
 
 bool inside(const ScreenRect& r, int x, int y) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h; }
 SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
 constexpr int kStar = 100, kStop = 101, kName = 200; // kName + slot: the SBINPUT fields
-
-size_t utf8Length(const std::string& s) {
-    size_t n = 0;
-    for (unsigned char c : s) n += (c & 0xC0) != 0x80;
-    return n;
-}
 
 } // namespace
 
@@ -60,6 +53,19 @@ void SetupView::close() {
     if (editing_ >= 0) SDL_StopTextInput();
     editing_ = -1;
     open_ = false;
+}
+
+void SetupView::setName(int slot, const std::string& name) {
+    if (slot < 0 || slot >= kPlayerSlots) return;
+    std::string& field = names_[size_t(slot)];
+    field.clear();
+    appendNameText(field, name, kNameFieldLimit); // the field's own rules (seg1:1F27 / 1F35)
+}
+
+std::array<std::string, kPlayerSlots> SetupView::names() const {
+    std::array<std::string, kPlayerSlots> out;
+    for (size_t p = 0; p < out.size(); ++p) out[p] = utf8Prefix(names_[p], kPlayerNameMax); // seg1:0BB7
+    return out;
 }
 
 bool SetupView::anyPlayer() const { // seg2:0368: number of slots in play
@@ -121,22 +127,12 @@ SetupView::Result SetupView::handle(const SDL_Event& event) {
     } else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
         in = buttons_.mouseUp(event.button.x, event.button.y);
     } else if (event.type == SDL_TEXTINPUT && editing_ >= 0) {
-        std::string& name = names_[size_t(editing_)];
-        for (const char* c = event.text.text; *c; ++c) {
-            const bool lead = (static_cast<unsigned char>(*c) & 0xC0) != 0x80;
-            if (lead && utf8Length(name) >= kNameMax) break;
-            // seg1:1F31: IsCharAlphaNumeric or a space (non-ASCII letters pass as letters)
-            const unsigned char ch = static_cast<unsigned char>(*c);
-            if (ch < 0x80 && !std::isalnum(ch) && ch != ' ') continue;
-            name += *c;
-        }
+        appendNameText(names_[size_t(editing_)], event.text.text, kNameFieldLimit); // seg1:1F00
         return Result::None;
     } else if (event.type == SDL_KEYDOWN) {
         const SDL_Keycode key = event.key.keysym.sym;
-        if (editing_ >= 0 && key == SDLK_BACKSPACE) {
-            std::string& name = names_[size_t(editing_)];
-            while (!name.empty() && (static_cast<unsigned char>(name.back()) & 0xC0) == 0x80) name.pop_back();
-            if (!name.empty()) name.pop_back();
+        if (editing_ >= 0 && key == SDLK_BACKSPACE) { // seg1:1FB3: sound 8, or 7 when empty
+            sound_ = eraseNameChar(names_[size_t(editing_)]);
             return Result::None;
         }
         if (editing_ >= 0) { // SBINPUT (seg1:21E5): other keys, Escape too, do nothing

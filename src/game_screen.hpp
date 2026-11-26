@@ -177,6 +177,8 @@ public:
     int zoomFactor() const;
     bool surroundings() const { return surroundings_; }
     bool handleSurroundings(const SDL_Event& event);
+    // The SBS frames by name for views outside the screen (the recomp on-screen keyboard).
+    SpriteLookup spriteLookup() { return [this](const std::string& name) { return sprite(name); }; }
 
 private:
     SDL_Texture* art(const std::filesystem::path& relative); // cached, nullptr if missing
