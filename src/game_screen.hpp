@@ -166,9 +166,10 @@ public:
     bool vehicleMoving(int player) const;
     // DS:9CFE: Dr. Drago travels (form change, Hau ab); rally.exe waits (seg2:B454 / B55E).
     bool dragoTravelling() const { return dragoVehicle_.travelling(); }
-    // Umfeld (seg6:3C94, round 37): the view leaves the player; the mouse in a 60-pixel
-    // edge strip or an arrow key moves it by a third of the view; a left click,
-    // Enter, Escape or Space ends it. Returns true when the event belonged to it.
+    // Umfeld (seg6:3C94, round 37): the view leaves the player; a left click in a
+    // 60-pixel edge strip (seg6:1798) or an arrow key moves it by a third of the view;
+    // the right button (seg6:176E), Enter, Escape or Space end it. While it is open it
+    // takes every key and mouse event (focus and capture). Returns true when it did.
     void startSurroundings();
     // Zoom (seg6:2E54(3), round 38): DS:9C70 toggles between 0 and 1 and is kept per
     // player (player +0x15); at 1 the viewport shows half the world area, twice as large.

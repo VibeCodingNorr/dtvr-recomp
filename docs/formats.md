@@ -3110,15 +3110,51 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   (zoom DS:9C70 + 1); corrected in round 78, not a mouse move): in a strip of 0x3C pixels at an edge of the viewport DS:94DA..94E0
   (corner squares excluded) the target moves by (width ÷ ±3) ÷ 16 tiles in that
   direction. Keys (seg6:1991): arrows and numpad 2 / 4 / 6 / 8 move the same way;
-  Enter, Escape and Space end it; a left click ends it (seg6:176E).
+  Enter, Escape and Space end it; the right button ends it (seg6:176E, see the
+  mouse trace below; corrected in the Umfeld mouse round).
+- **Umfeld mouse trace** (map window procedure seg6:1681, dispatch seg6:1A00 ff.):
+  the cases are WM_CREATE 0x01 → 169A, WM_SIZE 0x05 → 1751, WM_PAINT 0x0F → 1743,
+  WM_ERASEBKGND 0x14 → 173A, WM_NCCALCSIZE 0x83 and WM_NCPAINT 0x85 → 1754,
+  WM_KEYDOWN 0x100 → 1906, WM_LBUTTONDOWN 0x201 → 1798, WM_RBUTTONDOWN 0x204 → 176E,
+  WM_QUERYNEWPALETTE 0x30F / WM_PALETTECHANGED 0x311 → 1726; everything else goes
+  to DefWindowProc (seg6:19E6). There is **no** WM_MOUSEMOVE (0x200), button-up
+  (0x202 / 0x205) or WM_TIMER case. The Umfeld loop seg6:3CE7..3DE0 (DS:169C ≠ 0)
+  only moves the origin to the target DS:96A2 / 96A4 (seg6:3D1C, clamp seg6:2B19(1)),
+  redraws, calls seg6:3A14(0) / (1) after 12 / 20 passes of seg6:0CDF(10, 0) (a
+  show / hide toggle, not identified further) and pumps
+  messages (seg6:03F7); it reads no cursor position. SetFocus / SetCapture to the
+  map window (seg6:3CAD / 3CB9) send all keys and mouse messages there.
+  - Right button: seg6:176E with DS:169C ≠ 0 clears DS:169C (seg6:1777) and
+    returns; the loop then restores the origin saved at the start (seg6:3DE3) and
+    releases the capture (seg6:3E19). Outside Umfeld it forwards the message to
+    RALLY (seg6:1780, SendMessage DS:42), i.e. RIGHTBTN.
+  - Left button: seg6:1798 with DS:169C ≠ 0: x = [bp+6], y = [bp+8], each divided
+    (unsigned) by DS:9C70 + 1 (seg6:17A1 / 17B2). Four tests with inclusive bounds
+    against DS:94DA..94E0 (0, 0, width, height; seg5:13A3): left strip seg6:17C3
+    (0x3C ≤ y ≤ h − 0x3C, 0 ≤ x ≤ 0x3C) target x = origin x + (w ÷ −3) ÷ 16;
+    top seg6:180D (0 ≤ y ≤ 0x3C, 0x3C ≤ x ≤ w − 0x3C) target y = origin y +
+    (w ÷ −3) ÷ 16; right seg6:1857 (0x3C ≤ y ≤ h − 0x3C, w − 0x3C ≤ x ≤ w) target x
+    = origin x + (w ÷ 3) ÷ 16; bottom seg6:18A1 (h − 0x3C ≤ y ≤ h, 0x3C ≤ x ≤
+    w − 0x3C) target y = origin y + (w ÷ 3) ÷ 16. The y steps also use the width
+    DS:94DE. Each matching test writes, so (0x3C, 0x3C) moves both axes. A click
+    anywhere else (also outside the client through the capture: negative or too
+    large coordinates fail every test) does nothing; it never ends Umfeld. Outside
+    Umfeld seg6:18EE calls seg4:0F52 (the MCTRL steering cross, "Mouse steering").
+  - Mouse motion does nothing in either mode; there is no hover scrolling.
+  - **Rebuilt** in `GameScreen::handleSurroundings` (`src/game_screen.cpp`) with the
+    SDL-free `surroundingsClick` / `surroundingsMove` / `surroundingsStep`
+    (`src/map_scroll.cpp`, tests in `tests/map_scroll_test.cpp`); while Umfeld is open
+    it swallows all mouse events (capture). The recomp's pad right stick still posts
+    arrow steps (`PadOutput::scroll`). The seg6:3A14 toggle is not rebuilt.
 - **Rebuilt** (`src/overview_view.cpp`, Umfeld in `src/game_screen.cpp`).
   **Input** (round 101, from `docs/original-overview-audit.md`, checked at
   seg1:AA00 / AB34): Enter, a double click or (unzoomed) a left click toggle the
   zoom; while zoomed the arrows pan a 3 × 3 grid of half-size crops (steps
   (size >> 2) − 4) and a left click opens the MCTRL steering cross; Escape,
   Backspace and the right button close it. Q_FL marks Dr. Drago's own vehicle
-  (round 140). **Assumption:** after
-  Umfeld the view follows the current player again.
+  (round 140). After Umfeld the origin saved at its start is restored (seg6:3DE3),
+  followed by seg2:482C, seg6:29FC and seg6:2BD9; the rebuild keeps its own origin
+  untouched during Umfeld, which gives the same view.
 
 ### Shut-in players (round 80)
 
@@ -3345,10 +3381,8 @@ the original windows is unchanged):
   at seg4:050B and 0x206 at seg4:04F2) posts WM_KEYDOWN VK_BACK to itself while
   DS:96A0 ≠ 0 (seg4:046C), i.e. RIGHTBTN like the Backspace key (seg4:01D1). Rebuilt
   in `GameWindow::handleKey` (Backspace path) and before `handleSurroundings`.
-  Open point: the rebuilt Umfeld ends on any left click and scrolls on mouse motion;
-  by the dispatch above WM_LBUTTONDOWN (seg6:1798) only moves the target in the edge
-  strips and the map window has no WM_MOUSEMOVE case (another path, e.g. a timer
-  reading the cursor, was not checked). Left unchanged in this round.
+  The former open point (Umfeld ended on a left click and scrolled on mouse motion)
+  is resolved: see "Umfeld mouse trace" under "Übersicht and Umfeld".
 - **Smoke tests.** `--press` accepts `Pad:A`, `Pad:B`, `Pad:X`, `Pad:Y`, `Pad:Back`,
   `Pad:Start`, `Pad:LB`, `Pad:RB`, `Pad:Up` … (one press and release through
   `PadInput` with the current context, also with `--smoke-test`) and

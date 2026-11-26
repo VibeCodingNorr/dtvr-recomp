@@ -496,42 +496,43 @@ void GameScreen::startSurroundings() {
 
 bool GameScreen::handleSurroundings(const SDL_Event& event) {
     if (!surroundings_) return false;
-    // seg6:2EE9: with zoom the viewport DS:94DE / 94E0 is halved.
-    const int viewW = layout_.viewport.w / zoomFactor(), viewH = layout_.viewport.h / zoomFactor();
-    const int third = viewW / 3 / WorldMap::kTile; // (w / ±3) / 16, truncated (seg6:17F4)
-    constexpr int side = WorldMap::kSize * WorldMap::kTile;
-    auto move = [&](int dx, int dy) { // seg6:2B19 keeps the view inside the world
-        const int maxX = (side - viewW) / WorldMap::kTile, maxY = (side - viewH) / WorldMap::kTile;
-        surroundOrigin_.x = std::clamp(surroundOrigin_.x + dx * third, 0, maxX);
-        surroundOrigin_.y = std::clamp(surroundOrigin_.y + dy * third, 0, maxY);
+    // Umfeld holds focus and capture on the map window (seg6:3CAD / 3CB9): every key and
+    // mouse message goes to its procedure seg6:1681 (dispatch seg6:1A00), which has no
+    // WM_MOUSEMOVE, button-up or timer case; the loop seg6:3CE7 reads no cursor.
+    const MapViewSize view = viewSize(); // seg6:2EE9: halved with zoom
+    auto move = [&](int dx, int dy) {
+        const TilePoint o = surroundingsMove(TilePoint{surroundOrigin_.x, surroundOrigin_.y}, dx, dy, view);
+        surroundOrigin_ = SDL_Point{o.x, o.y};
     };
-    if (event.type == SDL_MOUSEMOTION) { // seg6:1798: strips of 0x3C pixels, corners excluded
-        const int x = event.motion.x - layout_.mapClient().x, y = event.motion.y - layout_.mapClient().y;
-        const int l = layout_.viewport.x, t = layout_.viewport.y;
-        const int r = l + layout_.viewport.w, b = t + layout_.viewport.h;
-        const bool midY = y >= t + 60 && y <= b - 60, midX = x >= l + 60 && x <= r - 60;
-        if (midY && x >= l && x <= l + 60) move(-1, 0);
-        if (midX && y >= t && y <= t + 60) move(0, -1);
-        if (midY && x >= r - 60 && x <= r) move(1, 0);
-        if (midX && y >= b - 60 && y <= b) move(0, 1);
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
+        surroundings_ = false; // WM_RBUTTONDOWN seg6:176E: clears DS:169C (seg6:1777)
         return true;
     }
-    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) { // seg6:176E
-        surroundings_ = false;
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+        // WM_LBUTTONDOWN seg6:1798: client coordinates / (DS:9C70 + 1); only the edge
+        // strips move the target, a click elsewhere (or outside the map) does nothing.
+        const int x = event.button.x - layout_.mapClient().x, y = event.button.y - layout_.mapClient().y;
+        if (x >= 0 && y >= 0) { // captured clicks left / above the client fail every strip test
+            const int z = zoomFactor();
+            const TilePoint o = surroundingsClick(TilePoint{surroundOrigin_.x, surroundOrigin_.y}, x / z, y / z, view);
+            surroundOrigin_ = SDL_Point{o.x, o.y};
+        }
         return true;
     }
-    if (event.type == SDL_KEYDOWN) { // seg6:1991
+    if (event.type == SDL_KEYDOWN) { // seg6:1906 -> 1991
         switch (event.key.keysym.sym) {
-        case SDLK_RETURN: case SDLK_ESCAPE: case SDLK_SPACE: surroundings_ = false; break;
-        case SDLK_LEFT: case SDLK_KP_4: move(-1, 0); break;
-        case SDLK_UP: case SDLK_KP_8: move(0, -1); break;
-        case SDLK_RIGHT: case SDLK_KP_6: move(1, 0); break;
-        case SDLK_DOWN: case SDLK_KP_2: move(0, 1); break;
+        case SDLK_RETURN: case SDLK_ESCAPE: case SDLK_SPACE: surroundings_ = false; break; // seg6:1985
+        case SDLK_LEFT: case SDLK_KP_4: move(-1, 0); break;  // seg6:1969
+        case SDLK_UP: case SDLK_KP_8: move(0, -1); break;    // seg6:1915
+        case SDLK_RIGHT: case SDLK_KP_6: move(1, 0); break;  // seg6:1931
+        case SDLK_DOWN: case SDLK_KP_2: move(0, 1); break;   // seg6:194D
         default: break;
         }
         return true;
     }
-    return event.type == SDL_MOUSEBUTTONDOWN;
+    // The capture swallows the remaining mouse input (motion, release, middle button).
+    return event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP || event.type == SDL_MOUSEMOTION
+        || event.type == SDL_MOUSEWHEEL;
 }
 
 SDL_Point GameScreen::viewOrigin() const {

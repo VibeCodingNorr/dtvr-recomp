@@ -207,19 +207,9 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN) return;
     }
     if (screen_.overview().isOpen()) { screen_.overview().handle(event); return; }
-    if (screen_.surroundings() && event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT) {
-        // The map window's WM_RBUTTONDOWN (seg6:176E) in Umfeld clears DS:169C (seg6:1777):
-        // it ends like its Escape key (seg6:1991).
-        SDL_Event end{};
-        end.type = SDL_KEYDOWN;
-        end.key.state = SDL_PRESSED;
-        end.key.keysym.sym = SDLK_ESCAPE;
-        screen_.handleSurroundings(end);
-        heldArrow_ = SDLK_UNKNOWN;
-        return;
-    }
     if (screen_.handleSurroundings(event)) {
-        if (!screen_.surroundings()) heldArrow_ = SDLK_UNKNOWN; // left: no drive from its keys
+        // Right button (seg6:176E), Enter, Escape or Space left it: no drive from its keys.
+        if (!screen_.surroundings()) heldArrow_ = SDLK_UNKNOWN;
         return;
     }
     if (screen_.stages().isOpen()) { // seg8:08D6, modal (seg6:0FB4)

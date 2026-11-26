@@ -370,7 +370,8 @@ is unfocused, and a held direction is released when the pad is unplugged, the
 option is switched off or the window loses the focus.
 
 **Mouse:** a right click on the map opens the right-button menu as in rally.exe
-(Backspace); in Umfeld it ends the view.
+(Backspace); in Umfeld it ends the view, and a left click in a 60-pixel edge strip
+of the map scrolls by a third of the view (seg6:1798); mouse motion does not scroll.
 
 **F11** or **Alt+Enter** switches the game window between window and fullscreen
 (`--fullscreen` starts in fullscreen). The original canvas (640 × 480, 800 × 600 or
