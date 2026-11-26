@@ -881,8 +881,26 @@ window; *round 141* adds the form change's drive and Hau ab.
 - **Trigger** seg8:1624: `seg5:186A(DS:A100, 0)` (seg8:1652–1658) returns non-zero
   when it loaded a new tile directory, i.e. table[month % 12] differs from DS:2CA
   (seg5:1956–1986). With [Setup] Colorcycle off (DS:B5DC = 0) the directory is fixed
-  to 1 and it returns 0 once DS:2CA = 1 (seg5:1929–194A): no wipe then (the
-  rebuild's event trigger still counts that change as a season change; known).
+  to 1 and it returns 0 once DS:2CA = 1 (seg5:1929–194A): no wipe and no skipped
+  event then. A zero return goes on to the countdown DS:A108 (seg8:1663 → 16AD).
+- **When it returns non-zero with Colorcycle off** (round colorcycle-rule): only while DS:2CA ≠ 1.
+  The reload argument 1 sets DS:2CA = −1 first (seg5:18B0–1923), and every caller
+  with 1 loads the directory at once: a new game (seg4:0E59–0E5F) and both loaders'
+  starts (seg4:061D–0623, seg4:06A2–06A8). OPTION's close seg1:B539 calls
+  seg5:186A(DS:A100, 0) (seg1:B558–B55E, result unused) after its switch 0x1398 has
+  toggled DS:B5DC (seg1:B43C–B445; only with a palette device DS:955A, seg1:B422,
+  seg5:20E1–20F0 clears both otherwise), so a toggle reloads the tiles of the new
+  setting at once, without the wipe. DS:B5DC is read at every call. Hence with
+  Colorcycle off the event trigger never skips; switched on in a month whose
+  directory differs from 1 the tiles change at OPTION's close and the next new
+  season skips as usual; switched on in June–August (directory 1) nothing changes
+  until September.
+- **Rebuilt** (round colorcycle-rule): `Game::setColorcycle` (src/game_events.cpp) is that
+  close, a rule input recorded in the save (format 9); the window calls it when the
+  setting changes (OPTION and the recomp menu are modal, the game waits) and at the
+  start of every new or loaded game with the current `[Setup] Colorcycle`.
+  `Game::loadedSeason` is DS:2CA; the map loads that directory and wipes only when
+  it changes in the trigger.
 - **Sequence** (seg8:1667–16AA): FillRect(DS:A7B2 = the map's WinG DC, DS:94DA,
   GetStockObject(BLACK_BRUSH = 4)); seg8:0E20(DS:A6F0 = map window, mode 0) — the
   old map is blacked out; seg2:05A8(0) redraws the map with the new tiles (no
@@ -4227,8 +4245,8 @@ The contents of `.car`, the field-list values, town entry fields and
 `flagset` bits need to be derived from their consumers. File sizes
 alone do not establish record layouts. Palette selection, colour cycling, bit 12
 of map cells and the viewport (which map area is shown at which position) are
-not yet traced. What the game's month counter is, and where DS:B5DC is set, is
-open.
+not yet traced. What the game's month counter is, is open. DS:B5DC is set from
+the profile (seg5:1FEC) and by OPTION (seg1:B445).
 
 The world view composes the whole 256 × 256 map with the original rules. It
 does not reconstruct the viewport, sprites on the map, routes or game rules.

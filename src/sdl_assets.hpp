@@ -29,6 +29,8 @@ Surface loadBmp(const std::filesystem::path& path);
 // `tiles` (optional) receives the season's tiles for redrawing single cells.
 Surface loadWorld(const std::filesystem::path& root, int month, bool views, bool seasons = true,
                   std::vector<Tile>* tiles = nullptr);
+// The same for the tile directory map/<season> (DS:2CA) itself.
+Surface loadSeasonWorld(const std::filesystem::path& root, int season, bool views, std::vector<Tile>* tiles = nullptr);
 
 // The frames of an SBS file as textures keyed by their upper-case names (rally.exe
 // looks frames up without regard to case, seg6:406D), colours from `palette`,

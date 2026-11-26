@@ -14,7 +14,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 
 | Record | Fields |
 | --- | --- |
-| `DTVR-RECOMP-SAVE` | format version (currently 8; 7 is read without `edition`, 6 also without `flow`, 5 also without `worth`, 4 also without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
+| `DTVR-RECOMP-SAVE` | format version (currently 9; 8 is read without `colorcycle`, 7 also without `edition`, 6 also without `flow`, 5 also without `worth`, 4 also without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
 | `edition` | edition id of the original data (`de-retail`, `en-us-retail`; `src/edition.hpp`), written as the second line (format 8; older saves are German) |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
@@ -38,6 +38,7 @@ trip. Records may appear in any order after the header; `end` closes the save.
 | `demo` | 1 when a game without humans was asked to end (DS:16, format 3) |
 | `stages` | total number of stages DS:A106 (format 4; older saves use the stages left) |
 | `extensions` | 1 when computers also play the cards rally.exe never picks (recomp extension, format 5; older saves: 0) |
+| `colorcycle` | 1 or 0, `[Setup] Colorcycle` ("Wellen und Jahreszeiten", DS:B5DC) as a rule input: off, the tile directory stays 1 and the event trigger never skips for a new season (format 9, rules revision 52; older saves: 1) |
 | `turn` | phase (0 spin, 1 drive, 2 arrived, 3 game over, 4 Risiko), current slot, stage origin, destination, stages left |
 | `end` | — |
 
@@ -57,7 +58,10 @@ countdown random(3) + 4 (seg2:9C97), the western property value when the East is
 open, the month's season, and for a save in the spin phase the turn start
 seg2:0407 of the current player. The stored facings, countdown and season are
 therefore overwritten on such a load; exact copies (new game, a roll taken back)
-keep them. `writeSaveFile` writes a temporary file next to
+keep them. The game window then applies the current `[Setup] Colorcycle`
+(`Game::setColorcycle`), as rally.exe's start reads DS:B5DC from the profile and
+not from the save: a loaded game continues identically while the setting is the
+one it was saved with. `writeSaveFile` writes a temporary file next to
 the target and renames it, so an interrupted write never replaces a good save.
 
 ## Editions
@@ -120,8 +124,11 @@ Rule revisions with a changed sequence of random draws: 25 (East opening text),
 26 (texts of the blocked card window and of the investment offer), 27 (draws at
 the stage end), 28 (the year balance's draws), 29 (one more draw per player
 in the year balance), 30 (order and exclusion of the next destination), 49 (the
-loader's draw for Dr. Drago, seg8:B06A, and the turn start after loading). A save of an
-older revision loads, but continues with the current rules.
+loader's draw for Dr. Drago, seg8:B06A, and the turn start after loading), 51
+(Dr. Drago's laugh random(1) before each of his messages, seg2:BB48), 52 (with
+Colorcycle off the event trigger runs at the new seasons too, seg5:1929; with it
+on nothing changes). A save of an older revision loads, but continues with the
+current rules.
 
 ## Save slots
 

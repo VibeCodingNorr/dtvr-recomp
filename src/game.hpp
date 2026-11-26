@@ -338,6 +338,17 @@ public:
     // Counts the season changes of the event trigger (seg8:1624 -> seg5:186A, not saved):
     // the window runs the map wipe seg8:0E20 there (src/season_wipe.hpp).
     int seasonChanges() const { return seasonChanges_; }
+    // [Setup] Colorcycle ("Wellen und Jahreszeiten", DS:B5DC) as a rule input (saved,
+    // default on): seg5:186A reads it at every call. On, the tile directory follows the
+    // month (seg5:1956-1986) and the event trigger seg8:1624 skips the event at a new
+    // season; off, the directory is always 1 (seg5:1929-1953), so the trigger never skips.
+    // Call when the setting changes and at a game start or load: it is what OPTION's
+    // close does (seg1:B539 -> seg5:186A(DS:A100, 0), toggle at seg1:B43C), a tile reload
+    // to the directory of the setting without the wipe, an event or a random draw.
+    void setColorcycle(bool on);
+    bool colorcycle() const { return colorcycle_; }
+    // DS:2CA, the tile directory map/0..3 loaded by seg5:186A (the map shows it).
+    int loadedSeason() const { return loadedSeason_; }
     // A form change (seg2:B3A4 -> 9804): its count and the start side random(3) that
     // seg2:454E draws for the search of the start field outside the view.
     int dragoFormChanges() const { return dragoFormChanges_; }
@@ -468,6 +479,7 @@ private:
     void finishRisiko();
     // game_events.cpp
     void eventTick(int player);  // seg8:1624 after every player change (player = new DS:94E2)
+    int tileDirectory() const;   // seg5:186A: table[month % 12] with Colorcycle, else 1
     void applyEvent(EventKind kind);
     void placeObstacle(uint16_t type, int durationFactor);   // rain / snow (seg8:5F43)
     void damageTown(int town, int protectionCard);          // seg8:4F1B
@@ -536,7 +548,8 @@ private:
     std::array<int, 8> jumps_{};   // positionJumps (presentation only, not saved)
     bool eastOpen_ = false;        // DS:A10F == 0
     double westValue_ = 0;         // DS:A113
-    int loadedSeason_ = 0;         // season of the loaded SBB set (seg5:186A)
+    int loadedSeason_ = 0;         // DS:2CA, season of the loaded SBB set (seg5:186A)
+    bool colorcycle_ = true;       // DS:B5DC, [Setup] Colorcycle
     int seasonChanges_ = 0;        // season reloads of the event trigger (not saved)
     Deck deck_;
     std::vector<Hand> hands_;
