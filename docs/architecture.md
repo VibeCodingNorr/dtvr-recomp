@@ -24,10 +24,10 @@ resolved outcomes so replay need not depend on an unspecified platform RNG.
 
 ## Editions and languages
 
-Future support for the US English edition is an agreed user goal (2026-11-23).
-It is not playable yet: the runtime recognizes the US retail EXE through an
-explicit edition profile (`src/edition.hpp`), while the installer and the game
-modes accept only the identified German EXE.
+Support for the US English edition is an agreed user goal (2026-11-23). Since
+round E2 the US retail edition is playable: the runtime and the installer identify
+it through explicit edition profiles (`src/edition.hpp`, `tools/editions.py`), and
+saves record their edition.
 Verified fingerprints, resource differences and the engine handoff are recorded
 in [media variants](media-variants.md).
 

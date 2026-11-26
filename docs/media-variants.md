@@ -14,7 +14,7 @@ below are `D` = German, `R` = US English retail.
 | Profile id | EXE SHA-256 | lan.inf | Canvases | Runtime state |
 | --- | --- | --- | --- | --- |
 | `de-retail` | `aa3dde36…6b83` (438272 B) | `D` | 640, 800, 1024 | playable (reference of the rebuild) |
-| `en-us-retail` | `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a` (438272 B) | `E` | 640, 800, 1024 | recognized, not playable |
+| `en-us-retail` | `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a` (438272 B) | `E` | 640, 800, 1024 | playable (round E2) |
 
 **Detection.** Only the executable's SHA-256 identifies an edition, never the
 presence of files. The runtime takes it from `rally.exe` in the program directory
@@ -26,12 +26,18 @@ directories without either source are refused with a German message. The profile
 then requires its files (`requiredFiles`, looked up without regard to case) and a
 `dat/lan.inf` letter of its language.
 
-**Not yet playable.** The retail audit (2026-11-26, private notes) found the German
-rules and tables with English resources. `--game` and `--play` still refuse
-`en-us-retail` until one complete human turn is verified with its data; the developer
-option `--dev-unfinished-edition` starts it for tests only.
-Viewer modes (`--tiles`, `--sprites`, `--world`) load it. The installer's acceptance
-list is unchanged (German only).
+**Playable (round E2).** The retail audit (2026-11-26, private notes) found the German
+rules and tables with English resources. One complete human turn was then validated
+with the retail program data (scripted `--game --press` run, 640 canvas, seed 5, two
+humans): title → player setup → stage count → destination announcement, and with
+`--no-title` the turn menu (English menu texts), the slot machine, driving with a held
+arrow (plane on the sea route), the field (`Lose`, payment and the storm event text in
+English) and the player change to the second driver. The same script on the German
+data printed an identical simulation log (start, destination, hand, spin, payment,
+damage town, next player), as expected from identical rules. Screenshots stay in the
+private analysis directory. `--game` and `--play` therefore accept `en-us-retail`; the
+developer option `--dev-unfinished-edition` remains for profiles not yet released
+(none at present). The installer accepts both editions (docs/installer.md, "Editions").
 
 **Verified US retail differences used by the runtime** (disassembled with
 `tools/ne_disasm.py --use32 9`; private output):
@@ -59,11 +65,28 @@ list is unchanged (German only).
   `parseVoiceSync` accepts any multiple of 0xD0 and a voice without a record shows no
   subtitle (no timing); how rally.exe behaves then is not checked.
 
-Pending (user decision): R seg5:182F reloads `map/europe.map` at a new or loaded game;
-not rebuilt. Pending (E2): one complete human turn with retail data, the language case
-comparisons (Statistik spacing seg1:766F / 77C4, Sieg banner seg7:7EC1), the window
-title, save compatibility per edition (`kSaveFormat` / save header) and the installer's
-per-edition acceptance. Observed only: `map/europe.str` is byte-identical to the German
+- Fresh `europe.map` (user decision 2026-11-26, both editions): R seg5:182F reloads
+  `map/europe.map` at a new or loaded game (called from R seg5:186A with argument 1 and
+  from the loader R seg8:AF67 before the East re-opening seg8:69F0); D loads it once per
+  run (D seg5:1559). The rebuild reloads it for every new or loaded game in both
+  profiles, Blue Byte's later fix and a deliberate deviation for the German profile
+  (docs/save-format.md, "Map state between games").
+- Language case comparisons, rechecked in the retail disassembly: R seg1:766F / 77C4
+  compare DS:A0F0 with `d` only (Statistik header: `E` takes 0x7A / 0x92 like the
+  German `D`), R seg7:7EC1 draws `s_bann_d.bmp` only for `d` / `D` (no banner with
+  `E`). Both were already rebuilt (`estates_view.cpp`, `victory_view.cpp`).
+- Window title: D seg5:1BCF loads string 10 of the language library (DS:B5C4) as the
+  CreateWindow title (seg5:1C06): `D.T.V.R.` in `rally_d.dat`, `Dr. Drago's Madcap
+  Chase` in `rally_e.dat`. The game window takes it from the language file (it showed a
+  fixed German name and then the debug title before).
+- Saves record the edition (format 8, docs/save-format.md, "Editions"); a save of the
+  other edition is refused.
+- Driver names: strings 120–127 are identical in both language files (Helmut Pohl …);
+  the card pictures, menus, messages, town names and destination photos / voices come
+  from the English files. Only the recomp's own additions (e.g. the F9 option line in
+  the player setup, the recomp menu) stay German by project policy.
+
+Observed only: `map/europe.str` is byte-identical to the German
 file, `map/europe.map` differs (SHA-256 `5afb8c52…` vs German `91779387…`);
 `dat/e/rally_e.dat` has SHA-256 `d17a203f…`.
 
@@ -111,20 +134,21 @@ reconstruction. Keep the importer work separate and schedule engine integration
 with the existing owner. See also [architecture](architecture.md#editions-and-languages)
 and the standing project instructions in `AGENTS.md`.
 
-The limited build above stays unsupported; the retail edition is recognized by the
-runtime (see [Edition profiles](#edition-profiles)) but not accepted by the installer. Do not add a hash to an acceptance list or
-rename English assets to German paths to bypass the gate. Before enabling it:
+The limited build above stays unsupported; the retail edition is supported by the
+runtime and the installer since round E2 (see [Edition profiles](#edition-profiles)).
+Do not rename English assets to German paths. The handoff checklist, now done:
 
 - Compare simulation input tables and relevant executable rules by hash/version;
   do not apply German segment addresses to this EXE without checking them.
 - Resource selection: the language letter comes from `dat/lan.inf` (see below) and
   the entry point checks the profile's required files instead of `butt/1/map.bmp`
   (done, round E1). Text, town names, cards, menus, subtitles and scene assets follow
-  the letter; their English contents still need the E2 checks.
+  the letter; their English contents were checked in round E2.
 - Make preflight and installation verification accept the actual runtime layout
-  of an explicitly supported profile instead of requiring the German overview.
+  of an explicitly supported profile instead of requiring the German overview
+  (done, round E2: `tools/editions.py`).
 - Verify one complete human turn and the installer smoke checks against the
-  English copy using external installation/artifact directories.
+  English copy using external installation/artifact directories (done, round E2).
 
 This engine work is separate from the directory importer so it can be coordinated
 with the ongoing game-window reconstruction.

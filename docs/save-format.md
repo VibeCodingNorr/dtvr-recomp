@@ -14,7 +14,8 @@ trip. Records may appear in any order after the header; `end` closes the save.
 
 | Record | Fields |
 | --- | --- |
-| `DTVR-RECOMP-SAVE` | format version (currently 7; 6 is read without `flow`, 5 also without `worth`, 4 also without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
+| `DTVR-RECOMP-SAVE` | format version (currently 8; 7 is read without `edition`, 6 also without `flow`, 5 also without `worth`, 4 also without `extensions`, 3 also without `stages`, 2 also without `demo`, 1 also without `risiko`); always the first line |
+| `edition` | edition id of the original data (`de-retail`, `en-us-retail`; `src/edition.hpp`), written as the second line (format 8; older saves are German) |
 | `rules` | rule revision of the reconstruction (`kRulesRevision`); newer ones are refused |
 | `data` | 64-bit FNV-1a fingerprint of the board and town records (hex) |
 | `rng` | state of the MS C random generator; loading a slot or the autosave keeps the running generator (rally.exe saves no seed, round 130), exact copies (new game, a roll taken back) restore it |
@@ -59,6 +60,33 @@ therefore overwritten on such a load; exact copies (new game, a roll taken back)
 keep them. `writeSaveFile` writes a temporary file next to
 the target and renames it, so an interrupted write never replaces a good save.
 
+## Editions
+
+A save belongs to the edition of the data it was written with (format 8, round E2):
+the town names, texts and `europe.map` differ between the German and the US English
+retail edition, although the rules are the same. Loading compares the `edition`
+record with the running edition before the data fingerprint and refuses another
+edition's save with a German message ("Dieser Spielstand gehört zu einer anderen
+Ausgabe …"); the running game stays unchanged. Saves of formats 1–7 have no
+`edition` record and load only with German data. Both editions share one save
+directory (below), so the slot list shows every save; the edition check keeps them
+apart. A new game takes over the edition of the running one (`PlayView::newGame`).
+
+## Map state between games
+
+User decision (2026-11-26, both editions): every new and every loaded game starts
+from a freshly read `map/europe.map`. The US retail rally.exe does this (R seg5:182F
+from seg5:186A(…, 1) and in the loader R seg8:AF67, before the East re-opening);
+the German rally.exe reads the file once per program run (D seg5:1559), so tile
+changes of a previous game (opened East barriers, obstacle tiles) would carry over
+into the next one. The rebuild follows the retail behaviour for the German profile
+too, as Blue Byte's own later fix and a documented deviation from the German
+executable. The simulation never writes into its map (barrier links follow
+`eastOpen`, obstacles their table, both part of the save), and a new game is handed
+over by the save codec, so no map state carries over there; the game window reads
+`europe.map` again for its world bitmap and the ambient animations at every new or
+loaded game (`GameScreen::reloadMap`). The rules revision is unchanged.
+
 ## Compatibility
 
 The format version changes when the layout changes; the rule revision records
@@ -78,4 +106,6 @@ The game window's save dialog (round 33) writes slot `n` (0–8) to
 `slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomp/saves` (default
 `~/.local/share/dtvr-recomp/saves`), and its description to `saves.ini` in the
 same directory (`[Save]`, one `Slot<n>=<description>` line per slot). The
-autosave of each turn start (round 35) is `as.sav` in the same directory.
+autosave of each turn start (round 35) is `as.sav` in the same directory. The
+directory is shared by both editions; a game of one edition overwrites the autosave
+of the other, and loading another edition's slot is refused (see Editions).
