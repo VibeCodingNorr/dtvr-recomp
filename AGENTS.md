@@ -146,7 +146,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/risiko_view.{hpp,cpp}`: the Risiko window; `src/window_border.{hpp,cpp}`: the wooden non-client border; `src/sb_button.{hpp,cpp}`: the SBBUTTON
   button group (focus, press, disabled, keys) of the button windows; `src/map_scroll.{hpp,cpp}`
   (no SDL): centring, clamping and edge scrolling of the map origin; `src/season_wipe.{hpp,cpp}`
-  (no SDL): the blind wipe of the map at a season change; `src/event_scenes.{hpp,cpp}`
+  (no SDL): the blind wipe of the map at a season change; `src/stop_order.{hpp,cpp}` (no SDL):
+  the order of the windows at a stop (finish, message, town dialog, announcement); `src/event_scenes.{hpp,cpp}`
   (no SDL): event animation table and timing; `src/mouse_control_view.{hpp,cpp}`: the MCTRL
   mouse steering cross; `src/controller.{hpp,cpp}`: game controllers as the original joystick with `src/pad_input.{hpp,cpp}` (no SDL calls) its key logic and the recomp pad layer, `src/pad_map.{hpp,cpp}` (no SDL) the pad button remapping ([Gamepad]) and `src/game_window_pad.cpp` its context in the game window; `src/flc.{hpp,cpp}` (no SDL): FLC film decoder;
   `src/film_view.{hpp,cpp}`: the FLIC window; `src/sight_view.{hpp,cpp}`: the Tourism sights window; `src/voice_sync.{hpp,cpp}` (no SDL): sync.dat subtitle timing; `src/subtitle_view.{hpp,cpp}`: the SUBTITLE window; `src/intro_script.{hpp,cpp}` (no SDL): the start intro state machine; `src/ambient.{hpp,cpp}` (no SDL): the ambient map animations; `src/intro_view.{hpp,cpp}`: the INTRO window; `src/logo_view.{hpp,cpp}`: the Blue Byte logo (PICT) while loading; `src/vehicle_air.{hpp,cpp}` (no SDL): the plane transformation on sea routes; `src/vehicle_anim.{hpp,cpp}` (no SDL): the vehicles' frame animation; `src/drago_vehicle.{hpp,cpp}` (no SDL): Dr. Drago's own vehicle following his holder;

@@ -115,6 +115,8 @@ int main() {
             expected.random(3);
             g.takeSounds();
             CHECK(g.step(Direction::Left));
+            CHECK(g.fieldFollowUpPending() && g.remainingStages() == 1 && g.destination() == 12);
+            CHECK(!g.endTurn() && !g.endTurn()); // seg7:372F(3), then seg2:5CDE / 5FCA / 9C97
             CHECK(g.sessionRandom().state() == expected.state());
             CHECK(g.announceMode() == 3 && g.remainingStages() == 0);
             CHECK(g.destination() == 1 && g.origin() == 12); // Brussels; DS:A10B = the reached field

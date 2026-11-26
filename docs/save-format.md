@@ -127,8 +127,11 @@ in the year balance), 30 (order and exclusion of the next destination), 49 (the
 loader's draw for Dr. Drago, seg8:B06A, and the turn start after loading), 51
 (Dr. Drago's laugh random(1) before each of his messages, seg2:BB48), 52 (with
 Colorcycle off the event trigger runs at the new seasons too, seg5:1929; with it
-on nothing changes). A save of an older revision loads, but continues with the
-current rules.
+on nothing changes), 53 (Nägel spins one reel after the nails, seg3:1E42-1E50), 54 (Dr. Drago's action after the town dialog and the card
+shop, seg2:15A6 / 15B8; the next destination, the announcement's draw and Dr.
+Drago's placement after the destination's town dialog, seg2:141A / 1438 ff.). No
+save is written while the rest of such a stop is still due (`Game::fieldFollowUpPending`).
+A save of an older revision loads, but continues with the current rules.
 
 ## Save slots
 

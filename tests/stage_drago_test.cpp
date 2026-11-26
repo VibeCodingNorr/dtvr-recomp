@@ -84,8 +84,13 @@ int main() {
             if (g.destination() != 1 || g.currentPlayer() != 0 || !g.roll() || g.allowance() != 1) continue;
             CHECK(g.distanceTable() == distanceTable(board, 1, 0x4000));
             CHECK(g.step(Direction::Right));
+            // seg2:141A: the town dialog of the reached town comes first; the stage is unchanged.
+            CHECK(g.fieldFollowUpPending() && g.remainingStages() == 2 && g.destination() == 1);
+            CHECK(!g.endTurn()); // the announcement seg7:372F(1)
             CHECK(g.remainingStages() == 1 && g.destination() == 2 && g.origin() == 1);
-            CHECK(g.dragoPlacements() == 1 && g.drago().holder == 1);
+            CHECK(g.dragoPlacements() == 0);
+            CHECK(!g.endTurn()); // seg2:9C97
+            CHECK(g.dragoPlacements() == 1 && g.drago().holder == 1 && !g.fieldFollowUpPending());
             CHECK(distanceTable(board, 2, 0x4000)[0] == 0xFFFF);
             CHECK(g.distanceTable()[0] == 0xFFFF && g.distanceTable()[2] == 0); // rebuilt (seg2:154A)
             ++checked;

@@ -197,7 +197,12 @@ std::string SaveSlots::description(int slot) const {
 namespace {
 // The year balance and the monthly statement run inside a suspended player change that the
 // save format does not hold (rally.exe's windows are modal): no save is written then.
+// Neither is the rest of a stop that runs after the field's dialog (Game::fieldFollowUpPending).
 bool unsavable(const Game& game, std::string& error) {
+    if (game.fieldFollowUpPending()) {
+        error = "waehrend eines Feldes (Stadt, Ziel, Kartenfeld) nicht speicherbar";
+        return true;
+    }
     if (game.phase() != Game::Phase::Balance && game.phase() != Game::Phase::Statement) return false;
     error = "waehrend Jahresbilanz oder Monatsabschluss nicht speicherbar";
     return true;
