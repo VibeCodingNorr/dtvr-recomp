@@ -80,6 +80,8 @@ private:
     void command(int id);
     // game_window_frame.cpp
     void updateFrame(int frame);
+    // The INTRO window has gone (its own end or a skip): the title follows at once.
+    void finishIntro();
     // game_window_statement.cpp: the monthly statement STAT (seg1:972F)
     void updateStatement();
     bool handleStatementEvent(const SDL_Event& event); // true when STAT took the event

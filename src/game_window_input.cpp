@@ -67,7 +67,11 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     }
     if (screen_.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
         return; // the FLIC window runs modally (seg6:0FB4)
-    if (screen_.intro().active()) { screen_.intro().handle(event); return; } // seg7:2118, modal
+    if (screen_.intro().active()) { // seg7:2118, modal
+        screen_.intro().handle(event);
+        finishIntro(); // a skip: the title before the next paint
+        return;
+    }
     if (screen_.sight().isOpen()) { screen_.sight().handle(event); return; } // seg6:4DCB, modal
     if (screen_.viewStopped() && event.type == SDL_KEYDOWN
         && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER)) {
