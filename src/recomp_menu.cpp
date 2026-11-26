@@ -48,7 +48,41 @@ Item info(std::string label, std::string value) {
     return i;
 }
 
+// One row of the controls table: action, keyboard, game controller.
+Item control(std::string label, std::string keyboard, std::string pad) {
+    Item i = info(std::move(label), std::move(keyboard));
+    i.pad = std::move(pad);
+    return i;
+}
+
 } // namespace
+
+// The keys of the game window and the pad mapping of src/pad_input.cpp (docs/formats.md
+// "Joystick" / "Recomp pad layer"); the pad column holds while [Setup] Joystick is on.
+RecompMenu::Page controlsPage() {
+    RecompMenu::Page p;
+    p.title = "Steuerung";
+    p.columns = {"Aktion", "Tastatur", "Gamepad"};
+    p.hint = "Das Gamepad wirkt wie der Joystick des Originals, solange die Option Joystick an ist; "
+             "alle angeschlossenen Pads zählen gemeinsam.";
+    p.items = {
+        control("Fahren, Auswahl bewegen", "Pfeiltasten", "Kreuz, linker Stick"),
+        control("Bestätigen, Schalter umlegen", "Enter, Leertaste", "A"),
+        control("Abbrechen, zurück", "Esc", "B"),
+        control("Recomp-Menü (Pause)", "Esc, F8 (Audio)", "Start"),
+        control("Originales Spielmenü", "Rücktaste, rechte Maustaste", "Ansicht"),
+        control("Schließen, Zeichen löschen", "Rücktaste", "X"),
+        // Y: ONFIELD's 1031 or the town dialog's Karte; F9 in PLAYER (extras) / OPTION (Grafik).
+        control("Karte einsetzen / F9-Funktion", "Zugmenü / F9", "Y"),
+        control("Seite wechseln (dieses Menü)", "Umschalt+Tab / Tab", "LB / RB"),
+        // Inside Umfeld (opened from the right-button menu): seg6:1991 keys, PR #24.
+        control("Im Umfeld verschieben", "Pfeiltasten, 2/4/6/8", "Kreuz, rechter Stick"),
+        control("Spielernamen eingeben", "Feld wählen, tippen", "A: Bildschirmtastatur"),
+        control("Etappen ±1 / ±10 / ±50", "←→ / ↑↓ / Tab", "Kreuz / LB, RB"),
+        control("Vollbild / Schriftglättung", "F11, Alt+Enter / F12", "Seite Grafik"),
+    };
+    return p;
+}
 
 RecompMenu::RecompMenu(bool inGame) { build(inGame); }
 
@@ -114,17 +148,7 @@ void RecompMenu::build(bool inGame) {
         toggle("Computer spielen alle Karten", Field::ExtraCards,
                "Erweiterung: auch Karten, die rally.exe nie wählt. Gilt für neue Spiele."),
     }});
-    pages_.push_back({"Steuerung", {
-        info("Menü / Pause", "Esc"),
-        info("Originales Spielmenü", "Rücktaste, rechte Maustaste"),
-        info("Fahren, würfeln, bestätigen", "Pfeiltasten, Enter / Leertaste"),
-        info("Audio und Klangset", "F8"),
-        info("Vollbild / Schriftglättung", "F11, Alt+Enter / F12"),
-        // The pad (docs/formats.md "Recomp pad layer"); eight rows fit the page.
-        info("Gamepad", "Kreuz/Stick, A Enter, B Esc, X Rücktaste, Start Menü"),
-        info("Gamepad", "Ansicht Spielmenü, Y Karte, LB/RB Tab/Seite, R-Stick Umfeld"),
-        info("Gamepad: Namen", "A im Namensfeld öffnet die Bildschirmtastatur"),
-    }});
+    pages_.push_back(controlsPage());
 }
 
 void RecompMenu::open(const Settings& settings, bool inGame) {

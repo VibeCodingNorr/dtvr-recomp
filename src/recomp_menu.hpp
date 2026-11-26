@@ -40,9 +40,20 @@ public:
         Action command = Action::None; // Kind::Command
         std::vector<std::string> choices; // Kind::Choice (Toggle: Aus / An)
         bool original = false;            // a switch of the original OPTION window
-        std::string value;                // Kind::Info: right column
+        std::string value;                // Kind::Info: right column (a table page: the keyboard)
+        std::string pad;                  // a table page: the game controller column
     };
-    struct Page { std::string title; std::vector<Item> items; };
+    // A table page (Steuerung) shows its info rows compactly under the headings
+    // `columns` (action, keyboard, pad) with `hint` in the footer, since no row takes
+    // the focus.
+    struct Page {
+        std::string title;
+        std::vector<Item> items;
+        std::vector<std::string> columns{};
+        std::string hint{};
+        bool table() const { return !columns.empty(); }
+    };
+    static constexpr int kTableRows = 12; // rows a table page fits into the panel
 
     explicit RecompMenu(bool inGame = true);
     void open(const Settings& settings, bool inGame);
@@ -84,6 +95,9 @@ private:
     int page_ = 0, row_ = 0;
     bool inItems_ = false, open_ = false, inGame_ = true;
 };
+
+// The Steuerung page: keyboard and pad side by side (recomp texts, not in the language file).
+RecompMenu::Page controlsPage();
 
 // Recomp-only labels of the on-screen keyboard (src/osk_view.cpp) and its help line;
 // like the menu's texts they are not in the language file.

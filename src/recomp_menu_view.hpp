@@ -31,6 +31,7 @@ public:
 private:
     struct Geometry {
         SDL_Rect panel, header, sidebar, content, footer;
+        SDL_Rect tableHead{}; // a table page's column headings
         std::vector<SDL_Rect> pages, rows;
         double scale = 1;
     };
@@ -38,6 +39,7 @@ private:
     int px(double v) const;
     SDL_Rect sliderBar(const SDL_Rect& row) const; // the volume bar left of its percentage
     void drawToggle(const SDL_Rect& row, bool on, bool focused, double scale);
+    void drawTable(const Geometry& g, const RecompMenu::Page& page);
 
     SDL_Renderer* renderer_;
     std::filesystem::path root_;

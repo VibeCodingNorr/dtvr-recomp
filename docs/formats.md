@@ -3396,6 +3396,26 @@ the original windows is unchanged):
   `PadInput` with the current context, also with `--smoke-test`) and
   `ClickLeft:x:y` / `ClickRight:x:y` (canvas pixels).
 
+Round 3 "polish" (RECOMP ADDITIONS; no original behaviour changed):
+
+- **Right stick.** Unchanged from round 1 and checked against the rewritten Umfeld
+  input (seg6:1906 → 1991): its steps reach `GameScreen::handleSurroundings` as
+  arrow key-downs without modifiers, i.e. one `surroundingsMove` step (a third of the
+  view, seg6:17F4) each, with the 80 ms repetition. rally.exe has no free map scroll
+  outside Umfeld, so the stick does nothing there; Umfeld is opened with View
+  (RIGHTBTN) → Umfeld.
+- **Coverage.** Every window and dialog is reachable and operable with the pad
+  (audit notes outside the repository). Without a pad path remain: the steering
+  cross MCTRL (mouse only by design; it only posts arrows and Return, which the pad
+  has), the TEMP slider (its value is reached by the d-pad steps), the Umfeld edge
+  strips (arrows / right stick), the display keys F11 / F12 (recomp menu page
+  Grafik), keys 1–4 (page Spiel), Space "centre on the player" and Insert / Delete
+  zoom outside RIGHTBTN (its Zoom item). No virtual pointer was added, as no window
+  needs one. The [Setup] Joystick gate stays: with the option off the pad is dead
+  and only keyboard or mouse can switch it back on.
+- **Steuerung page.** A table (Aktion / Tastatur / Gamepad) in the recomp menu,
+  `controlsPage()` in src/recomp_menu.cpp (docs/pause-menu.md).
+
 ### Start and Blue Byte logo
 
 - **Order in seg5:0000** (the start-up returning 1 on success): … seg5:1BBB creates
