@@ -96,6 +96,10 @@ private:
     void mainWindowReturn(); // seg4:01EA -> seg2:0BC3 (keyboard, pad, MCTRL)
     // game_window_dialogs.cpp: true when a game dialog took the event
     bool handleGameDialog(const SDL_Event& event);
+    // The investment offer (seg8:6FBF): opening for a loaded pending offer and the
+    // computer's timeout (seg6:0FB4) each frame; finishInvest applies an answer.
+    void updateInvest();
+    void finishInvest(const InvestView::Result& r);
     bool handleCardWindow(const SDL_Event& event);
     bool handleEstates(const SDL_Event& event);
     void openEstateCards(); // the town dialog's Karte (also the pad's Y)

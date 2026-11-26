@@ -60,19 +60,34 @@ int main() {
         for (int i = 0; i < 40; ++i) again.rand();
         CHECK(SaveCodec::encode(Game(board, towns, slots, 0, again)) == SaveCodec::encode(after));
     }
-    // seg8:6FBF: a computer's investment offer waits for the human's answer in the
-    // game window (the window ignores the timeout 0x7EF, round 138).
+    // seg8:6FBF: a computer's investment offer stays open until the window's timeout
+    // (seg6:0FB4 posts 0x7EF = VK_BACK, seg8:714C declines); without a window the
+    // computer declines at once. Both paths draw the same numbers (the decline draws none).
     {
         const std::array<uint8_t, kPlayerSlots> slots{2, 1, 0, 0, 0, 0, 0, 0};
         Game w(board, towns, slots, 0, 1), plain(board, towns, slots, 0, 1);
         for (Game* g : {&w, &plain}) { g->setRandomEvents(false); g->triggerEvent(EventKind::Professor); }
         w.setInvestmentWindow(true);
         CHECK(w.currentPlayer() == 0 && w.isComputer(0) && w.investmentOffer() == EventKind::Professor);
-        CHECK(!w.computerAdvance() && w.phase() == Game::Phase::Roll && w.investmentOffer() == EventKind::Professor);
+        CHECK(SaveCodec::encode(w) == SaveCodec::encode(plain));
+        for (int i = 0; i < 3; ++i) // the computer's turn waits for the window
+            CHECK(!w.computerAdvance() && w.phase() == Game::Phase::Roll && w.investmentOffer() == EventKind::Professor);
         const double before = w.cash(0);
-        CHECK(w.invest(5000) && w.cash(0) == before - 5000 && w.investmentOffer() == EventKind::None);
+        w.declineInvestment(); // the window's timeout
+        CHECK(w.investmentOffer() == EventKind::None && w.cash(0) == before);
         CHECK(w.computerAdvance()); // the computer's turn goes on
         CHECK(plain.computerAdvance() && plain.investmentOffer() == EventKind::None); // no window: declined
+        CHECK(plain.cash(0) == before);
+        CHECK(SaveCodec::encode(w) == SaveCodec::encode(plain)); // same draws, same turn
+        // A game of computers waits for the window too (seg6:0FB4 posts after the same wait).
+        const std::array<uint8_t, kPlayerSlots> demo{2, 2, 0, 0, 0, 0, 0, 0};
+        Game d(board, towns, demo, 0, 1);
+        d.setRandomEvents(false);
+        d.triggerEvent(EventKind::Professor);
+        d.setInvestmentWindow(true);
+        CHECK(!d.humansLeft() && d.investmentOffer() == EventKind::Professor && !d.computerAdvance());
+        d.declineInvestment();
+        CHECK(d.computerAdvance());
     }
     // seg2:6426: with a slot window the move starts only when it has closed
     // (seg2:66B9 -> 61B7); seg2:69AD: a human's Würfeln is taken back before that

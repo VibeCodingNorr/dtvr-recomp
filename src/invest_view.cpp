@@ -38,8 +38,9 @@ SDL_Texture* InvestView::bitmap(const std::string& file) {
     return it->second.get();
 }
 
-void InvestView::open(bool professor, const std::string& offer, double cash) {
+void InvestView::open(bool professor, const std::string& offer, double cash, Uint32 now) {
     professor_ = professor;
+    openedAt_ = now;
     offer_ = offer;
     cash_ = cash;
     asking_ = false;
