@@ -105,6 +105,7 @@ void GameWindow::updateFrame(int frame) {
             if (!wav.empty()) sound_.playFile(7, wav); // seg1:2D40(7, …)
         }
     }
+    screen_.setFilmsQueued(!pendingFilms_.empty()); // the slot window opens after them
     // The event handlers of seg8 (seg8:1E42, 2355, 2A01, 3BDA, 427F, 4933, 4EEA, 5A45,
     // 5EED, 6C41) call seg1:275E once their message has been closed: the event music
     // stops and the next background piece starts from the beginning.
@@ -320,6 +321,7 @@ bool GameWindow::gameWindowOpen() {
            || screen_.seasonWipeActive() // seg8:1682 / 169F inside the player change
            // the slot machine and event animations run synchronously in rally.exe
            || screen_.slotActive(screen_.presentationNow()) || screen_.eventSceneActive(screen_.sceneNow())
+           || play_.game().spinPending() // seg2:6426 returns only when its window has closed
            || screen_.risiko().blinking(SDL_GetTicks());
 }
 

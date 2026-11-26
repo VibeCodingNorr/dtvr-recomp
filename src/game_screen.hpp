@@ -162,6 +162,8 @@ public:
     bool slotActive(Uint32 now) const { return slot_.active(now); }
     // The slot window of spin `serial` has been shown and has closed again.
     bool slotDone(int serial, Uint32 now) const { return seenSpin_ == serial && !slot_.active(now); }
+    // Films the window has taken from the game but not started yet (slotWindowMayOpen).
+    void setFilmsQueued(bool queued) { filmsQueued_ = queued; }
     // Enter / Space in the slot window; the lever pull and the stop of the turning reels
     // play sound 2 on channel 1 (seg2:6A97, seg2:6AF7).
     bool slotKey(Uint32 now) {
@@ -285,6 +287,7 @@ private:
     IntroView intro_;
     void prepareSubtitles();
     int seenSpin_ = 0;
+    bool filmsQueued_ = false;
     SoundPlayer* sound_ = nullptr;
     bool reelsSounding_ = false;
     bool reelsPending_ = false;

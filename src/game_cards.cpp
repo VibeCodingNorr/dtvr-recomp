@@ -172,11 +172,14 @@ bool Game::playCard(int handSlot, int target) {
         damageTown(town, 37);
         break;
     }
-    case CardKind::Naegel: { // seg3:2096: two cells from the player, duration 4n; the turn goes on
-        if (water) { // seg3:1CD8: Platsch, text 5500, no obstacle; the spin follows as usual
+    case CardKind::Naegel: { // seg3:2096: two cells from the player, duration 4n; no nextPlayer
+        // Every path joins at seg3:1E3D and posts WM_COMMAND 0x2710 (seg3:1E42-1E50): the
+        // one-reel spin of the status cards follows (round "sleep reels").
+        if (water) { // seg3:1CD8: Platsch, text 5500, no obstacle
             sound(5, 0x12);
             notice(5500);
             messages_.push_back("Die Naegel fallen ins Wasser");
+            spinAfterCard();
             return true;
         }
         films_.push_back({1, 1, "Naegel.wav"}); // seg3:1DA9 / 1DCE after the direction window
@@ -185,6 +188,7 @@ bool Game::playCard(int handSlot, int target) {
         const int x = f.x + dx[target - 1], y = f.y + dy[target - 1];
         obstacles_.add({kNails, 4 * activePlayerCount(players_), x, y, here, target});
         messages_.push_back("Naegel liegen bei (" + std::to_string(x) + "," + std::to_string(y) + ")");
+        spinAfterCard();
         return true;
     }
     case CardKind::Punch: playPunch(); break;
@@ -227,16 +231,23 @@ bool Game::playCard(int handSlot, int target) {
         players_[size_t(victim)].flags |= cardStatusFlag(kind);
         if (kind == CardKind::Zucker) films_.push_back({3, 1, "Zucker.wav"});    // seg3:1A25 / 1A72
         if (kind == CardKind::Schlafen) films_.push_back({2, 10, "Sab.wav"});    // seg3:1B4A / 1B97: ten times
-        int sum = 0;
-        sum = spin(1, 5);
-        messages_.push_back("wuerfelt " + std::to_string(sum));
-        rollUndo_.clear();
-        moveAfterSpin(sum); // seg2:66B9 -> seg2:61B7 after the window
+        spinAfterCard();
         return true;
     }
     }
     advanceTurn(); // the handler calls nextPlayer (seg2:06FC)
     return true;
+}
+
+// WM_COMMAND 0x2710, posted by Steuerlos, Zucker, Blockieren, Schlafen and Nägel
+// (seg3:19D7 / 1AAB / 1AFC / 1BD0 / 1E50): seg4:0A27 -> seg2:6426(1, 5, 0), one reel
+// for the player who played the card, not taken back (DS:9AD8 = 0). Its window opens
+// after the card's film or message (slotWindowMayOpen).
+void Game::spinAfterCard() {
+    const int sum = spin(1, 5);
+    messages_.push_back("wuerfelt " + std::to_string(sum));
+    rollUndo_.clear();
+    moveAfterSpin(sum); // seg2:66B9 -> seg2:61B7 after the window
 }
 
 void Game::playPunch() {

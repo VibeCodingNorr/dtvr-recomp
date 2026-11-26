@@ -148,7 +148,8 @@ int main() {
             for (int s = 0; s < 8; ++s)
                 if (g->deck().typeOfSlot(g->hand(0)[size_t(s)]) == 18) nails = s;
             if (nails < 0 || g->currentPlayer() != 0 || g->playerField(0) != g->playerField(1)) continue;
-            if (!g->playCard(nails, 2) || g->obstacles().count() != 1 || !g->roll()) continue;
+            // Nägel spins one reel itself (WM_COMMAND 0x2710, seg3:1E50)
+            if (!g->playCard(nails, 2) || g->obstacles().count() != 1 || g->phase() != Game::Phase::Move) continue;
             const int field = g->playerField(0), taken = g->stepsTaken();
             g->takeSounds();
             MsRandom expected = g->sessionRandom();

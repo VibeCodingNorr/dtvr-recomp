@@ -14,7 +14,7 @@ constexpr int kSaveFormat = 9;     // layout (1: no Risiko record, 2: no demo re
                                    // 4: no extensions record, 5: no worth records, 6: no flow records,
                                    // 7: no edition record, i.e. a German save; 8: no colorcycle
                                    // record, i.e. Colorcycle on)
-constexpr int kRulesRevision = 52; // rule reconstruction round the state belongs to (26: draws of the
+constexpr int kRulesRevision = 53; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the
                                    // year balance's draws, seg8:88DF / 8C49 / 8C57; 29: one more
@@ -65,7 +65,8 @@ constexpr int kRulesRevision = 52; // rule reconstruction round the state belong
                                    // BF8C / C067); an empty torn slot gives a property,
                                    // seg2:BE96; 52: [Setup] Colorcycle as a rule input:
                                    // off, the event trigger never skips for a season,
-                                   // seg5:1929)
+                                   // seg5:1929); 53: Nägel spins one reel after the
+                                   // nails, WM_COMMAND 0x2710, seg3:1E42-1E50)
 
 // FNV-1a over the board and town records, so a save is only loaded with the data
 // it was written for.

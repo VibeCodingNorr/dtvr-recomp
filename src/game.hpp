@@ -537,6 +537,7 @@ private:
     int dragoFormChanges_ = 0, dragoStartSide_ = 0;   // presentation only, not saved
     int dragoHandOvers_ = 0, dragoHandOverFrom_ = -1;
     void moveAfterSpin(int allowance);      // startMove now or after the window
+    void spinAfterCard();                   // WM_COMMAND 0x2710 of a card (seg4:0A27)
     int spinSerial_ = 0;
     std::vector<Notice> notices_;
     int nextNotice_ = 0; // sequence of the next notice (presentation, not saved)

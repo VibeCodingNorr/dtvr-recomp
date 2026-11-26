@@ -61,12 +61,42 @@ int main() {
     const Board board = ring(towns);
     int slot = -1;
 
-    // Nägel (18): obstacle two cells away in the chosen direction; the turn goes on.
+    // Nägel (18): obstacle two cells away in the chosen direction; no nextPlayer, but
+    // seg3:1E42-1E50 posts WM_COMMAND 0x2710: one reel for the player (seg4:0A27).
     if (auto g = gameWithCard(board, towns, 1, 0, 18, slot)) {
         CHECK(!g->playCard(slot, 1));                 // no road upwards
+        const int spins = g->spinSerial();
         CHECK(g->playCard(slot, 2));
         CHECK(g->obstacles().count() == 1 && g->obstacles().slots()[0].type == kNails);
-        CHECK(g->phase() == Game::Phase::Roll);
+        CHECK(g->spinSerial() == spins + 1 && g->lastReels().size() == 1);
+        CHECK(g->phase() == Game::Phase::Move && g->currentPlayer() == 0);
+    } else CHECK(false);
+
+    // Schlafen (16, seg3:1B0A): flag 0x04 on the target, the film (seg3:1B97), then
+    // WM_COMMAND 0x2710 (seg3:1BC2-1BD0): the player who played it spins one reel, which
+    // is not taken back (seg4:0A27 -> seg2:6426(1, 5, 0)). The target's next turn is only
+    // a message at the player change (seg2:099B-0A1A, text 1010 + random(2)): no spin.
+    if (auto g = gameWithCard(board, towns, 3, 0, 16, slot)) {
+        g->setSpinPresentation(true);
+        g->takeFilms();
+        const int spins = g->spinSerial();
+        CHECK(g->playCard(slot, 2) && (g->players()[2].flags & 0x04));
+        CHECK(g->spinSerial() == spins + 1 && g->lastReels().size() == 1);
+        CHECK(g->spinPending() && !g->rollCancellable());
+        CHECK(g->currentPlayer() == 0 && g->phase() == Game::Phase::Roll);
+        const auto films = g->takeFilms();
+        CHECK(films.size() == 1 && films[0].film == 2 && films[0].loops == 10);
+        CHECK(g->finishSpin() && g->phase() == Game::Phase::Move);
+        while (g->phase() == Game::Phase::Move) g->step(Direction::Right);
+        CHECK(g->endTurn() && g->currentPlayer() == 1);
+        CHECK(g->roll() && g->spinSerial() == spins + 2 && g->finishSpin());
+        while (g->phase() == Game::Phase::Move) g->step(Direction::Right);
+        g->takeNotices();
+        CHECK(g->endTurn() && g->currentPlayer() == 0 && g->phase() == Game::Phase::Roll);
+        bool slept = false;
+        for (const Notice& n : g->takeNotices()) slept |= n.text >= 1010 && n.text <= 1012; // random(2): 0..2
+        CHECK(slept && !(g->players()[2].flags & 0x04));
+        CHECK(g->spinSerial() == spins + 2 && !g->spinPending()); // the skipped turn spins nothing
     } else CHECK(false);
 
     // Nägel on a sea field (rounds 75 / 85, seg3:1CCF): no direction, no obstacle, Platsch and
@@ -98,6 +128,7 @@ int main() {
             for (const Notice& n : g->takeNotices()) text |= n.text == 5500;
             for (const SoundCue& c : g->takeSounds()) splash |= c.channel == 5 && c.sound == 0x12;
             CHECK(text && splash);
+            CHECK(g->lastReels().size() == 1 && g->phase() != Game::Phase::Risiko); // 0x2710 (seg3:1E50)
         }
     }
 

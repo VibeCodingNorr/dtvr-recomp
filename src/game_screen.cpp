@@ -909,7 +909,8 @@ void GameScreen::draw() {
     drawPlayerInfo();
     const Uint32 now = SDL_GetTicks();
     const Uint32 slotNow = presentationNow(); // the slot machine follows the tempo
-    if (game_.spinSerial() != seenSpin_) { // a new spin: the slot machine runs over the map
+    if (game_.spinSerial() != seenSpin_ // a new spin: the slot machine runs over the map after the card's film / message
+        && slotWindowMayOpen({film_.active(), filmsQueued_, messages_.open(), game_.hasNotices()})) {
         seenSpin_ = game_.spinSerial();
         const int p = game_.currentPlayer();
         slot_.start(game_.lastReels(), slotNow, p >= 0 && game_.isComputer(p));
