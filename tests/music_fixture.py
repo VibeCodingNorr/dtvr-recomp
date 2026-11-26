@@ -19,7 +19,8 @@ def main():
         subprocess.run([sys.argv[2], "-nostdin", "-v", "error", "-f", "lavfi", "-i",
                         "sine=frequency=440:sample_rate=44100:duration=2.12", "-ac", "2",
                         "-c:a", "libvorbis", str(tone)], check=True)
-        for pack_id in ("tone", "dry", "hybrid", "missing", "linked", "corrupt", "unsafe", "tail", "recorded"):
+        for pack_id in ("tone", "dry", "hybrid", "missing", "linked", "corrupt", "unsafe", "tail", "recorded",
+                        "release", "release-silence", "release-kind"):
             pack = root / "packs" / pack_id
             (pack / "cues").mkdir(parents=True)
             catalog = {"schema_version": 1, "id": pack_id, "name": pack_id,
@@ -39,6 +40,14 @@ def main():
                 catalog["cues"]["g0"]["nominal_end_seconds"] = 0.12
             if pack_id == "recorded":  # recordings only in cd-hybrid sets
                 catalog["cues"]["g0"].update(source="cd-recording", nominal_end_seconds=2.12)
+            if pack_id.startswith("release"):  # a release Ogg copied 1:1: music ends before its silence
+                catalog["source_kind"] = "release-ogg-hybrid"
+                catalog["cues"]["g0"].update(source="release-ogg-recording", nominal_end_seconds=0.62,
+                                             trailing_silence_seconds=1.5)
+            if pack_id == "release-silence":  # the silence must match the timeline
+                catalog["cues"]["g0"]["trailing_silence_seconds"] = 1.0
+            if pack_id == "release-kind":  # release recordings only in release-ogg-hybrid sets
+                catalog["source_kind"] = "cd-hybrid"
             if pack_id == "missing":
                 (pack / "cues/g2.ogg").unlink()
             if pack_id == "linked":

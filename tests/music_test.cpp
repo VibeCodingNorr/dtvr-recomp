@@ -56,8 +56,12 @@ void controls() {
 void decoding(const fs::path& root) {
     std::vector<std::string> issues;
     auto packs = discoverMusicPacks(root, issues);
-    check(packs.size() == 3 && issues.size() == 6,
-          "accept a cd-hybrid set; reject incomplete, linked, corrupt, unsafe and mistimed packs");
+    check(packs.size() == 4 && issues.size() == 8,
+          "accept cd-hybrid and release-ogg-hybrid sets; reject incomplete, linked, corrupt, unsafe, mistimed "
+          "and mislabelled packs");
+    const auto release = readMusicPack(root / "release");
+    check(std::abs(release.tracks.at("g0").nominalEnd - 0.62) < 1e-9,
+          "a release Ogg ends at its measured music end, before the trailing silence");
     const auto hybrid = readMusicPack(root / "hybrid");
     check(std::abs(hybrid.tracks.at("g0").nominalEnd - 2.12) < 1e-9 && std::abs(hybrid.tracks.at("g1").nominalEnd - 0.12) < 1e-9,
           "a recording ends with its media, a rendering 2 s before");

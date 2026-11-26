@@ -8,6 +8,7 @@ import shutil
 import subprocess
 
 from cd_audio import audio_layout
+from release_ogg import LABEL as RELEASE_LABEL, check_release_audio, release_profile
 from iso9660 import IsoImage
 from soundtrack import soundfont_info, validate_identity
 from installer_dependencies import DependencyError, dependency_report
@@ -57,11 +58,13 @@ def interface_font(directories=None):
 
 def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
               music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False,
-              directory=None):
+              directory=None, cd_audio_dir=None):
     if type(jobs) is not int or not 1 <= jobs <= 256:
         raise ValueError("Build jobs must be between 1 and 256")
     if (iso is None) == (directory is None):
         raise ValueError("Choose exactly one original ISO or directory")
+    if cd_audio_dir is not None and iso is None:
+        raise ValueError(f"{RELEASE_LABEL}: --cd-audio-dir belongs to an --iso data image")
     output = validate_output(output)
     if iso is not None:
         iso = iso.expanduser().resolve(strict=True)
@@ -106,6 +109,17 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
         file_count, source_bytes = len(files), sum(entry[2] for entry in files)
         iso_hash = digest(iso)
         has_cd = audio_layout(iso_hash, iso.stat().st_size) is not None
+    cd_audio_source = "original-cd-da" if has_cd else None
+    if cd_audio_dir is not None:
+        # Release Ogg tracks: only for the pinned image of their edition (tools/release_ogg.py).
+        profile = release_profile(iso_hash)
+        if profile is None:
+            raise ValueError(f"{RELEASE_LABEL}: only accepted with the pinned English retail data image; "
+                             "this image belongs to another edition or release")
+        cd_audio_dir = check_release_audio(cd_audio_dir, profile)
+        if cd_audio_dir == output or output in cd_audio_dir.parents or cd_audio_dir in output.parents:
+            raise ValueError("Release audio directory and installation destination must not overlap")
+        cd_audio_source = RELEASE_LABEL  # copied, not converted: no encoder needed
     banks = []
     if soundfonts:
         validate_identity(music_pack_id, music_pack_name, music_style)
@@ -128,7 +142,9 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
     return {**source, "source_kind": "directory" if directory is not None else "iso",
             "iso": str(iso) if iso is not None else None, "output": str(output), "iso_sha256": iso_hash,
             "iso_sector_size": sector_size, "original_executable_sha256": KNOWN_EXE,
-            "program_files": file_count, "cd_audio_supported": has_cd,
+            "program_files": file_count, "cd_audio_supported": cd_audio_source is not None,
+            "cd_audio_source": cd_audio_source,
+            "cd_audio_dir": str(cd_audio_dir) if cd_audio_dir is not None else None,
             "soundfonts": banks, "dependencies": requirements,
             "update": update, "previous_version": previous.get("project_version") if previous else None,
             "interface_font": font, "dependency_report": dependencies,

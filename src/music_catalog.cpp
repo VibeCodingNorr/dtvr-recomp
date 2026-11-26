@@ -72,8 +72,9 @@ MusicPack readMusicPack(const fs::path& directory) {
     if (!json || json_tokener_get_error(parser.get()) != json_tokener_success
         || text.find_first_not_of(" \n\r\t", json_tokener_get_parse_end(parser.get())) != std::string::npos)
         throw std::runtime_error("Malformed music catalog");
+    const std::string packKind = stringValue(json.get(), "source_kind");
     if (json_object_get_int(member(json.get(), "schema_version", json_type_int)) != 1
-        || (stringValue(json.get(), "source_kind") != "soundfont-render" && stringValue(json.get(), "source_kind") != "cd-hybrid")
+        || (packKind != "soundfont-render" && packKind != "cd-hybrid" && packKind != "release-ogg-hybrid")
         || !json_object_get_boolean(member(json.get(), "asset_complete", json_type_boolean)))
         throw std::runtime_error("Unsupported music catalog version/type");
     MusicPack pack;
@@ -89,7 +90,6 @@ MusicPack readMusicPack(const fs::path& directory) {
         if (!json_object_is_type(entry, json_type_string) || std::string(json_object_get_string(entry)) != "g" + std::to_string(i))
             throw std::runtime_error("Invalid background playlist");
     }
-    const bool hybrid = stringValue(json.get(), "source_kind") == "cd-hybrid";
     auto* cues = member(json.get(), "cues", json_type_object);
     if (json_object_object_length(cues) != int(kMusicCues.size())) throw std::runtime_error("Incomplete music pack");
     for (const char* cue : kMusicCues) {
@@ -97,15 +97,23 @@ MusicPack readMusicPack(const fs::path& directory) {
         const fs::path relative = fs::path("cues") / (std::string(cue) + ".ogg");
         const double end = number(entry, "nominal_end_seconds"), duration = number(entry, "media_duration_seconds");
         // A rendering ends 2 s after its MIDI end (the synth's tail); a CD recording of
-        // a cue (cd-hybrid sets) ends with the recording itself.
+        // a cue (cd-hybrid sets) ends with the recording itself. A release's Ogg track
+        // (release-ogg-hybrid sets, not original) is copied unmodified and ends at its
+        // measured music end, before the trailing zero separator (docs/cd-audio.md).
         json_object* source = nullptr;
         const std::string kind = json_object_object_get_ex(entry, "source", &source) ? stringValue(entry, "source")
                                                                                     : "soundfont-render";
-        const bool recording = kind == "cd-recording";
-        if ((kind != "soundfont-render" && !recording) || (recording && !hybrid))
+        const bool recording = kind == "cd-recording", release = kind == "release-ogg-recording";
+        if ((kind != "soundfont-render" && !recording && !release) || (recording && packKind != "cd-hybrid")
+            || (release && packKind != "release-ogg-hybrid"))
             throw std::runtime_error("Invalid cue source");
+        double tail = recording ? 0 : 2;
+        if (release) {
+            tail = number(entry, "trailing_silence_seconds");
+            if (tail < 0 || tail > 6) throw std::runtime_error("Invalid release Ogg silence");
+        }
         if (stringValue(entry, "file") != relative.generic_string() || end < 0 || end > 3600
-            || std::abs(duration - end - (recording ? 0 : 2)) > 0.05
+            || std::abs(duration - end - tail) > 0.05
             || json_object_get_boolean(member(entry, "loop", json_type_boolean)))
             throw std::runtime_error("Invalid cue path or timeline");
         const fs::path path = root / relative;

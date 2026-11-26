@@ -14,7 +14,9 @@ from inspect_game import inspect_game
 from iso9660 import IsoImage
 from cd_audio import audio_layout, convert_audio
 from soundtrack import render_pack
-from cd_soundtrack import PACK_ID as CD_PACK_ID, build_cd_hybrid
+from cd_soundtrack import build_cd_hybrid, hybrid_identity
+from release_ogg import (LABEL as RELEASE_LABEL, import_release_audio, language_letter,
+                         release_profile, require_edition)
 from installer_checks import KNOWN_EXE, REPO, default_output, validate_output, digest, preflight
 from installation_manifest import write_manifest, verify_installation
 from project_version import read_version
@@ -27,9 +29,11 @@ from installer_directory import import_directory
 
 def install(iso, output, jobs, soundfonts=None, music_style="classic",
             music_pack_id="rendered-gm", music_pack_name="Rendered SoundFont", update=False,
-            directory=None):
+            directory=None, cd_audio_dir=None):
     print("DTVR_STAGE:1:Checking original data and build dependencies", flush=True)
     source_args = {"directory": directory} if directory is not None else {}
+    if cd_audio_dir is not None:
+        source_args["cd_audio_dir"] = cd_audio_dir
     report = preflight(iso, output, jobs, soundfonts, music_style, music_pack_id, music_pack_name, update, **source_args)
     iso = Path(report["iso"]) if report["iso"] is not None else None
     output = Path(report["output"])
@@ -62,7 +66,13 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
         print("DTVR_STAGE:3:Preparing local Ogg audio", flush=True)
         iso_hash = report["iso_sha256"]
         layout = audio_layout(iso_hash, iso.stat().st_size) if iso is not None else None
-        if layout is not None:
+        if report.get("cd_audio_dir") is not None:
+            # Release Ogg tracks (not original): only for their own edition, copied unmodified.
+            profile = release_profile(iso_hash)
+            require_edition(profile, analysis["executable"]["sha256"], language_letter(data / "program"))
+            print(f"DTVR_ACTIVITY:{RELEASE_LABEL} übernehmen", flush=True)
+            audio = import_release_audio(Path(report["cd_audio_dir"]), data / "music", profile)
+        elif layout is not None:
             print("DTVR_ACTIVITY:CD-Aufnahmen vorbereiten", flush=True)
             audio = convert_audio(iso, data / "music", layout)
         else:
@@ -78,12 +88,13 @@ def install(iso, output, jobs, soundfonts=None, music_style="classic",
                           "directory": f"data/music/packs/{music_pack_id}", "cue_count": len(pack["cues"])})
             # The recognised CD recordings with this rendering for the cues they lack
             # (tools/cd_soundtrack.py); only when the image provides the CD audio.
-            if audio.get("regions") and music_pack_id != CD_PACK_ID:
+            hybrid_id = hybrid_identity(data / "music")[0] if audio.get("regions") else None
+            if hybrid_id is not None and music_pack_id != hybrid_id:
                 print("DTVR_ACTIVITY:CD-Klangset prüfen und zusammenstellen", flush=True)
                 hybrid = build_cd_hybrid(data / "music", data / "music/packs" / music_pack_id,
-                                         data / "music/packs" / CD_PACK_ID)
+                                         data / "music/packs" / hybrid_id)
                 packs.append({"id": hybrid["id"], "name": hybrid["name"],
-                              "directory": f"data/music/packs/{CD_PACK_ID}", "cue_count": len(hybrid["cues"])})
+                              "directory": f"data/music/packs/{hybrid_id}", "cue_count": len(hybrid["cues"])})
         build = Path(temporary) / "build"
         print("DTVR_STAGE:4:Configuring and compiling the native Linux build", flush=True)
         subprocess.run(["cmake", "-S", str(REPO), "-B", str(build),
@@ -135,6 +146,9 @@ def main():
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--iso", type=Path)
     source.add_argument("--directory", type=Path, help="Original game folder containing rally.exe, or its parent with program/")
+    parser.add_argument("--cd-audio-dir", type=Path,
+                        help="With --iso of a supported release: folder with its cue sheet and Ogg tracks, "
+                             "copied unmodified and marked as not original (docs/cd-audio.md)")
     parser.add_argument("--dependencies", action="store_true",
                         help="List all host dependencies as JSON, without requiring an ISO or writing files")
     parser.add_argument("--output", type=Path, default=default_output(),
@@ -164,6 +178,8 @@ def main():
     try:
         soundfonts = soundfonts_for_install(args.soundfont, args.no_music)
         source_args = {"directory": args.directory} if args.directory is not None else {}
+        if args.cd_audio_dir is not None:
+            source_args["cd_audio_dir"] = args.cd_audio_dir
         if args.check:
             print(json.dumps(preflight(args.iso, args.output, args.jobs, soundfonts,
                                        args.music_style, args.music_pack_id, args.music_pack_name, args.update, **source_args), indent=2))

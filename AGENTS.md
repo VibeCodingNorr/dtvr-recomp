@@ -179,6 +179,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `docs/distribution.md`: source-only boundaries and external installation policy.
 - `tools/cd_audio.py`: hash-specific CD audio region import to local Ogg Vorbis.
 - `tests/test_cd_audio.py`: generated-tone conversion and audio layout validation.
+- `tools/release_ogg.py`: hash-pinned release Ogg tracks of the US English retail
+  edition, copied 1:1 and marked "Release-OGG (nicht original)"; `tests/test_release_ogg.py`.
 - `docs/cd-audio.md`: provisional boundaries, provenance and native playback requirements.
 - `tools/iso9660.py`: bounded primary-tree reader for standard/raw Mode 1 ISO images.
 - `tests/test_iso9660.py`: synthetic ISO fixtures and malformed-input checks.

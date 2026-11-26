@@ -250,6 +250,8 @@ class InstallerWindow:
                             self._append(f"Update von {report['previous_version']}; bisherige Installation wird als Sicherung behalten.\n")
                         if report.get("source_kind") == "directory":
                             self._append("Quelldateien mit SHA-256 erfasst. Verzeichnisse enthalten keine CD-Audiospuren; die MIDI-Musik bleibt nutzbar.\n")
+                        elif report.get("cd_audio_source") not in (None, "original-cd-da"):
+                            self._append(f"CD-Musikquelle: {report['cd_audio_source']}.\n")
                         else:
                             self._append("CD-Audioprofil erkannt.\n" if report["cd_audio_supported"] else "Kein bekanntes CD-Audioprofil; ein Soundfont kann das vollständige Ogg-Set liefern.\n")
                     elif data["ok"]:

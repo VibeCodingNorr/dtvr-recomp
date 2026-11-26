@@ -129,7 +129,91 @@ It is selected on the Audio page (F8) like any set; switching happens at the nex
 piece. Tests: `tests/test_cd_soundtrack.py` (generated inputs) and the `hybrid` /
 `tail` / `recorded` packs of `tests/music_fixture.py`.
 
+## Release-OGG (nicht original), US English retail
+
+User decision (2026-11-26): a release of the US English retail edition that ships
+the disc as a 2048-byte data image, a cue sheet and Ogg files is accepted as an
+explicitly **non-original** CD music source. The Ogg files are lossy Vorbis
+re-encodes (about 320 kb/s) made by that release, not the disc's CD-DA.
+`tools/release_ogg.py` accepts them only under all of these conditions:
+
+- the data image has the pinned SHA-256 below (`--iso`), and the folder passed
+  with `--cd-audio-dir` holds the pinned cue sheet and six Ogg files;
+- the extracted `rally.exe` is the US English retail EXE
+  `a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a` and
+  `dat/lan.inf` starts with `E`. German images and executables are refused.
+
+Files are copied unmodified, verified again after copying, and never transcoded.
+The label "Release-OGG (nicht original)" appears in the installer log, in
+`audio.json` / the manifest (`source_kind: release-ogg`, `original: false`,
+`lossy_reencode_by_release: true`) and in the sound-set name
+"Release-OGG (nicht original) + MIDI-Ergänzungen" (pack id `release-ogg-hybrid`,
+source kind `release-ogg-hybrid`, cue source `release-ogg-recording`) shown on the
+Audio page. The native catalog accepts `release-ogg-recording` cues only in such
+sets and `cd-recording` cues only in `cd-hybrid` sets.
+
+Provenance (fingerprints of user files, computed read-only 2026-11-26; no media is
+in the repository):
+
+| Input | Cue track | Installed as | SHA-256 |
+| --- | --- | --- | --- |
+| `track01.iso` | 01 (MODE1/2048) | (data import) | `26260860553361b356a8884b290c659ab6cedf2e29645fbcf2f8f0c511551fc7` |
+| `track01.cue` | sheet | (not installed) | `11084c6c22bfa4a61cf184443753353c5049a0bd2f90743f9f3ac05c204484d9` |
+| `track02.ogg` | 02 | `segment-01.ogg` | `89b3ec1c1c297fba257c68b3edd0ffe1417b8a5a399d8975c2709b3646827917` |
+| `track03.ogg` | 03 | `segment-02.ogg` | `a129fe4e8d0a27895f04f29a48239583a8114915ccc36d10ce31668b14be2f8e` |
+| `track04.ogg` | 04 | `segment-03.ogg` | `7111a2b40236f2236e5a3913004e59d24ef3839629e611c089593b86600ce819` |
+| `track05.ogg` | 05 | `segment-04.ogg` | `66f41e296c78a8f019368f4bc44b9518a8be0a150f50d484bbce2742115d5d49` |
+| `track06.ogg` | 06 | `segment-05.ogg` | `924fb31f515753583647d16a73421a5376bb976314a4553fe5a47d93f6cb9ab9` |
+| `track07.ogg` | 07 | `segment-06.ogg` | `73c3794edc8c952491e5432fcee1bc22177d8f9e9c401dc5577154d892472781` |
+
+The cue sheet types the Ogg files as `MP3` and gives track 02 `PREGAP 00:02:00`
+(a virtual pregap, not contained in the file). It is the release's sheet, not a
+factory TOC, so `original_track_numbers_known` stays false.
+
+Mapping: track k+1 is the German observed region k (segment-0k above). A private
+read-only comparison (envelope cross-correlation of German region k and release
+track k+1, 2 kHz mono, 0.1 s RMS) gave r = 0.82, 0.89, 0.89, 0.94, 0.92, 0.91, all at
+lag 0. The release tracks therefore get the same segment names and the same cue
+mapping as the German set (`g0`, `g1`, `g3`, `g4`, `g5`; segment-06 is again only
+an intro excerpt).
+
+Measured lengths and silence (decoded with FFmpeg to s16le, silence = every sample
+of both channels |x| <= 16; lengths are the Vorbis `duration_ts`):
+
+| Segment | Samples | Media (s) | Leading silence (s) | Trailing silence (s) | Music end (s) | German region (s) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 01 | 7975044 | 180.840 | 0.039 | 1.964 | 178.876 | 178.853 |
+| 02 | 8534820 | 193.533 | 0.039 | 1.965 | 191.568 | 191.547 |
+| 03 | 8755908 | 198.547 | 0.039 | 1.968 | 196.579 | 196.560 |
+| 04 | 6993672 | 158.587 | 0.039 | 1.961 | 156.626 | 156.600 |
+| 05 | 7802172 | 176.920 | 0.039 | 1.962 | 174.958 | 174.933 |
+| 06 | 4986828 | 113.080 | 0.039 | 4.177 | 108.903 | 109.080 |
+
+Each media length is a whole number of CD sectors (588 samples): 13563, 14515,
+14891, 11894, 13269 and 8481 sectors, 149 sectors (1.987 s) longer than the German
+region for 01–05 and 300 sectors for 06. The trailing silence is the zero separator
+that the German import omits; at threshold 0 it is 1.935–1.950 s (06: 3.980 s), the
+rest is the decay of lossy coding noise. Segment 06 ends 0.18 s before the German
+region's end at threshold 16, consistent with a fade into noise; not investigated
+further.
+
+Gap handling, as in the German set: the German regions contain no separators and
+a recorded cue ends with its media. The release files keep their separator (no
+cutting), so each cue's `nominal_end_seconds` is the measured music end and
+`trailing_silence_seconds` the remainder; the catalog requires
+`media_duration_seconds - nominal_end_seconds = trailing_silence_seconds` (±0.05 s,
+at most 6 s). The 0.039 s leading silence is not skipped (the catalog has no start
+offset); it is within the lossy-coding difference to the German regions.
+
 ## Tests and format references
+
+`tests/test_release_ogg.py` generates tone Ogg files with FFmpeg (skipped without
+it) and checks the pinned profile, the edition gate (German EXE, letter `D`),
+cue parsing, hash and cue-sheet mismatches, missing/linked files, byte-identical
+copies, the `audio.json` marking, the hybrid catalog mapping (track → segment →
+cue, music end) and the preflight refusals. `tests/music_fixture.py` packs
+`release`, `release-silence` and `release-kind` check the native catalog.
+
 
 `tests/test_cd_audio.py` uses generated tones, no original audio. It checks profile
 selection, bounds, overlap/path rejection, missing dependencies, decoded signal
