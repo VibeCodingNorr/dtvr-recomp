@@ -41,4 +41,25 @@ bool edgeScroll(TilePoint& origin, int left, int top, int right, int bottom, con
     return changed;
 }
 
+int surroundingsStep(const MapViewSize& view) {
+    return view.width / 3 / kTile; // idiv 3, then cwd / and 0xF / sar 4: both toward zero
+}
+
+TilePoint surroundingsMove(TilePoint origin, int dx, int dy, const MapViewSize& view) {
+    const int step = surroundingsStep(view);
+    return clampOrigin(TilePoint{origin.x + dx * step, origin.y + dy * step}, view);
+}
+
+TilePoint surroundingsClick(TilePoint origin, int x, int y, const MapViewSize& view) {
+    constexpr int kStrip = 0x3C;
+    const int l = 0, t = 0, r = view.width, b = view.height; // DS:94DA / 94DC are 0 (seg5:13A3)
+    const int step = surroundingsStep(view);
+    TilePoint target = origin; // DS:96A2 / 96A4 equal the origin between loop passes
+    if (y >= t + kStrip && y <= b - kStrip && x >= l && x <= l + kStrip) target.x = origin.x - step; // seg6:17C3
+    if (y >= t && y <= t + kStrip && x >= l + kStrip && x <= r - kStrip) target.y = origin.y - step; // seg6:180D
+    if (y >= t + kStrip && y <= b - kStrip && x >= r - kStrip && x <= r) target.x = origin.x + step; // seg6:1857
+    if (y >= b - kStrip && y <= b && x >= l + kStrip && x <= r - kStrip) target.y = origin.y + step; // seg6:18A1
+    return clampOrigin(target, view); // the loop at seg6:3D1C moves there and calls seg6:2B19(1)
+}
+
 } // namespace dtvr

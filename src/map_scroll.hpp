@@ -21,4 +21,18 @@ TilePoint centredOrigin(int px, int py, const MapViewSize& view);
 // one step (seg6:30F8) towards it, checked up, down, right, left; true when moved.
 bool edgeScroll(TilePoint& origin, int left, int top, int right, int bottom, const MapViewSize& view);
 
+// Umfeld (seg6:3C94): one step is (width / ±3) / 16 tiles, both divisions truncated
+// toward zero (seg6:17F4, also for y: the code uses DS:94DE there too).
+int surroundingsStep(const MapViewSize& view);
+// The Umfeld keys (seg6:1991) and the edge strips: the target origin + (dx, dy) steps,
+// after the loop's seg6:2B19(1) clamp. dx, dy in {-1, 0, 1}.
+TilePoint surroundingsMove(TilePoint origin, int dx, int dy, const MapViewSize& view);
+// WM_LBUTTONDOWN of the map window in Umfeld (seg6:1798): (x, y) are client pixels
+// divided by zoom + 1 (seg6:17A1). Strips of 0x3C pixels at the edges of the viewport
+// DS:94DA..94E0 (left, top 0; width, height of view), inclusive bounds, corner squares
+// excluded; the left/top/right/bottom tests run in that order and each one that
+// matches sets the target from the origin (a point on two strips moves both axes).
+// Returns the clamped new origin; outside every strip the origin is unchanged.
+TilePoint surroundingsClick(TilePoint origin, int x, int y, const MapViewSize& view);
+
 } // namespace dtvr
