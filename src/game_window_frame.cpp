@@ -16,6 +16,20 @@ namespace fs = std::filesystem;
 
 namespace dtvr {
 
+// seg7:0000 returns to seg5:018D once DS:9502 is gone (seg7:1CB6), whether p reached 555
+// in state 11 (DestroyWindow seg7:1C9F) or Esc / Space / Enter / a click destroyed it
+// (seg7:2118). The canvas then shows only bk.bmp (seg8:01B7): the map window "Map" is
+// created later, invisible, by seg5:1C95 (seg5:01CD) and shown when a game starts
+// (seg4:0E81). Recomp change (user decision 2026-11-25): rally.exe shows the logo again
+// (seg5:0193 ... seg5:020C, docs/formats.md "Start and Blue Byte logo"); the rebuild
+// goes straight to the title (seg8:03AB, seg5:0211). Called after the intro's own pass
+// and after its input, so no frame of the game screen falls between intro and title.
+void GameWindow::finishIntro() {
+    if (!introShown_ || screen_.intro().active()) return;
+    introShown_ = false;
+    openTitle();
+}
+
 void GameWindow::updateFrame(int frame) {
     if (screen_.settings().value[Settings::Midi] != musicEnabled_) {
         musicEnabled_ = screen_.settings().value[Settings::Midi];
@@ -191,13 +205,7 @@ void GameWindow::updateFrame(int frame) {
         }
     }
     screen_.intro().update(SDL_GetTicks());
-    if (introShown_ && !screen_.intro().active()) {
-        introShown_ = false;
-        // Recomp change (user decision 2026-11-25): rally.exe shows the logo again here
-        // (seg5:0193 ... seg5:020C, docs/formats.md "Start and Blue Byte logo"); the
-        // rebuild goes straight to the title (seg8:03AB) with the logo already removed.
-        openTitle();
-    }
+    finishIntro();
     // The finish sequence (seg2:131D / 11DF -> seg7:2628) when the car has arrived.
     if (screen_.finish().update(SDL_GetTicks())) sound_.stop(0); // seg7:3555 -> WM_DESTROY -> seg1:3C3B
     // The year balance (seg2:07C5 -> seg8:88C6) at the year change.

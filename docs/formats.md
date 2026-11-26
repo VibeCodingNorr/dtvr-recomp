@@ -3603,6 +3603,23 @@ Round 3 "polish" (RECOMP ADDITIONS; no original behaviour changed):
   paint rectangle's +1 at right / bottom (seg7:23A8). The wipe draws from the session's generator,
   seeded before the intro (round 143, see "Random numbers"). **Assumptions:** the fade back steps each channel by 0x1E towards the bitmap colour; a
   close stops the voice; the window is centred like the victory.
+- **End and skip** (intro-escape round): both ends leave the loop the same way. At
+  pass 555 of state 11 seg7:1C9F destroys DS:9502; Esc / Space / Enter or a left
+  click after the first pass (DS:1198, seg7:2118 / 25C2) destroys it from the window
+  procedure (DestroyWindow seg7:2143 / 2160; WM_DESTROY seg7:231C frees the files,
+  seg2:6D82(0x30) at seg7:232A, seg1:3C3B at 2332, DS:9502 = 0 at 2337). The pump seg7:1CA4 then sees DS:9502 = 0 (seg7:1CB6), seg6:6554
+  follows (seg7:1CC3) and seg7:0000 returns 1 to seg5:018D: second logo seg6:0A4D
+  (seg5:0193), loading (seg5:019B–01FF), seg6:0B37 (seg5:020C), title seg8:03AB
+  (seg5:0211). The map window (class `Map`, "The Map", DS:316 / 30E) does not exist
+  yet: seg5:1C95 creates it at seg5:01CD with style 0x46000000 (no WS_VISIBLE) into
+  DS:A6F0, and only a started game shows it (ShowWindow seg4:0E81). Between intro
+  and title the canvas thus shows bk.bmp (seg8:01B7) and the logo, never the map.
+  *Corrects* the rebuild, which ended a skipped intro in the input handler but
+  opened the title only in the next frame's update, so one frame of the game screen
+  (map, portrait, hand, panel) was drawn in between; `GameWindow::finishIntro` now
+  runs right after the intro's input as well as after its own pass. The natural
+  end already closed in the update and showed no such frame. The second logo stays
+  left out (recomp change above), so the title follows directly.
 
 ### Subtitles (round 88)
 
