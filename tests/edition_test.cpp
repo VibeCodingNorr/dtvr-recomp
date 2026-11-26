@@ -24,7 +24,7 @@ void check(bool ok, const char* what) {
 
 const std::string kGerman = "aa3dde360f4d53501933be3648da4f8a019f220cf8dfda59e9e9d6a601786b83";
 const std::string kRetail = "a8374ca9e39d70b4508efefa782b7135c650792be36600289356a51de819225a";
-const std::string kLimited = "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9"; // not supported
+const std::string kLimited = "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9"; // the English demo
 
 struct TempRoot {
     fs::path path;
@@ -49,6 +49,11 @@ std::string manifest(const std::string& hash, const std::string& extra = "") {
 
 template <class F> bool throws(F f) {
     try { f(); } catch (const std::exception&) { return true; }
+    return false;
+}
+
+template <class F> bool throwsWith(F f, const std::string& part) {
+    try { f(); } catch (const std::exception& e) { return std::string(e.what()).find(part) != std::string::npos; }
     return false;
 }
 
@@ -78,7 +83,15 @@ void profiles() {
     const EditionProfile* retail = profileForExecutableHash(upper);
     check(retail && retail->edition == Edition::EnglishRetail && retail->playable && retail->languageLetter == 'E',
           "US retail hash (upper case) -> recognised, playable (round E2)");
-    check(!profileForExecutableHash(kLimited), "the limited US build is not a profile");
+    check(!profileForExecutableHash(kLimited), "the English demo is not a profile");
+    // Blue Byte's official English demo (27-MAY-95): known, refused with its own message.
+    check(knownDemoForExecutableHash(kLimited) && !knownDemoForExecutableHash(kRetail) && !knownDemoForExecutableHash(""),
+          "the English demo is a known demo, the retail EXE is not");
+    std::string demoUpper = kLimited;
+    for (char& c : demoUpper) c = char(std::toupper(static_cast<unsigned char>(c)));
+    check(demoRefusal(demoUpper).find("Demoversion von Dr. Drago's Madcap Chase") == 0
+              && demoRefusal(demoUpper).find("nicht unterstützt") != std::string::npos && demoRefusal(kGerman).empty(),
+          "demo refusal text");
     check(!profileForExecutableHash(""), "empty hash unknown");
     check(!profileForExecutableHash(kGerman.substr(1)), "truncated hash unknown");
     check(&editionProfile(Edition::EnglishRetail) == retail, "profile by enum");
@@ -121,7 +134,11 @@ void detection() {
         root.write("manifest.json", manifest(kRetail, "  \"edition\": \"de-retail\",\n"));
         check(throws([&] { detectEdition(root.path / "data/program"); }), "detect: edition field contradicts the hash");
         root.write("manifest.json", manifest(kLimited));
-        check(throws([&] { detectEdition(root.path / "data/program"); }), "detect: unsupported hash in the manifest");
+        check(throwsWith([&] { detectEdition(root.path / "data/program"); }, "Demoversion"),
+              "detect: the demo's hash in the manifest is refused as a demo");
+        root.write("manifest.json", manifest(std::string(64, 'f')));
+        check(throwsWith([&] { detectEdition(root.path / "data/program"); }, "unbekannter"),
+              "detect: unknown hash in the manifest");
         root.write("manifest.json", "{");
         check(throws([&] { detectEdition(root.path / "data/program"); }), "detect: broken manifest");
     }

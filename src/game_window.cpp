@@ -62,7 +62,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     if (const auto title = texts.find(10); title != texts.end()) SDL_SetWindowTitle(window.get(), title->second.c_str());
     if (options.loadSlot >= 0) { // before the screen: the drivers' sprites depend on the players
         std::string error;
-        const SaveSlots slots(defaultSaveDirectory());
+        const SaveSlots slots(saveDirectory(options.edition), options.edition);
         if (!slots.load(options.loadSlot, play.game(), error))
             throw std::runtime_error("Spielstand " + std::to_string(options.loadSlot) + ": " + error);
         std::cout << "Geladen: " << slots.file(options.loadSlot).string() << "\n";
@@ -296,8 +296,11 @@ bool GameWindow::turnMenuDue() {
 void GameWindow::openTitle() { // seg8:03AB / 0DB0: TITEL and the menu MAIN
     screen_.setTitle(true);
     openMenu("MAIN");
-    // seg8:0DE7: "Spiel fortsetzen" (position 1) is grayed without an autosave (seg6:156D).
-    if (menu_.isOpen() && !screen_.saveSlots().hasAuto()) {
+    // seg8:0DE7: "Spiel fortsetzen" (position 1) is grayed without an autosave: profile
+    // Save/AS (DS:1864 / DS:1861, seg5:22C0) 0 -> seg6:156D, EnableMenuItem(MAIN, 1,
+    // MF_BYPOSITION | MF_GRAYED = 0x401) at seg6:159F; else seg6:15BC enables it. Recomp
+    // (round E3): an autosave of another edition counts as none (docs/save-format.md).
+    if (menu_.isOpen() && !screen_.saveSlots().hasOwnAuto()) {
         std::vector<NeMenuItem> items;
         try { items = readNeMenu(language_, "MAIN"); } catch (const std::exception&) {}
         if (items.size() > 1) items[1].flags |= 0x01;
@@ -336,6 +339,15 @@ void GameWindow::askQuit(bool reopenMain) {
     menu_.close();
 }
 
+// Recomp (round E3): loading a save of another edition fails with a message in the
+// window (docs/save-format.md "Editions"); `edition` is the save's id, empty for none.
+void GameWindow::foreignSaveNotice(const std::string& edition) {
+    if (edition.empty()) return;
+    NoticeArg text;
+    text.text = foreignSaveMessage(screen_.saveSlots().edition(), edition);
+    screen_.messages().push(Notice{kRecompNoticeText, {text}});
+}
+
 void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
     menu_.close();
     switch (id) {
@@ -354,7 +366,11 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
     case 1022: {                                             // Spiel fortsetzen: seg8:A8DF(0), as.dat
         std::string error;
         if (screen_.saveSlots().loadAuto(play_.game(), error)) startGame();
-        else { std::cerr << "Fortsetzen: " << error << "\n"; openTitle(); }
+        else {
+            std::cerr << "Fortsetzen: " << error << "\n";
+            openTitle();
+            foreignSaveNotice(screen_.saveSlots().foreignAuto());
+        }
         break;
     }
     case 1025: askQuit(false); break;                        // Rallye beenden: seg4:0733 -> 073F (0EDF)

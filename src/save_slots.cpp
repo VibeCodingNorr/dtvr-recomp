@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
+#include <utility>
+#include <vector>
 #include <system_error>
 
 namespace fs = std::filesystem;
@@ -35,6 +37,86 @@ fs::path defaultSaveDirectory() {
     if (const char* home = std::getenv("HOME"); home && *home)
         return fs::path(home) / ".local" / "share" / "dtvr-recomp" / "saves";
     return fs::path("dtvr-recomp-saves");
+}
+
+fs::path saveDirectory(Edition edition) {
+    return defaultSaveDirectory().parent_path() / editionProfile(edition).saveDirectory;
+}
+
+namespace {
+
+// The edition id of a save file from its first 4 KiB (the record is the second line).
+std::string fileEdition(const fs::path& file) {
+    std::ifstream in(file, std::ios::binary);
+    if (!in) return {};
+    std::string head(4096, '\0');
+    in.read(&head[0], std::streamsize(head.size()));
+    head.resize(size_t(in.gcount()));
+    return SaveCodec::editionOf(head);
+}
+
+std::string foreignTo(Edition edition, const fs::path& file) {
+    const std::string id = fileEdition(file);
+    return id.empty() || id == editionProfile(edition).id ? std::string() : id;
+}
+
+const EditionProfile* profileById(const std::string& id) {
+    for (const auto& profile : editionProfiles())
+        if (id == profile.id) return &profile;
+    return nullptr;
+}
+
+} // namespace
+
+bool adoptEditionSaves(const fs::path& shared, const fs::path& own, Edition edition, int& copied, std::string& error) {
+    copied = 0;
+    std::error_code ec;
+    if (own.lexically_normal() == shared.lexically_normal() || fs::exists(own, ec) || ec || !fs::is_directory(shared, ec)) return true;
+    const std::string id = editionProfile(edition).id;
+    const SaveSlots from(shared, edition);
+    std::vector<std::pair<int, std::string>> slots;
+    for (int s = 0; s < kSaveSlots; ++s)
+        if (fs::exists(from.file(s)) && fileEdition(from.file(s)) == id) slots.emplace_back(s, from.description(s));
+    const bool autosave = fs::exists(from.autoFile()) && fileEdition(from.autoFile()) == id;
+    if (slots.empty() && !autosave) return true; // nothing of this edition: the directory follows the first save
+    fs::create_directories(own, ec);
+    if (ec) { error = "Verzeichnis " + own.string() + ": " + ec.message(); return false; }
+    const SaveSlots to(own, edition);
+    std::ostringstream index;
+    index << "[Save]\n";
+    for (const auto& [s, description] : slots) {
+        std::string text;
+        if (!readSaveFile(from.file(s).string(), text, error) || !writeSaveFile(to.file(s).string(), text, error)) return false;
+        index << "Slot" << s << '=' << description << '\n';
+        ++copied;
+    }
+    if (!slots.empty() && !writeSaveFile((own / kIndex).string(), index.str(), error)) return false;
+    if (autosave) {
+        std::string text;
+        if (!readSaveFile(from.autoFile().string(), text, error) || !writeSaveFile(to.autoFile().string(), text, error)) return false;
+        ++copied;
+    }
+    return true;
+}
+
+std::string foreignSaveMessage(Edition running, const std::string& saveEdition) {
+    const EditionProfile* theirs = profileById(saveEdition);
+    if (editionProfile(running).languageLetter == 'E') {
+        const std::string which = !theirs ? "an unknown edition (" + saveEdition + ")"
+                                  : theirs->edition == Edition::GermanRetail ? "the German edition \"Die total verrückte Rallye\""
+                                                                             : "the US English edition \"Dr. Drago's Madcap Chase\"";
+        return "This saved game belongs to " + which + " and cannot be loaded with this edition.";
+    }
+    const std::string which = !theirs ? "zu einer unbekannten Ausgabe (" + saveEdition + ")"
+                              : theirs->edition == Edition::GermanRetail ? "zur deutschen Ausgabe \"Die total verrückte Rallye\""
+                                                                         : "zur US-englischen Ausgabe \"Dr. Drago's Madcap Chase\"";
+    return "Dieser Spielstand gehört " + which + " und lässt sich mit dieser Ausgabe nicht laden.";
+}
+
+std::string markForeignSave(const std::string& label, const std::string& foreign) {
+    if (foreign.empty()) return label;
+    const EditionProfile* theirs = profileById(foreign);
+    return std::string("[") + (theirs ? theirs->tag : "?") + "] " + label;
 }
 
 std::string saveDescription(const Game& game, const std::map<int, std::string>& texts) {
@@ -120,6 +202,13 @@ bool SaveSlots::loadAuto(Game& game, std::string& error) const {
 }
 
 bool SaveSlots::hasAuto() const { return fs::exists(autoFile()); }
+
+std::string SaveSlots::foreignSlot(int slot) const {
+    if (slot < 0 || slot >= kSaveSlots) return {};
+    return foreignTo(edition_, file(slot));
+}
+
+std::string SaveSlots::foreignAuto() const { return foreignTo(edition_, autoFile()); }
 
 bool SaveSlots::load(int slot, Game& game, std::string& error) const {
     std::string text;

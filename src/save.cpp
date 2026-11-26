@@ -171,6 +171,21 @@ std::string SaveCodec::encode(const Game& g) {
     return o.str();
 }
 
+std::string SaveCodec::editionOf(const std::string& text) {
+    std::istringstream in(text);
+    std::string line, magic;
+    int format = 0;
+    if (!std::getline(in, line)) return {};
+    std::istringstream head(line);
+    if (!(head >> magic >> format) || (magic != kMagic && magic != kLegacyMagic) || format < 1 || format > kSaveFormat) return {};
+    if (format < 8) return editionProfile(Edition::GermanRetail).id;
+    while (std::getline(in, line)) {
+        if (line == "end") break;
+        if (line.rfind("edition ", 0) == 0) return line.substr(8);
+    }
+    return {};
+}
+
 bool SaveCodec::decode(Game& g, const std::string& text, std::string& error, Random random) {
     const long long fields = (long long)g.board_.fields.size();
     std::istringstream in(text);

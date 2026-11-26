@@ -38,8 +38,24 @@ ENGLISH_RETAIL = {
     "known_isos": {"26260860553361b356a8884b290c659ab6cedf2e29645fbcf2f8f0c511551fc7": "no-cd-da-in-image"},
 }
 
-# German first; the limited US build c8b7dab6… is deliberately not a profile (user decision).
+# German first. Known demo builds are no profiles: they are refused with their own message.
 PROFILES = (GERMAN_RETAIL, ENGLISH_RETAIL)
+
+# Blue Byte's official English demo ("Demo Version", program date 27-MAY-95 in its
+# softinfo.wri; it shipped e.g. on the PC Review Cover CD #14, volume PCR_0895, below
+# rally/). Fixed route, two years, no save/load, 640 only: deliberately unsupported
+# (docs/media-variants.md). Mirrored in src/edition.cpp (knownDemoForExecutableHash).
+KNOWN_DEMOS = {
+    "c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9":
+        "Demoversion von Dr. Drago's Madcap Chase (offizielle englische Demo, 27-MAY-95)",
+}
+
+
+def demo_message(sha256):
+    """The refusal of a known demo executable, or None for any other hash."""
+    name = KNOWN_DEMOS.get((sha256 or "").lower())
+    return None if name is None else (f"{name} – nicht unterstützt. Bitte die Daten einer "
+                                      "Verkaufsversion verwenden (deutsch oder US-englisch).")
 
 
 def profile_for_executable(sha256):
@@ -54,6 +70,8 @@ def profile_by_id(edition):
 
 def require_profile(sha256, kind="disc"):
     profile = profile_for_executable(sha256)
+    if profile is None and demo_message(sha256):
+        raise ValueError(demo_message(sha256))
     if profile is None:
         raise ValueError(f"Unsupported original executable; this {kind} version is not supported")
     return profile

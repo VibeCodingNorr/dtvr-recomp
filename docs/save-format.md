@@ -68,9 +68,32 @@ retail edition, although the rules are the same. Loading compares the `edition`
 record with the running edition before the data fingerprint and refuses another
 edition's save with a German message ("Dieser Spielstand gehört zu einer anderen
 Ausgabe …"); the running game stays unchanged. Saves of formats 1–7 have no
-`edition` record and load only with German data. Both editions share one save
-directory (below), so the slot list shows every save; the edition check keeps them
-apart. A new game takes over the edition of the running one (`PlayView::newGame`).
+`edition` record and load only with German data. A new game takes over the edition
+of the running one (`PlayView::newGame`).
+
+Since round E3 (user decision 2026-11-26) each edition keeps its saves in its own
+directory (below), so no edition overwrites the other one's slots or autosave.
+Foreign saves can still turn up there (copied by hand, or left over from the common
+directory of rounds E2 and before). `SaveCodec::editionOf` reads a save's edition
+from its beginning without decoding it (formats 1–7 count as German), and the game
+window treats another edition's save as follows (recomp additions, the original
+layout is kept):
+
+- "Spiel fortsetzen" / "Continue Game" in the title menu MAIN is grayed as when no
+  autosave exists. rally.exe grays the item at seg8:0DE7: it reads the profile entry
+  `Save` / `AS` (DS:1864 / DS:1861) through seg5:22C0 and, for 0, calls seg6:156D,
+  which sends message 0x7E9 for the menu and calls `EnableMenuItem(menu, 1,
+  MF_BYPOSITION | MF_GRAYED = 0x401)` at seg6:159F (seg6:15BC enables it otherwise).
+  The rebuild greys the same item (menu flag 0x01, colour 0x43) when `as.sav` is
+  absent or belongs to another edition (`SaveSlots::hasOwnAuto`).
+- In the save dialog a foreign slot's description gets the other edition's mark
+  (`[US] ` or `[DE] `, `EditionProfile::tag`) and is drawn in the grayed colour 0x43
+  unless it is the chosen slot (white as every chosen slot).
+- Loading such a slot (or continuing such an autosave) is refused by the codec as
+  before and opens the message window with a recomp text in the running edition's
+  language (`foreignSaveMessage`: German for the German edition, English for the US
+  edition), besides the German line on stderr. Saving into a slot that holds a
+  foreign save overwrites it, as any save overwrites its slot.
 
 ## Map state between games
 
@@ -103,9 +126,23 @@ older revision loads, but continues with the current rules.
 ## Save slots
 
 The game window's save dialog (round 33) writes slot `n` (0–8) to
-`slot<n>.sav` in `$XDG_DATA_HOME/dtvr-recomp/saves` (default
-`~/.local/share/dtvr-recomp/saves`), and its description to `saves.ini` in the
-same directory (`[Save]`, one `Slot<n>=<description>` line per slot). The
-autosave of each turn start (round 35) is `as.sav` in the same directory. The
-directory is shared by both editions; a game of one edition overwrites the autosave
-of the other, and loading another edition's slot is refused (see Editions).
+`slot<n>.sav` in the edition's save directory, and its description to `saves.ini` in
+the same directory (`[Save]`, one `Slot<n>=<description>` line per slot). The
+autosave of each turn start (round 35) is `as.sav` in the same directory.
+
+Save directories (round E3, `saveDirectory` in src/save_slots.cpp), below
+`$XDG_DATA_HOME/dtvr-recomp` (default `~/.local/share/dtvr-recomp`):
+
+| Edition | Directory |
+| --- | --- |
+| `de-retail` | `saves` (unchanged: the common directory of rounds E2 and before) |
+| `en-us-retail` | `saves-en-us-retail` |
+
+Migration: the German edition keeps the former common directory, so existing German
+saves need no action. When the US edition starts and `saves-en-us-retail` does not
+exist yet, `adoptEditionSaves` copies the US slots (with their descriptions) and a US
+autosave from `saves` into it, once; nothing is moved or deleted. The originals stay
+in `saves`, where the German edition shows them as foreign slots (see Editions); the
+user may delete them by hand. Once the directory exists it is never filled again.
+Without US saves in `saves` no directory is created before the first US save.
+Saves are user data: the installer neither hashes nor manages them.

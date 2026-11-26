@@ -151,8 +151,10 @@ the disc image (`--iso`) or a complete program tree.
 Preflight (ISO and directory) and the import itself look the executable hash up in
 this table, require that edition's files and check that the first byte of
 `dat/lan.inf` names the edition's language, so an EXE is never mixed with another
-edition's language data. Unknown hashes, among them the limited US build
-`c8b7dab6…`, are rejected. The manifest records the detected `executable_sha256`
+edition's language data. Unknown hashes are rejected; the official English demo
+`c8b7dab6…` (Demo Version, 27-MAY-95) is rejected with its own message
+("Demoversion … – nicht unterstützt"), also when a cover disc holds it below another
+directory than `program/`. The manifest records the detected `executable_sha256`
 and `edition`; the runtime refuses an `edition` that contradicts the hash.
 Verification requires the edition's overview bitmap (manifests without `edition`
 are identified by their hash; without either they count as German, the only

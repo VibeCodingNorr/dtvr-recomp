@@ -90,16 +90,26 @@ Observed only: `map/europe.str` is byte-identical to the German
 file, `map/europe.map` differs (SHA-256 `5afb8c52…` vs German `91779387…`);
 `dat/e/rally_e.dat` has SHA-256 `d17a203f…`.
 
-**Known, unsupported:** a limited US English build, `RALLY.EXE`
-`c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9` (fixed route,
-two-year end, no save/load, 640 only). By user decision (2026-11-26) it has no
-runtime profile and is rejected as an unknown version; the inventory below describes
-that copy.
+**Known, unsupported: the official English demo (Demo Version, 27-MAY-95).**
+`RALLY.EXE` `c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9`
+(fixed route, two-year end, no save/load, 640 only) is Blue Byte's official English
+demo of "Dr. Drago's Madcap Chase": its `softinfo.wri` states "Release Type: Demo
+Version", "Program/Release Date 27-MAY-95", "Language ENGLISH", Blue Byte Software
+GmbH, and its `readme.wri` says "DEMO VERSION". Independent source (audit 2026-11-26):
+the PC Review Cover CD #14 (August 1995), volume ID `PCR_0895`, raw Mode 1 BIN with
+SHA-256 `c5236fc0cd88a6bcbcb5db98435dac6b296f570c6023fa00d33f066a3b10ba13`, holds it
+below `rally/program/`; its 529 program files are identical to the copy inventoried
+below. By user decision (2026-11-26) the demo stays unsupported and has no profile.
+The runtime (`knownDemoForExecutableHash` in src/edition.cpp) and the installer
+(`KNOWN_DEMOS` in tools/editions.py, also for a demo below another directory of a
+cover disc) recognise its hash and refuse it with "Demoversion von Dr. Drago's
+Madcap Chase (offizielle englische Demo, 27-MAY-95) – nicht unterstützt" instead of
+an unknown-version error.
 
-## User-supplied US English directory (limited build), inspected 2026-11-23
+## User-supplied US English directory (English demo), inspected 2026-11-23
 
-The user identified this copy as the US English edition; it was later found to be a
-limited build (see above) and is not supported. Read-only inventory
+The user identified this copy as the US English edition; it was later found to be the
+official English demo (see above) and is not supported. Read-only inventory
 found 529 regular files totaling 24,122,697 bytes in the program directory.
 Files are directly in that directory, with uppercase on-disk names; paths below
 are normalized to lowercase. No original files or generated inventory are stored
@@ -134,7 +144,7 @@ reconstruction. Keep the importer work separate and schedule engine integration
 with the existing owner. See also [architecture](architecture.md#editions-and-languages)
 and the standing project instructions in `AGENTS.md`.
 
-The limited build above stays unsupported; the retail edition is supported by the
+The English demo above stays unsupported; the retail edition is supported by the
 runtime and the installer since round E2 (see [Edition profiles](#edition-profiles)).
 Do not rename English assets to German paths. The handoff checklist, now done:
 

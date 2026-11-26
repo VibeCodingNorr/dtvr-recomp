@@ -112,7 +112,9 @@ void MessageView::draw(const Game& game) {
     // Arial weight 600 at {18, 16, 14}, palette colour 0x45, DT_WORDBREAK | DT_NOCLIP.
     const Notice& n = queue_.front();
     const auto it = texts_.find(n.text);
-    const std::string message = it == texts_.end() ? "Text " + std::to_string(n.text) : formatNotice(it->second, n, game);
+    const std::string message = n.text == kRecompNoticeText && !n.args.empty() ? n.args.front().text
+                                : it == texts_.end() ? "Text " + std::to_string(n.text)
+                                                     : formatNotice(it->second, n, game);
     const int res = layout_.resolution();
     static constexpr int kSize[3] = {18, 16, 14};
     TextStyle style{kSize[res], true, false, false, false, 0, SDL_Color{67, 27, 0, 255}};

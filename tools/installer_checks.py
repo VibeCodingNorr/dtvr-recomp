@@ -104,6 +104,12 @@ def preflight(iso, output, jobs=1, soundfonts=None, music_style="classic",
             files = [entry for entry in image.files() if entry[0].parts[0] == "program"]
             entries = {str(entry[0]): entry for entry in files}
             entry = entries.get("program/rally.exe")
+            if entry is None:  # a demo in another directory of a cover disc (e.g. rally/program/)
+                for path, start, size in ((e[0], e[1], e[2]) for e in image.files()):
+                    if path.parts[-2:] == ("program", "rally.exe") and size <= 4 * 1024 * 1024:
+                        message = editions.demo_message(hashlib.sha256(image.read(start, size)).hexdigest())
+                        if message:
+                            raise ValueError(message)
             profile = editions.require_profile(
                 hashlib.sha256(image.read(entry[1], entry[2])).hexdigest() if entry is not None else None)
             missing = editions.missing_files(profile, entries.keys())

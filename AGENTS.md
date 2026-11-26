@@ -51,7 +51,8 @@ SBS animation playback or executable translation have been implemented.
   into an external directory; never relax the original-asset checks for these exports.
 
 - Users supply an original ISO explicitly through `--iso` or a complete original
-  game directory through `--directory`. Validate the supported EXE hash and record
+  game directory through `--directory`. Validate an EXE hash of a supported edition
+  (`tools/editions.py`, mirrored in `src/edition.cpp`) and record
   directory input files with SHA-256; never accept an incomplete installed copy
   solely because its EXE matches. All examples use
   generic placeholders; never commit machine-specific paths or rely on a local
@@ -110,7 +111,10 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   `src/ai_cards.cpp` card choice, targets, card worth and card field; `src/game_ai.cpp`
   runs computer turns.
 - `src/game_risiko.cpp`: the Risiko card as a timed game phase.
-- `src/save.{hpp,cpp}`: native versioned save format and atomic file writes (no SDL).
+- `src/save.{hpp,cpp}`: native versioned save format and atomic file writes, with the
+  edition record of format 8 (no SDL).
+- `src/edition.{hpp,cpp}` (no SDL): edition profiles by the SHA-256 of rally.exe or the
+  installation manifest, required files and known demo builds.
 - `src/ne_strings.{hpp,cpp}`: RT_STRING and RT_MENU reader for the language file and Windows-1252 conversion.
 - `src/layout.{hpp,cpp}`: original window geometry; `src/panel.{hpp,cpp}`: player info panel
   contents (both no SDL).
@@ -124,7 +128,9 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
   message window (texts from `Game::takeNotices`); `src/menu_view.{hpp,cpp}`: the menu window
   (menu resources of the language file); `src/card_view.{hpp,cpp}`: the card window and `src/card_window_choice.{hpp,cpp}` (no SDL) its play path;
   `src/estates.{hpp,cpp}` (no SDL) and `src/estates_view.{hpp,cpp}`: the town dialog;
-  `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog and slots;
+  `src/save_slots.{hpp,cpp}` (no SDL) and `src/save_view.{hpp,cpp}`: the save dialog, slots and
+  per-edition save directories; `src/scripted_input.{hpp,cpp}`: `--press` key scripts (smoke tests,
+  with `Hold:`, `Release:` and `Wait`);
   `src/stat_sheet.{hpp,cpp}` (no SDL) and `src/stat_view.{hpp,cpp}`: the monthly statement STAT,
   `src/game_statement.cpp` its pause in the game and `src/game_window_statement.cpp` in the window;
   `src/setup_view.{hpp,cpp}`: the player setup (geometry in layout.cpp);
@@ -166,6 +172,8 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 - `src/obstacles.{hpp,cpp}`: road obstacle table, expiry, placement and link lookup (no SDL).
 - `tools/inspect_game.py`: read-only installation inventory and NE header analysis.
 - `tools/install.py`: validated ISO import, native build/test/install and launcher.
+- `tools/editions.py`: the installer's edition profiles and known demos (mirrors
+  `src/edition.cpp`); `tests/test_editions.py` checks both.
 - `tools/installer_update.py`: explicit verified updates, preserved local files/Ogg
   packs and retained rollback installation. Never hash mutable saves as managed
   assets or modify XDG settings; run smoke checks with isolated XDG directories.
@@ -232,12 +240,15 @@ versioned serializable state. Local, AI and remote play must share this boundary
 LAN then Internet multiplayer are agreed goals, not current capabilities. Keep
 cosmetic effects local and optional; preserve the alignment of roads and fields.
 
-Future US English edition support is also an agreed user goal (2026-11-23), not
-a current capability. Handoff and verified input fingerprints are in
-`docs/media-variants.md`. Keep edition/resource selection explicit; validate
-the English EXE's rules and data before enabling it. Do not bypass the version
-gate or rename English resources to German paths. Coordinate engine changes
-with Claude's active game-window work; directory import is already separate.
+Both retail editions are supported and installable: the German "Die total
+verrückte Rallye" and the US English "Dr. Drago's Madcap Chase" (playable since
+round E2). Blue Byte's official English demo (`c8b7dab6…`, Demo Version, 27-MAY-95)
+is recognised and deliberately refused as unsupported. Evidence and fingerprints
+are in `docs/media-variants.md`. Keep edition/resource selection explicit by the
+EXE hash; do not bypass the hash gate or rename English resources to German paths.
+Saves record their edition (format 8) and live in a directory per edition
+(`docs/save-format.md`); `map/europe.map` is read afresh for every new or loaded
+game.
 
 Next: continue the game window as in the original (agreed with the user: it must
 look like rally.exe; `--game`, src/game_screen.cpp): the remaining messages, menu,

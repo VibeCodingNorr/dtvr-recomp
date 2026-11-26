@@ -51,6 +51,24 @@ class PreflightTests(unittest.TestCase):
         self.assertFalse(self.output.parent.exists())
         self.assertEqual(list(self.root.iterdir()), [self.iso])
 
+    def test_demo_on_a_cover_disc_is_refused_as_demo(self):
+        # A cover disc with the demo below rally/program/ instead of program/.
+        image = MagicMock()
+        image.__enter__.return_value = image
+        image.read.return_value = b"demo"
+        image.files.return_value = [(PurePosixPath("rally/program/rally.exe"), 1, 4),
+                                    (PurePosixPath("rally/readme.wri"), 2, 4)]
+        demo = hashlib.sha256(b"demo").hexdigest()
+        with patch("installer_checks.IsoImage", MagicMock(return_value=image)), \
+                patch.dict("editions.KNOWN_DEMOS", {demo: "Demoversion von Test"}):
+            with self.assertRaisesRegex(ValueError, "^Demoversion von Test – nicht unterstützt"):
+                preflight(self.iso, self.output)
+            image.files.return_value = [(PurePosixPath("other/program/rally.exe"), 1, 4)]
+            image.read.return_value = b"unknown"
+            with self.assertRaisesRegex(ValueError, "Unsupported original executable"):
+                preflight(self.iso, self.output)
+        self.assertFalse(self.output.parent.exists())
+
     def test_missing_dependencies_are_reported_together(self):
         with patch("installer_checks.shutil.which", return_value=None):
             with self.assertRaisesRegex(ValueError, "cmake, ctest, c\\+\\+, pkg-config"):
