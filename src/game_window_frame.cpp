@@ -303,10 +303,6 @@ void GameWindow::updateFrame(int frame) {
     scripted_.pump(frame);
 }
 
-} // namespace dtvr
-
-namespace dtvr {
-
 // The windows of rally.exe other than its menus that keep the game waiting (modal_).
 bool GameWindow::gameWindowOpen() {
     return screen_.statement().isOpen() || screen_.messages().open() || cards_.isOpen() || screen_.saveDialog().isOpen()

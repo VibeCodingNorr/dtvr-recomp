@@ -234,9 +234,6 @@ int main() {
     CHECK(m.input(Input::NextPage) == Action::None && m.page() == 1 && !m.inItems());
     CHECK(m.settings().fullscreen == base.fullscreen); // switching pages changes nothing
 
-    if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
-    else std::puts("recomp_menu_test: OK");
-
     // Pause commands in the game window (planCommand): save and load hide the menu and
     // run the original command, which closes ONFIELD / MAIN1 first (seg4:07B8), so only
     // the dialog is in front; afterwards the menu comes back. Refused over a game window.
@@ -279,5 +276,7 @@ int main() {
         r.resume(base);
         CHECK(r.isOpen() && r.page() == pageIndex(r, "Audio") && !r.inItems());
     }
+    if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
+    else std::puts("recomp_menu_test: OK");
     return failures != 0;
 }
