@@ -26,9 +26,10 @@ directories without either source are refused with a German message. The profile
 then requires its files (`requiredFiles`, looked up without regard to case) and a
 `dat/lan.inf` letter of its language.
 
-**Not yet playable.** `--game` and `--play` refuse `en-us-retail` until its rules
-are audited and rebuilt; the developer option `--dev-unfinished-edition` starts it
-for tests only (the German rules then apply, which is not a claim of equivalence).
+**Not yet playable.** The retail audit (2026-11-26, private notes) found the German
+rules and tables with English resources. `--game` and `--play` still refuse
+`en-us-retail` until one complete human turn is verified with its data; the developer
+option `--dev-unfinished-edition` starts it for tests only.
 Viewer modes (`--tiles`, `--sprites`, `--world`) load it. The installer's acceptance
 list is unchanged (German only).
 
@@ -50,12 +51,21 @@ list is unchanged (German only).
   R seg4:0701–070F formats `%c\credits.bmp` (DS:009A) with the letter DS:A0F0, giving
   `butt/<n>/e/credits.bmp`.
 
-Pending (E2, after the rules audit): every simulation rule and table, the language
-case comparisons (Statistik spacing, Sieg banner, the subtitle rule of D seg5:219C),
-the window title, save compatibility per edition (`kSaveFormat` / save header) and the
-installer's per-edition acceptance. Observed only: `map/europe.str` is byte-identical
-to the German file, `map/europe.map` differs (SHA-256 `5afb8c52…` vs German
-`91779387…`); `dat/e/rally_e.dat` has SHA-256 `d17a203f…`.
+- Voice / subtitle: D seg5:219C / 21A5 compare the letter DS:A0F0 with `E` / `e` and
+  then force voices off and subtitles on; the retail seg5 has no such comparison, so
+  voices and subtitles stay as configured. The rebuild does not apply that German rule
+  either, so nothing changes in the code.
+- `dat/e/sync.dat` has 139 records of 0xD0 bytes (German 140); `nicosia.wav` has none.
+  `parseVoiceSync` accepts any multiple of 0xD0 and a voice without a record shows no
+  subtitle (no timing); how rally.exe behaves then is not checked.
+
+Pending (user decision): R seg5:182F reloads `map/europe.map` at a new or loaded game;
+not rebuilt. Pending (E2): one complete human turn with retail data, the language case
+comparisons (Statistik spacing seg1:766F / 77C4, Sieg banner seg7:7EC1), the window
+title, save compatibility per edition (`kSaveFormat` / save header) and the installer's
+per-edition acceptance. Observed only: `map/europe.str` is byte-identical to the German
+file, `map/europe.map` differs (SHA-256 `5afb8c52…` vs German `91779387…`);
+`dat/e/rally_e.dat` has SHA-256 `d17a203f…`.
 
 **Known, unsupported:** a limited US English build, `RALLY.EXE`
 `c8b7dab6574047c6e3a3d4e600dd3f2ed23e90bd8a10de8a1bb891688d0624d9` (fixed route,

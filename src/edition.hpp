@@ -33,7 +33,7 @@ struct EditionProfile {
     // regard to case). A matching EXE hash alone does not prove the data complete.
     std::vector<std::string> requiredFiles;
     std::string overviewBitmap; // the viewer's overview / sprite palette
-    // false: recognised but its rules are not rebuilt yet; the game modes refuse it
+    // false: recognised but not yet validated with a complete turn; the game modes refuse it
     // unless the developer option allows it.
     bool playable;
 };

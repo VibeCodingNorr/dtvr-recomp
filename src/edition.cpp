@@ -43,7 +43,8 @@ const std::vector<EditionProfile>& editionProfiles() {
          {"dat/lan.inf", "dat/d/rally_d.dat", "map/europe.inf", "map/europe.str", "map/europe.map", "map/europe.pit", "map/europe_d.tow",
           "map/0/part0000.sbb", "sbs/d.sbs", "butt/1/map.bmp"},
          "butt/1/map.bmp", true},
-        // Full US retail CD (PROGRAM/ on its ISO). Its rules are not audited yet. Verified
+        // Full US retail CD (PROGRAM/ on its ISO): German rules with English resources
+        // (retail audit); not playable until a complete turn is validated. Verified
         // so far: the canvas choice R seg5:1239-135B equals D seg5:1227-1349 (same
         // immediates and DS operands), and art dirs 1, 6 and 8 ship (BUTT/<n>/MAP.BMP).
         {Edition::EnglishRetail, "en-us-retail", "US-englische Verkaufsausgabe \"Dr. Drago's Madcap Chase\"",

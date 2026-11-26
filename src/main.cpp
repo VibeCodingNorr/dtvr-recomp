@@ -309,7 +309,7 @@ static int run(int argc, char** argv) {
               << detected.evidence.file.filename().string() << ")\n";
     if ((gameWindow || play) && !edition.playable && !unfinishedEdition)
         throw std::runtime_error(std::string("Die ") + edition.name
-                                 + " wurde erkannt, ist aber noch nicht spielbar: ihre Regeln sind noch nicht nachgebaut.");
+                                 + " wurde erkannt, ist aber noch nicht freigegeben: ein vollständiger Zug mit ihren Daten ist noch nicht geprüft.");
     const auto tiles = findFiles(original(root, "map"), ".sbb");
     const auto sprites = findFiles(root, ".sbs");
     if (view == View::Tiles && tiles.empty()) throw std::runtime_error("Keine SBB-Dateien gefunden");
