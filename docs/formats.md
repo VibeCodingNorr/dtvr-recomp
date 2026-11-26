@@ -1040,8 +1040,12 @@ the types 0x400/0x800 follow in round 13).
   and nextPlayer. Without a town (seg3:1C27) neither the message nor the damage
   follows, only the draw (round 147; the rebuild showed the text without a town).
 - **Nägel** (card 18, seg3:1C96 / 2096): the player chooses a direction with a
-  road; the obstacle (type 0x900, duration 4n) lies two cells away. The turn
-  continues (no nextPlayer).
+  road; the obstacle (type 0x900, duration 4n) lies two cells away. No nextPlayer;
+  every path (the splash seg3:1CD8 → 1D13, the film seg3:1DFF, no direction
+  seg3:1E02) joins at seg3:1E3D and posts WM_COMMAND 0x2710 (seg3:1E42–1E50): the
+  player spins one reel like after a status card. Only a failed RegisterClass
+  (seg6:1484 = 0, seg3:1CBF) skips it. *Corrects* the earlier "the turn continues"
+  rebuild, which returned to the turn menu (round "sleep reels").
 - **Punch** (card 20, seg3:2D17): for the first other active player standing on
   the same field (+0x3C), the start direction comes from the table {2, 3, 0, 1}
   indexed by the puncher's vehicle facing (frame byte +2, seg2:2AF6 / DS:1994:
@@ -1881,6 +1885,33 @@ cards, rolls and computer stages wait meanwhile. Without a window (tests, headle
 play) the move starts at once, with the same outcome. A Würfeln can now always be
 taken back before the window closes (*replaces* the round 129 restriction for
 shut-in rolls).
+
+**When the slot window shows (round "sleep reels"):** SLOT exists only inside
+seg2:6426, called by the main window's commands (seg4:0907 WM_USER+6 Würfeln with
+seg2:6426(1, 5, 1); WM_COMMAND 0x2710 at seg4:0A27 and 0x2711–0x2715 at
+seg4:0A38–0A82, all with third argument 0; the command switch seg4:0C4D–0C97) and by
+Risiko (seg7:6776). The computer's spin is its state 2 posting WM_USER+6
+(seg5:6DA3–6DB0), the same window. WM_COMMAND 0x2710 is posted by Steuerlos (seg3:19C9),
+Zucker (1A9D), Blockieren (1AEE), Schlafen (1BC2) and Nägel (1E42): the reel belongs to
+the player who played the card, not to its target. The reel cards post 0x2711–0x2714
+(seg3:310E ff.) and "1 oder 2" 0x2715 (seg3:39ED). No other path opens the window:
+the cards that call nextPlayer (Weihnachten seg3:11A5 / 127C / 133F, Fiskus 15A2, Konto
+1782, Schulden 18DC, Zero 1986, Erdbeben 1C88, Tschüss 2CFC, Punch 2EB1 / 2F51,
+Konferenz 30E3, Hau ab 3F39) end the turn without it; Flugzeug posts VK_RETURN
+(seg3:336E), "n Felder", Verdoppeln and the property cards spin nothing. The turn
+start seg2:0407 and the player change seg2:06FC never spin: a Zucker / Schlafen
+sit-out (seg2:08E4–0A1A) is its sound and modal message only, then the loop goes on
+to the next player (seg2:0815 → 0732). Order: the handlers play their film first
+(seg7:62AA, waited for by seg6:0FB4 on DS:A050: Zucker seg3:1A72–1A7E, Schlafen
+1B97–1BA3 ten times, Nägel 1DCE–1DDA) or show their modal message (Nägel splash
+seg3:1D0B / 1E35) and only then post; the window opens when the posted command is
+dispatched, i.e. after the film or message. Rebuilt: `Game::spinAfterCard` for the
+five cards (`tests/game_cards_test.cpp`: Schlafen spins for the player, the skipped
+turn spins nothing; Nägel spins); the game window opens the slot window of a new spin
+only when `slotWindowMayOpen` (src/slot_records.hpp) allows it — no card film showing or
+queued, no message open and none still queued in the game — and treats a pending spin
+as modal (no turn menu between the film and the window). *Corrects* the reels sliding
+in over the Schlafen / Zucker film.
 
 **Edge scrolling with the drawn frame (round 131):** seg2:1A91 writes the drawn
 frame's rectangle (x, y, x + width, y + height, after the −16 shift of seg2:3F21,

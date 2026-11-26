@@ -78,4 +78,22 @@ private:
     bool started_ = false;
 };
 
+// When the slot window SLOT of a spin may open (round "sleep reels"). The cards that
+// end in a spin post WM_COMMAND 0x2710 to the main window (Steuerlos seg3:19D7, Zucker
+// 1AAB, Blockieren 1AFC, Schlafen 1BD0, Nägel 1E50) only after their film (seg7:62AA,
+// waited for by seg6:0FB4 on DS:A050: Zucker 1A72-1A7E, Schlafen 1B97-1BA3, Nägel
+// 1DCE-1DDA) or their message (seg6:51EA, modal: the Nägel splash 1D0B / 1E35) has
+// ended; the posted command reaches seg4:0A27 -> seg2:6426(1, 5, 0) afterwards. The
+// rebuild draws the reels at once (Game::spin) but opens the window only when nothing
+// of that kind is showing or still queued.
+struct SlotGate {
+    bool filmShowing = false;  // a card film (FLIC window) is on screen
+    bool filmsQueued = false;  // films taken from the game but not started yet
+    bool messageOpen = false;  // the message window is open
+    bool gameQueued = false;   // notices or films the game has produced but not handed over
+};
+inline bool slotWindowMayOpen(const SlotGate& g) {
+    return !g.filmShowing && !g.filmsQueued && !g.messageOpen && !g.gameQueued;
+}
+
 } // namespace dtvr

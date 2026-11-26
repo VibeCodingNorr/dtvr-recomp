@@ -182,7 +182,8 @@ int main() {
                 if (type == 39) clearing = s;
             }
             if (nails < 0 || clearing >= 0 || g.currentPlayer() != 0) continue;
-            if (!g.playCard(nails, 2) || g.obstacles().count() != 1 || !g.roll()) continue; // link 0 -> 1
+            // Nägel spins one reel itself (WM_COMMAND 0x2710, seg3:1E50); link 0 -> 1
+            if (!g.playCard(nails, 2) || g.obstacles().count() != 1 || g.phase() != Game::Phase::Move) continue;
             if (g.allowance() != 2) continue;
             CHECK(g.step(Direction::Left) && g.step(Direction::Left) && g.playerField(0) == 1);
             g.takeSounds();
@@ -205,7 +206,7 @@ int main() {
                 if (type == 39) clearing = s;
             }
             if (nails < 0 || clearing >= 0 || g.currentPlayer() != 0) continue;
-            if (!g.playCard(nails, 2) || !g.roll()) continue;
+            if (!g.playCard(nails, 2) || g.phase() != Game::Phase::Move) continue;
             g.takeSounds();
             CHECK(!g.step(Direction::Right) && g.playerField(0) == 0);
             const auto cues = g.takeSounds();

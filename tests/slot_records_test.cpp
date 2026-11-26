@@ -127,6 +127,14 @@ int main() {
         CHECK(stop == 21 - 16 && s.sum() == 16);
     }
 
+    // The window of a card's spin opens only after its film or message (seg3:1A72-1AAB,
+    // 1B97-1BD0, 1D0B / 1DCE -> 1E50): any of them showing or queued holds it.
+    CHECK(slotWindowMayOpen({}));
+    CHECK(!slotWindowMayOpen({true, false, false, false}));
+    CHECK(!slotWindowMayOpen({false, true, false, false}));
+    CHECK(!slotWindowMayOpen({false, false, true, false}));
+    CHECK(!slotWindowMayOpen({false, false, false, true}));
+
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("slot_records_test: OK");
     return failures != 0;
