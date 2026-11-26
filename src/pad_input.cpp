@@ -113,6 +113,21 @@ PadState translate(const PadMap& map, const PadRaw& raw) {
     return s;
 }
 
+OskPadRaw oskRaw(const PadMap& map, const PadRaw& raw) {
+    OskPadRaw o;
+    o.buttons = raw.buttons;
+    const SDL_Keycode key = map.swapSticks ? raw.rightStick : raw.leftStick;
+    o.stickX = map.swapSticks ? raw.rightX : raw.leftX;
+    o.stickY = map.swapSticks ? raw.rightY : raw.leftY;
+    if (o.stickX == 0 && o.stickY == 0) {
+        if (key == SDLK_UP) o.stickY = -1;
+        else if (key == SDLK_DOWN) o.stickY = 1;
+        else if (key == SDLK_LEFT) o.stickX = -1;
+        else if (key == SDLK_RIGHT) o.stickX = 1;
+    }
+    return o;
+}
+
 PadCapture::Result PadCapture::tick(const PadRaw& raw, bool capturing) {
     Result r;
     const bool idle = raw.buttons == 0 && raw.leftStick == SDLK_UNKNOWN && raw.rightStick == SDLK_UNKNOWN;

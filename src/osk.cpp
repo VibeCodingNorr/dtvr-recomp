@@ -130,6 +130,7 @@ ScreenKeyboard::ScreenKeyboard() {
 
 void ScreenKeyboard::open(std::string text, size_t maxChars) {
     text_ = std::move(text);
+    caret_ = utf8Length(text_);
     max_ = maxChars;
     focus_ = cellAt(1, 0);
     column_ = 0;
@@ -163,9 +164,55 @@ bool ScreenKeyboard::move(Move direction) {
     return true;
 }
 
+int ScreenKeyboard::cellOf(Kind kind) const {
+    for (size_t i = 0; i < cells_.size(); ++i)
+        if (cells_[i].kind == kind) return int(i);
+    return -1;
+}
+
+bool ScreenKeyboard::moveCaret(bool right) {
+    if (right ? caret_ >= utf8Length(text_) : caret_ == 0) return false;
+    caret_ = right ? caret_ + 1 : caret_ - 1;
+    return true;
+}
+
+ScreenKeyboard::Result ScreenKeyboard::caretStep(bool right) {
+    Result r;
+    if (moveCaret(right)) {
+        r.kind = Result::Kind::Moved;
+        r.sound = 8; // as a focus move (seg1:24E5)
+    }
+    return r;
+}
+
+ScreenKeyboard::Result ScreenKeyboard::space() {
+    Result r = type(" ");
+    if (r.kind == Result::Kind::Typed) r.sound = 2; // as the key Leerzeichen
+    return r;
+}
+
+ScreenKeyboard::Result ScreenKeyboard::focusDone() {
+    Result r;
+    const int done = cellOf(Kind::Done);
+    if (done >= 0 && done != focus_) {
+        focus_ = done;
+        column_ = cells_[size_t(done)].column;
+        r.kind = Result::Kind::Moved;
+        r.sound = 8;
+    }
+    return r;
+}
+
 ScreenKeyboard::Result ScreenKeyboard::type(const std::string& utf8) {
     Result r;
-    if (appendNameText(text_, utf8, max_) == 0) {
+    // SBINPUT's append on the text before the caret, the limit counting the rest too.
+    std::string head = utf8Prefix(text_, caret_);
+    const std::string tail = text_.substr(head.size());
+    const size_t tailChars = utf8Length(tail);
+    const size_t added = max_ > tailChars ? appendNameText(head, utf8, max_ - tailChars) : 0;
+    text_ = head + tail;
+    caret_ += added;
+    if (added == 0) {
         r.kind = Result::Kind::Refused;
         r.sound = 7; // recomp: Zaehler2 as the refused key (the field itself stays silent)
         return r;
@@ -176,7 +223,11 @@ ScreenKeyboard::Result ScreenKeyboard::type(const std::string& utf8) {
 
 ScreenKeyboard::Result ScreenKeyboard::erase() {
     Result r;
-    r.sound = eraseNameChar(text_);
+    std::string head = utf8Prefix(text_, caret_); // VK_BACK on the text before the caret
+    const std::string tail = text_.substr(head.size());
+    r.sound = eraseNameChar(head);
+    text_ = head + tail;
+    caret_ = utf8Length(head);
     r.kind = r.sound == 8 ? Result::Kind::Erased : Result::Kind::Refused;
     if (text_.empty()) shift_ = true;
     return r;

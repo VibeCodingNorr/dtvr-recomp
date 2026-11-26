@@ -10,6 +10,7 @@
 // Evidence and the mapping in docs/formats.md "Joystick" / "Recomp pad layer".
 #pragma once
 
+#include "osk_pad.hpp"
 #include "pad_map.hpp"
 
 #include <SDL_keycode.h>
@@ -64,6 +65,9 @@ struct PadRaw {
     unsigned buttons = 0;                  // padBit(PadPhysical) bits, triggers included
     SDL_Keycode leftStick = SDLK_UNKNOWN;  // seg2:8C2B order (up, down, left, right)
     SDL_Keycode rightStick = SDLK_UNKNOWN;
+    // The sticks' travel (-1 .. 1, the largest of all pads per axis) for the on-screen
+    // keyboard's hysteresis (osk_pad.hpp); 0 where only the key above is known.
+    float leftX = 0, leftY = 0, rightX = 0, rightY = 0;
 };
 
 // The physical state through the mapping: the bound buttons of the four directions
@@ -99,7 +103,8 @@ struct PadContext {
     bool turnMenu = false;      // ONFIELD has the input: Y is "Karte einsetzen" (1031)
     bool yIsF9 = false;         // PLAYER / OPTION have the input: Y is F9 (their recomp extras)
     bool nameField = false;     // a PLAYER name field has the focus: A opens the on-screen keyboard, Y nothing
-    bool keyboard = false;      // the on-screen keyboard is open: Start is done, Y shift
+    bool keyboard = false;      // the on-screen keyboard is open: Start is done, Y shift (ControllerInput
+                                // reads it through OskPad then, osk_pad.hpp, not through PadInput)
     bool townCards = false;     // the town dialog's header has the input: Y is its Karte item
 };
 
@@ -116,7 +121,13 @@ struct PadOutput {
     // called directly, never an SDL key event (it must not become a driving direction).
     SDL_Keycode scroll = SDLK_UNKNOWN;
     int captured = -1; // a PadPhysical pressed while the Steuerung page waits for one (PadCapture)
+    // The on-screen keyboard has the input: its commands (OskPad) instead of any key.
+    std::vector<OskCommand> keyboardCommands;
 };
+
+// The driving stick of `raw` for the on-screen keyboard: its travel, or full travel
+// toward its key when no travel is known (scripted presses).
+OskPadRaw oskRaw(const PadMap& map, const PadRaw& raw);
 
 class PadInput {
 public:

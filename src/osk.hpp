@@ -59,9 +59,16 @@ public:
     static constexpr int kColumns = 11, kRows = 5;
 
     ScreenKeyboard();
-    // Starts with `text` (the field's name) and the cursor on the first letter key.
+    // Starts with `text` (the field's name), the caret after it and the focus on the
+    // first letter key.
     void open(std::string text, size_t maxChars);
     const std::string& text() const { return text_; }
+    // RECOMP: the text caret in characters (0 .. utf8Length(text())). Typing inserts at
+    // it and erasing removes the character before it, with SBINPUT's rules on the whole
+    // text; at the end (where it opens) this is exactly SBINPUT's append / VK_BACK.
+    size_t caret() const { return caret_; }
+    // Moves the caret by one character; false at either end.
+    bool moveCaret(bool right);
     const std::vector<Cell>& cells() const { return cells_; }
     int focus() const { return focus_; }
     bool shift() const { return shift_; }
@@ -75,20 +82,28 @@ public:
     bool move(Move direction);
     void setFocus(int cell) { if (cell >= 0 && cell < int(cells_.size())) focus_ = cell; }
     int cellAt(int row, int column) const; // -1 outside the grid
+    int cellOf(Kind kind) const;           // the first cell of `kind`, -1 none
 
     // `sound` for channel 2 (-1 none) as the SBBUTTON / SBINPUT originals would play it.
     struct Result {
-        enum class Kind { None, Typed, Refused, Erased, Shift, Done, Cancel } kind = Kind::None;
+        enum class Kind { None, Typed, Refused, Erased, Shift, Done, Cancel, Moved } kind = Kind::None;
         int sound = -1;
     };
     Result press();        // the focused key (A / Return / a click)
     Result erase();        // X / Backspace
     Result toggleShift();  // Y
     Result type(const std::string& utf8); // a real keyboard's characters (SDL_TEXTINPUT)
+    // RECOMP pad shortcuts (docs/formats.md "On-screen keyboard feel"): the caret one
+    // character left / right (sound 8 like a move, none at an end), a space at the
+    // caret (as the key Leerzeichen) and the focus to the key Fertig (sound 8).
+    Result caretStep(bool right);
+    Result space();
+    Result focusDone();
 
 private:
     std::vector<Cell> cells_;
     std::string text_;
+    size_t caret_ = 0; // characters before the caret
     size_t max_ = kNameFieldLimit;
     int focus_ = 0;
     int column_ = 0; // the column Up / Down keep

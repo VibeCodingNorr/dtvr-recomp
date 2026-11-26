@@ -23,7 +23,8 @@ rows at once and scrolls with the focus (▲ / ▼ in the heading row; the mouse
 moves the focus). Rows: one **Binding** row per pad action (four directions,
 Bestätigen, Abbrechen, Recomp-Menü, Originales Spielmenü, Schließen/Löschen,
 Karte/F9, Seite zurück / vor), the stick choice "Fahren / Umfeld (Sticks)" (Links /
-rechts or Rechts / links), three info rows (names, stage count, display keys) and
+rechts or Rechts / links), four info rows (names, the on-screen keyboard's
+shortcuts, stage count, display keys) and
 the command **Standard wiederherstellen**. Enter / A on a Binding row waits for a
 pad button ("Taste drücken …", the footer counts down 8 s); the pressed button is
 bound, and when another action had it the two swap and the footer says so

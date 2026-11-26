@@ -33,6 +33,8 @@ public:
     // input focus (seg2:8A35). Without either, or without a pad, a held direction is
     // released at once and nothing else happens. `capturing`: the Steuerung page waits
     // for a button (also with the option off): no keys, PadOutput::captured instead.
+    // While `context.keyboard` the on-screen keyboard takes the pad at every call
+    // (no 80 ms tick, PadOutput::keyboardCommands, no keys).
     PadOutput update(Uint32 now, bool enabled, bool focused, const PadContext& context, bool capturing = false);
     // Smoke tests (--press Pad:A ...): one press and release of the physical `raw` through
     // the same mapping and layer, without a device.
@@ -49,6 +51,7 @@ private:
     std::vector<SDL_GameController*> pads_;
     bool devicesChanged_ = false;
     PadInput input_;
+    OskPad osk_; // the on-screen keyboard's own, faster reading (osk_pad.hpp)
     PadMap map_;
     PadCapture capture_;
     Uint32 nextTick_ = 0;

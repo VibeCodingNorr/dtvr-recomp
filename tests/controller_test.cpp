@@ -337,6 +337,21 @@ void capture() {
 
 } // namespace
 
+// The on-screen keyboard reads the driving stick's travel; a scripted key is full travel.
+void keyboardStick() {
+    PadMap m;
+    PadRaw r{padBit(PadPhysical::A), SDLK_RIGHT, SDLK_UNKNOWN};
+    r.leftX = 0.42f;
+    r.rightY = -0.9f;
+    OskPadRaw o = oskRaw(m, r);
+    CHECK(o.buttons == padBit(PadPhysical::A) && o.stickX == 0.42f && o.stickY == 0);
+    m.swapSticks = true; // the right stick drives
+    o = oskRaw(m, r);
+    CHECK(o.stickX == 0 && o.stickY == -0.9f);
+    o = oskRaw(PadMap{}, {0, SDLK_UP, SDLK_UNKNOWN}); // --press without travel
+    CHECK(o.stickX == 0 && o.stickY == -1);
+}
+
 int main() {
     originalRepeater();
     originalLayerThroughPadInput();
@@ -348,6 +363,7 @@ int main() {
     defaultMapIsPreviousBehaviour();
     remappedTranslation();
     capture();
+    keyboardStick();
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("controller_test: OK");
     return failures != 0;

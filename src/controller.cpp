@@ -2,6 +2,7 @@
 #include "controller.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace dtvr {
@@ -18,6 +19,12 @@ void push(const PadKey& k) {
     e.key.keysym.scancode = SDL_GetScancodeFromKey(k.key);
     e.key.keysym.mod = k.mod;
     SDL_PushEvent(&e);
+}
+
+// An axis as travel -1 .. 1; of several pads the largest one per axis counts.
+void merge(float& into, Sint16 value) {
+    const float v = std::max(-1.0f, float(value) / 32767.0f);
+    if (std::fabs(v) > std::fabs(into)) into = v;
 }
 
 bool held(SDL_GameController* pad, SDL_GameControllerButton b) { return SDL_GameControllerGetButton(pad, b) != 0; }
@@ -88,6 +95,10 @@ PadRaw ControllerInput::raw() const {
         rDown |= ry > kStickThreshold;
         rLeft |= rx < -kStickThreshold;
         rRight |= rx > kStickThreshold;
+        merge(r.leftX, x);
+        merge(r.leftY, y);
+        merge(r.rightX, rx);
+        merge(r.rightY, ry);
         // The physical buttons (pad_map.hpp); which action each triggers is the map's.
         static constexpr std::pair<SDL_GameControllerButton, PadPhysical> kButtons[] = {
             {SDL_CONTROLLER_BUTTON_A, PadPhysical::A}, {SDL_CONTROLLER_BUTTON_B, PadPhysical::B},
@@ -116,16 +127,25 @@ PadOutput ControllerInput::update(Uint32 now, bool enabled, bool focused, const 
     PadOutput out;
     if (pads_.empty() || !(enabled || capturing) || !focused) {
         out = input_.release(); // at once, not on the next timer tick
+        osk_.reset();
         capture_.tick(PadRaw{}, false);
         nextTick_ = 0;
     } else {
-        if (nextTick_ != 0 && !SDL_TICKS_PASSED(now, nextTick_)) return out;
-        nextTick_ = now + kTickMs;
+        // RECOMP: the on-screen keyboard reads the pad at every call (each frame and each
+        // controller event) instead of the 80 ms tick; the original layer pauses.
+        const bool keyboard = context.keyboard && !capturing;
+        if (!keyboard && nextTick_ != 0 && !SDL_TICKS_PASSED(now, nextTick_)) return out;
+        nextTick_ = keyboard ? 0 : now + kTickMs;
         const PadRaw r = raw();
         const PadCapture::Result c = capture_.tick(r, capturing);
+        if (!keyboard || !c.translate) osk_.reset();
         if (!c.translate) { // waiting for a button, or for everything released after it
             out = input_.release();
             out.captured = c.captured;
+        } else if (keyboard) {
+            out = input_.release(); // key-up of a held direction; afterwards a neutral start
+            if (devicesChanged_) osk_.reset();
+            out.keyboardCommands = osk_.tick(map_, oskRaw(map_, r), now);
         } else {
             const PadState s = translate(map_, r);
             if (devicesChanged_) input_.devicesChanged(s.buttons);
@@ -145,6 +165,14 @@ PadOutput ControllerInput::scripted(const PadRaw& raw, const PadContext& context
             if (raw.buttons & (1u << unsigned(i))) { out.captured = i; break; }
         return out;
     }
+    if (context.keyboard) { // the on-screen keyboard's path, as update() takes it
+        const Uint32 now = SDL_GetTicks();
+        if (!osk_.active()) osk_.tick(map_, {}, now); // the neutral start
+        out.keyboardCommands = osk_.tick(map_, oskRaw(map_, raw), now);
+        osk_.tick(map_, {}, now); // released
+        return out;
+    }
+    osk_.reset();
     const PadState state = translate(map_, raw);
     if (!input_.active()) input_.tick(PadState{}, context); // the neutral start
     out = input_.tick(state, context);
