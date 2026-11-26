@@ -236,5 +236,48 @@ int main() {
 
     if (failures) std::fprintf(stderr, "%d Fehler\n", failures);
     else std::puts("recomp_menu_test: OK");
+
+    // Pause commands in the game window (planCommand): save and load hide the menu and
+    // run the original command, which closes ONFIELD / MAIN1 first (seg4:07B8), so only
+    // the dialog is in front; afterwards the menu comes back. Refused over a game window.
+    {
+        const CommandPlan save = planCommand(Action::SaveGame, false);
+        CHECK(save.originalCommand == 1062 && save.hide && save.returnAfter && !save.refused);
+        const CommandPlan load = planCommand(Action::LoadGame, false);
+        CHECK(load.originalCommand == 1021 && load.hide && load.returnAfter && !load.refused);
+        const CommandPlan blocked = planCommand(Action::SaveGame, true);
+        CHECK(blocked.refused && !blocked.hide && blocked.originalCommand == 0);
+        CHECK(planCommand(Action::LoadGame, true).refused);
+        const CommandPlan quit = planCommand(Action::Quit, true);
+        CHECK(quit.hide && quit.returnAfter && quit.originalCommand == 0 && !quit.refused);
+        const CommandPlan original = planCommand(Action::OriginalMenu, false);
+        CHECK(original.hide && !original.returnAfter && original.originalCommand == 0);
+        for (Action a : {Action::None, Action::Resume, Action::Changed, Action::MusicChanged}) {
+            const CommandPlan p = planCommand(a, false);
+            CHECK(!p.hide && !p.returnAfter && !p.refused && p.originalCommand == 0);
+        }
+    }
+    // resume: the menu opens again on the entry it hid from, with the current settings.
+    {
+        RecompMenu r;
+        r.open(base, true);
+        CHECK(r.input(Input::Down) == Action::None && r.input(Input::Accept) == Action::SaveGame);
+        r.close();
+        Settings changed = base;
+        changed.fullscreen = !base.fullscreen;
+        r.resume(changed);
+        CHECK(r.isOpen() && r.page() == 0 && r.row() == 1 && r.inItems() && r.settings().fullscreen == changed.fullscreen);
+        r.setNote("x");
+        CHECK(r.note() == "x" && r.input(Input::Down) == Action::None && r.note().empty());
+        r.setNote("y");
+        r.close();
+        r.open(base, true);
+        CHECK(r.note().empty() && r.row() == 0);
+        // From a page list focus it returns there too.
+        r.focusPage(pageIndex(r, "Audio"));
+        r.close();
+        r.resume(base);
+        CHECK(r.isOpen() && r.page() == pageIndex(r, "Audio") && !r.inItems());
+    }
     return failures != 0;
 }

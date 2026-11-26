@@ -264,18 +264,7 @@ void GameWindow::updateFrame(int frame) {
         screen_.startFinish(play_.game().finishField(), play_.game().finishPlayer(), SDL_GetTicks());
     }
     updateStatement(); // STAT (seg2:07E1 / 12A3): game_window_statement.cpp
-    modal_ = recompMenu_.isOpen() || screen_.statement().isOpen() || screen_.messages().open() || menu_.isOpen() || cards_.isOpen() || saveDialog.isOpen()
-                       || estates.statistics() || screen_.title() || screen_.overview().isOpen()
-                       || screen_.surroundings() || screen_.options().isOpen() || screen_.finish().active()
-                       || screen_.victory().active() || screen_.balance().active()
-                       || screen_.announcement().active() || screen_.cardShop().isOpen()
-                       || screen_.selectPlayer().isOpen() || screen_.flight().isOpen()
-                       || screen_.nails().isOpen() || screen_.invest().isOpen() || screen_.film().active()
-                       || screen_.sight().isOpen() || screen_.intro().active()
-                       || screen_.dragoTravelling() // seg2:B454 / B55E wait for Dr. Drago
-                       // the slot machine and event animations run synchronously in rally.exe
-                       || screen_.slotActive(screen_.presentationNow()) || screen_.eventSceneActive(screen_.sceneNow())
-                       || screen_.risiko().blinking(SDL_GetTicks());
+    modal_ = recompMenu_.isOpen() || menu_.isOpen() || screen_.title() || gameWindowOpen();
     if (!modal_ && !moving_ && play_.update(SDL_GetTicks(), true)) report();
     // seg2:1618: after the field action (its message, town dialog, card dialog or card
     // shop run modally) the original checks the forced sale (seg1:4E39) and calls
@@ -312,6 +301,26 @@ void GameWindow::updateFrame(int frame) {
     // seg2:8A30 every 80 ms while [Setup] Joystick is on: keys for the focused window.
     updatePad(); // without a device in smoke tests: only scripted pad presses (--press Pad:…)
     scripted_.pump(frame);
+}
+
+} // namespace dtvr
+
+namespace dtvr {
+
+// The windows of rally.exe other than its menus that keep the game waiting (modal_).
+bool GameWindow::gameWindowOpen() {
+    return screen_.statement().isOpen() || screen_.messages().open() || cards_.isOpen() || screen_.saveDialog().isOpen()
+           || screen_.estates().statistics() || screen_.overview().isOpen()
+           || screen_.surroundings() || screen_.options().isOpen() || screen_.finish().active()
+           || screen_.victory().active() || screen_.balance().active()
+           || screen_.announcement().active() || screen_.cardShop().isOpen()
+           || screen_.selectPlayer().isOpen() || screen_.flight().isOpen()
+           || screen_.nails().isOpen() || screen_.invest().isOpen() || screen_.film().active()
+           || screen_.sight().isOpen() || screen_.intro().active()
+           || screen_.dragoTravelling() // seg2:B454 / B55E wait for Dr. Drago
+           // the slot machine and event animations run synchronously in rally.exe
+           || screen_.slotActive(screen_.presentationNow()) || screen_.eventSceneActive(screen_.sceneNow())
+           || screen_.risiko().blinking(SDL_GetTicks());
 }
 
 } // namespace dtvr

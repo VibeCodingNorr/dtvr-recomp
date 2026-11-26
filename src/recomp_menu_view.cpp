@@ -318,6 +318,7 @@ void RecompMenuView::draw() {
     if (page.title == "Audio" && menu_.music().ids.empty() && !menu_.music().note.empty() && !menu_.inItems())
         hint = menu_.music().note;
     if (page.table() && menu_.inItems() && !menu_.padNote().empty()) hint = menu_.padNote(); // the last remapping
+    if (!menu_.note().empty()) hint = menu_.note(); // a refused Pause command
     if (menu_.capturing())
         hint = std::string("Neue Taste am Gamepad f\u00fcr \u201e") + padActionLabel(menu_.captureAction())
                + "\u201c dr\u00fccken \u2026 Esc oder Mausklick bricht ab ("

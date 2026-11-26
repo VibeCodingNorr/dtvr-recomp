@@ -80,6 +80,7 @@ private:
     void command(int id);
     // game_window_frame.cpp
     void updateFrame(int frame);
+    bool gameWindowOpen(); // a window of rally.exe other than its menus (part of modal_)
     // The INTRO window has gone (its own end or a skip): the title follows at once.
     void finishIntro();
     // game_window_statement.cpp: the monthly statement STAT (seg1:972F)
@@ -154,6 +155,9 @@ private:
     // WM_CLOSE). From MAIN1 (1064) a No opens MAIN1 again.
     bool quitReopensMain_ = false;
     bool quitAsked_ = false; // text 700 was pushed and not answered yet
+    // The recomp menu hid for a dialog of its Pause page (save, load, quit question) and
+    // opens again where it was when that dialog closes (CommandPlan::returnAfter).
+    bool recompReturn_ = false;
     int sceneSerial_ = -1; // message serial whose event scene has been started
     // A new game between PLAYER and TEMP (seg4:0DA9): the setup's slots and names.
     std::array<uint8_t, kPlayerSlots> pendingStatus_{};
