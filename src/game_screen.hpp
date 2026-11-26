@@ -60,8 +60,10 @@ public:
     // (DS:17FB); the menu MAIN is drawn above it.
     void setTitle(bool title) { title_ = title; }
     // Credits (1026 -> seg6:0A4D(.., "Credits.bmp", 1)): the picture butt/<n>/Credits.bmp
-    // in a modal window PICT over the canvas.
+    // in a modal window PICT over the canvas (English: butt/<n>/<letter>/credits.bmp,
+    // see creditsPicture in edition.hpp).
     void showPicture(const std::string& file) { picture_ = file; }
+    char languageLetter() const { return language_; } // DS:A0F0 as stored
     bool pictureShown() const { return !picture_.empty(); }
     void closePicture() { picture_.clear(); }
     bool title() const { return title_; }
@@ -307,6 +309,7 @@ private:
 };
 
 struct GameWindowOptions {
+    Edition edition = Edition::GermanRetail; // the detected profile (src/edition.hpp)
     int canvasWidth = 0;          // 0: the largest canvas that fits the screen (seg5:1227)
     bool fullscreen = false;      // start in fullscreen (also [Display] Fullscreen)
     int widescreen = -1;          // -1: [Display] Widescreen, 0 off, 1 on (recomp extension)

@@ -4,6 +4,8 @@
 // per-resolution element table of seg6:1140.
 #pragma once
 
+#include "edition.hpp"
+
 #include <array>
 #include <vector>
 
@@ -12,6 +14,8 @@ namespace dtvr {
 struct ScreenRect { int x = 0, y = 0, w = 0, h = 0; };
 
 struct ScreenLayout {
+    // The EXE whose geometry tables apply (the setup table differs, see setupGeometry).
+    Edition edition = Edition::GermanRetail;
     int width = 640, height = 480;  // canvas DS:9DC2 x DS:9D94 (wider in the widescreen extension)
     int baseWidth = 640;            // the original canvas width: 640, 800 or 1024
     int artDir = 6;                 // seg5:1827: butt/<n>, bmp/<n> (6 = 640, 8 = 800, 1 = 1024)
@@ -37,7 +41,9 @@ struct ScreenLayout {
 
 // seg5:1227: the canvas is 640 x 480, 800 x 600 or 1024 x 768; the largest one
 // that fits the screen (or the requested width) is used.
-ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth = 0);
+ScreenLayout layoutForScreen(int screenWidth, int screenHeight, int requestedWidth = 0); // German
+// The same with the canvases of an edition profile (src/edition.hpp).
+ScreenLayout layoutForScreen(const EditionProfile& profile, int screenWidth, int screenHeight, int requestedWidth = 0);
 ScreenLayout layoutForCanvas(int canvasWidth); // 640, 800 or 1024
 
 // Widescreen extension (recomp only, not in rally.exe): the canvas is widened by
@@ -55,12 +61,13 @@ struct CardButton { int slot = 0; ScreenRect rect; };
 std::vector<CardButton> cardWindowLayout(const ScreenLayout& layout, const std::array<bool, 8>& occupied);
 
 // Player setup window PLAYER (round 36): rectangles for a canvas width (DS:1BD4: per resolution ten
-// rectangles, slot 7 first, then star and stop; DS:1CC4: eight name fields).
+// rectangles, slot 7 first, then star and stop; DS:1CC4: eight name fields). The US retail
+// EXE has them at R DS:1BD6 / 1CC6 with three 640 name fields 1 px apart (layout.cpp).
 struct SetupGeometry {
     std::array<ScreenRect, 8> driver{};
     std::array<ScreenRect, 8> name{};
     ScreenRect start, stop;
 };
-SetupGeometry setupGeometry(int canvasWidth);
+SetupGeometry setupGeometry(int canvasWidth, Edition edition = Edition::GermanRetail);
 
 } // namespace dtvr

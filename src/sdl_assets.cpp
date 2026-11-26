@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "sdl_assets.hpp"
 
+#include "data_paths.hpp"
 #include "sbs.hpp"
 #include "worldmap.hpp"
 
@@ -36,7 +37,9 @@ Surface loadWorld(const fs::path& root, int month, bool views, bool seasons, std
     for (int part = 0;; ++part) {
         std::ostringstream name;
         name << "part" << std::setw(4) << std::setfill('0') << part << ".sbb";
-        const auto path = root / "map" / std::to_string(season) / name.str();
+        const fs::path relative = fs::path("map") / std::to_string(season) / name.str();
+        const fs::path found = findCaseInsensitive(root, relative);
+        const auto path = found.empty() ? root / relative : found;
         if (!fs::is_regular_file(path)) break; // the original also stops at the first missing part
         auto strip = loadBmp(path);
         if (strip->format->BitsPerPixel != 8 || !strip->format->palette || strip->h != 16 * 192)
@@ -46,7 +49,7 @@ Surface loadWorld(const fs::path& root, int month, bool views, bool seasons, std
         if (!palette) palette = std::move(strip);
     }
     if (!palette) throw std::runtime_error("Keine SBB-Dateien fuer Jahreszeit " + std::to_string(season));
-    const WorldMap map(readFile(root / "map/europe.map"));
+    const WorldMap map(readFile(findCaseInsensitive(root, "map/europe.map")));
     const auto pixels = renderWorld(map, tiles, views);
     constexpr int side = WorldMap::kSize * WorldMap::kTile;
     Surface world(SDL_CreateRGBSurfaceWithFormat(0, side, side, 8, SDL_PIXELFORMAT_INDEX8), SDL_FreeSurface);

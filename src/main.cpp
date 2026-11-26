@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "board.hpp"
+#include "data_paths.hpp"
+#include "edition.hpp"
 #include "game_screen.hpp"
 #include "ne_strings.hpp"
 #include "play_view.hpp"
@@ -13,6 +15,7 @@
 #include <SDL.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -32,11 +35,23 @@ using dtvr::Texture;
 using dtvr::loadBmp;
 using dtvr::readFile;
 
+// The program directory is the one holding dat/lan.inf (seg5:0239 reads it first);
+// `root` is either that directory or its parent with program/ (disc root,
+// installation data). Which files must exist depends on the edition (src/edition.hpp).
 static fs::path programDirectory(fs::path root) {
-    if (fs::is_regular_file(root / "program/butt/1/map.bmp")) root /= "program";
-    if (!fs::is_regular_file(root / "butt/1/map.bmp"))
-        throw std::runtime_error("Kein Spielverzeichnis: " + root.string());
+    if (const fs::path sub = dtvr::findCaseInsensitive(root, "program"); !sub.empty() && fs::is_directory(sub)
+        && !dtvr::findCaseInsensitive(sub, "dat/lan.inf").empty())
+        root = sub;
+    if (dtvr::findCaseInsensitive(root, "dat/lan.inf").empty())
+        throw std::runtime_error("Kein Spielverzeichnis (dat/lan.inf fehlt): " + root.string());
     return root;
+}
+
+// An original file below the program directory without regard to case (the US English
+// copy has upper-case names); the expected path when nothing matches, for the error.
+static fs::path original(const fs::path& root, const fs::path& relative) {
+    const fs::path found = dtvr::findCaseInsensitive(root, relative);
+    return found.empty() ? root / relative : found;
 }
 
 enum class View { Overview, Tiles, Sprites, World };
@@ -97,7 +112,7 @@ static Surface loadSprites(const fs::path& path, const SDL_Palette& palette) {
 // Composed world map (src/sdl_assets.cpp) with the viewer's log line.
 static Surface loadWorld(const fs::path& root, int month, bool views, fs::path& shown) {
     auto world = dtvr::loadWorld(root, month, views);
-    shown = root / "map/europe.map";
+    shown = original(root, "map/europe.map");
     std::cout << "Weltkarte: Monat " << month % 12 << ", map/" << dtvr::seasonForMonth(month) << ", Views "
               << (views ? "an" : "aus") << "\n";
     return world;
@@ -107,7 +122,9 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
     std::vector<fs::path> result;
     if (fs::is_directory(dir))
         for (const auto& entry : fs::recursive_directory_iterator(dir))
-            if (entry.is_regular_file() && entry.path().extension() == extension)
+            if (std::string ext = entry.path().extension().string(); entry.is_regular_file()
+                && (std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return char(std::tolower(c)); }),
+                    ext == extension))
                 result.push_back(entry.path());
     std::sort(result.begin(), result.end());
     return result;
@@ -125,8 +142,8 @@ static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, char l
     std::array<uint8_t, dtvr::kPlayerSlots> slots{};
     for (int p = 0; p < humans + computers; ++p) slots[size_t(p)] = p < humans ? 1 : 2;
     playView = std::make_unique<dtvr::PlayView>(
-        board, towns, std::make_unique<dtvr::WorldMap>(readFile(root / "map/europe.map")),
-        std::make_unique<dtvr::TileProperties>(readFile(root / "map/europe.pit")), slots, rounds,
+        board, towns, std::make_unique<dtvr::WorldMap>(readFile(original(root, "map/europe.map"))),
+        std::make_unique<dtvr::TileProperties>(readFile(original(root, "map/europe.pit"))), slots, rounds,
         uint16_t(seed));
     // Driver names from the language file (texts 120-127), when present.
     const auto library = dtvr::findCaseInsensitive(root, dtvr::languageLibraryPath(language));
@@ -179,6 +196,7 @@ static int run(int argc, char** argv) {
     int widescreen = -1;           // --widescreen / --no-widescreen (default: [Display] Widescreen)
     bool fullscreen = false;       // --game: start in fullscreen (F11 / Alt+Enter toggle)
     int openEstates = -1;   // --game: show the town dialog of this town (screenshots)
+    bool unfinishedEdition = false; // developer option: start an edition whose rules are not rebuilt
     bool smoke = false, views = true, graph = false, rollAtStart = false, play = false, gameWindow = false;
     int humans = 2, computers = 0, rounds = 99, resolution = 0, frames = 1;
     int month = 2, roll = 0;
@@ -194,8 +212,9 @@ static int run(int argc, char** argv) {
         } else if (arg == "--help") {
             std::cout << "dtvr-recomp --data PFAD [--tiles|--sprites|--world [--month 0-11] [--no-views] [--graph] [--roll] [--seed N]]\n"
                          "            [--play|--game [--resolution 640|800|1024] [--widescreen|--no-widescreen] [--aspect 16:9] [--recomp-menu 0-4] [--window-size 2560x1440] [--press Escape,Down,Return] [--event Erdbeben] [--fullscreen] [--no-title] [--intro|--no-intro] [--logo] [--computer-cards] [--load 0-8] [--menu NAME] [--cards] [--select-player] [--setup] [--estates STADT] [--players 0-8] [--computers 0-8] [--rounds N] [--seed N]]\n"
-                         "            [--smoke-test] [--screenshot DATEI.bmp]\n"
-                         "PFAD: CD-Wurzel oder program-Verzeichnis.\n"
+                         "            [--smoke-test] [--screenshot DATEI.bmp] [--dev-unfinished-edition]\n"
+                         "PFAD: CD-Wurzel oder program-Verzeichnis; die Ausgabe ergibt sich aus dem SHA-256 von rally.exe\n"
+                         "      oder aus manifest.json einer Installation (src/edition.hpp).\n"
                          "M: Uebersicht/Bausteine/Sprites/Weltkarte | Links/Rechts: Datei bzw. Monat\n"
                          "V: Baustein 0x33 (Views) | G: Spielfelder und Staedte | Mausrad: Zoom\n"
                          "W: Wuerfeln (Automat, 1 Walze) | Rechtsklick: Startfeld waehlen\n"
@@ -246,6 +265,7 @@ static int run(int argc, char** argv) {
             windowH = std::stoi(a.substr(x + 1));
         }
         else if (arg == "--demo") demo = true;
+        else if (arg == "--dev-unfinished-edition") unfinishedEdition = true;
         else if (arg == "--finish") finish = true;
         else if (arg == "--victory") victory = true;
         else if (arg == "--balance") balance = true;
@@ -278,25 +298,34 @@ static int run(int argc, char** argv) {
     }
     if (root.empty()) throw std::runtime_error("Datenpfad fehlt. Aufruf: dtvr-recomp --data PFAD");
     root = programDirectory(root);
-    const auto tiles = findFiles(root / "map", ".sbb");
+    // The edition by the hash of rally.exe or of the installation manifest, then its
+    // required files and the lan.inf letter (seg5:0239): the towns file and the game's
+    // language paths depend on it; rally.exe does not start without it.
+    const dtvr::DetectedEdition detected = dtvr::detectEdition(root);
+    const dtvr::EditionProfile& edition = *detected.profile;
+    const char language = dtvr::readLanguageLetter(root);
+    dtvr::validateEditionData(edition, root, language);
+    std::cout << "Ausgabe: " << edition.name << " (SHA-256 " << detected.evidence.sha256.substr(0, 8) << "… aus "
+              << detected.evidence.file.filename().string() << ")\n";
+    if ((gameWindow || play) && !edition.playable && !unfinishedEdition)
+        throw std::runtime_error(std::string("Die ") + edition.name
+                                 + " wurde erkannt, ist aber noch nicht freigegeben: ein vollständiger Zug mit ihren Daten ist noch nicht geprüft.");
+    const auto tiles = findFiles(original(root, "map"), ".sbb");
     const auto sprites = findFiles(root, ".sbs");
     if (view == View::Tiles && tiles.empty()) throw std::runtime_error("Keine SBB-Dateien gefunden");
     if (view == View::Sprites && sprites.empty()) throw std::runtime_error("Keine SBS-Dateien gefunden");
-    const auto overview = loadBmp(root / "butt/1/map.bmp");
+    const fs::path overviewFile = dtvr::findCaseInsensitive(root, edition.overviewBitmap);
+    const auto overview = loadBmp(overviewFile);
     // Board data for the world-view overlay (loader seg5:14C0); optional elsewhere.
     dtvr::Board board;
     std::vector<dtvr::Town> towns;
     int startField = 0;
     std::vector<int> targets;
-    // The letter of dat/lan.inf (seg5:0239), read with the board: the towns file and the
-    // game's language paths depend on it; rally.exe does not start without it.
-    char language = 0;
-    if (view == View::World || fs::is_regular_file(root / "map/europe.inf")) {
-        language = dtvr::readLanguageLetter(root);
-        const auto info = dtvr::parseBoardInfo(readFile(root / "map/europe.inf"));
-        board = dtvr::parseBoard(readFile(root / "map/europe.str"), info.fields);
+    if (view == View::World || !dtvr::findCaseInsensitive(root, "map/europe.inf").empty()) {
+        const auto info = dtvr::parseBoardInfo(readFile(original(root, "map/europe.inf")));
+        board = dtvr::parseBoard(readFile(original(root, "map/europe.str")), info.fields);
         // seg5:15A6: "%s\europe_%c.tow" (DS:027E) with the map directory DS:6A.
-        const fs::path townFile = dtvr::findCaseInsensitive(root / "map", "europe_" + dtvr::languageDir(language) + ".tow");
+        const fs::path townFile = dtvr::findCaseInsensitive(original(root, "map"), "europe_" + dtvr::languageDir(language) + ".tow");
         if (!townFile.empty()) towns = dtvr::parseTowns(readFile(townFile), info.towns);
         if (!towns.empty())
             for (size_t i = 0; i < board.fields.size(); ++i)
@@ -309,6 +338,7 @@ static int run(int argc, char** argv) {
     if (gameWindow) { // the game window as in rally.exe (src/game_screen.cpp)
         auto game = makePlayView(root, language, board, towns, humans, computers, rounds, seed);
         dtvr::GameWindowOptions options;
+        options.edition = edition.edition;
         options.canvasWidth = resolution;
         options.smokeTest = smoke;
         options.frames = frames;
@@ -388,7 +418,7 @@ static int run(int argc, char** argv) {
         x = (w - width * zoom) / 2; y = (h - height * zoom) / 2;
     };
     auto load = [&] {
-        fs::path path = root / "butt/1/map.bmp";
+        fs::path path = overviewFile;
         Surface surface(nullptr, SDL_FreeSurface);
         if (view == View::Tiles) surface = loadTiles(path = tiles[tileIndex]);
         else if (view == View::Sprites) surface = loadSprites(path = sprites[spriteIndex], *overview->format->palette);

@@ -17,7 +17,7 @@ constexpr int kStar = 100, kStop = 101, kName = 200; // kName + slot: the SBINPU
 } // namespace
 
 SetupView::SetupView(SDL_Renderer* renderer, const fs::path& root, const ScreenLayout& layout, TextRenderer& text)
-    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth)) {}
+    : renderer_(renderer), root_(root), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth, layout.edition)) {}
 
 void SetupView::open(const std::array<uint8_t, kPlayerSlots>& status, const std::array<std::string, kPlayerSlots>& names) {
     status_ = status;

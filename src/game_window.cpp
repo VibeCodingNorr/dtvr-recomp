@@ -25,7 +25,7 @@ int runGameWindow(PlayView& play, const fs::path& root, char languageLetter, con
     // desktop (logical size, black borders) and maps mouse coordinates back. The
     // optional widescreen extension widens it to the display's aspect.
     const bool widescreen = options.widescreen < 0 ? displaySettings.widescreen : options.widescreen != 0;
-    const ScreenLayout baseLayout = layoutForScreen(display.w, display.h, options.canvasWidth);
+    const ScreenLayout baseLayout = layoutForScreen(editionProfile(options.edition), display.w, display.h, options.canvasWidth);
     const ScreenLayout wideLayout = widenLayout(baseLayout, widescreenExtra(baseLayout, options.aspectW ? options.aspectW : display.w,
                                                                             options.aspectH ? options.aspectH : display.h));
     // One layout shared by every view (they keep references): the widescreen switch of
@@ -356,7 +356,7 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
     }
     case 1025: askQuit(false); break;                        // Rallye beenden: seg4:0733 -> 073F (0EDF)
     case 1023: case 1063: screen_.options().open(screen_.settings()); break; // Optionen: seg1:ACE7
-    case 1026: screen_.showPicture("Credits.bmp"); break;    // Credits: seg4:070C -> seg6:0A4D
+    case 1026: screen_.showPicture(creditsPicture(layout_.edition, screen_.languageLetter())); break; // seg4:070C -> seg6:0A4D
     case 1024: {                                             // Demo: seg4:05A8 -> seg4:0DA9(1)
         // seg2:01AF: slots 0, 2, 4, 6 are computers (zoom 1, 0, 1, 0), no setup dialog.
         std::array<uint8_t, kPlayerSlots> status{2, 0, 2, 0, 2, 0, 2, 0};

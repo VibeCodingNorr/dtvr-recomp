@@ -16,7 +16,7 @@ SDL_Rect rect(const ScreenRect& r) { return SDL_Rect{r.x, r.y, r.w, r.h}; }
 
 OptionsView::OptionsView(SDL_Renderer* renderer, const fs::path& root, char language, const ScreenLayout& layout,
                          TextRenderer& text)
-    : renderer_(renderer), root_(root), language_(language), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth)) {}
+    : renderer_(renderer), root_(root), language_(language), layout_(layout), text_(text), geometry_(setupGeometry(layout.baseWidth, layout.edition)) {}
 
 SDL_Rect OptionsView::extraRect() const {
     const SDL_Rect stop = rect(geometry_.stop), star = rect(geometry_.start);

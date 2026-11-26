@@ -25,7 +25,9 @@ resolved outcomes so replay need not depend on an unspecified platform RNG.
 ## Editions and languages
 
 Future support for the US English edition is an agreed user goal (2026-11-23).
-It is not implemented: the current supported input is the identified German EXE.
+It is not playable yet: the runtime recognizes the US retail EXE through an
+explicit edition profile (`src/edition.hpp`), while the installer and the game
+modes accept only the identified German EXE.
 Verified fingerprints, resource differences and the engine handoff are recorded
 in [media variants](media-variants.md).
 

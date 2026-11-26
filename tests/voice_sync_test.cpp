@@ -40,6 +40,19 @@ int main() {
     check(table[0].entries.size() == 10 && table[0].entries[1].text == 40011 && table[0].entries[1].end == 550, "entries");
     const VoiceSyncRecord* r = findVoiceSync(table, "PART01A.WAV");
     check(r == &table[0] && !findVoiceSync(table, "part01b.wav"), "lookup without case");
+    { // the US retail dat/e/sync.dat has 139 records (German 140): any record count is valid
+        std::vector<uint8_t> retail;
+        for (int i = 0; i < 139; ++i) {
+            const std::string name = "v" + std::to_string(i) + ".wav";
+            const auto one = record(name.c_str(), 100, {{1, 0, 100}});
+            retail.insert(retail.end(), one.begin(), one.end());
+        }
+        const auto big = parseVoiceSync(retail);
+        check(big.size() == 139 && !findVoiceSync(big, "nicosia.wav"), "139 records, a voice without a record");
+        SubtitleTrack track;
+        track.start(nullptr, 0); // no record: no subtitle text
+        check(track.poll(50) == 0 && track.shown() == 0, "no record shows no text");
+    }
 
     // Position = ms * 11; 0 and beyond the length give no text; bounds inclusive.
     check(voiceSyncText(*r, 0) == 0, "position 0");
