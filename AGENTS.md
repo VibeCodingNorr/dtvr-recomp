@@ -234,6 +234,16 @@ The dummy driver verifies rendering and file loading, not interactive desktop in
 
 ## Next work
 
+Music handoff for Claude (2026-11-23): the user recognizes the recovered CD
+recording as the remembered soundtrack, after comparison with our GM rendering.
+Prioritize a complete selectable CD-recording set with honest MIDI supplements
+for missing cues; keep the existing MIDI set as an alternative. SB16 was the
+reported hardware, but an FM reconstruction is not the immediate requested fix.
+Evidence, catalog blockers and acceptance boundaries are in
+`docs/music-research.md` under "User listening reference and handoff to Claude".
+This set is planned, not implemented; preserve the distinction between listening
+recognition and proven original CD control flow.
+
 Follow `docs/architecture.md` when introducing gameplay: use an SDL-independent
 simulation, explicit validated commands, authoritative random outcomes and a
 versioned serializable state. Local, AI and remote play must share this boundary.
