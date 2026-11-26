@@ -1,6 +1,6 @@
 # Native start and Escape menus
 
-Status: a first in-game sample is implemented (`src/recomp_menu.{hpp,cpp}` model,
+Status: the in-game menu is implemented (`src/recomp_menu.{hpp,cpp}` model,
 no SDL; `src/recomp_menu_view.{hpp,cpp}` drawing and input; tests in
 `tests/recomp_menu_test.cpp`). Escape opens it where rally.exe has no Escape action
 (no menu, or a menu without a checked item such as ONFIELD and the title menu);
@@ -45,10 +45,18 @@ saving and loading stay with the original menus as in rally.exe, MAIN1's "Spiel
 speichern" (1062, seg4:07B8 → seg8:B157(1)) and the title menu's "Spiel laden"
 (1021). The pad's A is exactly the keyboard's Enter here (one Return per press,
 src/pad_input.cpp).
-Not yet: help pages, multiplayer entries, a native start screen. Keyboard keys are
-not remappable (user decision).
+Not yet: help pages and multiplayer entries. Keyboard keys are not remappable
+(user decision). The sections below are the earlier design draft; where they differ
+from the implemented menu above, the implemented menu and the original windows win.
 
 ## Before a game
+
+The game starts with rally.exe's own sequence (logo, intro, title menu MAIN from
+the language file); Escape in MAIN opens the recomp menu (see above). A native
+start screen with our own logo is not implemented, and the agreed direction is the
+original look (the draft below is kept for reference only).
+
+### Draft: native start screen
 
 The start screen uses our own project logo and offers New game, Continue/Load,
 Multiplayer, Settings, Help and Quit. Show New game, save or multiplayer entries
@@ -68,12 +76,15 @@ again returns to the game. Do not let the held key immediately close and reopen 
 The controller's Start (Menu) button reaches it; View/Back opens the original
 RIGHTBTN menu on the map instead (docs/formats.md "Recomp pad layer").
 
+Draft entries (implemented: Resume as Weiterspielen, Audio, Graphics as Grafik,
+Controls as Steuerung, Quit as Rallye beenden; the others are not):
+
 | Entry | Purpose / behavior |
 | --- | --- |
 | Resume | Close the overlay and restore the previous UI focus. |
-| Audio | Music, speech and effects volume, mute and installed Ogg sound-set selection. |
+| Audio | Master volume (no separate music / speech / effect levels, see above), music and effect switches and installed Ogg sound-set selection. |
 | Graphics | Window/fullscreen, scaling, interface scale and optional installed effects. |
-| Controls | Keyboard/controller bindings, reset defaults and visible focus navigation. |
+| Controls | Controller bindings (keyboard keys stay fixed), reset defaults and visible focus navigation. |
 | Accessibility | Reduced motion, color-independent field markers and readable text options. |
 | Help | Controls, contextual rules explanations and the financial/event history. |
 | Save / Load | Not in the recomp menu (user decision): the original MAIN1 and title menus save and load. |

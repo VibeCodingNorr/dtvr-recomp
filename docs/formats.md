@@ -4093,8 +4093,8 @@ a recomp element and now reads the pad itself:
   Colour cycling (`[Setup] Colorcycle`) is traced in "Colour cycling" (round 82).
 - Frame names suggest animation sequences (`DDOWN1..4`, `V01..`); playback order,
   timing and placement come from code that is not yet analysed.
-- `map/europe_d.tow`: contains readable city and property names, including
-  London and Tower-Cafe. Record layout is not yet established.
+- `map/europe_d.tow`: city and property names (e.g. London, Tower-Cafe); the
+  record layout is in "Properties and money (round 8)", "Town entries".
 - `dat/d/rally_d.dat` is itself an MZ/NE binary despite the `.dat` suffix.
 - Tourist information in `butt/d/views/*.txt` is readable as Windows-1252.
 

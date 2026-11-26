@@ -24,7 +24,7 @@ installation. By default it uses `$XDG_DATA_HOME/dtvr-recomp`, or
 `~/.local/share/dtvr-recomp` when that environment setting is unavailable or relative.
 An explicit `--output` also has to be outside the checkout, including after
 resolving symlinks. Original source files are never modified in place. Directory
-imports identify the supported executable and record SHA-256 hashes for every
+imports identify a supported edition by its executable and record SHA-256 hashes for every
 imported input file; see [installer validation](installer.md). Directory sources
 and installation destinations must not overlap. No source directory is discovered
 automatically or embedded as a machine-specific dependency.
