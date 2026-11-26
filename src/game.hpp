@@ -288,6 +288,22 @@ public:
     std::string playerName(int player) const;
     bool requestDemoEnd();
     bool demoEnding() const { return demoEnd_; } // DS:16
+    // DS:14: 1 only for the title entry Demo (seg4:05BB -> seg4:0DA9(1), seg4:05CF); every
+    // other start clears it (seg4:0591 -> 0DA9(0), seg4:05F0 / 0675 / 0767). Not saved.
+    void setDemo(bool on) { demo_ = on; }
+    bool demo() const { return demo_; }
+    // seg1:01D7, the input seg1:00D2 drops while the current player is a computer:
+    // WM_KEYDOWN VK_ESCAPE or WM_RBUTTONDOWN. Without humans in a demo it is the end of
+    // the demo (seg2:5C5A / 5CAD); otherwise, outside a demo and while no Steuerlos holds
+    // a status in DS:10, the current computer becomes a human (seg1:0253-027C).
+    enum class EscapeAction { None, DemoEnd, TakeOver };
+    EscapeAction computerEscapeAction() const;
+    int escapePlayer() const; // DS:94E2 as seg1:01D7 sees it (STAT: its player)
+    // seg1:0253-027C: sound 0x10 on channel 0 (played by the window at once), the status
+    // byte +0 = 1, DS:A77A = 0 (the window's held arrow), seg5:6CE8 (the computer's state
+    // machine cleared) and seg2:2D8D (the portrait repainted). No random draw, no message;
+    // the turn goes on where it is for the new human. False when not allowed.
+    bool takeOverComputer();
     // Card field (kind 5) after arriving: buy one offered card type, sell a hand card.
     bool atCardField() const;
     int handCount(int player) const; // seg2:3C00
@@ -484,6 +500,7 @@ private:
     bool obstacleConfirmed_ = false;
     RisikoState risiko_;                    // DS:9C92 light, level, tick counter, DS:A778 steps
     bool demoEnd_ = false;                  // DS:16
+    bool demo_ = false;                     // DS:14 (not saved)
     int mapCanvas_ = 1024;                  // canvas width of the map view (session setting, not saved)
     bool computerExtraCards_ = false;       // recomp extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};

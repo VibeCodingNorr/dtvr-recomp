@@ -25,6 +25,7 @@ bool PlayView::newGame(const std::array<uint8_t, kPlayerSlots>& slots,
     fresh.applyNameCodes(); // seg4:0E71 -> seg2:6332, after the deal
     if (!SaveCodec::decode(*game_, SaveCodec::encode(fresh), error)) return false;
     game_->setPlayerNames(fresh.playerNames()); // with the renamed code of seg2:640F
+    game_->setDemo(false); // seg4:0DA9(0) stores DS:14 = 0; the Demo entry sets it afterwards
     game_->takeNotices(); // nothing of the old game is announced any more
     game_->adoptNotices(fresh);
     cardTarget_ = pendingNails_ = -1;

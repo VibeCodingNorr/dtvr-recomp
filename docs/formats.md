@@ -1297,7 +1297,10 @@ Rebuilt in `src/ai.cpp` (tables, graph, distances, score, route, town plan) and
   seg8:7551). Meanwhile seg1:00D2 drops a human's keys and buttons (0x100–0x102,
   0x201–0x204, 0x206) because the current player is a computer, so nobody can answer
   for it; seg5:6D20 (called from seg2:1C37 in the loop) does not touch DS:9570. The
-  computer therefore always declines. The game window does the same
+  computer therefore always declines. *Caution (not shown either way):* seg5:6D20 itself
+  runs inside the modal wait through seg2:1C37; if DS:8CDC still held a stale state, e.g.
+  state 7, whose seg5:6F27 posts 0x7EF (wParam 0x0D) to the main window DS:42 after 50
+  passes (DS:53FA), it could act during the wait. The game window does the same
   (`GameWindow::updateInvest`); without a window `Game::computerAdvance` declines at
   once with the same draws. The offer is answered inside nextPlayer (seg2:07EF / 07FC)
   before its autosave (seg2:0837 -> seg8:A870), so the rebuild's autosave waits for the
@@ -1416,9 +1419,54 @@ Round 20 (player setup and the end of computer games):
   names per slot (texts 120–127 of the language resource).
 - **Without humans** seg2:5C5A is true when no slot has status 1. A new game
   sets DS:16 = 0 (seg4:0DC8); Escape or a right click while no human plays
-  (seg1:0211, DS:14 ≠ 0) calls seg2:5CAD (text 0x10, DS:16 = 1), and the next
-  nextPlayer ends the game (seg2:0869 → WM_COMMAND 0x424). A game of computers
-  therefore runs until it is stopped.
+  (seg1:0211, DS:14 ≠ 0) calls seg2:5CAD (sound 0x10 on channel 0, DS:16 = 1), and
+  the next nextPlayer ends the game (seg2:0869 → WM_COMMAND 0x424). A game of
+  computers therefore runs until it is stopped. *Corrected (round sound-takeover):*
+  DS:14 is 1 only in the demo (seg4:05BB → seg4:0DA9(1), seg4:05CF); in a game of
+  computers set up in PLAYER (DS:14 = 0) the same input takes the current computer
+  over instead (see "Taking over a computer").
+
+### Taking over a computer (round sound-takeover)
+
+- **Filter** seg1:00D2: every message pump (the main loop seg1:0048 ff. at seg1:0071 /
+  0085 and the modal loop seg6:03F7 at seg6:0432 / 0470 and 04A4 / 04E2) passes each
+  message through it first. While seg2:5C02(DS:94E2) holds (status byte +0 = 2 and
+  DS:94C4 ≠ 0, i.e. a computer is the current player) it returns 0 for 0x100–0x102 and
+  0x201–0x204 / 0x206; such a message is not translated or dispatched but handed to
+  seg1:01D7. Every window in front (message window, STAT, investment offer, slot
+  machine, a computer's town dialog) is therefore bypassed.
+- **seg1:01D7** acts only on WM_KEYDOWN with wParam 0x1B (Escape, seg1:01EB–0200) or
+  WM_RBUTTONDOWN 0x204 (seg1:0204); everything else is dropped silently.
+  1. seg2:5C5A (no slot with status 1) and DS:14 ≠ 0 (demo): seg2:5CAD — seg1:2C9B(0,
+     0x10, 0) (Elefant) and DS:16 = 1 (seg1:0211–022B).
+  2. Otherwise seg2:5C02(DS:94E2), DS:14 = 0 and DS:10 = 0 (seg1:022E–024F):
+     seg1:2C9B(0, 0x10, 0) (seg1:0253–0259), the status byte of DS:94E2 = 1 (human,
+     seg1:0261–026E), DS:A77A = 0 (the held direction, seg1:0272), seg5:6CE8 (the
+     computer's state DS:8CDC / 8CDE / 4E5C / 4E5E / 8D2A = 0, seg1:0277) and seg2:2D8D
+     (the portrait window DS:3E repainted, seg1:027C). No message text, no random draw,
+     no change of the turn's phase: seg5:6D20 does nothing more for this player
+     (seg2:5C02 fails), so the human goes on from where the computer stood (spinning,
+     driving with the remaining steps, at a window).
+  3. DS:10 holds the status of a Steuerlos driver from his turn start (seg2:0A7F /
+     0AC8, the status is then 2) until the Return of the arrival restores it
+     (seg2:0CF9–0D15): no takeover during such a turn.
+- **Keys.** Only Escape and the right button; the joystick's button 2 posts WM_KEYDOWN
+  VK_ESCAPE (seg2:8BC6) and passes the same filter. Backspace is not handled.
+- **Rebuilt** (`Game::computerEscapeAction` / `takeOverComputer`, `src/game_ai.cpp`;
+  `GameWindow::computerEscape`, `src/game_window_input.cpp`): the same conditions with
+  DS:14 as `Game::setDemo` (not saved; a new game and a loaded one clear it as
+  seg4:0DA9(0) / 0675). The window checks the input after the display keys, the desktop
+  quit question and an open recomp menu (recomp), before every game window; on a
+  computer's turn a refused Escape / right click is swallowed as seg1:00D2 does, on a
+  human's turn Escape keeps its roles (recomp menu on the map). Sound 16 plays at once
+  on channel 0 (also for the demo end, which the rebuild had played without it). The
+  pad's B is the original button 2 and takes over; View (Backspace) does not.
+  Approximations: the rebuild's computer arrives at once, so its arrival phase counts as
+  after the Return (DS:10 restored); a takeover after the computer has arrived ends the
+  turn as a human's arrival does (the computer's town purchases do not run); during STAT
+  DS:94E2 is the sheet's player (`Game::escapePlayer`); the year balance's own loop
+  (BILANZ) is not traced and left out. Not saved state: save format and rules revision
+  unchanged.
 
 Rebuilt in `src/game_risiko.cpp` (Risiko as phase `Risiko` with the commands
 `risikoTick`, `risikoPress`, `risikoStop`) and the `Game` constructor (computer
@@ -2842,8 +2890,8 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
 - **Not reproduced exactly / assumptions:** the window rectangle is centred on the
   rebuild's canvas like the other centred windows; the DIB's last two columns (560 − 558) are
   not shown in rally.exe either. Under seg1:00D2 a human's input during a computer's STAT is
-  dropped; what seg1:01D7 does with them besides the end of a demo (seg2:5CAD, a sound through
-  seg1:2C9B) was not traced further and is not rebuilt for STAT. The recomp display keys (F11,
+  dropped; seg1:01D7's Escape / right button ends a demo or takes the computer over (see
+  "Taking over a computer", round sound-takeover), also over STAT. The recomp display keys (F11,
   Alt+Return, F12) and F8 stay available while STAT is open.
 
 ### Victory sequence (round 46)
@@ -2960,6 +3008,16 @@ nothing yet; the keys `1`–`4` are not passed on while a menu is open.
   eight channels mixed with SDL audio (a new sound replaces the channel's),
   played only with Wave on; wired so far: menu sounds, the slot machine, money
   fields, the two sit-outs and blocked cards. Music (snd/midi) is not played.
+- **Round sound-takeover, field sounds** (dispatch seg2:160C, handlers per kind): blue
+  (1) seg2:0EF1 moneywin and red (2) seg2:1081 Fate03 on channel 3 before the message
+  (rebuilt since round 40); yellow (3) seg2:10A5: with a full hand (seg2:3C00 = 8)
+  seg2:110D–1113 Sfx08 (15) on channel 3 before seg3:1057 (text 403, discard), then
+  random(13) for text 4201 + n (seg2:1127), seg2:1175–117B Hebel05 (19) on channel 2 and
+  the message seg2:1191 — both were missing and are rebuilt (`Game::arrive`,
+  `giveYellowCard`). The towns (4 / 6, seg2:11A6: town dialog seg1:4BDD or the finish
+  seg7:2628) and the card field (5, seg2:15AE → seg3:4437) have no seg1:2C9B call in
+  the handler itself nor in the set-up of seg1:4BDD / seg3:4437 (the finish ZIEL plays its
+  own z.wav, rebuilt; the dialogs sound on their input). No other kind lacks a sound.
 - **Round 50:** the town dialog (procedure seg1:5337): Plopp02 for the tabs
   Kaufen / Verkaufen / Karte (seg1:5436 / 546D / 54B2); a purchase or sale is
   tried for the clicked row (seg1:5583 → seg1:7DC5 / 832A) and sounds Plopp02 when

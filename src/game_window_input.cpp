@@ -65,6 +65,7 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         handleQuestion(event);
         return;
     }
+    if (computerEscape(event)) return; // seg1:00D2 -> 01D7 in every message pump
     if (screen_.film().active() && (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONDOWN))
         return; // the FLIC window runs modally (seg6:0FB4)
     if (screen_.intro().active()) { // seg7:2118, modal
@@ -128,15 +129,6 @@ void GameWindow::handleEvent(const SDL_Event& event) {
         if (id) command(id);
         else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE && !event.key.repeat)
             recompMenu_.menu().open(menuSettings(), !screen_.title()); // Escape does nothing here in rally.exe
-        return;
-    }
-    const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-                         || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
-    if (!screen_.title() && !play_.game().humansLeft() && endDemo) { // seg1:021D: a game of computers ends
-        play_.game().requestDemoEnd();
-        screen_.messages().clear();
-        menu_.close();
-        openTitle();
         return;
     }
     if (screen_.announcement().active()) { // ZIEL seg7:50D6
@@ -294,6 +286,49 @@ void GameWindow::handleEvent(const SDL_Event& event) {
     }
     if (handleGameDialog(event)) return;
     handleKey(event);
+}
+
+// seg1:01D7: every message pump of rally.exe (the main loop seg1:0071 / 0085 and the modal
+// loop seg6:03F7, seg6:0432 / 0470 and 04A4 / 04E2) gives seg1:00D2 each message first.
+// While the current player is a computer (seg2:5C02) it drops WM_KEYDOWN / KEYUP / CHAR
+// and the mouse buttons 0x201-0x204 / 0x206, and seg1:01D7 receives the dropped one: a
+// WM_KEYDOWN VK_ESCAPE (0x100, wParam 0x1B) or a WM_RBUTTONDOWN (0x204) whichever window
+// is in front (the message window, STAT, the offer, the slot machine, the town dialog of
+// a computer). Without humans in a demo (seg2:5C5A, DS:14) it ends the demo (seg2:5CAD:
+// sound 0x10 on channel 0, DS:16 = 1); otherwise, outside a demo and without a Steuerlos
+// status in DS:10, the computer becomes a human (seg1:0253-027C: the same sound, status 1,
+// DS:A77A = 0, seg5:6CE8, seg2:2D8D). Any other dropped input does nothing.
+// Precedence here: the display keys and the desktop quit question, and the recomp menu
+// while it is open, come first (recomp); then this, before every game window. On a human's
+// turn nothing is dropped and Escape keeps its roles (the recomp menu on the map). The
+// pad's B posts VK_ESCAPE like the original button 2 (seg2:8BC6), so it takes over too.
+bool GameWindow::computerEscape(const SDL_Event& event) {
+    const bool escape = event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE;
+    const bool right = event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT;
+    if ((!escape && !right) || screen_.title() || recompMenu_.isOpen()) return false;
+    Game& g = play_.game();
+    switch (g.computerEscapeAction()) {
+    case Game::EscapeAction::DemoEnd: // seg1:021D -> seg2:5CAD
+        sound_.play(0, 16);           // seg2:5CC7: seg1:2C9B(0, 0x10, 0), Elefant
+        g.requestDemoEnd();
+        // Recomp: the title follows at once; rally.exe ends the game at the next player
+        // change (seg2:0869 -> WM_COMMAND 0x424) with the shortened waits of DS:16.
+        screen_.messages().clear();
+        menu_.close();
+        openTitle();
+        return true;
+    case Game::EscapeAction::TakeOver:
+        sound_.play(0, 16); // seg1:0259: seg1:2C9B(0, 0x10, 0), Elefant, before the status
+        if (g.takeOverComputer()) {
+            heldArrow_ = SDLK_UNKNOWN; // seg1:0272: DS:A77A = 0
+            report();
+        }
+        return true;
+    case Game::EscapeAction::None: break;
+    }
+    // seg1:00D2 dropped it all the same while a computer is the current player.
+    const int p = g.escapePlayer();
+    return p >= 0 && g.isComputer(p) && g.phase() != Game::Phase::GameOver && g.phase() != Game::Phase::Balance;
 }
 
 // The Yes / No message window: obstacle question (seg2:2404, text 600) or the quit

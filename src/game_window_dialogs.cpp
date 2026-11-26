@@ -76,11 +76,9 @@ bool GameWindow::handleGameDialog(const SDL_Event& event) {
     if (screen_.invest().isOpen() && !screen_.messages().open()) { // seg8:7098
         const Game& g = play_.game();
         if (g.currentPlayer() >= 0 && g.isComputer(g.currentPlayer())) {
-            // seg1:00D2 drops keys and buttons while a computer is the current player; only
-            // seg1:01D7's Escape / right button reaches the game window (the end of a demo).
-            const bool endDemo = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-                                 || (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT);
-            return !(endDemo && !g.humansLeft());
+            // seg1:00D2 drops keys and buttons while a computer is the current player; its
+            // Escape / right button went to seg1:01D7 before (GameWindow::computerEscape).
+            return true;
         }
         finishInvest(screen_.invest().handle(event));
         return true;

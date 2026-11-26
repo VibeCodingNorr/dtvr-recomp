@@ -145,7 +145,8 @@ void GameWindow::start() {
     if (options_.announce) screen_.startAnnouncement(2, 3, SDL_GetTicks());
     if (options_.cardShop) screen_.cardShop().open(play_.game());
     if (options_.nails) screen_.nails().open(play_.game().nailsDirections());
-    if (options_.invest) screen_.invest().open(true, "Vera, ein verrückter Professor fragt Dich, ob Du in seine Forschungen investieren willst.", 50000);
+    if (options_.invest) screen_.invest().open(true, "Vera, ein verrückter Professor fragt Dich, ob Du in seine Forschungen investieren willst.", 50000,
+                                                SDL_GetTicks()); // the computer's wait starts now (seg6:0FB4)
     if (options_.flight) screen_.flight().open(play_.game().eastOpen(), play_.game().remainingStages() == 0);
     if (options_.selectPlayer) {
         std::vector<int> others;
@@ -385,6 +386,7 @@ void GameWindow::command(int id) { // WM_COMMAND of the main window (seg4:0B76)
         // The demo continues the session's generator as well (seg4:0DA9(1)).
         if (!play_.newGame(status, names, error)) { std::cerr << "Demo: " << error << "\n"; openTitle(); break; }
         play_.game().setComputerExtraCards(screen_.settings().computerExtraCards);
+        play_.game().setDemo(true); // seg4:05CF: DS:14 = 1
         for (int p = 0; p < kPlayerSlots; ++p) screen_.setZoom(p, p == 0 || p == 4);
         startGame(true);
         break;
