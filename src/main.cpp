@@ -131,7 +131,7 @@ static std::vector<fs::path> findFiles(const fs::path& dir, const std::string& e
 }
 
 // The game from the recovered rules with slots and driver names (viewer and game window).
-static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, char language, const dtvr::Board& board,
+static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, dtvr::Edition edition, char language, const dtvr::Board& board,
                                                     const std::vector<dtvr::Town>& towns, int humans, int computers,
                                                     int rounds, unsigned seed) {
     if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
@@ -145,6 +145,7 @@ static std::unique_ptr<dtvr::PlayView> makePlayView(const fs::path& root, char l
         board, towns, std::make_unique<dtvr::WorldMap>(readFile(original(root, "map/europe.map"))),
         std::make_unique<dtvr::TileProperties>(readFile(original(root, "map/europe.pit"))), slots, rounds,
         uint16_t(seed));
+    playView->game().setEdition(edition); // before any load: saves are checked against it
     // Driver names from the language file (texts 120-127), when present.
     const auto library = dtvr::findCaseInsensitive(root, dtvr::languageLibraryPath(language));
     if (!library.empty()) {
@@ -336,7 +337,7 @@ static int run(int argc, char** argv) {
     if (!overview->format->palette) throw std::runtime_error("map.bmp hat keine Palette");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) throw std::runtime_error(SDL_GetError());
     if (gameWindow) { // the game window as in rally.exe (src/game_screen.cpp)
-        auto game = makePlayView(root, language, board, towns, humans, computers, rounds, seed);
+        auto game = makePlayView(root, edition.edition, language, board, towns, humans, computers, rounds, seed);
         dtvr::GameWindowOptions options;
         options.edition = edition.edition;
         options.canvasWidth = resolution;
@@ -461,7 +462,7 @@ static int run(int argc, char** argv) {
     };
     if (play) {
         if (board.fields.empty()) throw std::runtime_error("Spielbrett fehlt");
-        playView = makePlayView(root, language, board, towns, humans, computers, rounds, seed);
+        playView = makePlayView(root, edition.edition, language, board, towns, humans, computers, rounds, seed);
         graph = true;
     }
     load();

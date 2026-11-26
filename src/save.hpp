@@ -10,8 +10,9 @@
 
 namespace dtvr {
 
-constexpr int kSaveFormat = 7;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
-                                   // 4: no extensions record, 5: no worth records, 6: no flow records)
+constexpr int kSaveFormat = 8;     // layout (1: no Risiko record, 2: no demo record, 3: no stages record,
+                                   // 4: no extensions record, 5: no worth records, 6: no flow records,
+                                   // 7: no edition record, i.e. a German save)
 constexpr int kRulesRevision = 50; // rule reconstruction round the state belongs to (26: draws of the
                                    // blocked card window and the investment offer; 27: draws at the
                                    // stage end, seg2:12D8 / 136F / 1231 and seg7:3B4E; 28: the

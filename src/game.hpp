@@ -6,6 +6,7 @@
 #include "cards.hpp"
 #include "drago.hpp"
 #include "economy.hpp"
+#include "edition.hpp"
 #include "events.hpp"
 #include "obstacles.hpp"
 #include "rules.hpp"
@@ -164,6 +165,11 @@ public:
     // The towns of the Flugzeug rows (texts 5602 + i, matched by name like seg3:32CE),
     // for the extension's computers; installation data, not game state.
     void setAirports(const std::array<int, 8>& towns) { airports_ = towns; }
+    // The edition of the original data (src/edition.hpp), set once by the program: saves
+    // record it and refuse another edition's saves (docs/save-format.md). Not changed
+    // by loading.
+    void setEdition(Edition edition) { edition_ = edition; }
+    Edition edition() const { return edition_; }
     // [Setup] TimeOut (DS:B5D6, from the settings): after an "n Felder" card
     // seg2:3ABD gives (n + 2) * 5 seconds; seg2:3B0E then fines the driver every
     // second (500 for 10 s, 750 for 10 s, then 1000) until the turn ends.
@@ -480,6 +486,7 @@ private:
     int mapCanvas_ = 1024;                  // canvas width of the map view (session setting, not saved)
     bool computerExtraCards_ = false;       // recomp extension: computers also play the cards rally.exe never picks
     std::array<int, 8> airports_{-1, -1, -1, -1, -1, -1, -1, -1};
+    Edition edition_ = Edition::GermanRetail; // installation data, written into saves
     bool forcedSale_ = false;     // the statistics in sale mode 0x10 are open
     bool timeLimitOn_ = false;    // DS:B5D6
     bool timeLimitActive_ = false; // DS:12 (not saved: a turn-local timer)
